@@ -1,0 +1,45 @@
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { getSessionContext } from "@/lib/auth";
+import { resolveCompanyScope } from "@/lib/companyScope";
+import { SupplierInvoiceUploadReview } from "@/components/procurement/SupplierInvoiceUploadReview";
+
+export default async function NewSupplierInvoicePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ company?: string; po?: string }>;
+}) {
+  const session = await getSessionContext();
+  if (!session) redirect("/login");
+
+  const supabase = await createClient();
+  const { data: allCompanies } = await supabase.from("companies").select("id, name").order("name");
+  const companies = allCompanies ?? [];
+
+  const { company: requestedId } = await searchParams;
+  const { accessibleIds } = resolveCompanyScope(session, companies, requestedId);
+  const selectable = companies.filter((c) => accessibleIds.includes(c.id));
+  const defaultCompanyId = requestedId && accessibleIds.includes(requestedId) ? requestedId : selectable[0]?.id;
+  const query = requestedId ? `?company=${requestedId}` : "";
+
+  const [{ data: suppliers }, { data: purchaseOrders }] = await Promise.all([
+    supabase.from("suppliers").select("id, name, company_id").in("company_id", accessibleIds).order("name"),
+    supabase.from("purchase_orders").select("id, po_number, company_id, supplier_id").in("company_id", accessibleIds).order("order_date", { ascending: false }),
+  ]);
+
+  return (
+    <div className="mx-auto max-w-3xl">
+      <h1 className="text-[22px] font-extrabold text-text">New Supplier Invoice</h1>
+      <p className="mt-1 text-[13px] text-text-secondary">Enter it manually, or upload a PDF or photo for AI to read — then run the duplicate check before saving.</p>
+      <div className="mt-5 rounded-xl border border-border bg-surface shadow-sm">
+        <SupplierInvoiceUploadReview
+          companies={selectable}
+          defaultCompanyId={defaultCompanyId}
+          suppliers={suppliers ?? []}
+          purchaseOrders={purchaseOrders ?? []}
+          redirectTo={`/supplier-procurement/invoices${query}`}
+        />
+      </div>
+    </div>
+  );
+}

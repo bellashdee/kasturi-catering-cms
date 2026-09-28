@@ -1,0 +1,96 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { getSessionContext } from "@/lib/auth";
+import { resolveCompanyScope } from "@/lib/companyScope";
+import { getRevenueReportRows } from "@/lib/reports/queries";
+import { INVOICE_STATUS_LABEL } from "@/lib/finance/constants";
+import { formatCurrency } from "@/lib/format";
+import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
+import { ReportTable } from "@/components/reports/ReportTable";
+import { buildReportRows } from "@/lib/reports/buildRows";
+import { StatusBadge } from "@/components/StatusBadge";
+import { EmptyRow } from "@/components/dashboard/SectionCard";
+
+function currentYearMonth() {
+  const now = new Date();
+  return { year: now.getFullYear(), month: now.getMonth() + 1 };
+}
+
+export default async function RevenueReportPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ company?: string; year?: string; month?: string; status?: string }>;
+}) {
+  const session = await getSessionContext();
+  if (!session) redirect("/login");
+
+  const supabase = await createClient();
+  const { data: allCompanies } = await supabase.from("companies").select("id, name");
+  const companies = allCompanies ?? [];
+
+  const { company: requestedId, year: yearParam, month: monthParam, status: statusParam } = await searchParams;
+  const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
+  const query = requestedId ? `?company=${requestedId}` : "";
+
+  if (targetCompanyIds.length === 0) {
+    return <EmptyRow text="You don't have access to any company yet." />;
+  }
+
+  const { year: nowYear, month: nowMonth } = currentYearMonth();
+  const year = Number(yearParam) || nowYear;
+  const month = Number(monthParam) || nowMonth;
+
+  const allRows = await getRevenueReportRows(supabase, targetCompanyIds, year, month);
+  const rows = statusParam ? allRows.filter((r) => r.customer_invoices?.status === statusParam) : allRows;
+  const total = rows.reduce((t, r) => t + Number(r.amount), 0);
+
+  const { headers, tableRows } = buildReportRows(
+    rows,
+    [
+      { key: "date", label: "Payment Date", exportValue: (r) => r.payment_date },
+      { key: "customer", label: "Customer", exportValue: (r) => r.customer_invoices?.customers?.name ?? "—" },
+      { key: "invoice", label: "Invoice #", exportValue: (r) => r.customer_invoices?.invoice_number ?? "—" },
+      { key: "company", label: "Company", exportValue: (r) => r.companies?.name ?? "—" },
+      { key: "amount", label: "Amount", exportValue: (r) => Number(r.amount), display: (r) => formatCurrency(Number(r.amount)) },
+      {
+        key: "status",
+        label: "Invoice Status",
+        exportValue: (r) => (r.customer_invoices?.status ? INVOICE_STATUS_LABEL[r.customer_invoices.status] ?? r.customer_invoices.status : "—"),
+        display: (r) =>
+          r.customer_invoices?.status ? (
+            <StatusBadge tone={r.customer_invoices.status === "paid" ? "success" : "warning"}>
+              {INVOICE_STATUS_LABEL[r.customer_invoices.status] ?? r.customer_invoices.status}
+            </StatusBadge>
+          ) : (
+            "—"
+          ),
+      },
+    ],
+    (r) => r.id,
+  );
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div>
+        <Link href={`/reports${query}`} className="text-[12.5px] font-semibold text-text-secondary">← Back to Reports</Link>
+        <h1 className="mt-2 text-[22px] font-extrabold text-text">Revenue Report</h1>
+        <p className="mt-0.5 text-[13px] text-text-secondary">{rows.length} payment{rows.length === 1 ? "" : "s"} · {formatCurrency(total)} total</p>
+      </div>
+
+      <ReportFilterBar
+        requestedCompanyId={requestedId}
+        year={year}
+        month={month}
+        status={statusParam}
+        statusOptions={Object.entries(INVOICE_STATUS_LABEL).map(([value, label]) => ({ value, label }))}
+      />
+
+      <ReportTable
+        filenameBase={`revenue-${year}-${month}`}
+        headers={headers}
+        rows={tableRows}
+      />
+    </div>
+  );
+}

@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+:root {
+  --color-bg: #f5f6f8;
+  --color-surface: #ffffff;
+  --color-surface-alt: #fafbfc;
+  --color-border: #e3e6ec;
+  --color-border-strong: #d0d5dd;
+
+  --color-navy-900: #0f2438;
+  --color-navy-800: #16324f;
+  --color-navy-700: #1d4e78;
+
+  --color-primary: #2563a6;
+  --color-primary-hover: #1d4e78;
+  --color-accent: #7a8b4a;
+
+  --color-success: #16794b;
+  --color-success-bg: #e7f3eb;
+  --color-warning: #b7791f;
+  --color-warning-bg: #fbf0dd;
+  --color-danger: #c0362c;
+  --color-danger-bg: #fbeae9;
+  --color-info-bg: #eaf1f8;
+
+  --color-text: #16212e;
+  --color-text-secondary: #5b6472;
+  --color-text-muted: #98a2b3;
+
+  --color-company-all: #334155;
+  --color-company-signature: #2563a6;
+  --color-company-kasturi: #7a8b4a;
+  --color-company-o2life: #c4622d;
+}
+
+@theme inline {
+  --font-sans: var(--font-manrope);
+
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-surface-alt: var(--color-surface-alt);
+  --color-border: var(--color-border);
+  --color-border-strong: var(--color-border-strong);
+
+  --color-navy-900: var(--color-navy-900);
+  --color-navy-800: var(--color-navy-800);
+  --color-navy-700: var(--color-navy-700);
+
+  --color-primary: var(--color-primary);
+  --color-primary-hover: var(--color-primary-hover);
+  --color-accent: var(--color-accent);
+
+  --color-success: var(--color-success);
+  --color-success-bg: var(--color-success-bg);
+  --color-warning: var(--color-warning);
+  --color-warning-bg: var(--color-warning-bg);
+  --color-danger: var(--color-danger);
+  --color-danger-bg: var(--color-danger-bg);
+  --color-info-bg: var(--color-info-bg);
+
+  --color-text: var(--color-text);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-muted: var(--color-text-muted);
+
+  --color-company-all: var(--color-company-all);
+  --color-company-signature: var(--color-company-signature);
+  --color-company-kasturi: var(--color-company-kasturi);
+  --color-company-o2life: var(--color-company-o2life);
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+}

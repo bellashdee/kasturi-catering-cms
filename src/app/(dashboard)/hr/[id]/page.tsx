@@ -1,0 +1,189 @@
+import Link from "next/link";
+import { redirect, notFound } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { getSessionContext } from "@/lib/auth";
+import {
+  getEmployee,
+  listCertificates,
+  listLeaveForEmployee,
+  listOvertimeForEmployee,
+  listPayrollForEmployee,
+} from "@/lib/hr/queries";
+import {
+  EMPLOYMENT_TYPE_LABEL,
+  EMPLOYEE_STATUS_LABEL,
+  CERT_TYPE_LABEL,
+  LEAVE_TYPE_LABEL,
+  LEAVE_STATUS_LABEL,
+  PAYROLL_STATUS_LABEL,
+  certificateUrgency,
+} from "@/lib/hr/constants";
+import { formatCurrency } from "@/lib/format";
+import { StatusBadge } from "@/components/StatusBadge";
+import { SectionCard, EmptyRow, StatRow } from "@/components/dashboard/SectionCard";
+
+const CERT_TONE: Record<string, "success" | "warning" | "danger"> = {
+  valid: "success",
+  expiring_soon: "warning",
+  expired: "danger",
+};
+
+const CERT_LABEL: Record<string, string> = {
+  valid: "Valid",
+  expiring_soon: "Expiring Soon",
+  expired: "Expired",
+};
+
+export default async function EmployeeProfilePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ company?: string }>;
+}) {
+  const session = await getSessionContext();
+  if (!session) redirect("/login");
+
+  const { id } = await params;
+  const { company: requestedId } = await searchParams;
+  const query = requestedId ? `?company=${requestedId}` : "";
+
+  const supabase = await createClient();
+
+  let employee;
+  try {
+    employee = await getEmployee(supabase, id);
+  } catch {
+    notFound();
+  }
+
+  const [certificates, leave, overtime, payroll] = await Promise.all([
+    listCertificates(supabase, id),
+    listLeaveForEmployee(supabase, id),
+    listOvertimeForEmployee(supabase, id),
+    listPayrollForEmployee(supabase, id),
+  ]);
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex items-start justify-between">
+        <div>
+          <Link href={`/hr${query}`} className="text-[12.5px] font-semibold text-text-secondary">
+            ← Back to Employee Database
+          </Link>
+          <div className="mt-2 flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-base font-bold text-white">
+              {employee.full_name.slice(0, 2).toUpperCase()}
+            </div>
+            <div>
+              <div className="text-[20px] font-extrabold text-text">{employee.full_name}</div>
+              <div className="text-[13px] text-text-secondary">
+                {employee.position || "—"} · {employee.department || "—"} · {employee.companies?.name}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <StatusBadge tone={employee.status === "active" ? "success" : employee.status === "terminated" ? "danger" : "neutral"}>
+            {EMPLOYEE_STATUS_LABEL[employee.status] ?? employee.status}
+          </StatusBadge>
+          <Link href={`/hr/${id}/edit${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2 text-[13px] font-semibold text-text">
+            Edit
+          </Link>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-5">
+        <SectionCard title="Overview">
+          <StatRow label="Employment Type" value={EMPLOYMENT_TYPE_LABEL[employee.employment_type] ?? employee.employment_type} />
+          <StatRow label="Join Date" value={employee.join_date || "—"} />
+          <StatRow label="IC / Passport No." value={employee.ic_passport_no || "—"} />
+          <StatRow label="Phone" value={employee.phone || "—"} />
+          <StatRow label="Email" value={employee.email || "—"} />
+        </SectionCard>
+
+        <SectionCard
+          title="Staff Documents & Certificates"
+          action={<Link href={`/hr/${id}/certificates/new${query}`} className="text-[12.5px] font-semibold text-primary">+ Upload</Link>}
+        >
+          {certificates.length === 0 ? (
+            <EmptyRow text="No certificates on file yet." />
+          ) : (
+            <div className="-mx-5 -mb-5 divide-y divide-border">
+              {certificates.map((c) => {
+                const urgency = certificateUrgency(c.expiry_date);
+                return (
+                  <div key={c.id} className="flex items-center justify-between px-5 py-3">
+                    <div>
+                      <div className="text-[13px] font-semibold text-text">{CERT_TYPE_LABEL[c.cert_type] ?? c.cert_name}</div>
+                      <div className="text-xs text-text-muted">{c.cert_name} · expires {c.expiry_date}</div>
+                    </div>
+                    <StatusBadge tone={CERT_TONE[urgency]}>{CERT_LABEL[urgency]}</StatusBadge>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </SectionCard>
+
+        <SectionCard title="Leave" action={<Link href={`/hr/${id}/leave/new${query}`} className="text-[12.5px] font-semibold text-primary">+ Request</Link>}>
+          {leave.length === 0 ? (
+            <EmptyRow text="No leave requests yet." />
+          ) : (
+            <div className="-mx-5 -mb-5 divide-y divide-border">
+              {leave.slice(0, 5).map((l) => (
+                <div key={l.id} className="flex items-center justify-between px-5 py-3">
+                  <div>
+                    <div className="text-[13px] font-semibold text-text">{LEAVE_TYPE_LABEL[l.leave_type] ?? l.leave_type}</div>
+                    <div className="text-xs text-text-muted">{l.start_date} → {l.end_date} · {l.days} day(s)</div>
+                  </div>
+                  <StatusBadge tone={l.status === "approved" ? "success" : l.status === "rejected" ? "danger" : "warning"}>
+                    {LEAVE_STATUS_LABEL[l.status] ?? l.status}
+                  </StatusBadge>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+
+        <SectionCard title="Overtime" action={<Link href={`/hr/${id}/overtime/new${query}`} className="text-[12.5px] font-semibold text-primary">+ Log</Link>}>
+          {overtime.length === 0 ? (
+            <EmptyRow text="No overtime logged yet." />
+          ) : (
+            <div className="-mx-5 -mb-5 divide-y divide-border">
+              {overtime.slice(0, 5).map((o) => (
+                <div key={o.id} className="flex items-center justify-between px-5 py-3">
+                  <div>
+                    <div className="text-[13px] font-semibold text-text">{o.work_date}</div>
+                    <div className="text-xs text-text-muted">{o.reason || "No reason given"}</div>
+                  </div>
+                  <div className="text-[13px] font-bold text-text">{o.hours}h</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+
+        <SectionCard title="Payroll" action={<Link href={`/hr/${id}/payroll/new${query}`} className="text-[12.5px] font-semibold text-primary">+ Add Record</Link>}>
+          {payroll.length === 0 ? (
+            <EmptyRow text="No payroll records yet." />
+          ) : (
+            <div className="-mx-5 -mb-5 divide-y divide-border">
+              {payroll.slice(0, 5).map((p) => (
+                <div key={p.id} className="flex items-center justify-between px-5 py-3">
+                  <div>
+                    <div className="text-[13px] font-semibold text-text">{p.pay_period_start} → {p.pay_period_end}</div>
+                    <div className="text-xs text-text-muted">Net {formatCurrency(p.net_pay)}</div>
+                  </div>
+                  <StatusBadge tone={p.status === "paid" ? "success" : "neutral"}>
+                    {PAYROLL_STATUS_LABEL[p.status] ?? p.status}
+                  </StatusBadge>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+      </div>
+    </div>
+  );
+}

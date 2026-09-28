@@ -1,0 +1,383 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+import { scaleIngredientRequirements } from "@/lib/kitchen/queries";
+
+async function requireUser() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not signed in.");
+  return { supabase, userId: user.id };
+}
+
+export type IngredientInput = {
+  companyId: string;
+  name: string;
+  unitOfMeasure?: string;
+  currentStockQty: number;
+  reorderLevel: number;
+  unitCost: number;
+  preferredSupplierId?: string;
+};
+
+export async function createIngredient(input: IngredientInput) {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase
+    .from("ingredients")
+    .insert({
+      company_id: input.companyId,
+      name: input.name,
+      unit_of_measure: input.unitOfMeasure || null,
+      current_stock_qty: input.currentStockQty,
+      reorder_level: input.reorderLevel,
+      unit_cost: input.unitCost,
+      preferred_supplier_id: input.preferredSupplierId || null,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  revalidatePath("/kitchen/ingredients");
+  return data;
+}
+
+export async function updateIngredient(ingredientId: string, input: Partial<IngredientInput>) {
+  const { supabase } = await requireUser();
+  const { error } = await supabase
+    .from("ingredients")
+    .update({
+      name: input.name,
+      unit_of_measure: input.unitOfMeasure || null,
+      reorder_level: input.reorderLevel,
+      unit_cost: input.unitCost,
+      preferred_supplier_id: input.preferredSupplierId || null,
+    })
+    .eq("id", ingredientId);
+  if (error) throw error;
+  revalidatePath("/kitchen/ingredients");
+  revalidatePath(`/kitchen/ingredients/${ingredientId}`);
+}
+
+export type BulkIngredientRow = {
+  name: string;
+  unitOfMeasure?: string;
+  currentStockQty?: string;
+  reorderLevel?: string;
+  unitCost?: string;
+};
+
+export async function bulkImportIngredients(companyId: string, rows: BulkIngredientRow[]) {
+  const { supabase } = await requireUser();
+  const payload = rows
+    .filter((r) => r.name?.trim())
+    .map((r) => ({
+      company_id: companyId,
+      name: r.name.trim(),
+      unit_of_measure: r.unitOfMeasure || null,
+      current_stock_qty: Number(r.currentStockQty) || 0,
+      reorder_level: Number(r.reorderLevel) || 0,
+      unit_cost: Number(r.unitCost) || 0,
+    }));
+  if (payload.length === 0) return { inserted: 0 };
+  const { error, count } = await supabase.from("ingredients").insert(payload, { count: "exact" });
+  if (error) throw error;
+  revalidatePath("/kitchen/ingredients");
+  return { inserted: count ?? payload.length };
+}
+
+/**
+ * The single place stock quantities change. Every adjustment — manual count,
+ * OCR'd stock-count photo, receiving a purchase, kitchen consumption, or
+ * wastage — goes through here so `ingredients.current_stock_qty` and the
+ * `stock_movements` ledger never drift apart.
+ */
+export async function recordStockMovement(input: {
+  companyId: string;
+  ingredientId: string;
+  movementType: "in" | "out" | "adjustment" | "wastage";
+  quantity: number;
+  notes?: string;
+  documentId?: string;
+  referenceType?: string;
+  referenceId?: string;
+}) {
+  const { supabase, userId } = await requireUser();
+
+  const { data: ingredient, error: ingredientError } = await supabase
+    .from("ingredients")
+    .select("current_stock_qty")
+    .eq("id", input.ingredientId)
+    .single();
+  if (ingredientError) throw ingredientError;
+
+  const signedQty = input.movementType === "in" ? input.quantity : -Math.abs(input.quantity);
+  const newStock =
+    input.movementType === "adjustment"
+      ? input.quantity
+      : Math.max(0, Number(ingredient.current_stock_qty) + signedQty);
+
+  const { error: movementError } = await supabase.from("stock_movements").insert({
+    company_id: input.companyId,
+    ingredient_id: input.ingredientId,
+    movement_type: input.movementType,
+    quantity: input.movementType === "adjustment" ? newStock - Number(ingredient.current_stock_qty) : signedQty,
+    reference_type: input.referenceType || null,
+    reference_id: input.referenceId || null,
+    document_id: input.documentId || null,
+    notes: input.notes || null,
+    created_by: userId,
+  });
+  if (movementError) throw movementError;
+
+  const { error: updateError } = await supabase
+    .from("ingredients")
+    .update({ current_stock_qty: newStock })
+    .eq("id", input.ingredientId);
+  if (updateError) throw updateError;
+
+  if (input.documentId) {
+    await supabase
+      .from("documents")
+      .update({ extraction_status: "confirmed", reviewed_by: userId, reviewed_at: new Date().toISOString() })
+      .eq("id", input.documentId);
+  }
+
+  revalidatePath("/kitchen/stock");
+  revalidatePath(`/kitchen/ingredients/${input.ingredientId}`);
+  revalidatePath("/kitchen/ingredients");
+}
+
+export type MenuInput = {
+  companyId: string;
+  name: string;
+  description?: string;
+  items: { name: string; category: string; pricePerPax: number }[];
+};
+
+export async function createMenu(input: MenuInput) {
+  const { supabase } = await requireUser();
+  const { data: menu, error: menuError } = await supabase
+    .from("menus")
+    .insert({ company_id: input.companyId, name: input.name, description: input.description || null })
+    .select("id")
+    .single();
+  if (menuError) throw menuError;
+
+  const items = input.items.filter((i) => i.name.trim());
+  if (items.length > 0) {
+    const { error: itemsError } = await supabase.from("menu_items").insert(
+      items.map((i) => ({
+        company_id: input.companyId,
+        menu_id: menu.id,
+        name: i.name,
+        category: i.category,
+        price_per_pax: i.pricePerPax || null,
+      })),
+    );
+    if (itemsError) throw itemsError;
+  }
+
+  revalidatePath("/kitchen/menus");
+  return menu;
+}
+
+export type RecipeInput = {
+  companyId: string;
+  menuItemId?: string;
+  name: string;
+  yieldPax: number;
+  instructions?: string;
+  ingredients: { ingredientId: string; quantityPerYield: number; unit?: string }[];
+};
+
+export async function createRecipe(input: RecipeInput) {
+  const { supabase } = await requireUser();
+  const { data: recipe, error: recipeError } = await supabase
+    .from("recipes")
+    .insert({
+      company_id: input.companyId,
+      menu_item_id: input.menuItemId || null,
+      name: input.name,
+      yield_pax: input.yieldPax,
+      instructions: input.instructions || null,
+    })
+    .select("id")
+    .single();
+  if (recipeError) throw recipeError;
+
+  const lines = input.ingredients.filter((i) => i.ingredientId && i.quantityPerYield > 0);
+  if (lines.length > 0) {
+    const { error: linesError } = await supabase.from("recipe_ingredients").insert(
+      lines.map((l) => ({
+        recipe_id: recipe.id,
+        ingredient_id: l.ingredientId,
+        quantity_per_yield: l.quantityPerYield,
+        unit: l.unit || null,
+      })),
+    );
+    if (linesError) throw linesError;
+  }
+
+  revalidatePath("/kitchen/recipes");
+  return recipe;
+}
+
+export type ProductionOrderInput = {
+  companyId: string;
+  recipeId?: string;
+  paxCount?: number;
+  plannedDate: string;
+  notes?: string;
+};
+
+export async function createProductionOrder(input: ProductionOrderInput) {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase
+    .from("production_orders")
+    .insert({
+      company_id: input.companyId,
+      recipe_id: input.recipeId || null,
+      pax_count: input.paxCount ?? null,
+      planned_date: input.plannedDate,
+      notes: input.notes || null,
+      status: "planned",
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  revalidatePath("/kitchen");
+  return data;
+}
+
+/**
+ * Marking a production order complete is what actually consumes stock:
+ * Recipe + Pax scales the ingredient list, and each ingredient's stock is
+ * decremented via the same recordStockMovement ledger everything else uses.
+ * If the order is linked to a catering event, its ingredient cost also
+ * updates that event's costing — Kitchen writes into Catering's own
+ * `event_costing` row rather than keeping a second, competing total.
+ */
+export async function updateProductionOrderStatus(orderId: string, status: string) {
+  const { supabase } = await requireUser();
+
+  const { data: order, error: orderError } = await supabase
+    .from("production_orders")
+    .select("id, company_id, catering_event_id, recipe_id, pax_count, catering_events(pax_count)")
+    .eq("id", orderId)
+    .single();
+  if (orderError) throw orderError;
+
+  const { error: updateError } = await supabase.from("production_orders").update({ status }).eq("id", orderId);
+  if (updateError) throw updateError;
+
+  if (status === "completed" && order.recipe_id) {
+    const targetPax = order.pax_count ?? order.catering_events?.pax_count ?? null;
+
+    const { data: recipe } = await supabase
+      .from("recipes")
+      .select("yield_pax, recipe_ingredients(ingredient_id, quantity_per_yield, unit, ingredients(name, unit_of_measure, current_stock_qty, unit_cost))")
+      .eq("id", order.recipe_id)
+      .single();
+
+    if (recipe && targetPax) {
+      const requirements = scaleIngredientRequirements(recipe.recipe_ingredients, recipe.yield_pax, targetPax);
+      let ingredientCost = 0;
+
+      for (const req of requirements) {
+        ingredientCost += req.quantityNeeded * req.unitCost;
+        await recordStockMovement({
+          companyId: order.company_id,
+          ingredientId: req.ingredientId,
+          movementType: "out",
+          quantity: req.quantityNeeded,
+          notes: "Consumed by production order",
+          referenceType: "production_order",
+          referenceId: orderId,
+        });
+      }
+
+      if (order.catering_event_id) {
+        const { data: existingCosting } = await supabase
+          .from("event_costing")
+          .select("id, food_cost")
+          .eq("catering_event_id", order.catering_event_id)
+          .maybeSingle();
+
+        if (existingCosting) {
+          await supabase
+            .from("event_costing")
+            .update({ ingredient_cost: Math.round(ingredientCost * 100) / 100, updated_at: new Date().toISOString() })
+            .eq("id", existingCosting.id);
+        } else {
+          await supabase.from("event_costing").insert({
+            company_id: order.company_id,
+            catering_event_id: order.catering_event_id,
+            ingredient_cost: Math.round(ingredientCost * 100) / 100,
+          });
+        }
+      }
+    }
+  }
+
+  revalidatePath("/kitchen");
+  revalidatePath(`/kitchen/${orderId}`);
+  if (order.catering_event_id) revalidatePath(`/catering/${order.catering_event_id}`);
+  revalidatePath("/");
+}
+
+export type PurchaseRequestInput = {
+  companyId: string;
+  ingredientId: string;
+  supplierId?: string;
+  quantityRequested: number;
+  unit?: string;
+  notes?: string;
+  productionOrderId?: string;
+};
+
+export async function createPurchaseRequest(input: PurchaseRequestInput) {
+  const { supabase, userId } = await requireUser();
+  const { error } = await supabase.from("purchase_requests").insert({
+    company_id: input.companyId,
+    ingredient_id: input.ingredientId,
+    supplier_id: input.supplierId || null,
+    quantity_requested: input.quantityRequested,
+    unit: input.unit || null,
+    notes: input.notes || null,
+    production_order_id: input.productionOrderId || null,
+    created_by: userId,
+  });
+  if (error) throw error;
+  revalidatePath("/kitchen/purchase-requests");
+}
+
+/** Marking a request "received" closes the loop by adding the stock back in. */
+export async function updatePurchaseRequestStatus(requestId: string, status: string) {
+  const { supabase } = await requireUser();
+
+  const { data: request, error: fetchError } = await supabase
+    .from("purchase_requests")
+    .select("id, company_id, ingredient_id, quantity_requested")
+    .eq("id", requestId)
+    .single();
+  if (fetchError) throw fetchError;
+
+  const { error: updateError } = await supabase.from("purchase_requests").update({ status }).eq("id", requestId);
+  if (updateError) throw updateError;
+
+  if (status === "received") {
+    await recordStockMovement({
+      companyId: request.company_id,
+      ingredientId: request.ingredient_id,
+      movementType: "in",
+      quantity: Number(request.quantity_requested),
+      notes: "Received from purchase request",
+      referenceType: "purchase_request",
+      referenceId: requestId,
+    });
+  }
+
+  revalidatePath("/kitchen/purchase-requests");
+}
