@@ -5,6 +5,11 @@ and **O2 Life Sdn Bhd** — one dashboard, filterable by company, with room to g
 HR, Marketing, Catering, Kitchen, Driver & Logistics, Supplier & Procurement, Finance &
 Admin and Reports.
 
+## Working as a team
+
+Building this with others? Read [CONTRIBUTING.md](CONTRIBUTING.md) first — it covers
+branching, module ownership, code review, and database migration rules.
+
 ## Stack
 
 - **Next.js 16** (App Router, TypeScript, Tailwind CSS v4)

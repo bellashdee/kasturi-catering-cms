@@ -1,0 +1,70 @@
+# Code owners — GitHub auto-requests review from the matching person
+# whenever a PR touches a path below. See CONTRIBUTING.md for the full workflow.
+#
+# IMPORTANT: replace each @placeholder-handle with the person's real GitHub
+# username once they've been invited as a collaborator (Settings > Collaborators
+# on the repo page). Until replaced, GitHub cannot resolve the placeholder and
+# will simply skip auto-requesting review for that line.
+
+# Default owner for anything not matched below
+*                                       @bellashdee
+
+# Shared / core code — changes here can affect every module, so the
+# main developer reviews all of it (see CONTRIBUTING.md section 4)
+/src/lib/auth.ts                       @bellashdee
+/src/lib/companyScope.ts               @bellashdee
+/src/lib/supabase/                     @bellashdee
+/src/lib/documents/                    @bellashdee
+/src/lib/importFlow/                   @bellashdee
+/src/lib/format.ts                     @bellashdee
+/src/lib/constants.ts                  @bellashdee
+/src/components/layout/                @bellashdee
+/src/components/shared/                @bellashdee
+/supabase/migrations/                  @bellashdee
+/.github/                              @bellashdee
+/CONTRIBUTING.md                       @bellashdee
+
+# Main Dashboard
+/src/app/(dashboard)/page.tsx           @bellashdee
+/src/lib/queries/dashboard.ts          @bellashdee
+/src/components/dashboard/             @bellashdee
+
+# HR
+/src/app/(dashboard)/hr/                @hr-developer
+/src/lib/hr/                            @hr-developer
+/src/components/hr/                     @hr-developer
+
+# Marketing
+/src/app/(dashboard)/marketing/         @marketing-developer
+/src/lib/marketing/                     @marketing-developer
+/src/components/marketing/              @marketing-developer
+
+# Catering
+/src/app/(dashboard)/catering/          @catering-developer
+/src/lib/catering/                      @catering-developer
+/src/components/catering/               @catering-developer
+
+# Kitchen
+/src/app/(dashboard)/kitchen/           @kitchen-developer
+/src/lib/kitchen/                       @kitchen-developer
+/src/components/kitchen/                @kitchen-developer
+
+# Driver & Logistics
+/src/app/(dashboard)/driver-logistics/  @logistics-developer
+/src/lib/driver/                        @logistics-developer
+/src/components/driver/                 @logistics-developer
+
+# Supplier & Procurement
+/src/app/(dashboard)/supplier-procurement/  @procurement-developer
+/src/lib/procurement/                       @procurement-developer
+/src/components/procurement/                @procurement-developer
+
+# Finance & Admin
+/src/app/(dashboard)/finance-admin/     @finance-developer
+/src/lib/finance/                       @finance-developer
+/src/components/finance/                @finance-developer
+
+# Reports — cross-cutting, main developer owns
+/src/app/(dashboard)/reports/           @bellashdee
+/src/lib/reports/                       @bellashdee
+/src/components/reports/                @bellashdee
