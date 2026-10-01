@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { logTaskAudit } from "@/lib/taskProofs/actions";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -21,6 +22,8 @@ export type DriverInput = {
   licenseExpiry?: string;
   availabilityStatus?: string;
   notes?: string;
+  approvedLatitude?: number;
+  approvedLongitude?: number;
 };
 
 /**
@@ -58,6 +61,8 @@ export async function createDriver(input: DriverInput) {
       license_expiry: input.licenseExpiry || null,
       availability_status: input.availabilityStatus || "available",
       notes: input.notes || null,
+      approved_latitude: input.approvedLatitude ?? null,
+      approved_longitude: input.approvedLongitude ?? null,
     })
     .select("id")
     .single();
@@ -74,6 +79,8 @@ export async function updateDriver(driverId: string, input: Partial<DriverInput>
       license_number: input.licenseNumber || null,
       license_expiry: input.licenseExpiry || null,
       notes: input.notes || null,
+      approved_latitude: input.approvedLatitude ?? null,
+      approved_longitude: input.approvedLongitude ?? null,
     })
     .eq("id", driverId);
   if (error) throw error;
@@ -191,12 +198,20 @@ export async function createDelivery(input: DeliveryInput) {
     .select("id")
     .single();
   if (error) throw error;
+
+  await logTaskAudit({ companyId: input.companyId, relatedTable: "deliveries", relatedId: data.id, action: "task_created" });
+  if (input.driverId) {
+    await logTaskAudit({ companyId: input.companyId, relatedTable: "deliveries", relatedId: data.id, action: "task_assigned", newValue: input.driverId });
+  }
+
   revalidatePath("/driver-logistics");
   return data;
 }
 
 export async function updateDeliveryDetails(deliveryId: string, input: Partial<DeliveryInput>) {
   const { supabase } = await requireUser();
+  const { data: existing } = await supabase.from("deliveries").select("company_id, driver_id").eq("id", deliveryId).single();
+
   const { error } = await supabase
     .from("deliveries")
     .update({
@@ -209,16 +224,119 @@ export async function updateDeliveryDetails(deliveryId: string, input: Partial<D
     })
     .eq("id", deliveryId);
   if (error) throw error;
+
+  if (existing && input.driverId && input.driverId !== existing.driver_id) {
+    await logTaskAudit({
+      companyId: existing.company_id,
+      relatedTable: "deliveries",
+      relatedId: deliveryId,
+      action: "task_assigned",
+      previousValue: existing.driver_id ?? undefined,
+      newValue: input.driverId,
+    });
+  }
+
   revalidatePath("/driver-logistics");
   revalidatePath(`/driver-logistics/${deliveryId}`);
 }
 
 export async function updateDeliveryStatus(deliveryId: string, status: string) {
+  if (status === "delivered") {
+    throw new Error("Use 'Complete Task' to mark a delivery as delivered — it requires proof of delivery.");
+  }
   const { supabase } = await requireUser();
+  const { data: existing } = await supabase.from("deliveries").select("company_id, status").eq("id", deliveryId).single();
+
   const { error } = await supabase.from("deliveries").update({ status }).eq("id", deliveryId);
   if (error) throw error;
+
+  if (existing) {
+    await logTaskAudit({
+      companyId: existing.company_id,
+      relatedTable: "deliveries",
+      relatedId: deliveryId,
+      action: status === "in_transit" ? "task_started" : "status_changed",
+      previousValue: existing.status,
+      newValue: status,
+    });
+  }
+
   revalidatePath("/driver-logistics");
   revalidatePath(`/driver-logistics/${deliveryId}`);
+  revalidatePath("/");
+}
+
+/**
+ * Proof uploads are attached generically via task_proofs (see
+ * src/lib/taskProofs), so this is the one delivery-specific side effect: the
+ * first proof flips the gate from "no_proof" to "proof_uploaded".
+ */
+export async function markDeliveryProofUploaded(deliveryId: string) {
+  const { supabase } = await requireUser();
+  const { data } = await supabase.from("deliveries").select("proof_status").eq("id", deliveryId).single();
+  if (data?.proof_status === "no_proof") {
+    await supabase.from("deliveries").update({ proof_status: "proof_uploaded" }).eq("id", deliveryId);
+  }
+  revalidatePath(`/driver-logistics/${deliveryId}`);
+}
+
+export type CompleteDeliveryInput = {
+  deliveryId: string;
+  companyId: string;
+  completionRemarks?: string;
+  adminOverride?: boolean;
+  overrideReason?: string;
+};
+
+/**
+ * The proof-of-delivery gate: a delivery can only become "delivered" once
+ * proof has been uploaded, unless an authorized Admin/Management user
+ * explicitly overrides it with a recorded reason.
+ */
+export async function completeDeliveryTask(input: CompleteDeliveryInput) {
+  const { supabase, userId } = await requireUser();
+
+  const { data: delivery, error: fetchError } = await supabase
+    .from("deliveries")
+    .select("proof_status, status")
+    .eq("id", input.deliveryId)
+    .single();
+  if (fetchError) throw fetchError;
+
+  const hasProof = delivery.proof_status === "proof_uploaded" || delivery.proof_status === "completed";
+  if (!hasProof && !input.adminOverride) {
+    throw new Error("This task requires proof of delivery before it can be marked completed — or an authorized override with a reason.");
+  }
+  if (input.adminOverride && !input.overrideReason?.trim()) {
+    throw new Error("A reason is required for an admin override.");
+  }
+
+  const { error } = await supabase
+    .from("deliveries")
+    .update({
+      status: "delivered",
+      proof_status: "completed",
+      completion_remarks: input.completionRemarks || null,
+      completed_at: new Date().toISOString(),
+      admin_override: !!input.adminOverride,
+      admin_override_by: input.adminOverride ? userId : null,
+      admin_override_reason: input.adminOverride ? input.overrideReason || null : null,
+    })
+    .eq("id", input.deliveryId);
+  if (error) throw error;
+
+  await logTaskAudit({
+    companyId: input.companyId,
+    relatedTable: "deliveries",
+    relatedId: input.deliveryId,
+    action: input.adminOverride ? "admin_override" : "task_completed",
+    previousValue: delivery.status,
+    newValue: "delivered",
+    reason: input.adminOverride ? input.overrideReason : undefined,
+  });
+
+  revalidatePath("/driver-logistics");
+  revalidatePath(`/driver-logistics/${input.deliveryId}`);
   revalidatePath("/");
 }
 

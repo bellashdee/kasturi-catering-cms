@@ -39,7 +39,7 @@ export function CompanyExpenseUploadReview({
   const [form, setForm] = useState({ category: categories[0]?.name ?? "Other", description: "", amount: "", expenseDate: "" });
 
   async function handleUploadAndExtract() {
-    const extracted = (await flow.uploadAndExtract({ companyId, module: "finance-admin", extractionKind: "company_expense" })) as ExtractedExpense | null;
+    const extracted = (await flow.uploadAndExtract({ companyId, module: "finance", extractionKind: "company_expense" })) as ExtractedExpense | null;
     if (extracted) {
       const matchedCategory = categories.find((c) => c.name.toLowerCase() === (extracted.category ?? "").toLowerCase());
       setForm({

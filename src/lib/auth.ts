@@ -60,9 +60,4 @@ export const getSessionContext = cache(async (): Promise<SessionContext | null> 
   };
 });
 
-export const ROLE_LABEL: Record<Database["public"]["Enums"]["user_role"], string> = {
-  super_admin: "Super Admin",
-  company_admin: "Company Admin",
-  dept_manager: "Department Manager",
-  staff: "Staff",
-};
+export { ROLE_LABEL } from "@/lib/users/constants";

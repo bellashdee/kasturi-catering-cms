@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
+import { getMenuPlanTree } from "@/lib/menuPlan/queries";
 import { ProductionOrderForm } from "@/components/kitchen/ProductionOrderForm";
 
 export default async function NewProductionOrderPage({
@@ -27,11 +28,20 @@ export default async function NewProductionOrderPage({
     .in("company_id", accessibleIds)
     .order("name");
 
+  const menuPlanTrees = Object.fromEntries(
+    await Promise.all(selectable.map(async (c) => [c.id, await getMenuPlanTree(supabase, c.id)] as const)),
+  );
+
   return (
     <div className="mx-auto max-w-2xl">
       <h1 className="text-[22px] font-extrabold text-text">New Production Order</h1>
       <div className="mt-5 rounded-xl border border-border bg-surface p-6 shadow-sm">
-        <ProductionOrderForm companies={selectable} defaultCompanyId={defaultCompanyId} recipes={recipes ?? []} />
+        <ProductionOrderForm
+          companies={selectable}
+          defaultCompanyId={defaultCompanyId}
+          recipes={recipes ?? []}
+          menuPlanTrees={menuPlanTrees}
+        />
       </div>
     </div>
   );

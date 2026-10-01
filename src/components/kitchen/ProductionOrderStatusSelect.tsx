@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { updateProductionOrderStatus } from "@/lib/kitchen/actions";
 import { PRODUCTION_STATUS_LABEL } from "@/lib/kitchen/constants";
 
-const OPTIONS = ["planned", "in_progress", "completed"];
+const OPTIONS = ["planned", "preparing", "ready", "completed"];
 
 export function ProductionOrderStatusSelect({ orderId, status }: { orderId: string; status: string }) {
   const router = useRouter();

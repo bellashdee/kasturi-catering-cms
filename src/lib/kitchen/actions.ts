@@ -16,6 +16,7 @@ async function requireUser() {
 export type IngredientInput = {
   companyId: string;
   name: string;
+  category?: string;
   unitOfMeasure?: string;
   currentStockQty: number;
   reorderLevel: number;
@@ -30,6 +31,7 @@ export async function createIngredient(input: IngredientInput) {
     .insert({
       company_id: input.companyId,
       name: input.name,
+      category: input.category || null,
       unit_of_measure: input.unitOfMeasure || null,
       current_stock_qty: input.currentStockQty,
       reorder_level: input.reorderLevel,
@@ -49,6 +51,7 @@ export async function updateIngredient(ingredientId: string, input: Partial<Ingr
     .from("ingredients")
     .update({
       name: input.name,
+      category: input.category || null,
       unit_of_measure: input.unitOfMeasure || null,
       reorder_level: input.reorderLevel,
       unit_cost: input.unitCost,
@@ -62,6 +65,7 @@ export async function updateIngredient(ingredientId: string, input: Partial<Ingr
 
 export type BulkIngredientRow = {
   name: string;
+  category?: string;
   unitOfMeasure?: string;
   currentStockQty?: string;
   reorderLevel?: string;
@@ -75,6 +79,7 @@ export async function bulkImportIngredients(companyId: string, rows: BulkIngredi
     .map((r) => ({
       company_id: companyId,
       name: r.name.trim(),
+      category: r.category || null,
       unit_of_measure: r.unitOfMeasure || null,
       current_stock_qty: Number(r.currentStockQty) || 0,
       reorder_level: Number(r.reorderLevel) || 0,
@@ -227,8 +232,11 @@ export async function createRecipe(input: RecipeInput) {
 export type ProductionOrderInput = {
   companyId: string;
   recipeId?: string;
+  menuPlanDishId?: string;
   paxCount?: number;
   plannedDate: string;
+  assignedStaff?: string;
+  prepTimeMinutes?: number;
   notes?: string;
 };
 
@@ -239,8 +247,11 @@ export async function createProductionOrder(input: ProductionOrderInput) {
     .insert({
       company_id: input.companyId,
       recipe_id: input.recipeId || null,
+      menu_plan_dish_id: input.menuPlanDishId || null,
       pax_count: input.paxCount ?? null,
       planned_date: input.plannedDate,
+      assigned_staff: input.assignedStaff || null,
+      prep_time_minutes: input.prepTimeMinutes ?? null,
       notes: input.notes || null,
       status: "planned",
     })
@@ -258,13 +269,19 @@ export async function createProductionOrder(input: ProductionOrderInput) {
  * If the order is linked to a catering event, its ingredient cost also
  * updates that event's costing — Kitchen writes into Catering's own
  * `event_costing` row rather than keeping a second, competing total.
+ *
+ * Orders linked to a real menu-plan dish (menu_plan_dish_id) instead of a
+ * recipe do NOT auto-deduct stock here: menu_plan_ingredients are text names
+ * imported from the Excel reference file, not linked by id to the `ingredients`
+ * stock table, so there is no reliable id to deduct against. Their scaled
+ * ingredient list is still shown for reference on the order's detail page.
  */
 export async function updateProductionOrderStatus(orderId: string, status: string) {
   const { supabase } = await requireUser();
 
   const { data: order, error: orderError } = await supabase
     .from("production_orders")
-    .select("id, company_id, catering_event_id, recipe_id, pax_count, catering_events(pax_count)")
+    .select("id, company_id, catering_event_id, recipe_id, menu_plan_dish_id, pax_count, catering_events(pax_count)")
     .eq("id", orderId)
     .single();
   if (orderError) throw orderError;
@@ -333,8 +350,10 @@ export type PurchaseRequestInput = {
   supplierId?: string;
   quantityRequested: number;
   unit?: string;
+  requiredDate?: string;
   notes?: string;
   productionOrderId?: string;
+  documentId?: string;
 };
 
 export async function createPurchaseRequest(input: PurchaseRequestInput) {
@@ -345,15 +364,18 @@ export async function createPurchaseRequest(input: PurchaseRequestInput) {
     supplier_id: input.supplierId || null,
     quantity_requested: input.quantityRequested,
     unit: input.unit || null,
+    required_date: input.requiredDate || null,
     notes: input.notes || null,
     production_order_id: input.productionOrderId || null,
+    document_id: input.documentId || null,
     created_by: userId,
+    status: "draft",
   });
   if (error) throw error;
   revalidatePath("/kitchen/purchase-requests");
 }
 
-/** Marking a request "received" closes the loop by adding the stock back in. */
+/** Marking a request "completed" closes the loop by adding the stock back in. */
 export async function updatePurchaseRequestStatus(requestId: string, status: string) {
   const { supabase } = await requireUser();
 
@@ -367,7 +389,7 @@ export async function updatePurchaseRequestStatus(requestId: string, status: str
   const { error: updateError } = await supabase.from("purchase_requests").update({ status }).eq("id", requestId);
   if (updateError) throw updateError;
 
-  if (status === "received") {
+  if (status === "completed") {
     await recordStockMovement({
       companyId: request.company_id,
       ingredientId: request.ingredient_id,

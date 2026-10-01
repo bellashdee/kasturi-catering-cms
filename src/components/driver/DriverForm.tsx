@@ -22,8 +22,27 @@ export function DriverForm({ companies, defaultCompanyId, employees }: { compani
   const [phone, setPhone] = useState("");
   const [licenseNumber, setLicenseNumber] = useState("");
   const [licenseExpiry, setLicenseExpiry] = useState("");
+  const [approvedLatitude, setApprovedLatitude] = useState("");
+  const [approvedLongitude, setApprovedLongitude] = useState("");
+  const [locating, setLocating] = useState(false);
 
   const employeesForCompany = employees.filter((e) => e.company_id === companyId);
+
+  function useCurrentLocation() {
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setApprovedLatitude(position.coords.latitude.toFixed(6));
+        setApprovedLongitude(position.coords.longitude.toFixed(6));
+        setLocating(false);
+      },
+      () => {
+        setError("Could not get this device's location.");
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -36,6 +55,8 @@ export function DriverForm({ companies, defaultCompanyId, employees }: { compani
       phone: mode === "new" ? phone : undefined,
       licenseNumber: licenseNumber || undefined,
       licenseExpiry: licenseExpiry || undefined,
+      approvedLatitude: approvedLatitude ? Number(approvedLatitude) : undefined,
+      approvedLongitude: approvedLongitude ? Number(approvedLongitude) : undefined,
     };
     try {
       const created = await createDriver(payload);
@@ -100,6 +121,28 @@ export function DriverForm({ companies, defaultCompanyId, employees }: { compani
         <div>
           <label className={labelClass}>License Expiry</label>
           <input type="date" value={licenseExpiry} onChange={(e) => setLicenseExpiry(e.target.value)} className={inputClass} />
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-border-strong p-3">
+        <div className="flex items-center justify-between">
+          <span className={labelClass}>Approved Clock-In Location (optional for now)</span>
+          <button type="button" onClick={useCurrentLocation} disabled={locating} className="text-[12px] font-semibold text-primary disabled:opacity-60">
+            {locating ? "Locating..." : "Use my current location"}
+          </button>
+        </div>
+        <p className="mt-1 text-[11px] text-text-muted">
+          Can also be set later from this driver&apos;s profile. Until set, clock in/out is not location-restricted.
+        </p>
+        <div className="mt-2 grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-[11px] text-text-muted">Latitude</label>
+            <input type="number" step="any" value={approvedLatitude} onChange={(e) => setApprovedLatitude(e.target.value)} className={inputClass} />
+          </div>
+          <div>
+            <label className="text-[11px] text-text-muted">Longitude</label>
+            <input type="number" step="any" value={approvedLongitude} onChange={(e) => setApprovedLongitude(e.target.value)} className={inputClass} />
+          </div>
         </div>
       </div>
 

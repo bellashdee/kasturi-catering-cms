@@ -36,6 +36,7 @@ export default async function EditIngredientPage({
           initial={{
             companyId: ingredient.company_id,
             name: ingredient.name,
+            category: ingredient.category ?? undefined,
             unitOfMeasure: ingredient.unit_of_measure ?? undefined,
             currentStockQty: Number(ingredient.current_stock_qty),
             reorderLevel: Number(ingredient.reorder_level),

@@ -85,6 +85,16 @@ List every distinct line item you can identify. If a field is not legible or you
   "expense_date": ISO date (YYYY-MM-DD) if visible, else null
 }
 If a field is not visible or you are not confident, use null for it rather than guessing.`,
+  customer_invoice: `You are reading an invoice this company issued to one of its own customers. Extract the following fields and respond with ONLY a JSON object, no other text:
+{
+  "invoice_number": the invoice number as printed, else null,
+  "invoice_date": ISO date (YYYY-MM-DD) if visible, else null,
+  "due_date": ISO date (YYYY-MM-DD) if visible, else null,
+  "description": a short description of what the invoice is for, else null,
+  "amount": the subtotal amount before tax as a plain number (no currency symbol), else null,
+  "tax_amount": the tax/SST amount as a plain number if shown separately, else null
+}
+If a field is not visible or you are not confident, use null for it rather than guessing.`,
 };
 
 function mimeTypeFor(filename: string, fallback: "pdf" | "photo" | "screenshot"): string {

@@ -95,6 +95,10 @@ export default async function DashboardPage({
           <StatRow label="Expenses (MTD)" value={formatCurrency(data.financial.expenses)} />
           <StatRow label="Monthly Costing" value={formatCurrency(data.financial.monthlyCosting)} />
           <StatRow label="Petty Cash Balance" value={formatCurrency(data.financeAdmin.pettyCashBalance)} />
+          <StatRow
+            label="Petty Cash Pending Payment"
+            value={`${data.financeAdmin.pettyCashPending.count} · ${formatCurrency(data.financeAdmin.pettyCashPending.totalAmount)}`}
+          />
         </SectionCard>
 
         <SectionCard title="Supplier Payments">
@@ -135,6 +139,8 @@ export default async function DashboardPage({
         <SectionCard title="Driver Deliveries">
           <StatRow label="Deliveries pending" value={data.deliveries.pendingCount} />
           <StatRow label="Available drivers" value={`${data.driverFleet.availableDrivers} / ${data.driverFleet.totalDrivers}`} />
+          <StatRow label="Missing clock-in today" value={data.driverAttendance.missingClockInCount} />
+          <StatRow label="Missing clock-out today" value={data.driverAttendance.missingClockOutCount} />
           {data.deliveries.upcoming.length === 0 ? (
             <EmptyRow text="No upcoming deliveries." />
           ) : (

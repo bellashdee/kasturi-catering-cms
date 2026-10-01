@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { getMonthlyCostBreakdown } from "@/lib/finance/queries";
+import { isPettyCashOverdue, pettyCashDaysPending } from "@/lib/finance/constants";
+import { LATE_GRACE_MINUTES } from "@/lib/driver/constants";
 
 type DB = SupabaseClient<Database>;
 
@@ -33,8 +35,9 @@ function monthStartIso(): string {
 
 export async function getFinancialOverview(supabase: DB, companyIds: string[]) {
   const monthStart = monthStartIso();
+  const now = new Date();
 
-  const [revenueRes, supplierPaidRes, expensesRes, marketingExpensesRes, driverExpensesRes] = await Promise.all([
+  const [revenueRes, supplierPaidRes, expensesRes, marketingExpensesRes, driverExpensesRes, costBreakdown] = await Promise.all([
     supabase
       .from("customer_payments")
       .select("amount")
@@ -61,15 +64,19 @@ export async function getFinancialOverview(supabase: DB, companyIds: string[]) {
       .select("amount")
       .in("company_id", companyIds)
       .gte("expense_date", monthStart),
+    // Same source Reports → Monthly Costing uses (covers every module,
+    // petty cash included) so this KPI never drifts from that report.
+    getMonthlyCostBreakdown(supabase, companyIds, now.getFullYear(), now.getMonth() + 1),
   ]);
 
   const revenue = sum(revenueRes.data);
-  const monthlyCosting =
+  const expenses =
     sum(supplierPaidRes.data) + sum(expensesRes.data) + sum(marketingExpensesRes.data) + sum(driverExpensesRes.data);
+  const monthlyCosting = costBreakdown.reduce((t, r) => t + r.amount, 0);
 
   return {
     revenue,
-    expenses: monthlyCosting,
+    expenses,
     monthlyCosting,
   };
 }
@@ -187,6 +194,38 @@ export async function getDriverFleetSummary(supabase: DB, companyIds: string[]) 
   return { totalDrivers: totalDrivers ?? 0, availableDrivers: availableDrivers ?? 0 };
 }
 
+/**
+ * "Missing clock-in" = an active driver with no attendance row for today at
+ * all, past their own expected clock-in time. "Missing clock-out" = clocked
+ * in today but never clocked out, checked once the day is basically over.
+ */
+export async function getDriverAttendanceAlerts(supabase: DB, companyIds: string[]) {
+  const today = todayIso();
+  const now = new Date();
+
+  const [{ data: activeDrivers }, { data: todayAttendance }] = await Promise.all([
+    supabase
+      .from("driver_profiles")
+      .select("employee_id, expected_clock_in_time, employees(full_name, status)")
+      .in("company_id", companyIds),
+    supabase.from("driver_attendance").select("driver_id, clock_in_time, clock_out_time").in("company_id", companyIds).eq("attendance_date", today),
+  ]);
+
+  const attendanceByDriver = new Map((todayAttendance ?? []).map((a) => [a.driver_id, a]));
+  const missingClockIn = (activeDrivers ?? []).filter((d) => {
+    if (d.employees?.status !== "active") return false;
+    if (attendanceByDriver.has(d.employee_id)) return false;
+    const [h, m] = d.expected_clock_in_time.split(":").map(Number);
+    const expected = new Date();
+    expected.setHours(h, m + LATE_GRACE_MINUTES, 0, 0);
+    return now > expected;
+  });
+
+  const missingClockOut = (todayAttendance ?? []).filter((a) => a.clock_in_time && !a.clock_out_time);
+
+  return { missingClockInCount: missingClockIn.length, missingClockOutCount: missingClockOut.length };
+}
+
 export async function getDriverCompliance(supabase: DB, companyIds: string[]) {
   const monthAhead = daysFromNowIso(30);
   const today = todayIso();
@@ -237,7 +276,7 @@ export async function getFinanceAdminSummary(supabase: DB, companyIds: string[])
   const month = now.getMonth() + 1;
 
   const [{ data: pettyCashRows }, { data: budgets }] = await Promise.all([
-    supabase.from("petty_cash_transactions").select("amount, type").in("company_id", companyIds),
+    supabase.from("petty_cash_transactions").select("amount, type, payment_status, transaction_date, claimant_name").in("company_id", companyIds),
     supabase.from("budgets").select("*").in("company_id", companyIds).eq("year", year).eq("month", month),
   ]);
 
@@ -245,6 +284,17 @@ export async function getFinanceAdminSummary(supabase: DB, companyIds: string[])
     (t, r) => t + (r.type === "top_up" ? Number(r.amount) : -Number(r.amount)),
     0,
   );
+
+  const pendingClaims = (pettyCashRows ?? []).filter((r) => r.payment_status === "pending_payment");
+  const overdueClaims = pendingClaims.filter((r) => isPettyCashOverdue(r.transaction_date, r.payment_status));
+  const pettyCashPending = {
+    count: pendingClaims.length,
+    totalAmount: pendingClaims.reduce((t, r) => t + Number(r.amount), 0),
+    overdueCount: overdueClaims.length,
+    oldestOverdue: overdueClaims
+      .map((r) => ({ claimant: r.claimant_name ?? "Unknown", daysPending: pettyCashDaysPending(r.transaction_date) }))
+      .sort((a, b) => b.daysPending - a.daysPending)[0],
+  };
 
   let overBudget: { category: string; department: string | null; budgeted: number; actual: number }[] = [];
   if (budgets && budgets.length > 0) {
@@ -259,7 +309,7 @@ export async function getFinanceAdminSummary(supabase: DB, companyIds: string[])
       .filter((x) => x.actual > x.budgeted);
   }
 
-  return { pettyCashBalance, overBudget };
+  return { pettyCashBalance, pettyCashPending, overBudget };
 }
 
 export async function getMarketingSummary(supabase: DB, companyIds: string[]) {
@@ -357,6 +407,7 @@ export function buildAlerts(input: {
   purchaseRequests: Awaited<ReturnType<typeof getPendingPurchaseRequests>>;
   vehicles: Awaited<ReturnType<typeof getVehiclesDueMaintenance>>;
   driverCompliance: Awaited<ReturnType<typeof getDriverCompliance>>;
+  driverAttendance: Awaited<ReturnType<typeof getDriverAttendanceAlerts>>;
   financeAdmin: Awaited<ReturnType<typeof getFinanceAdminSummary>>;
   promotions: Awaited<ReturnType<typeof getPromotionsEndingSoon>>;
 }): Alert[] {
@@ -395,6 +446,20 @@ export function buildAlerts(input: {
       severity: "warning",
       title: `Over budget: ${b.category}${b.department ? ` (${b.department})` : ""}`,
       meta: `Finance & Admin · ${b.actual.toFixed(0)} of ${b.budgeted.toFixed(0)} budgeted`,
+    });
+  }
+  if (input.financeAdmin.pettyCashPending.overdueCount > 0) {
+    const oldest = input.financeAdmin.pettyCashPending.oldestOverdue;
+    alerts.push({
+      severity: "danger",
+      title: `${input.financeAdmin.pettyCashPending.overdueCount} overdue petty cash claim(s) awaiting payment`,
+      meta: oldest ? `Finance & Admin · oldest: ${oldest.claimant}, ${oldest.daysPending} days pending` : "Finance & Admin",
+    });
+  } else if (input.financeAdmin.pettyCashPending.count > 0) {
+    alerts.push({
+      severity: "warning",
+      title: `${input.financeAdmin.pettyCashPending.count} petty cash claim(s) pending payment`,
+      meta: "Finance & Admin",
     });
   }
   for (const cert of input.hr.expiringCertificates) {
@@ -440,6 +505,20 @@ export function buildAlerts(input: {
       meta: `Driver & Logistics · due ${soonest}`,
     });
   }
+  if (input.driverAttendance.missingClockInCount > 0) {
+    alerts.push({
+      severity: "danger",
+      title: `${input.driverAttendance.missingClockInCount} driver(s) missing clock-in today`,
+      meta: "Driver & Logistics · Attendance",
+    });
+  }
+  if (input.driverAttendance.missingClockOutCount > 0) {
+    alerts.push({
+      severity: "warning",
+      title: `${input.driverAttendance.missingClockOutCount} driver(s) still clocked in (no clock-out yet)`,
+      meta: "Driver & Logistics · Attendance",
+    });
+  }
   for (const license of input.driverCompliance.licenses) {
     alerts.push({
       severity: "warning",
@@ -475,6 +554,7 @@ export async function getDashboardData(supabase: DB, companyIds: string[]) {
     vehicles,
     driverCompliance,
     driverFleet,
+    driverAttendance,
     financeAdmin,
     promotions,
   ] = await Promise.all([
@@ -492,6 +572,7 @@ export async function getDashboardData(supabase: DB, companyIds: string[]) {
     getVehiclesDueMaintenance(supabase, companyIds),
     getDriverCompliance(supabase, companyIds),
     getDriverFleetSummary(supabase, companyIds),
+    getDriverAttendanceAlerts(supabase, companyIds),
     getFinanceAdminSummary(supabase, companyIds),
     getPromotionsEndingSoon(supabase, companyIds),
   ]);
@@ -505,6 +586,7 @@ export async function getDashboardData(supabase: DB, companyIds: string[]) {
     purchaseRequests,
     vehicles,
     driverCompliance,
+    driverAttendance,
     financeAdmin,
     promotions,
   });
@@ -522,6 +604,7 @@ export async function getDashboardData(supabase: DB, companyIds: string[]) {
     lowStock,
     purchaseRequests,
     driverFleet,
+    driverAttendance,
     financeAdmin,
     alerts,
   };

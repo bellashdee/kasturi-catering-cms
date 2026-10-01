@@ -24,6 +24,7 @@ export type EventInput = {
   location?: string;
   paxCount?: number;
   eventType: string;
+  packageMenuId?: string;
   menuDescription?: string;
   specialRequirements?: string;
   status: string;
@@ -43,6 +44,7 @@ export async function createEvent(input: EventInput) {
       location: input.location || null,
       pax_count: input.paxCount ?? null,
       event_type: input.eventType,
+      package_menu_id: input.packageMenuId || null,
       menu_description: input.menuDescription || null,
       special_requirements: input.specialRequirements || null,
       status: input.status as EventStatus,
@@ -67,6 +69,7 @@ export async function updateEvent(eventId: string, input: Partial<EventInput>) {
       location: input.location || null,
       pax_count: input.paxCount ?? null,
       event_type: input.eventType,
+      package_menu_id: input.packageMenuId || null,
       menu_description: input.menuDescription || null,
       special_requirements: input.specialRequirements || null,
       total_amount: input.totalAmount ?? null,

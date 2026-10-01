@@ -40,7 +40,7 @@ export function BudgetForm({ companies, defaultCompanyId, categories }: { compan
         budgetedAmount: Number(budgetedAmount) || 0,
         notes: notes || undefined,
       });
-      router.push("/finance-admin/budgets");
+      router.push("/admin/budgets");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save.");

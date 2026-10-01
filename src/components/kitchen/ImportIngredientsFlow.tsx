@@ -12,6 +12,7 @@ type Company = { id: string; name: string };
 
 const FIELDS: FieldDef[] = [
   { key: "name", label: "Name", required: true },
+  { key: "category", label: "Category" },
   { key: "unitOfMeasure", label: "Unit of Measure" },
   { key: "currentStockQty", label: "Current Stock", type: "number" },
   { key: "reorderLevel", label: "Reorder Level", type: "number" },
@@ -42,6 +43,7 @@ export function ImportIngredientsFlow({ companies, defaultCompanyId }: { compani
         companyId,
         rows.map((r) => ({
           name: r.name,
+          category: r.category,
           unitOfMeasure: r.unitOfMeasure,
           currentStockQty: r.currentStockQty,
           reorderLevel: r.reorderLevel,
@@ -121,6 +123,7 @@ export function ImportIngredientsFlow({ companies, defaultCompanyId }: { compani
           <thead className="sticky top-0 bg-surface-alt">
             <tr className="text-[11px] font-bold uppercase tracking-wide text-text-muted">
               <th className="px-3 py-2">Name</th>
+              <th className="px-3 py-2">Category</th>
               <th className="px-3 py-2">Unit</th>
               <th className="px-3 py-2">Current Stock</th>
               <th className="px-3 py-2">Reorder Level</th>
@@ -135,6 +138,7 @@ export function ImportIngredientsFlow({ companies, defaultCompanyId }: { compani
                   <input className={cellClass} value={row.name ?? ""} onChange={(e) => flow.updateCell(i, "name", e.target.value)} />
                   {flow.rowErrors[i].length > 0 && <div className="mt-0.5 text-[11px] text-danger">{flow.rowErrors[i].join("; ")}</div>}
                 </td>
+                <td className="px-3 py-1.5"><input className={cellClass} value={row.category ?? ""} onChange={(e) => flow.updateCell(i, "category", e.target.value)} /></td>
                 <td className="px-3 py-1.5"><input className={cellClass} value={row.unitOfMeasure ?? ""} onChange={(e) => flow.updateCell(i, "unitOfMeasure", e.target.value)} /></td>
                 <td className="px-3 py-1.5"><input className={cellClass} value={row.currentStockQty ?? ""} onChange={(e) => flow.updateCell(i, "currentStockQty", e.target.value)} /></td>
                 <td className="px-3 py-1.5"><input className={cellClass} value={row.reorderLevel ?? ""} onChange={(e) => flow.updateCell(i, "reorderLevel", e.target.value)} /></td>

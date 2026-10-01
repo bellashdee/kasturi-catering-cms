@@ -5,6 +5,8 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 const TABS = [
   { href: "/driver-logistics", label: "Deliveries", match: (p: string) => p === "/driver-logistics" || /^\/driver-logistics\/[0-9a-f-]{36}$/.test(p) },
+  { href: "/driver-logistics/attendance", label: "Attendance", match: (p: string) => p.startsWith("/driver-logistics/attendance") },
+  { href: "/driver-logistics/dashboard", label: "Driver Dashboard", match: (p: string) => p.startsWith("/driver-logistics/dashboard") },
   { href: "/driver-logistics/drivers", label: "Drivers", match: (p: string) => p.startsWith("/driver-logistics/drivers") },
   { href: "/driver-logistics/vehicles", label: "Vehicles", match: (p: string) => p.startsWith("/driver-logistics/vehicles") },
   { href: "/driver-logistics/maintenance", label: "Maintenance", match: (p: string) => p.startsWith("/driver-logistics/maintenance") },

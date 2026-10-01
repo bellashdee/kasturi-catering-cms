@@ -4,6 +4,8 @@ import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { EventForm } from "@/components/catering/EventForm";
 
+type PackageRow = { id: string; name: string; price_per_pax: number; minimum_pax: number; company_id: string; package_menu_items: { meal_type: string; item_name: string; sort_order: number }[] };
+
 export default async function NewEventPage({
   searchParams,
 }: {
@@ -27,11 +29,23 @@ export default async function NewEventPage({
     .in("company_id", accessibleIds)
     .order("name");
 
+  const { data: packageMenus } = await supabase
+    .from("package_menus")
+    .select("id, name, price_per_pax, minimum_pax, company_id, package_menu_items(meal_type, item_name, sort_order)")
+    .in("company_id", accessibleIds)
+    .eq("is_active", true)
+    .order("name");
+
   return (
     <div className="mx-auto max-w-2xl">
       <h1 className="text-[22px] font-extrabold text-text">New Catering Event</h1>
       <div className="mt-5 rounded-xl border border-border bg-surface p-6 shadow-sm">
-        <EventForm companies={selectable} defaultCompanyId={defaultCompanyId} customers={customers ?? []} />
+        <EventForm
+          companies={selectable}
+          defaultCompanyId={defaultCompanyId}
+          customers={customers ?? []}
+          packageMenus={(packageMenus ?? []) as PackageRow[]}
+        />
       </div>
     </div>
   );

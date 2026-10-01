@@ -1,0 +1,135 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { updateMember, deleteMember } from "@/lib/users/actions";
+import { PasswordInput } from "@/components/shared/PasswordInput";
+import { ROLE_LABEL } from "@/lib/users/constants";
+import type { Database } from "@/lib/supabase/types";
+
+type Company = { id: string; name: string };
+type UserRole = Database["public"]["Enums"]["user_role"];
+
+const inputClass = "mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px] outline-none";
+const labelClass = "text-[11px] font-semibold text-text-secondary";
+
+export function MemberActions({
+  userId,
+  companies,
+  initial,
+}: {
+  userId: string;
+  companies: Company[];
+  initial: { fullName: string; username: string; role: UserRole; companyId: string | null };
+}) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [fullName, setFullName] = useState(initial.fullName);
+  const [username, setUsername] = useState(initial.username);
+  const [role, setRole] = useState<UserRole>(initial.role);
+  const [companyId, setCompanyId] = useState(initial.companyId ?? "");
+  const [newPassword, setNewPassword] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSave() {
+    setSaving(true);
+    setError(null);
+    try {
+      await updateMember(userId, {
+        fullName,
+        username,
+        role,
+        companyId: companyId || null,
+        newPassword: newPassword || undefined,
+      });
+      setEditing(false);
+      setNewPassword("");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    setError(null);
+    try {
+      await deleteMember(userId);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete.");
+      setDeleting(false);
+    }
+  }
+
+  if (!editing) {
+    return (
+      <div className="flex items-center justify-end gap-2">
+        {error && <span className="text-xs text-danger">{error}</span>}
+        <button onClick={() => setEditing(true)} className="rounded-lg border border-border-strong px-3 py-1.5 text-xs font-bold text-text">
+          Edit
+        </button>
+        {confirmDelete ? (
+          <>
+            <button disabled={deleting} onClick={handleDelete} className="rounded-lg bg-danger px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60">
+              {deleting ? "Deleting..." : "Confirm Delete"}
+            </button>
+            <button onClick={() => setConfirmDelete(false)} className="rounded-lg border border-border-strong px-3 py-1.5 text-xs font-bold text-text">
+              Cancel
+            </button>
+          </>
+        ) : (
+          <button onClick={() => setConfirmDelete(true)} className="rounded-lg border border-danger/40 px-3 py-1.5 text-xs font-bold text-danger">
+            Delete
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="col-span-5 mt-2 rounded-lg border border-border-strong bg-surface-alt p-3">
+      {error && <div className="mb-2 rounded-lg border border-danger/30 bg-danger-bg px-2 py-1.5 text-xs text-danger">{error}</div>}
+      <div className="grid grid-cols-4 gap-3">
+        <div>
+          <label className={labelClass}>Full Name</label>
+          <input value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputClass} />
+        </div>
+        <div>
+          <label className={labelClass}>Username</label>
+          <input value={username} onChange={(e) => setUsername(e.target.value)} className={inputClass} />
+        </div>
+        <div>
+          <label className={labelClass}>Role</label>
+          <select value={role} onChange={(e) => setRole(e.target.value as UserRole)} className={inputClass}>
+            {Object.entries(ROLE_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={labelClass}>Company Access</label>
+          <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={inputClass}>
+            <option value="">All Companies</option>
+            {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="mt-2">
+        <label className={labelClass}>Set New Password (optional)</label>
+        <PasswordInput value={newPassword} onChange={setNewPassword} placeholder="Leave blank to keep current password" className={inputClass} />
+      </div>
+      <div className="mt-3 flex justify-end gap-2">
+        <button onClick={() => setEditing(false)} className="rounded-lg border border-border-strong px-3 py-1.5 text-xs font-bold text-text">
+          Cancel
+        </button>
+        <button disabled={saving} onClick={handleSave} className="rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60">
+          {saving ? "Saving..." : "Save Changes"}
+        </button>
+      </div>
+    </div>
+  );
+}

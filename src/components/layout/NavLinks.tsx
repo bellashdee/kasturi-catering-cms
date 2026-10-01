@@ -51,10 +51,22 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M3 7v7l7 4 7-4V7" />
     </>
   ),
-  "finance-admin": (
+  finance: (
     <>
       <rect x="3" y="6" width="14" height="10" rx="2" />
-      <circle cx="14" cy="11" r="1.6" />
+      <circle cx="10" cy="11" r="2.2" />
+    </>
+  ),
+  admin: (
+    <>
+      <path d="M10 2.5l6 2.3v4.2c0 4-2.5 6.9-6 8-3.5-1.1-6-4-6-8V4.8z" />
+      <path d="M7.5 10l1.8 1.8L13 8" />
+    </>
+  ),
+  "ingredient-calculator": (
+    <>
+      <rect x="4" y="2.5" width="12" height="15" rx="1.5" />
+      <path d="M7 6h6M7 9h.01M10 9h.01M13 9h.01M7 12h.01M10 12h.01M13 12h.01M7 15h.01M10 15h.01" />
     </>
   ),
   reports: (
@@ -68,6 +80,13 @@ const ICONS: Record<string, React.ReactNode> = {
     <>
       <circle cx="10" cy="10" r="3" />
       <path d="M10 3v2M10 15v2M3 10h2M15 10h2M5.5 5.5l1.4 1.4M13.1 13.1l1.4 1.4M14.5 5.5l-1.4 1.4M6.9 13.1l-1.4 1.4" />
+    </>
+  ),
+  "ai-assistant": (
+    <>
+      <rect x="4" y="5" width="12" height="9" rx="2.5" />
+      <path d="M10 2v3M7 9.5h.01M13 9.5h.01" />
+      <path d="M6 14v2M14 14v2" />
     </>
   ),
 };
@@ -109,10 +128,11 @@ export function MainDashboardLink() {
 export function ModuleLinks() {
   return (
     <>
-      {MODULES.filter((m) => m.key !== "reports").map((m) => (
+      {MODULES.filter((m) => m.key !== "reports" && m.key !== "ai-assistant").map((m) => (
         <NavItem key={m.key} href={m.href} icon={m.key} label={m.label} />
       ))}
       <NavItem href="/reports" icon="reports" label="Reports" />
+      <NavItem href="/ai-assistant" icon="ai-assistant" label="🤖 AI Assistant" />
     </>
   );
 }

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
+import { AssistantWidget } from "@/components/assistant/AssistantWidget";
 
 export default async function DashboardLayout({
   children,
@@ -25,6 +26,7 @@ export default async function DashboardLayout({
         <Topbar session={session} />
         <main className="flex-1 overflow-y-auto p-7 print:overflow-visible print:p-0">{children}</main>
       </div>
+      <AssistantWidget />
     </div>
   );
 }

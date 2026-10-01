@@ -26,7 +26,16 @@ export default async function EditDriverPage({
     <div className="mx-auto max-w-2xl">
       <h1 className="text-[22px] font-extrabold text-text">Edit Driver — {driver.employees?.full_name}</h1>
       <div className="mt-5 rounded-xl border border-border bg-surface p-6 shadow-sm">
-        <DriverProfileForm driverId={id} initial={{ license_number: driver.license_number, license_expiry: driver.license_expiry, notes: driver.notes }} />
+        <DriverProfileForm
+          driverId={id}
+          initial={{
+            license_number: driver.license_number,
+            license_expiry: driver.license_expiry,
+            notes: driver.notes,
+            approved_latitude: driver.approved_latitude,
+            approved_longitude: driver.approved_longitude,
+          }}
+        />
       </div>
     </div>
   );

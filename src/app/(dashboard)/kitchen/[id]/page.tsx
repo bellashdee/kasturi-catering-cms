@@ -3,10 +3,12 @@ import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { getProductionOrder, getRecipe } from "@/lib/kitchen/queries";
+import { getMenuPlanDishWithIngredients } from "@/lib/menuPlan/queries";
 import { PRODUCTION_STATUS_LABEL } from "@/lib/kitchen/constants";
 import { SectionCard } from "@/components/dashboard/SectionCard";
 import { ProductionOrderStatusSelect } from "@/components/kitchen/ProductionOrderStatusSelect";
 import { RecipePaxCalculator } from "@/components/kitchen/RecipePaxCalculator";
+import { MenuPlanDishRequirements } from "@/components/kitchen/MenuPlanDishRequirements";
 
 export default async function ProductionOrderDetailPage({
   params,
@@ -32,6 +34,7 @@ export default async function ProductionOrderDetailPage({
   }
 
   const recipe = order.recipe_id ? await getRecipe(supabase, order.recipe_id) : null;
+  const menuPlanDish = order.menu_plan_dish_id ? await getMenuPlanDishWithIngredients(supabase, order.menu_plan_dish_id) : null;
   const targetPax = order.pax_count ?? order.catering_events?.pax_count ?? recipe?.yield_pax ?? 0;
 
   return (
@@ -41,7 +44,7 @@ export default async function ProductionOrderDetailPage({
           <Link href={`/kitchen${query}`} className="text-[12.5px] font-semibold text-text-secondary">
             ← Back to Production Schedule
           </Link>
-          <div className="mt-2 text-[20px] font-extrabold text-text">{recipe?.name ?? "Production Order"}</div>
+          <div className="mt-2 text-[20px] font-extrabold text-text">{recipe?.name ?? menuPlanDish?.name ?? "Production Order"}</div>
           <div className="text-[13px] text-text-secondary">
             {order.companies?.name} · Planned {order.planned_date}
             {order.catering_events?.event_name && ` · For event: ${order.catering_events.event_name}`}
@@ -65,6 +68,23 @@ export default async function ProductionOrderDetailPage({
         </div>
       </div>
 
+      {(order.assigned_staff || order.prep_time_minutes != null) && (
+        <div className="grid grid-cols-2 gap-4">
+          {order.assigned_staff && (
+            <div className="rounded-xl border border-border bg-surface p-4 text-[13px] shadow-sm">
+              <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-text-muted">Assigned Kitchen Staff</div>
+              {order.assigned_staff}
+            </div>
+          )}
+          {order.prep_time_minutes != null && (
+            <div className="rounded-xl border border-border bg-surface p-4 text-[13px] shadow-sm">
+              <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-text-muted">Kitchen Preparation Time</div>
+              {order.prep_time_minutes} minutes
+            </div>
+          )}
+        </div>
+      )}
+
       {order.notes && (
         <div className="rounded-xl border border-border bg-surface p-4 text-[13px] shadow-sm">
           <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-text-muted">Notes</div>
@@ -72,18 +92,21 @@ export default async function ProductionOrderDetailPage({
         </div>
       )}
 
-      <SectionCard title="Ingredient Requirements (Recipe + Pax)">
+      <SectionCard title="Ingredient Requirements">
         {recipe ? (
           <RecipePaxCalculator recipeIngredients={recipe.recipe_ingredients} yieldPax={recipe.yield_pax} defaultTargetPax={targetPax || recipe.yield_pax} />
+        ) : menuPlanDish ? (
+          <MenuPlanDishRequirements dishName={menuPlanDish.name} ingredients={menuPlanDish.menu_plan_ingredients} targetPax={targetPax || 1} />
         ) : (
-          <p className="text-[13px] text-text-muted">This order isn&apos;t linked to a recipe, so ingredient requirements can&apos;t be calculated automatically.</p>
+          <p className="text-[13px] text-text-muted">This order isn&apos;t linked to a recipe or menu dish, so ingredient requirements can&apos;t be calculated automatically.</p>
         )}
       </SectionCard>
 
       {order.status === "completed" && (
         <div className="rounded-lg border border-[#CFE1F2] bg-info-bg px-3.5 py-3 text-[13px] text-[#0F3A63]">
-          Stock has been deducted for this order and its ingredient cost was recorded
-          {order.catering_event_id ? " against the linked catering event's costing." : "."}
+          {recipe
+            ? `Stock has been deducted for this order and its ingredient cost was recorded${order.catering_event_id ? " against the linked catering event's costing." : "."}`
+            : "This order is marked completed. It was linked to a menu-plan dish, not a recipe, so stock was not auto-deducted — log any stock used manually under Kitchen → Stock."}
         </div>
       )}
     </div>

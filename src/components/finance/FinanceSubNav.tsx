@@ -4,12 +4,11 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
 const TABS = [
-  { href: "/finance-admin", label: "Monthly Summary", match: (p: string) => p === "/finance-admin" },
-  { href: "/finance-admin/invoices", label: "Customer Invoices", match: (p: string) => p.startsWith("/finance-admin/invoices") },
-  { href: "/finance-admin/expenses", label: "Company Expenses", match: (p: string) => p.startsWith("/finance-admin/expenses") },
-  { href: "/finance-admin/petty-cash", label: "Petty Cash", match: (p: string) => p.startsWith("/finance-admin/petty-cash") },
-  { href: "/finance-admin/budgets", label: "Budgets", match: (p: string) => p.startsWith("/finance-admin/budgets") },
-  { href: "/finance-admin/categories", label: "Categories", match: (p: string) => p.startsWith("/finance-admin/categories") },
+  { href: "/finance/invoices", label: "Customer Invoices", match: (p: string) => p.startsWith("/finance/invoices") },
+  { href: "/finance/outstanding", label: "Outstanding Payment", match: (p: string) => p.startsWith("/finance/outstanding") },
+  { href: "/supplier-procurement/payments", label: "Supplier Payments", match: (p: string) => p.startsWith("/supplier-procurement/payments") },
+  { href: "/finance/expenses", label: "Company Expenses", match: (p: string) => p.startsWith("/finance/expenses") },
+  { href: "/finance/petty-cash", label: "Petty Cash", match: (p: string) => p.startsWith("/finance/petty-cash") },
 ];
 
 export function FinanceSubNav() {

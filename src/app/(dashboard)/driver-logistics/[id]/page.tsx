@@ -4,8 +4,13 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { getDelivery } from "@/lib/driver/queries";
 import { DELIVERY_STATUS_LABEL } from "@/lib/driver/constants";
+import { PROOF_STATUS_LABEL } from "@/lib/taskProofs/constants";
+import { listTaskProofs, listTaskAuditLog } from "@/lib/taskProofs/queries";
 import { DeliveryStatusSelect } from "@/components/driver/DeliveryStatusSelect";
+import { CompleteDeliveryAction } from "@/components/driver/CompleteDeliveryAction";
+import { DeliveryProofSection } from "@/components/driver/DeliveryProofSection";
 import { SectionCard } from "@/components/dashboard/SectionCard";
+import { StatusBadge } from "@/components/StatusBadge";
 import { DeliveryForm } from "@/components/driver/DeliveryForm";
 
 export default async function DeliveryDetailPage({
@@ -31,12 +36,17 @@ export default async function DeliveryDetailPage({
     notFound();
   }
 
-  const [{ data: allCompanies }, { data: events }, { data: vehicles }, { data: employees }] = await Promise.all([
+  const [{ data: allCompanies }, { data: events }, { data: vehicles }, { data: employees }, proofs, auditLog] = await Promise.all([
     supabase.from("companies").select("id, name").order("name"),
     supabase.from("catering_events").select("id, event_name, company_id").eq("company_id", delivery.company_id).order("event_date", { ascending: false }),
     supabase.from("vehicles").select("id, plate_number, company_id").eq("company_id", delivery.company_id).order("plate_number"),
     supabase.from("employees").select("id, full_name, company_id").eq("company_id", delivery.company_id).eq("status", "active").order("full_name"),
+    listTaskProofs(supabase, "deliveries", id),
+    listTaskAuditLog(supabase, "deliveries", id),
   ]);
+
+  const hasProof = delivery.proof_status === "proof_uploaded" || delivery.proof_status === "completed";
+  const isDone = delivery.status === "delivered" || delivery.status === "cancelled";
 
   return (
     <div className="flex flex-col gap-5">
@@ -52,10 +62,13 @@ export default async function DeliveryDetailPage({
             {delivery.location && ` · ${delivery.location}`}
           </div>
         </div>
-        <DeliveryStatusSelect deliveryId={id} status={delivery.status} />
+        <div className="flex items-center gap-2">
+          {!isDone && <DeliveryStatusSelect deliveryId={id} status={delivery.status} />}
+          {!isDone && <CompleteDeliveryAction deliveryId={id} companyId={delivery.company_id} hasProof={hasProof} />}
+        </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-4 gap-4">
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
           <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Driver</div>
           <div className="mt-1 text-lg font-extrabold text-text">{delivery.employees?.full_name ?? "Not assigned"}</div>
@@ -68,7 +81,36 @@ export default async function DeliveryDetailPage({
           <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Status</div>
           <div className="mt-1 text-lg font-extrabold text-text">{DELIVERY_STATUS_LABEL[delivery.status] ?? delivery.status}</div>
         </div>
+        <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
+          <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Proof Status</div>
+          <div className="mt-1">
+            <StatusBadge tone={delivery.proof_status === "completed" ? "success" : delivery.proof_status === "no_proof" ? "neutral" : "warning"}>
+              {PROOF_STATUS_LABEL[delivery.proof_status] ?? delivery.proof_status}
+            </StatusBadge>
+            {delivery.admin_override && <div className="mt-1 text-[11px] text-warning">Admin override: {delivery.admin_override_reason}</div>}
+          </div>
+        </div>
       </div>
+
+      <SectionCard title="Proof of Delivery">
+        <DeliveryProofSection companyId={delivery.company_id} deliveryId={id} proofs={proofs} />
+      </SectionCard>
+
+      {auditLog.length > 0 && (
+        <SectionCard title="Task History">
+          <div className="flex flex-col gap-2">
+            {auditLog.map((entry) => (
+              <div key={entry.id} className="flex items-center justify-between border-b border-border pb-2 text-[12.5px] last:border-b-0">
+                <div className="text-text">
+                  <span className="font-semibold">{entry.action.replace(/_/g, " ")}</span>
+                  {entry.reason && <span className="text-text-muted"> — {entry.reason}</span>}
+                </div>
+                <div className="text-text-muted">{new Date(entry.created_at).toLocaleString("en-MY")}</div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
 
       <SectionCard title="Delivery Details">
         <DeliveryForm

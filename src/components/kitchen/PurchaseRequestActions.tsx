@@ -25,19 +25,29 @@ export function PurchaseRequestActions({ requestId, status }: { requestId: strin
   return (
     <div className="flex flex-col items-end gap-1">
       <div className="flex items-center gap-2">
-        {status === "pending" && (
+        {status === "draft" && (
+          <button disabled={pending} onClick={() => run("pending_approval")} className="rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-xs font-bold text-text disabled:opacity-50">
+            Submit for Approval
+          </button>
+        )}
+        {status === "pending_approval" && (
           <>
-            <button disabled={pending} onClick={() => run("ordered")} className="rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-xs font-bold text-text disabled:opacity-50">
-              Mark Ordered
+            <button disabled={pending} onClick={() => run("approved")} className="rounded-lg bg-success px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">
+              Approve
             </button>
-            <button disabled={pending} onClick={() => run("cancelled")} className="rounded-lg border border-danger/40 px-3 py-1.5 text-xs font-bold text-danger disabled:opacity-50">
-              Cancel
+            <button disabled={pending} onClick={() => run("rejected")} className="rounded-lg border border-danger/40 px-3 py-1.5 text-xs font-bold text-danger disabled:opacity-50">
+              Reject
             </button>
           </>
         )}
+        {status === "approved" && (
+          <button disabled={pending} onClick={() => run("ordered")} className="rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-xs font-bold text-text disabled:opacity-50">
+            Mark Ordered
+          </button>
+        )}
         {status === "ordered" && (
-          <button disabled={pending} onClick={() => run("received")} className="rounded-lg bg-success px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">
-            Mark Received
+          <button disabled={pending} onClick={() => run("completed")} className="rounded-lg bg-success px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">
+            Mark Completed (adds stock)
           </button>
         )}
       </div>

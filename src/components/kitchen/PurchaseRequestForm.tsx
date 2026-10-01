@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPurchaseRequest, type PurchaseRequestInput } from "@/lib/kitchen/actions";
+import { uploadDocument, fileTypeFromMime } from "@/lib/documents/upload";
 
 type Company = { id: string; name: string };
 type Ingredient = { id: string; name: string; unit_of_measure: string | null; company_id: string; preferred_supplier_id: string | null };
@@ -40,7 +41,9 @@ export function PurchaseRequestForm({
   const [supplierId, setSupplierId] = useState(initialIngredient?.preferred_supplier_id ?? "");
   const [quantity, setQuantity] = useState(defaultQuantity ?? "");
   const [unit, setUnit] = useState(initialIngredient?.unit_of_measure ?? "");
+  const [requiredDate, setRequiredDate] = useState("");
   const [notes, setNotes] = useState("");
+  const [file, setFile] = useState<File | null>(null);
 
   const ingredientsForCompany = ingredients.filter((i) => i.company_id === companyId);
   const suppliersForCompany = suppliers.filter((s) => s.company_id === companyId);
@@ -60,16 +63,23 @@ export function PurchaseRequestForm({
     }
     setSaving(true);
     setError(null);
-    const payload: PurchaseRequestInput = {
-      companyId,
-      ingredientId,
-      supplierId: supplierId || undefined,
-      quantityRequested: Number(quantity),
-      unit: unit || undefined,
-      notes: notes || undefined,
-      productionOrderId,
-    };
     try {
+      let documentId: string | undefined;
+      if (file) {
+        const doc = await uploadDocument({ companyId, module: "kitchen", fileType: fileTypeFromMime(file), file });
+        documentId = doc.id;
+      }
+      const payload: PurchaseRequestInput = {
+        companyId,
+        ingredientId,
+        supplierId: supplierId || undefined,
+        quantityRequested: Number(quantity),
+        unit: unit || undefined,
+        requiredDate: requiredDate || undefined,
+        notes: notes || undefined,
+        productionOrderId,
+        documentId,
+      };
       await createPurchaseRequest(payload);
       router.push(redirectTo);
       router.refresh();
@@ -114,17 +124,33 @@ export function PurchaseRequestForm({
         </div>
       </div>
 
-      <div>
-        <label className={labelClass}>Supplier</label>
-        <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} className={inputClass}>
-          <option value="">Not decided yet</option>
-          {suppliersForCompany.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelClass}>Supplier</label>
+          <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} className={inputClass}>
+            <option value="">Not decided yet</option>
+            {suppliersForCompany.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={labelClass}>Required Date</label>
+          <input type="date" value={requiredDate} onChange={(e) => setRequiredDate(e.target.value)} className={inputClass} />
+        </div>
       </div>
 
       <div>
-        <label className={labelClass}>Notes</label>
+        <label className={labelClass}>Notes / Reason</label>
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="mt-1.5 h-16 w-full resize-none rounded-lg border border-border-strong px-3 py-2 text-sm outline-none" />
+      </div>
+
+      <div>
+        <label className={labelClass}>Supporting File (quote, reference photo, etc.) — optional</label>
+        <input
+          type="file"
+          accept="image/*,application/pdf"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          className="mt-1.5 block w-full text-sm"
+        />
       </div>
 
       <div className="mt-2 flex justify-end gap-2.5">

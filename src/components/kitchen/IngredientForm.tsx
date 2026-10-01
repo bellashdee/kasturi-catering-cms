@@ -30,6 +30,7 @@ export function IngredientForm({
   const [companyId, setCompanyId] = useState(initial?.companyId ?? defaultCompanyId ?? companies[0]?.id ?? "");
   const [form, setForm] = useState({
     name: initial?.name ?? "",
+    category: initial?.category ?? "",
     unitOfMeasure: initial?.unitOfMeasure ?? "kg",
     currentStockQty: String(initial?.currentStockQty ?? 0),
     reorderLevel: String(initial?.reorderLevel ?? 0),
@@ -46,6 +47,7 @@ export function IngredientForm({
     const payload: IngredientInput = {
       companyId,
       name: form.name,
+      category: form.category || undefined,
       unitOfMeasure: form.unitOfMeasure || undefined,
       currentStockQty: Number(form.currentStockQty) || 0,
       reorderLevel: Number(form.reorderLevel) || 0,
@@ -84,7 +86,11 @@ export function IngredientForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className={labelClass}>Category</label>
+          <input value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} className={inputClass} placeholder="e.g. Dry Goods, Fresh Produce, Frozen" />
+        </div>
         <div>
           <label className={labelClass}>Unit of Measure</label>
           <select value={form.unitOfMeasure} onChange={(e) => setForm((f) => ({ ...f, unitOfMeasure: e.target.value }))} className={inputClass}>

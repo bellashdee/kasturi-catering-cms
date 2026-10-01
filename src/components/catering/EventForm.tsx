@@ -6,21 +6,32 @@ import { createEvent, updateEvent, type EventInput } from "@/lib/catering/action
 
 type Company = { id: string; name: string };
 type Customer = { id: string; name: string; company_id: string };
+type PackageMenuItem = { meal_type: string; item_name: string; sort_order: number };
+type PackageMenu = { id: string; name: string; price_per_pax: number; minimum_pax: number; company_id: string; package_menu_items: PackageMenuItem[] };
 
 const inputClass =
   "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
 const labelClass = "text-[12.5px] font-semibold text-text-secondary";
 
+function packageItemsToText(pkg: PackageMenu): string {
+  return [...pkg.package_menu_items]
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((i) => `- ${i.item_name}`)
+    .join("\n");
+}
+
 export function EventForm({
   companies,
   defaultCompanyId,
   customers,
+  packageMenus = [],
   eventId,
   initial,
 }: {
   companies: Company[];
   defaultCompanyId?: string;
   customers: Customer[];
+  packageMenus?: PackageMenu[];
   eventId?: string;
   initial?: Partial<EventInput>;
 }) {
@@ -36,12 +47,22 @@ export function EventForm({
     location: initial?.location ?? "",
     paxCount: initial?.paxCount,
     eventType: initial?.eventType ?? "corporate",
+    packageMenuId: initial?.packageMenuId,
     menuDescription: initial?.menuDescription ?? "",
     specialRequirements: initial?.specialRequirements ?? "",
     status: initial?.status ?? "enquiry",
   });
 
   const customersForCompany = customers.filter((c) => c.company_id === form.companyId);
+  const packagesForCompany = packageMenus.filter((p) => p.company_id === form.companyId);
+
+  function onPackageChange(packageId: string) {
+    set("packageMenuId", packageId || undefined);
+    const pkg = packagesForCompany.find((p) => p.id === packageId);
+    if (pkg) {
+      set("menuDescription", `${pkg.name} (RM${pkg.price_per_pax}/pax, min ${pkg.minimum_pax} pax):\n${packageItemsToText(pkg)}`);
+    }
+  }
 
   function set<K extends keyof EventInput>(key: K, value: EventInput[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -142,9 +163,22 @@ export function EventForm({
         </div>
       )}
 
+      {packagesForCompany.length > 0 && (
+        <div>
+          <label className={labelClass}>Select Package (optional)</label>
+          <select value={form.packageMenuId ?? ""} onChange={(e) => onPackageChange(e.target.value)} className={inputClass}>
+            <option value="">No package — type menu manually</option>
+            {packagesForCompany.map((p) => <option key={p.id} value={p.id}>{p.name} (RM{p.price_per_pax}/pax)</option>)}
+          </select>
+        </div>
+      )}
+
       <div>
         <label className={labelClass}>Menu</label>
         <textarea value={form.menuDescription} onChange={(e) => set("menuDescription", e.target.value)} className="mt-1.5 h-20 w-full resize-none rounded-lg border border-border-strong px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" placeholder="Menu items or package name" />
+        <p className="mt-1 text-xs text-text-muted">
+          Selecting a package above fills this in — review and edit before saving. This does not automatically create a production order or purchase request.
+        </p>
       </div>
 
       <div>

@@ -209,6 +209,23 @@ export async function listPettyCashTransactions(supabase: DB, companyIds: string
   return data;
 }
 
+/**
+ * Claim-level rollup for the Petty Cash dashboard summary — counts and
+ * totals by payment status, derived from the same rows the claims table
+ * shows (no separate/duplicated ledger).
+ */
+export function summarizePettyCashClaims(claims: { amount: number | string; payment_status: string }[]) {
+  const paid = claims.filter((c) => c.payment_status === "paid");
+  const pending = claims.filter((c) => c.payment_status === "pending_payment");
+  return {
+    totalClaims: claims.length,
+    pendingCount: pending.length,
+    paidCount: paid.length,
+    totalPendingAmount: pending.reduce((t, c) => t + Number(c.amount), 0),
+    totalPaidAmount: paid.reduce((t, c) => t + Number(c.amount), 0),
+  };
+}
+
 export async function listBudgets(supabase: DB, companyIds: string[]) {
   const { data, error } = await supabase
     .from("budgets")
@@ -223,7 +240,7 @@ export async function listBudgets(supabase: DB, companyIds: string[]) {
 export async function listCustomerInvoices(supabase: DB, companyIds: string[]) {
   const { data, error } = await supabase
     .from("customer_invoices")
-    .select("*, customers(name), companies(name), customer_payments(amount)")
+    .select("*, customers(name), companies(name), customer_payments(amount, payment_date)")
     .in("company_id", companyIds)
     .order("invoice_date", { ascending: false });
   if (error) throw error;

@@ -15,6 +15,8 @@ export function PettyCashForm({ companies, defaultCompanyId }: { companies: Comp
   const router = useRouter();
   const [companyId, setCompanyId] = useState(defaultCompanyId ?? companies[0]?.id ?? "");
   const [type, setType] = useState<"top_up" | "expense">("expense");
+  const [claimantName, setClaimantName] = useState("");
+  const [claimantDepartment, setClaimantDepartment] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
@@ -23,10 +25,16 @@ export function PettyCashForm({ companies, defaultCompanyId }: { companies: Comp
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isClaim = type === "expense";
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!amount) {
       setError("Amount is required.");
+      return;
+    }
+    if (isClaim && !claimantName.trim()) {
+      setError("Enter who is claiming this petty cash.");
       return;
     }
     setSaving(true);
@@ -34,18 +42,22 @@ export function PettyCashForm({ companies, defaultCompanyId }: { companies: Comp
     try {
       let documentId: string | undefined;
       if (receipt) {
-        const doc = await uploadDocument({ companyId, module: "finance-admin", fileType: receipt.type === "application/pdf" ? "pdf" : "photo", file: receipt });
+        const doc = await uploadDocument({ companyId, module: "finance", fileType: receipt.type === "application/pdf" ? "pdf" : "photo", file: receipt });
         documentId = doc.id;
       }
       await createPettyCashTransaction({
         companyId,
         type,
+        claimantName: isClaim ? claimantName.trim() : undefined,
+        claimantDepartment: isClaim ? claimantDepartment.trim() || undefined : undefined,
         category: category || undefined,
         description: description || undefined,
         amount: Number(amount),
         transactionDate,
         documentId,
       });
+      setClaimantName("");
+      setClaimantDepartment("");
       setCategory("");
       setDescription("");
       setAmount("");
@@ -71,12 +83,12 @@ export function PettyCashForm({ companies, defaultCompanyId }: { companies: Comp
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Type *</label>
           <select value={type} onChange={(e) => setType(e.target.value as "top_up" | "expense")} className="mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]">
-            <option value="expense">Expense (deduct)</option>
-            <option value="top_up">Top-Up (add)</option>
+            <option value="expense">Claim (deduct — needs payment)</option>
+            <option value="top_up">Top-Up (add to float)</option>
           </select>
         </div>
         <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Date *</label>
+          <label className="text-[12px] font-semibold text-text-secondary">{isClaim ? "Claim Date *" : "Date *"}</label>
           <input type="date" required value={transactionDate} onChange={(e) => setTransactionDate(e.target.value)} className="mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]" />
         </div>
         <div>
@@ -84,23 +96,49 @@ export function PettyCashForm({ companies, defaultCompanyId }: { companies: Comp
           <input type="number" min="0" step="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} className="mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]" />
         </div>
       </div>
+
+      {isClaim && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-[12px] font-semibold text-text-secondary">Claimant / Requested By *</label>
+            <input
+              value={claimantName}
+              onChange={(e) => setClaimantName(e.target.value)}
+              placeholder="Type the staff member's name"
+              className="mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]"
+            />
+          </div>
+          <div>
+            <label className="text-[12px] font-semibold text-text-secondary">Department</label>
+            <input
+              value={claimantDepartment}
+              onChange={(e) => setClaimantDepartment(e.target.value)}
+              placeholder="e.g. Kitchen, Sales"
+              className="mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]"
+            />
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Category</label>
           <input value={category} onChange={(e) => setCategory(e.target.value)} className="mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]" placeholder="e.g. Stationery, Postage" />
         </div>
         <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Description</label>
-          <input value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]" />
+          <label className="text-[12px] font-semibold text-text-secondary">{isClaim ? "Purpose / Description" : "Description"}</label>
+          <input value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]" placeholder={isClaim ? "e.g. Seafood purchase for event" : undefined} />
         </div>
       </div>
+
       <div>
-        <label className="text-[12px] font-semibold text-text-secondary">Receipt (optional)</label>
+        <label className="text-[12px] font-semibold text-text-secondary">Supporting Receipt / Document {isClaim ? "" : "(optional)"}</label>
         <input type="file" accept="application/pdf,image/*" onChange={(e) => setReceipt(e.target.files?.[0] ?? null)} className="mt-1 block w-full text-[13px]" />
       </div>
+
       <div className="flex justify-end">
         <button type="submit" disabled={saving} className="rounded-lg bg-primary px-5 py-2 text-[13px] font-bold text-white disabled:opacity-60">
-          {saving ? "Saving..." : "Record Transaction"}
+          {saving ? "Saving..." : isClaim ? "Submit Claim" : "Record Top-Up"}
         </button>
       </div>
     </form>

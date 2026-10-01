@@ -58,8 +58,9 @@ export default async function IngredientsPage({
           <EmptyRow text="No ingredients yet. Add one manually or import from Excel/CSV." />
         ) : (
           <div>
-            <div className="grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr_1fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
+            <div className="grid grid-cols-[1.4fr_0.9fr_0.9fr_1fr_1fr_1fr_1fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
               <div>Name</div>
+              <div>Category</div>
               <div>Company</div>
               <div>Stock</div>
               <div>Reorder Level</div>
@@ -70,9 +71,10 @@ export default async function IngredientsPage({
               <Link
                 key={i.id}
                 href={`/kitchen/ingredients/${i.id}${query}`}
-                className="grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr_1fr] border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0 hover:bg-surface-alt"
+                className="grid grid-cols-[1.4fr_0.9fr_0.9fr_1fr_1fr_1fr_1fr] border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0 hover:bg-surface-alt"
               >
                 <div className="font-semibold text-text">{i.name}</div>
+                <div className="text-text-secondary">{i.category ?? "—"}</div>
                 <div className="text-text-secondary">{i.companies?.name}</div>
                 <div className="flex items-center gap-2 text-text-secondary">
                   {i.current_stock_qty} {i.unit_of_measure ?? ""}

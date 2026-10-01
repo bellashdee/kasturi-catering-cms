@@ -9,11 +9,12 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { KitchenSubNav } from "@/components/kitchen/KitchenSubNav";
 import { PurchaseRequestActions } from "@/components/kitchen/PurchaseRequestActions";
+import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 
 function statusTone(status: string): "success" | "warning" | "danger" | "info" {
-  if (status === "received") return "success";
-  if (status === "cancelled") return "danger";
-  if (status === "ordered") return "info";
+  if (status === "completed") return "success";
+  if (status === "rejected") return "danger";
+  if (status === "approved" || status === "ordered") return "info";
   return "warning";
 }
 
@@ -58,20 +59,25 @@ export default async function PurchaseRequestsPage({
           <EmptyRow text="No purchase requests yet." />
         ) : (
           <div>
-            <div className="grid grid-cols-[1.4fr_1fr_1fr_1fr_1fr_1.2fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
+            <div className="grid grid-cols-[1.3fr_0.9fr_0.9fr_0.9fr_0.8fr_0.9fr_1.3fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
               <div>Ingredient</div>
               <div>Quantity</div>
               <div>Supplier</div>
               <div>Company</div>
+              <div>Required</div>
               <div>Status</div>
               <div></div>
             </div>
             {requests.map((r) => (
-              <div key={r.id} className="grid grid-cols-[1.4fr_1fr_1fr_1fr_1fr_1.2fr] items-center border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0">
-                <div className="font-semibold text-text">{r.ingredients?.name ?? "—"}</div>
+              <div key={r.id} className="grid grid-cols-[1.3fr_0.9fr_0.9fr_0.9fr_0.8fr_0.9fr_1.3fr] items-center border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0">
+                <div className="font-semibold text-text">
+                  {r.ingredients?.name ?? "—"}
+                  {r.document_id && <DocumentViewLink documentId={r.document_id} className="ml-2 text-xs" />}
+                </div>
                 <div className="text-text-secondary">{r.quantity_requested} {r.unit ?? r.ingredients?.unit_of_measure ?? ""}</div>
                 <div className="text-text-secondary">{r.suppliers?.name ?? "—"}</div>
                 <div className="text-text-secondary">{r.companies?.name}</div>
+                <div className="text-text-secondary">{r.required_date ?? "—"}</div>
                 <div><StatusBadge tone={statusTone(r.status)}>{PURCHASE_REQUEST_STATUS_LABEL[r.status] ?? r.status}</StatusBadge></div>
                 <div className="flex justify-end"><PurchaseRequestActions requestId={r.id} status={r.status} /></div>
               </div>

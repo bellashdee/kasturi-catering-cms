@@ -5,8 +5,11 @@ export type ModuleKey =
   | "kitchen"
   | "driver-logistics"
   | "supplier-procurement"
-  | "finance-admin"
+  | "finance"
+  | "admin"
+  | "ingredient-calculator"
   | "reports"
+  | "ai-assistant"
   | "settings";
 
 export const MODULES: { key: ModuleKey; label: string; href: string }[] = [
@@ -14,10 +17,13 @@ export const MODULES: { key: ModuleKey; label: string; href: string }[] = [
   { key: "marketing", label: "Marketing", href: "/marketing" },
   { key: "catering", label: "Catering", href: "/catering" },
   { key: "kitchen", label: "Kitchen", href: "/kitchen" },
+  { key: "ingredient-calculator", label: "Ingredient Calculator", href: "/ingredient-calculator" },
   { key: "driver-logistics", label: "Driver & Logistics", href: "/driver-logistics" },
   { key: "supplier-procurement", label: "Supplier & Procurement", href: "/supplier-procurement" },
-  { key: "finance-admin", label: "Finance & Admin", href: "/finance-admin" },
+  { key: "finance", label: "Finance", href: "/finance/invoices" },
+  { key: "admin", label: "Admin", href: "/admin" },
   { key: "reports", label: "Reports", href: "/reports" },
+  { key: "ai-assistant", label: "AI Assistant", href: "/ai-assistant" },
 ];
 
 export type CompanyColorKey = "all" | "signature" | "kasturi" | "o2life";

@@ -60,7 +60,7 @@ export async function getPurchaseOrder(supabase: DB, id: string) {
 export async function listSupplierInvoices(supabase: DB, companyIds: string[]) {
   const { data, error } = await supabase
     .from("supplier_invoices")
-    .select("*, suppliers(name), companies(name), purchase_orders(po_number), supplier_payments(amount, status)")
+    .select("*, suppliers(name), companies(name), purchase_orders(po_number), supplier_payments(amount, status, payment_date)")
     .in("company_id", companyIds)
     .order("invoice_date", { ascending: false });
   if (error) throw error;

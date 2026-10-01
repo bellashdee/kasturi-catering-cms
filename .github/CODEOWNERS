@@ -59,10 +59,17 @@
 /src/lib/procurement/                       @procurement-developer
 /src/components/procurement/                @procurement-developer
 
-# Finance & Admin
-/src/app/(dashboard)/finance-admin/     @finance-developer
+# Finance (separate from Admin — see CONTRIBUTING.md)
+/src/app/(dashboard)/finance/           @finance-developer
 /src/lib/finance/                       @finance-developer
 /src/components/finance/                @finance-developer
+
+# Admin (Monthly Costing, Budgets, Categories — main developer owns for now)
+/src/app/(dashboard)/admin/             @bellashdee
+
+# Ingredient Calculator — Kitchen-owned
+/src/app/(dashboard)/ingredient-calculator/  @kitchen-developer
+/src/lib/menuPlan/                           @kitchen-developer
 
 # Reports — cross-cutting, main developer owns
 /src/app/(dashboard)/reports/           @bellashdee

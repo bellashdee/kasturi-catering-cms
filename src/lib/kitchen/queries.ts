@@ -6,7 +6,7 @@ type DB = SupabaseClient<Database>;
 export async function listProductionOrders(supabase: DB, companyIds: string[]) {
   const { data, error } = await supabase
     .from("production_orders")
-    .select("*, catering_events(event_name), recipes(name), companies(name)")
+    .select("*, catering_events(event_name), recipes(name), menu_plan_dishes(name), companies(name)")
     .in("company_id", companyIds)
     .order("planned_date", { ascending: false });
   if (error) throw error;
@@ -143,7 +143,7 @@ export async function getDailyKitchenReport(supabase: DB, companyIds: string[], 
       .from("purchase_requests")
       .select("*, ingredients(name), suppliers(name), companies(name)")
       .in("company_id", companyIds)
-      .eq("status", "pending"),
+      .not("status", "in", "(completed,rejected)"),
   ]);
 
   const orders = ordersRes.data ?? [];

@@ -11,7 +11,7 @@ import { KitchenSubNav } from "@/components/kitchen/KitchenSubNav";
 
 function statusTone(status: string): "success" | "warning" | "info" {
   if (status === "completed") return "success";
-  if (status === "in_progress") return "info";
+  if (status === "preparing" || status === "ready") return "info";
   return "warning";
 }
 
@@ -71,7 +71,7 @@ export default async function KitchenPage({
                 className="grid grid-cols-[1fr_1.4fr_0.8fr_0.8fr_1.4fr_1fr] border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0 hover:bg-surface-alt"
               >
                 <div className="text-text-secondary">{o.planned_date}</div>
-                <div className="font-semibold text-text">{o.recipes?.name ?? "—"}</div>
+                <div className="font-semibold text-text">{o.recipes?.name ?? o.menu_plan_dishes?.name ?? "—"}</div>
                 <div className="text-text-secondary">{o.pax_count ?? "—"}</div>
                 <div className="text-text-secondary">{o.companies?.name}</div>
                 <div className="text-text-secondary">{o.catering_events?.event_name ?? "—"}</div>

@@ -1,0 +1,147 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createMember } from "@/lib/users/actions";
+import { PasswordInput } from "@/components/shared/PasswordInput";
+import { ROLE_LABEL } from "@/lib/users/constants";
+import type { Database } from "@/lib/supabase/types";
+
+type Company = { id: string; name: string };
+type UserRole = Database["public"]["Enums"]["user_role"];
+
+const inputClass =
+  "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
+const labelClass = "text-[12.5px] font-semibold text-text-secondary";
+
+function randomPassword(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+  let out = "";
+  for (let i = 0; i < 10; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  return out;
+}
+
+export function AddMemberForm({ companies }: { companies: Company[] }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState(randomPassword());
+  const [role, setRole] = useState<UserRole>("staff");
+  const [companyId, setCompanyId] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [created, setCreated] = useState<{ fullName: string; username: string; email: string; password: string } | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      await createMember({
+        fullName,
+        username,
+        email,
+        password,
+        role,
+        companyId: companyId || null,
+      });
+      setCreated({ fullName, username, email, password });
+      setFullName("");
+      setUsername("");
+      setEmail("");
+      setPassword(randomPassword());
+      setRole("staff");
+      setCompanyId("");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create member.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (created) {
+    return (
+      <div className="rounded-xl border border-success/30 bg-success-bg p-5">
+        <div className="text-[14px] font-bold text-text">{created.fullName}&apos;s account is ready</div>
+        <p className="mt-1 text-[12.5px] text-text-secondary">Share these credentials with them securely — this is the only time the password is shown.</p>
+        <div className="mt-3 flex flex-col gap-1.5 rounded-lg bg-surface p-3 text-[13px]">
+          <div><span className="font-semibold text-text-secondary">Username:</span> {created.username}</div>
+          <div><span className="font-semibold text-text-secondary">Email:</span> {created.email}</div>
+          <div><span className="font-semibold text-text-secondary">Password:</span> {created.password}</div>
+        </div>
+        <button onClick={() => setCreated(null)} className="mt-3 rounded-lg bg-primary px-4 py-2 text-[13px] font-semibold text-white">
+          Add Another Member
+        </button>
+      </div>
+    );
+  }
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
+        + Add Member
+      </button>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-5 shadow-sm">
+      {error && <div className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">{error}</div>}
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelClass}>Full Name *</label>
+          <input required value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputClass} />
+        </div>
+        <div>
+          <label className={labelClass}>Username *</label>
+          <input required value={username} onChange={(e) => setUsername(e.target.value)} className={inputClass} placeholder="e.g. nabilah" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelClass}>Email *</label>
+          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
+        </div>
+        <div>
+          <label className={labelClass}>Password *</label>
+          <div className="mt-1.5 flex gap-2">
+            <PasswordInput required value={password} onChange={setPassword} className="h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none" />
+            <button type="button" onClick={() => setPassword(randomPassword())} className="whitespace-nowrap rounded-lg border border-border-strong px-3 text-xs font-semibold text-text">
+              Generate
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelClass}>Role *</label>
+          <select value={role} onChange={(e) => setRole(e.target.value as UserRole)} className={inputClass}>
+            {Object.entries(ROLE_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={labelClass}>Company Access</label>
+          <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={inputClass}>
+            <option value="">All Companies</option>
+            {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-2.5">
+        <button type="button" onClick={() => setOpen(false)} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13.5px] font-semibold text-text">
+          Cancel
+        </button>
+        <button type="submit" disabled={saving} className="rounded-lg bg-primary px-5 py-2.5 text-[13.5px] font-semibold text-white disabled:opacity-60">
+          {saving ? "Creating..." : "Create Member"}
+        </button>
+      </div>
+    </form>
+  );
+}

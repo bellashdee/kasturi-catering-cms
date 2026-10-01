@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { logTaskAudit } from "@/lib/taskProofs/actions";
 import type { Database } from "@/lib/supabase/types";
 
 type InvoiceStatus = Database["public"]["Enums"]["invoice_status"];
@@ -406,5 +407,48 @@ export async function recordPaymentExecution(paymentId: string, input: PaymentEx
 
   revalidatePath("/supplier-procurement/payments");
   revalidatePath(`/supplier-procurement/invoices/${payment.supplier_invoice_id}`);
+  revalidatePath("/");
+}
+
+/**
+ * The Outstanding Payment task-list "mark paid" action for supplier
+ * invoices — directly confirms the invoice itself is settled. Kept separate
+ * from createSupplierPayment/decideSupplierPayment/recordPaymentExecution
+ * (that's the formal payment-request approval trail for releasing funds);
+ * this is for confirming an invoice is settled, however it was actually paid.
+ */
+export async function markSupplierInvoicePaid(input: {
+  supplierInvoiceId: string;
+  paymentDate: string;
+  paymentReference?: string;
+  paymentRemarks?: string;
+}) {
+  const { supabase } = await requireUser();
+
+  const { data: invoice, error: fetchError } = await supabase
+    .from("supplier_invoices")
+    .select("id, company_id")
+    .eq("id", input.supplierInvoiceId)
+    .single();
+  if (fetchError) throw fetchError;
+
+  const { error: updateError } = await supabase
+    .from("supplier_invoices")
+    .update({ status: "paid" as InvoiceStatus })
+    .eq("id", input.supplierInvoiceId);
+  if (updateError) throw updateError;
+
+  await logTaskAudit({
+    companyId: invoice.company_id,
+    relatedTable: "supplier_invoices",
+    relatedId: invoice.id,
+    action: "marked_paid",
+    newValue: input.paymentDate,
+    reason: [input.paymentReference, input.paymentRemarks].filter(Boolean).join(" — ") || undefined,
+  });
+
+  revalidatePath("/supplier-procurement/invoices");
+  revalidatePath(`/supplier-procurement/invoices/${invoice.id}`);
+  revalidatePath("/finance/outstanding");
   revalidatePath("/");
 }
