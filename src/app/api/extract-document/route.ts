@@ -5,6 +5,7 @@ import * as XLSX from "xlsx";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 const EXTRACTION_PROMPTS: Record<string, string> = {
   employee_certificate: `You are reading a staff document: a food handling certificate, typhoid certificate, work permit, training certificate, medical certificate (MC), confirmation letter, or letter of appointment/offer (LOA). Extract the following fields from the image/document and respond with ONLY a JSON object, no other text:
@@ -134,6 +135,8 @@ function mimeTypeFor(filename: string, fallback: "pdf" | "photo" | "screenshot")
   if (ext === "png") return "image/png";
   if (ext === "webp") return "image/webp";
   if (ext === "gif") return "image/gif";
+  if (ext === "heic") return "image/heic";
+  if (ext === "heif") return "image/heif";
   return "image/jpeg";
 }
 
@@ -187,6 +190,14 @@ export async function POST(request: Request) {
   const arrayBuffer = await fileBlob.arrayBuffer();
   const base64Data = Buffer.from(arrayBuffer).toString("base64");
   const mediaType = mimeTypeFor(doc.original_filename, doc.file_type as "pdf" | "photo" | "screenshot");
+  if (provider === "anthropic" && (mediaType === "image/heic" || mediaType === "image/heif")) {
+    await supabase.from("documents").update({ extraction_status: "failed" }).eq("id", documentId);
+    return NextResponse.json({ error: "iPhone HEIC photos can't be read. Take a screenshot or save the photo as JPG/PNG." }, { status: 400 });
+  }
+  if (!isSpreadsheet && arrayBuffer.byteLength > 14 * 1024 * 1024) {
+    await supabase.from("documents").update({ extraction_status: "failed" }).eq("id", documentId);
+    return NextResponse.json({ error: "The file is too large to read (over 14 MB). Upload a smaller or compressed copy." }, { status: 400 });
+  }
   const prompt = EXTRACTION_PROMPTS[kind] ?? EXTRACTION_PROMPTS.employee_certificate;
 
   try {

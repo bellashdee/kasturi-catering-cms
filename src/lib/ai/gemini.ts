@@ -30,22 +30,33 @@ export async function geminiGenerate({
   if (!apiKey) throw new Error("GEMINI_API_KEY is not set.");
   const model = process.env.GEMINI_MODEL || "gemini-3.8-flash";
 
-  const res = await fetch(`${GEMINI_ENDPOINT}/${model}:generateContent`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-    body: JSON.stringify({
-      ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
-      contents: turns,
-      generationConfig: {
-        maxOutputTokens,
-        ...(json ? { responseMimeType: "application/json" } : {}),
-      },
-    }),
+  const body = JSON.stringify({
+    ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
+    contents: turns,
+    generationConfig: {
+      maxOutputTokens,
+      ...(json ? { responseMimeType: "application/json" } : {}),
+    },
   });
 
-  const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    throw new Error(data?.error?.message ?? `Gemini request failed (${res.status}).`);
+  // The free tier is rate limited and sometimes overloaded: retry a couple of times before giving up.
+  let res: Response | null = null;
+  let data: { error?: { message?: string }; candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] } | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    res = await fetch(`${GEMINI_ENDPOINT}/${model}:generateContent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      body,
+    });
+    data = await res.json().catch(() => null);
+    if (res.ok || ![429, 500, 503].includes(res.status)) break;
+    await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+  }
+
+  if (!res || !res.ok) {
+    if (res?.status === 429) throw new Error("The AI service is busy or the free daily limit was reached. Wait a minute and try again.");
+    if (res?.status === 503 || res?.status === 500) throw new Error("The AI service is temporarily overloaded. Try again shortly.");
+    throw new Error(data?.error?.message ?? `AI request failed (${res?.status}).`);
   }
 
   const parts: { text?: string; thought?: boolean }[] = data?.candidates?.[0]?.content?.parts ?? [];
