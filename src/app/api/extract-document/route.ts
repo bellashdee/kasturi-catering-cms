@@ -126,7 +126,7 @@ function spreadsheetToText(buffer: ArrayBuffer, limit = 60000): string {
   const wb = XLSX.read(buffer, { type: "array" });
   const parts = wb.SheetNames.map((name) => `--- Sheet: ${name} ---\n${XLSX.utils.sheet_to_csv(wb.Sheets[name], { blankrows: false })}`);
   const text = parts.join("\n\n");
-  return text.length > 60000 ? `${text.slice(0, 60000)}\n[truncated]` : text;
+  return text.length > limit ? `${text.slice(0, limit)}\n[truncated]` : text;
 }
 
 function mimeTypeFor(filename: string, fallback: "pdf" | "photo" | "screenshot"): string {
