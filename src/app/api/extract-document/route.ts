@@ -122,7 +122,7 @@ If a field is not visible or you are not confident, use null for it rather than 
 };
 
 /** Excel/CSV can't be shown to the model as an image, so flatten every sheet to CSV text (capped so a huge file can't blow the request). */
-function spreadsheetToText(buffer: ArrayBuffer): string {
+function spreadsheetToText(buffer: ArrayBuffer, limit = 60000): string {
   const wb = XLSX.read(buffer, { type: "array" });
   const parts = wb.SheetNames.map((name) => `--- Sheet: ${name} ---\n${XLSX.utils.sheet_to_csv(wb.Sheets[name], { blankrows: false })}`);
   const text = parts.join("\n\n");
@@ -207,7 +207,7 @@ export async function POST(request: Request) {
       const filePart = isSpreadsheet
         ? { text: `The uploaded file is a spreadsheet. Its contents, sheet by sheet, as CSV:
 
-${spreadsheetToText(arrayBuffer)}` }
+${spreadsheetToText(arrayBuffer, 400000)}` }
         : { inline_data: { mime_type: mediaType, data: base64Data } };
       raw = await geminiGenerate({
         turns: [{ role: "user", parts: [filePart, { text: prompt }] }],

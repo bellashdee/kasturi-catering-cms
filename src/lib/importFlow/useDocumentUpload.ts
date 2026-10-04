@@ -66,20 +66,36 @@ export function useDocumentUpload() {
       const doc = await uploadDocument({ companyId: params.companyId, module: params.module, fileType, file });
       setDocumentId(doc.id);
 
-      const res = await fetch("/api/extract-document", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documentId: doc.id, kind: params.extractionKind }),
-      });
-      const result = await res.json();
+      // Transient AI failures (busy / overloaded) are retried once without re-uploading the file.
+      const callExtract = async () => {
+        const res = await fetch("/api/extract-document", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ documentId: doc.id, kind: params.extractionKind }),
+        });
+        const result = await res.json().catch(() => ({}));
+        return { res, result };
+      };
+      let { res, result } = await callExtract();
+      if (!res.ok && res.status >= 500) {
+        await new Promise((r) => setTimeout(r, 3000));
+        ({ res, result } = await callExtract());
+      }
 
       if (!res.ok) {
-        setNotice(`Extraction failed (${result.error ?? "unknown error"}) — the file is saved, please fill in the fields manually.`);
+        setNotice(`Could not read the file (${result.error ?? "unknown error"}) — the file is saved, please fill in the fields manually, or choose the file again to retry.`);
         setStep("review");
         return null;
       }
       if (result.configured === false) {
         setNotice(result.message);
+        setStep("review");
+        return null;
+      }
+      const values = result.extracted && typeof result.extracted === "object" ? Object.values(result.extracted as Record<string, unknown>) : [];
+      const nothingRead = values.every((v) => v === null || v === undefined || v === "" || (Array.isArray(v) && v.length === 0));
+      if (nothingRead) {
+        setNotice("The AI could not read any details from this file (it may be blurry, cut off or the wrong document type). The file is saved — fill in the fields manually, or try a clearer copy.");
         setStep("review");
         return null;
       }
