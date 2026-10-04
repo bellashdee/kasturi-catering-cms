@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createCustomerInvoice, type CustomerInvoiceInput } from "@/lib/finance/actions";
 import { DUPLICATE_INVOICE_MESSAGE } from "@/lib/finance/constants";
-import { uploadDocument, fileTypeFromMime } from "@/lib/documents/upload";
+import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/documents/upload";
 
 type Company = { id: string; name: string };
 type Customer = { id: string; name: string; company_id: string };
@@ -144,7 +144,7 @@ export function CustomerInvoiceForm({ companies, defaultCompanyId, customers }: 
         <div className="mt-1.5 flex items-center gap-2">
           <input
             type="file"
-            accept="image/*,application/pdf"
+            accept={ANY_UPLOAD_ACCEPT}
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             className="block flex-1 text-sm"
           />

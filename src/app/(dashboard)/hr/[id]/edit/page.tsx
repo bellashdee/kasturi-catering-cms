@@ -1,7 +1,8 @@
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
-import { getEmployee } from "@/lib/hr/queries";
+import { getEmployee, getEmployeePrivateDetails } from "@/lib/hr/queries";
+import { canManageStaffPrivateDetails } from "@/lib/hr/constants";
 import { EmployeeForm } from "@/components/hr/EmployeeForm";
 
 export default async function EditEmployeePage({ params }: { params: Promise<{ id: string }> }) {
@@ -19,6 +20,8 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
   }
 
   const { data: allCompanies } = await supabase.from("companies").select("id, name").order("name");
+  const canEditPrivate = canManageStaffPrivateDetails(session.role);
+  const privateDetails = canEditPrivate ? await getEmployeePrivateDetails(supabase, id) : null;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -26,6 +29,7 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
       <div className="mt-5 rounded-xl border border-border bg-surface p-6 shadow-sm">
         <EmployeeForm
           employeeId={id}
+          canEditPrivate={canEditPrivate}
           companies={allCompanies ?? []}
           initial={{
             companyId: employee.company_id,
@@ -38,6 +42,9 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
             icPassportNo: employee.ic_passport_no ?? "",
             phone: employee.phone ?? "",
             email: employee.email ?? "",
+            bankName: privateDetails?.bank_name ?? "",
+            bankAccountNo: privateDetails?.bank_account_no ?? "",
+            epfNo: privateDetails?.epf_no ?? "",
           }}
         />
       </div>

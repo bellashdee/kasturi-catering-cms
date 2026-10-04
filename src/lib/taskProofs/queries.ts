@@ -6,7 +6,7 @@ type DB = SupabaseClient<Database>;
 /**
  * Generic proof-of-work lookup — works for any module's records via
  * (relatedTable, relatedId), so Kitchen/Catering/Maintenance can reuse this
- * exactly as Driver & Logistics does for deliveries.
+ * exactly as Operation Management does for deliveries.
  */
 export async function listTaskProofs(supabase: DB, relatedTable: string, relatedId: string) {
   const { data, error } = await supabase

@@ -101,7 +101,7 @@ export default async function DriverAttendancePage({
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-[22px] font-extrabold text-text">Driver & Logistics</h1>
+        <h1 className="text-[22px] font-extrabold text-text">Operation Management</h1>
         <p className="mt-0.5 text-[13px] text-text-secondary">Attendance</p>
       </div>
 

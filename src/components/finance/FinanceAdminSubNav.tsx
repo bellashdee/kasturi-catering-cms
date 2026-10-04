@@ -5,11 +5,16 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 const TABS = [
   { href: "/admin", label: "Monthly Costing", match: (p: string) => p === "/admin" },
+  { href: "/finance/invoices", label: "Customer Invoices", match: (p: string) => p.startsWith("/finance/invoices") },
+  { href: "/finance/outstanding", label: "Outstanding Payment", match: (p: string) => p.startsWith("/finance/outstanding") },
+  { href: "/supplier-procurement/payments", label: "Supplier Payments", match: (p: string) => p.startsWith("/supplier-procurement/payments") },
+  { href: "/finance/expenses", label: "Company Expenses", match: (p: string) => p.startsWith("/finance/expenses") },
+  { href: "/finance/petty-cash", label: "Petty Cash", match: (p: string) => p.startsWith("/finance/petty-cash") },
   { href: "/admin/budgets", label: "Budgets", match: (p: string) => p.startsWith("/admin/budgets") },
   { href: "/admin/categories", label: "Categories", match: (p: string) => p.startsWith("/admin/categories") },
 ];
 
-export function AdminSubNav() {
+export function FinanceAdminSubNav() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const company = searchParams.get("company");

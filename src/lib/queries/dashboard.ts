@@ -10,19 +10,21 @@ function sum(rows: { amount: number }[] | null): number {
   return (rows ?? []).reduce((total, row) => total + Number(row.amount), 0);
 }
 
+/** All "today / this month" boundaries use Malaysia time, so the dashboard agrees no matter where the server runs. */
+function myDateIso(date: Date): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kuala_Lumpur" }).format(date);
+}
+
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  return myDateIso(new Date());
 }
 
 function daysFromNowIso(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return myDateIso(new Date(Date.now() + days * 86_400_000));
 }
 
 function monthStartIso(): string {
-  const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+  return `${todayIso().slice(0, 7)}-01`;
 }
 
 /**
@@ -35,7 +37,7 @@ function monthStartIso(): string {
 
 export async function getFinancialOverview(supabase: DB, companyIds: string[]) {
   const monthStart = monthStartIso();
-  const now = new Date();
+  const [nowYear, nowMonth] = todayIso().split("-").map(Number);
 
   const [revenueRes, supplierPaidRes, expensesRes, marketingExpensesRes, driverExpensesRes, costBreakdown] = await Promise.all([
     supabase
@@ -66,7 +68,7 @@ export async function getFinancialOverview(supabase: DB, companyIds: string[]) {
       .gte("expense_date", monthStart),
     // Same source Reports → Monthly Costing uses (covers every module,
     // petty cash included) so this KPI never drifts from that report.
-    getMonthlyCostBreakdown(supabase, companyIds, now.getFullYear(), now.getMonth() + 1),
+    getMonthlyCostBreakdown(supabase, companyIds, nowYear, nowMonth),
   ]);
 
   const revenue = sum(revenueRes.data);
@@ -201,7 +203,8 @@ export async function getDriverFleetSummary(supabase: DB, companyIds: string[]) 
  */
 export async function getDriverAttendanceAlerts(supabase: DB, companyIds: string[]) {
   const today = todayIso();
-  const now = new Date();
+  const nowParts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kuala_Lumpur", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(new Date());
+  const nowMinutes = Number(nowParts.find((x) => x.type === "hour")?.value ?? 0) * 60 + Number(nowParts.find((x) => x.type === "minute")?.value ?? 0);
 
   const [{ data: activeDrivers }, { data: todayAttendance }] = await Promise.all([
     supabase
@@ -216,9 +219,7 @@ export async function getDriverAttendanceAlerts(supabase: DB, companyIds: string
     if (d.employees?.status !== "active") return false;
     if (attendanceByDriver.has(d.employee_id)) return false;
     const [h, m] = d.expected_clock_in_time.split(":").map(Number);
-    const expected = new Date();
-    expected.setHours(h, m + LATE_GRACE_MINUTES, 0, 0);
-    return now > expected;
+    return nowMinutes > h * 60 + m + LATE_GRACE_MINUTES;
   });
 
   const missingClockOut = (todayAttendance ?? []).filter((a) => a.clock_in_time && !a.clock_out_time);
@@ -247,7 +248,8 @@ export async function getHRSummary(supabase: DB, companyIds: string[]) {
   const monthAhead = daysFromNowIso(30);
   const today = todayIso();
 
-  const [{ count: staffCount }, { data: expiring }] = await Promise.all([
+  // Already-expired documents stay in the list (no lower bound) until they are renewed.
+  const [{ count: staffCount }, { data: expiring }, { data: expiringCompanyDocs }] = await Promise.all([
     supabase
       .from("employees")
       .select("id", { count: "exact", head: true })
@@ -255,13 +257,25 @@ export async function getHRSummary(supabase: DB, companyIds: string[]) {
       .eq("status", "active"),
     supabase
       .from("employee_certificates")
-      .select("id, cert_name, expiry_date, employee_id")
+      .select("id, cert_name, expiry_date, employee_id, employees(full_name)")
       .in("company_id", companyIds)
-      .gte("expiry_date", today)
-      .lte("expiry_date", monthAhead),
+      .not("expiry_date", "is", null)
+      .lte("expiry_date", monthAhead)
+      .order("expiry_date", { ascending: true }),
+    supabase
+      .from("company_documents")
+      .select("id, title, expiry_date, companies(name)")
+      .in("company_id", companyIds)
+      .not("expiry_date", "is", null)
+      .lte("expiry_date", monthAhead)
+      .order("expiry_date", { ascending: true }),
   ]);
 
-  return { staffCount: staffCount ?? 0, expiringCertificates: expiring ?? [] };
+  return {
+    staffCount: staffCount ?? 0,
+    expiringCertificates: (expiring ?? []).map((c) => ({ ...c, expired: !!c.expiry_date && c.expiry_date < today })),
+    expiringCompanyDocs: (expiringCompanyDocs ?? []).map((d) => ({ ...d, expired: !!d.expiry_date && d.expiry_date < today })),
+  };
 }
 
 /**
@@ -271,9 +285,7 @@ export async function getHRSummary(supabase: DB, companyIds: string[]) {
  * than a second aggregation query.
  */
 export async function getFinanceAdminSummary(supabase: DB, companyIds: string[]) {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
+  const [year, month] = todayIso().split("-").map(Number);
 
   const [{ data: pettyCashRows }, { data: budgets }] = await Promise.all([
     supabase.from("petty_cash_transactions").select("amount, type, payment_status, transaction_date, claimant_name").in("company_id", companyIds),
@@ -438,14 +450,14 @@ export function buildAlerts(input: {
     alerts.push({
       severity: "danger",
       title: `${input.customerOutstanding.overdueCount} overdue customer payment(s)`,
-      meta: "Finance & Admin",
+      meta: "Admin & Finance",
     });
   }
   for (const b of input.financeAdmin.overBudget) {
     alerts.push({
       severity: "warning",
       title: `Over budget: ${b.category}${b.department ? ` (${b.department})` : ""}`,
-      meta: `Finance & Admin · ${b.actual.toFixed(0)} of ${b.budgeted.toFixed(0)} budgeted`,
+      meta: `Admin & Finance · ${b.actual.toFixed(0)} of ${b.budgeted.toFixed(0)} budgeted`,
     });
   }
   if (input.financeAdmin.pettyCashPending.overdueCount > 0) {
@@ -453,20 +465,27 @@ export function buildAlerts(input: {
     alerts.push({
       severity: "danger",
       title: `${input.financeAdmin.pettyCashPending.overdueCount} overdue petty cash claim(s) awaiting payment`,
-      meta: oldest ? `Finance & Admin · oldest: ${oldest.claimant}, ${oldest.daysPending} days pending` : "Finance & Admin",
+      meta: oldest ? `Admin & Finance · oldest: ${oldest.claimant}, ${oldest.daysPending} days pending` : "Admin & Finance",
     });
   } else if (input.financeAdmin.pettyCashPending.count > 0) {
     alerts.push({
       severity: "warning",
       title: `${input.financeAdmin.pettyCashPending.count} petty cash claim(s) pending payment`,
-      meta: "Finance & Admin",
+      meta: "Admin & Finance",
     });
   }
   for (const cert of input.hr.expiringCertificates) {
     alerts.push({
-      severity: "warning",
-      title: `Certificate expiring: ${cert.cert_name}`,
-      meta: `HR · due ${cert.expiry_date}`,
+      severity: cert.expired ? "danger" : "warning",
+      title: `${cert.expired ? "Document EXPIRED" : "Document expiring"}: ${cert.cert_name}${cert.employees?.full_name ? ` (${cert.employees.full_name})` : ""}`,
+      meta: `HR · ${cert.expired ? "expired" : "due"} ${cert.expiry_date}`,
+    });
+  }
+  for (const doc of input.hr.expiringCompanyDocs) {
+    alerts.push({
+      severity: doc.expired ? "danger" : "warning",
+      title: `${doc.expired ? "Licence/agreement EXPIRED" : "Licence/agreement expiring"}: ${doc.title}`,
+      meta: `HR · ${doc.companies?.name ?? "Company"} · ${doc.expired ? "expired" : "due"} ${doc.expiry_date}`,
     });
   }
   for (const event of input.cateringEvents.upcoming) {
@@ -494,7 +513,7 @@ export function buildAlerts(input: {
     alerts.push({
       severity: "warning",
       title: `Vehicle maintenance due: ${vehicle.plate_number}`,
-      meta: `Driver & Logistics · due ${vehicle.next_maintenance_due}`,
+      meta: `Operation Management · due ${vehicle.next_maintenance_due}`,
     });
   }
   for (const vehicle of input.driverCompliance.vehicles) {
@@ -502,28 +521,28 @@ export function buildAlerts(input: {
     alerts.push({
       severity: "warning",
       title: `Insurance/road tax expiring: ${vehicle.plate_number}`,
-      meta: `Driver & Logistics · due ${soonest}`,
+      meta: `Operation Management · due ${soonest}`,
     });
   }
   if (input.driverAttendance.missingClockInCount > 0) {
     alerts.push({
       severity: "danger",
       title: `${input.driverAttendance.missingClockInCount} driver(s) missing clock-in today`,
-      meta: "Driver & Logistics · Attendance",
+      meta: "Operation Management · Attendance",
     });
   }
   if (input.driverAttendance.missingClockOutCount > 0) {
     alerts.push({
       severity: "warning",
       title: `${input.driverAttendance.missingClockOutCount} driver(s) still clocked in (no clock-out yet)`,
-      meta: "Driver & Logistics · Attendance",
+      meta: "Operation Management · Attendance",
     });
   }
   for (const license of input.driverCompliance.licenses) {
     alerts.push({
       severity: "warning",
       title: `Driver license expiring: ${license.employees?.full_name ?? "driver"}`,
-      meta: `Driver & Logistics · due ${license.license_expiry}`,
+      meta: `Operation Management · due ${license.license_expiry}`,
     });
   }
   for (const promo of input.promotions) {

@@ -5,23 +5,20 @@ export type ModuleKey =
   | "kitchen"
   | "driver-logistics"
   | "supplier-procurement"
-  | "finance"
-  | "admin"
+  | "finance-admin"
   | "ingredient-calculator"
   | "reports"
   | "ai-assistant"
   | "settings";
 
-export const MODULES: { key: ModuleKey; label: string; href: string }[] = [
+export const MODULES: { key: ModuleKey; label: string; href: string; matchPrefixes?: string[] }[] = [
   { key: "hr", label: "HR", href: "/hr" },
   { key: "marketing", label: "Marketing", href: "/marketing" },
   { key: "catering", label: "Catering", href: "/catering" },
+  { key: "driver-logistics", label: "Operation Management", href: "/driver-logistics", matchPrefixes: ["/driver-logistics"] },
   { key: "kitchen", label: "Kitchen", href: "/kitchen" },
-  { key: "ingredient-calculator", label: "Ingredient Calculator", href: "/ingredient-calculator" },
-  { key: "driver-logistics", label: "Driver & Logistics", href: "/driver-logistics" },
   { key: "supplier-procurement", label: "Supplier & Procurement", href: "/supplier-procurement" },
-  { key: "finance", label: "Finance", href: "/finance/invoices" },
-  { key: "admin", label: "Admin", href: "/admin" },
+  { key: "finance-admin", label: "Admin & Finance", href: "/admin", matchPrefixes: ["/admin", "/finance"] },
   { key: "reports", label: "Reports", href: "/reports" },
   { key: "ai-assistant", label: "AI Assistant", href: "/ai-assistant" },
 ];

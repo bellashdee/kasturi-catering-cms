@@ -74,7 +74,7 @@ export const KNOWLEDGE_BASE: KBEntry[] = [
     title: "Assigning a Driver",
     keywords: ["assign driver", "delivery", "driver logistics", "vehicle assignment"],
     content:
-      "📌 How to Assign a Driver to a Delivery\n1. Go to Driver & Logistics.\n2. Click + New Delivery (or open it from the catering event's page).\n3. Select the driver, vehicle, scheduled time, and destination.\n4. Click Confirm & Save.\n5. Update the delivery's status as it progresses (Scheduled → In Transit → Delivered).\n\n💡 Tip: Only drivers marked 'Available' show up as assignable — check the Driver Availability list if someone you expect isn't listed.",
+      "📌 How to Assign a Driver to a Delivery\n1. Go to Operation Management.\n2. Click + New Delivery (or open it from the catering event's page).\n3. Select the driver, vehicle, scheduled time, and destination.\n4. Click Confirm & Save.\n5. Update the delivery's status as it progresses (Scheduled → In Transit → Delivered).\n\n💡 Tip: Only drivers marked 'Available' show up as assignable — check the Driver Availability list if someone you expect isn't listed.",
   },
   {
     id: "gs-07-add-supplier",
@@ -195,34 +195,34 @@ export const KNOWLEDGE_BASE: KBEntry[] = [
     title: "Logging vehicle maintenance",
     keywords: ["vehicle maintenance", "service record", "workshop"],
     content:
-      "📌 How to Log Vehicle Maintenance\n1. Go to Driver & Logistics → Vehicles, open the vehicle.\n2. Click + New Maintenance Record (or Upload the workshop invoice).\n3. Enter or confirm the service date, cost, and next service date.\n4. Click Confirm & Save.",
+      "📌 How to Log Vehicle Maintenance\n1. Go to Operation Management → Vehicles, open the vehicle.\n2. Click + New Maintenance Record (or Upload the workshop invoice).\n3. Enter or confirm the service date, cost, and next service date.\n4. Click Confirm & Save.",
   },
   {
     id: "tut-finance-expense",
-    module: "finance",
+    module: "finance-admin",
     type: "tutorial",
     title: "Logging a company expense",
     keywords: ["company expense", "log expense", "add expense", "utilities expense"],
     content:
-      "📌 How to Log a Company Expense\n1. Go to Finance → Company Expenses.\n2. Click + Add Expense (or Upload Document — receipt/invoice photo or PDF).\n3. Choose the category and department, confirm the amount and date.\n4. Click Confirm & Save.",
+      "📌 How to Log a Company Expense\n1. Go to Admin & Finance → Company Expenses.\n2. Click + Add Expense (or Upload Document — receipt/invoice photo or PDF).\n3. Choose the category and department, confirm the amount and date.\n4. Click Confirm & Save.",
   },
   {
     id: "tut-finance-customer-payment",
-    module: "finance",
+    module: "finance-admin",
     type: "tutorial",
     title: "Recording a customer payment",
     keywords: ["customer payment", "record payment", "receive payment"],
     content:
-      "📌 How to Record a Customer Payment\n1. Go to Finance → Customer Invoices, open the invoice.\n2. Click Record Payment.\n3. Enter the amount and date received.\n4. Click Confirm & Save — the invoice's outstanding balance and status update automatically.",
+      "📌 How to Record a Customer Payment\n1. Go to Admin & Finance → Customer Invoices, open the invoice.\n2. Click Record Payment.\n3. Enter the amount and date received.\n4. Click Confirm & Save — the invoice's outstanding balance and status update automatically.",
   },
   {
     id: "tut-petty-cash",
-    module: "finance",
+    module: "finance-admin",
     type: "tutorial",
     title: "Logging a petty cash transaction",
     keywords: ["petty cash"],
     content:
-      "📌 How to Log a Petty Cash Transaction\n1. Go to Finance → Petty Cash.\n2. Click + New Transaction.\n3. Choose in/out, enter the amount and reason.\n4. Click Confirm & Save.",
+      "📌 How to Log a Petty Cash Transaction\n1. Go to Admin & Finance → Petty Cash.\n2. Click + New Transaction.\n3. Choose in/out, enter the amount and reason.\n4. Click Confirm & Save.",
   },
   {
     id: "tut-duplicate-check",
@@ -257,7 +257,7 @@ export const KNOWLEDGE_BASE: KBEntry[] = [
   },
   {
     id: "def-customer-outstanding",
-    module: "finance",
+    module: "finance-admin",
     type: "definition",
     title: "Customer Outstanding",
     keywords: ["customer outstanding", "what is customer outstanding"],
@@ -266,12 +266,12 @@ export const KNOWLEDGE_BASE: KBEntry[] = [
   },
   {
     id: "def-monthly-costing",
-    module: "admin",
+    module: "finance-admin",
     type: "definition",
     title: "Monthly Costing",
     keywords: ["monthly costing", "what is monthly costing"],
     content:
-      "'Monthly Costing' is the total operating cost recorded for the current calendar month for the selected company (event costing, ingredient costs, and related expenses). It's shown as a KPI on the Main Dashboard and under Admin → Monthly Costing.",
+      "'Monthly Costing' is the total operating cost recorded for the current calendar month for the selected company (event costing, ingredient costs, and related expenses). It's shown as a KPI on the Main Dashboard and under Admin & Finance → Monthly Costing.",
   },
   {
     id: "def-payment-status",

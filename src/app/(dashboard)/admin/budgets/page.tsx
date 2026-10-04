@@ -8,7 +8,7 @@ import { MONTH_LABEL } from "@/lib/finance/constants";
 import { formatCurrency } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
-import { AdminSubNav } from "@/components/finance/AdminSubNav";
+import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 
 export default async function BudgetsPage({
   searchParams,
@@ -50,7 +50,7 @@ export default async function BudgetsPage({
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[22px] font-extrabold text-text">Admin</h1>
+          <h1 className="text-[22px] font-extrabold text-text">Admin &amp; Finance</h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">{budgets.length} budget{budgets.length === 1 ? "" : "s"}</p>
         </div>
         <Link href={`/admin/budgets/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
@@ -58,7 +58,7 @@ export default async function BudgetsPage({
         </Link>
       </div>
 
-      <AdminSubNav />
+      <FinanceAdminSubNav />
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {budgets.length === 0 ? (

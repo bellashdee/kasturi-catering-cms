@@ -29,6 +29,7 @@ export function PasswordInput({
         placeholder={placeholder}
         autoComplete={autoComplete}
         className={`${className ?? ""} pr-10`}
+        suppressHydrationWarning
       />
       <button
         type="button"

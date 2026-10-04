@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import {
   getEmployee,
+  getEmployeePrivateDetails,
   listCertificates,
   listLeaveForEmployee,
   listOvertimeForEmployee,
@@ -17,18 +18,21 @@ import {
   LEAVE_STATUS_LABEL,
   PAYROLL_STATUS_LABEL,
   certificateUrgency,
+  canManageStaffPrivateDetails,
 } from "@/lib/hr/constants";
 import { formatCurrency } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SectionCard, EmptyRow, StatRow } from "@/components/dashboard/SectionCard";
 
-const CERT_TONE: Record<string, "success" | "warning" | "danger"> = {
+const CERT_TONE: Record<string, "success" | "warning" | "danger" | "neutral"> = {
+  no_expiry: "neutral",
   valid: "success",
   expiring_soon: "warning",
   expired: "danger",
 };
 
 const CERT_LABEL: Record<string, string> = {
+  no_expiry: "On file",
   valid: "Valid",
   expiring_soon: "Expiring Soon",
   expired: "Expired",
@@ -57,12 +61,20 @@ export default async function EmployeeProfilePage({
     notFound();
   }
 
-  const [certificates, leave, overtime, payroll] = await Promise.all([
+  const canSeePrivate = canManageStaffPrivateDetails(session.role);
+  const [certificates, leave, overtime, payroll, privateDetails] = await Promise.all([
     listCertificates(supabase, id),
     listLeaveForEmployee(supabase, id),
     listOvertimeForEmployee(supabase, id),
     listPayrollForEmployee(supabase, id),
+    canSeePrivate ? getEmployeePrivateDetails(supabase, id) : Promise.resolve(null),
   ]);
+
+  const restricted = "Restricted (Admin only)";
+  const bankValue = !canSeePrivate
+    ? restricted
+    : [privateDetails?.bank_name, privateDetails?.bank_account_no].filter(Boolean).join(" · ") || "—";
+  const kwspValue = !canSeePrivate ? restricted : privateDetails?.epf_no || "—";
 
   return (
     <div className="flex flex-col gap-5">
@@ -94,12 +106,17 @@ export default async function EmployeeProfilePage({
       </div>
 
       <div className="grid grid-cols-2 gap-5">
-        <SectionCard title="Overview">
-          <StatRow label="Employment Type" value={EMPLOYMENT_TYPE_LABEL[employee.employment_type] ?? employee.employment_type} />
-          <StatRow label="Join Date" value={employee.join_date || "—"} />
-          <StatRow label="IC / Passport No." value={employee.ic_passport_no || "—"} />
-          <StatRow label="Phone" value={employee.phone || "—"} />
+        <SectionCard title="Staff Information">
+          <StatRow label="Name" value={employee.full_name} />
+          <StatRow label="IC No." value={employee.ic_passport_no || "—"} />
+          <StatRow label="Mobile No." value={employee.phone || "—"} />
           <StatRow label="Email" value={employee.email || "—"} />
+          <StatRow label="Start Date" value={employee.join_date || "—"} />
+          <StatRow label="Position" value={employee.position || "—"} />
+          <StatRow label="Bank Name & A/C No." value={bankValue} />
+          <StatRow label="KWSP No." value={kwspValue} />
+          <StatRow label="Department" value={employee.department || "—"} />
+          <StatRow label="Employment Type" value={EMPLOYMENT_TYPE_LABEL[employee.employment_type] ?? employee.employment_type} />
         </SectionCard>
 
         <SectionCard
@@ -116,7 +133,7 @@ export default async function EmployeeProfilePage({
                   <div key={c.id} className="flex items-center justify-between px-5 py-3">
                     <div>
                       <div className="text-[13px] font-semibold text-text">{CERT_TYPE_LABEL[c.cert_type] ?? c.cert_name}</div>
-                      <div className="text-xs text-text-muted">{c.cert_name} · expires {c.expiry_date}</div>
+                      <div className="text-xs text-text-muted">{c.cert_name} · {c.expiry_date ? `expires ${c.expiry_date}` : "no expiry"}</div>
                     </div>
                     <StatusBadge tone={CERT_TONE[urgency]}>{CERT_LABEL[urgency]}</StatusBadge>
                   </div>

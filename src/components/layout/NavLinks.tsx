@@ -51,16 +51,10 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M3 7v7l7 4 7-4V7" />
     </>
   ),
-  finance: (
+  "finance-admin": (
     <>
       <rect x="3" y="6" width="14" height="10" rx="2" />
       <circle cx="10" cy="11" r="2.2" />
-    </>
-  ),
-  admin: (
-    <>
-      <path d="M10 2.5l6 2.3v4.2c0 4-2.5 6.9-6 8-3.5-1.1-6-4-6-8V4.8z" />
-      <path d="M7.5 10l1.8 1.8L13 8" />
     </>
   ),
   "ingredient-calculator": (
@@ -99,10 +93,10 @@ function Icon({ name }: { name: string }) {
   );
 }
 
-function NavItem({ href, icon, label }: { href: string; icon: string; label: string }) {
+function NavItem({ href, icon, label, matchPrefixes }: { href: string; icon: string; label: string; matchPrefixes?: string[] }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const active = pathname === href;
+  const active = pathname === href || (matchPrefixes?.some((p) => pathname === p || pathname.startsWith(`${p}/`)) ?? false);
   const company = searchParams.get("company");
   const fullHref = company ? `${href}?company=${company}` : href;
 
@@ -129,7 +123,7 @@ export function ModuleLinks() {
   return (
     <>
       {MODULES.filter((m) => m.key !== "reports" && m.key !== "ai-assistant").map((m) => (
-        <NavItem key={m.key} href={m.href} icon={m.key} label={m.label} />
+        <NavItem key={m.key} href={m.href} icon={m.key} label={m.label} matchPrefixes={m.matchPrefixes} />
       ))}
       <NavItem href="/reports" icon="reports" label="Reports" />
       <NavItem href="/ai-assistant" icon="ai-assistant" label="🤖 AI Assistant" />

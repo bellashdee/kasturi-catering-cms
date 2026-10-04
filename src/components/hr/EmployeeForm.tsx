@@ -15,11 +15,14 @@ export function EmployeeForm({
   defaultCompanyId,
   employeeId,
   initial,
+  canEditPrivate = false,
 }: {
   companies: Company[];
   defaultCompanyId?: string;
   employeeId?: string;
   initial?: Partial<EmployeeInput>;
+  /** Super Admin / Company Admin only: shows the bank and KWSP fields. */
+  canEditPrivate?: boolean;
 }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
@@ -35,6 +38,9 @@ export function EmployeeForm({
     icPassportNo: initial?.icPassportNo ?? "",
     phone: initial?.phone ?? "",
     email: initial?.email ?? "",
+    bankName: initial?.bankName ?? "",
+    bankAccountNo: initial?.bankAccountNo ?? "",
+    epfNo: initial?.epfNo ?? "",
   });
 
   function set<K extends keyof EmployeeInput>(key: K, value: EmployeeInput[K]) {
@@ -45,12 +51,14 @@ export function EmployeeForm({
     e.preventDefault();
     setSaving(true);
     setError(null);
+    // Non-admins never send the bank / KWSP fields at all, so they can't blank them out by accident.
+    const payload: EmployeeInput = canEditPrivate ? form : { ...form, bankName: undefined, bankAccountNo: undefined, epfNo: undefined };
     try {
       if (employeeId) {
-        await updateEmployee(employeeId, form);
+        await updateEmployee(employeeId, payload);
         router.push(`/hr/${employeeId}`);
       } else {
-        const created = await createEmployee(form);
+        const created = await createEmployee(payload);
         router.push(`/hr/${created.id}`);
       }
       router.refresh();
@@ -117,18 +125,18 @@ export function EmployeeForm({
           </select>
         </div>
         <div>
-          <label className={labelClass}>Join Date</label>
+          <label className={labelClass}>Start Date (Tarikh Mula Kerja)</label>
           <input type="date" value={form.joinDate} onChange={(e) => set("joinDate", e.target.value)} className={inputClass} />
         </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <label className={labelClass}>IC / Passport No.</label>
+          <label className={labelClass}>IC No. / Passport</label>
           <input value={form.icPassportNo} onChange={(e) => set("icPassportNo", e.target.value)} className={inputClass} />
         </div>
         <div>
-          <label className={labelClass}>Phone</label>
+          <label className={labelClass}>Mobile No.</label>
           <input value={form.phone} onChange={(e) => set("phone", e.target.value)} className={inputClass} placeholder="01X-XXX XXXX" />
         </div>
         <div>
@@ -136,6 +144,26 @@ export function EmployeeForm({
           <input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} className={inputClass} />
         </div>
       </div>
+
+      {canEditPrivate && (
+        <div className="rounded-lg border border-border-strong p-4">
+          <div className="text-[12.5px] font-bold text-text">Bank &amp; KWSP <span className="font-normal text-text-muted">— visible to Super Admin and Company Admin only</span></div>
+          <div className="mt-3 grid grid-cols-3 gap-4">
+            <div>
+              <label className={labelClass}>Bank Name</label>
+              <input value={form.bankName ?? ""} onChange={(e) => set("bankName", e.target.value)} className={inputClass} placeholder="e.g. Maybank" />
+            </div>
+            <div>
+              <label className={labelClass}>Bank A/C No.</label>
+              <input value={form.bankAccountNo ?? ""} onChange={(e) => set("bankAccountNo", e.target.value)} className={inputClass} inputMode="numeric" />
+            </div>
+            <div>
+              <label className={labelClass}>No. KWSP</label>
+              <input value={form.epfNo ?? ""} onChange={(e) => set("epfNo", e.target.value)} className={inputClass} />
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="mt-2 flex justify-end gap-2.5">
         <button type="button" onClick={() => router.back()} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13.5px] font-semibold text-text">

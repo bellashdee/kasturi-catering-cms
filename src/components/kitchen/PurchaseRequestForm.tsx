@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPurchaseRequest, type PurchaseRequestInput } from "@/lib/kitchen/actions";
-import { uploadDocument, fileTypeFromMime } from "@/lib/documents/upload";
+import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/documents/upload";
 
 type Company = { id: string; name: string };
 type Ingredient = { id: string; name: string; unit_of_measure: string | null; company_id: string; preferred_supplier_id: string | null };
@@ -147,7 +147,7 @@ export function PurchaseRequestForm({
         <label className={labelClass}>Supporting File (quote, reference photo, etc.) — optional</label>
         <input
           type="file"
-          accept="image/*,application/pdf"
+          accept={ANY_UPLOAD_ACCEPT}
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           className="mt-1.5 block w-full text-sm"
         />

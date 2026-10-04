@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { uploadDocument } from "@/lib/documents/upload";
+import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/documents/upload";
 import { createPettyCashTransaction } from "@/lib/finance/actions";
 
 type Company = { id: string; name: string };
@@ -42,7 +42,7 @@ export function PettyCashForm({ companies, defaultCompanyId }: { companies: Comp
     try {
       let documentId: string | undefined;
       if (receipt) {
-        const doc = await uploadDocument({ companyId, module: "finance", fileType: receipt.type === "application/pdf" ? "pdf" : "photo", file: receipt });
+        const doc = await uploadDocument({ companyId, module: "finance", fileType: fileTypeFromMime(receipt), file: receipt });
         documentId = doc.id;
       }
       await createPettyCashTransaction({
@@ -133,7 +133,7 @@ export function PettyCashForm({ companies, defaultCompanyId }: { companies: Comp
 
       <div>
         <label className="text-[12px] font-semibold text-text-secondary">Supporting Receipt / Document {isClaim ? "" : "(optional)"}</label>
-        <input type="file" accept="application/pdf,image/*" onChange={(e) => setReceipt(e.target.files?.[0] ?? null)} className="mt-1 block w-full text-[13px]" />
+        <input type="file" accept={ANY_UPLOAD_ACCEPT} onChange={(e) => setReceipt(e.target.files?.[0] ?? null)} className="mt-1 block w-full text-[13px]" />
       </div>
 
       <div className="flex justify-end">

@@ -1,5 +1,6 @@
 "use client";
 
+import { DOCUMENT_FILE_ACCEPT } from "@/lib/documents/upload";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDocumentUpload } from "@/lib/importFlow/useDocumentUpload";
@@ -134,7 +135,7 @@ export function SupplierInvoiceUploadReview({
 
   return (
     <div>
-      <ImportTabs tab={flow.tab} onSelect={selectTab} pdfLabel="Upload PDF" photoLabel="Photo / Screenshot" />
+      <ImportTabs tab={flow.tab} onSelect={selectTab} pdfLabel="Upload File (PDF / Excel / CSV)" photoLabel="Photo / Screenshot" />
 
       <div className="p-6">
         <div className="mb-4 grid grid-cols-2 gap-4">
@@ -160,7 +161,7 @@ export function SupplierInvoiceUploadReview({
           <div className="flex flex-col items-center gap-3 py-10 text-center">
             <FileDropZone
               file={flow.file}
-              accept={flow.tab === "pdf" ? "application/pdf" : "image/*"}
+              accept={flow.tab === "pdf" ? DOCUMENT_FILE_ACCEPT : "image/*"}
               prompt={`Click to choose a ${flow.tab === "pdf" ? "PDF invoice" : "photo of the invoice"}`}
               onChange={flow.setFile}
             />

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { ImportEmployeesFlow } from "@/components/hr/ImportEmployeesFlow";
+import { canManageStaffPrivateDetails } from "@/lib/hr/constants";
 
 export default async function ImportEmployeesPage({
   searchParams,
@@ -28,7 +29,7 @@ export default async function ImportEmployeesPage({
         Upload an Excel or CSV file, check every row, then confirm — nothing is saved until you do.
       </p>
       <div className="mt-5 rounded-xl border border-border bg-surface p-6 shadow-sm">
-        <ImportEmployeesFlow companies={selectable} defaultCompanyId={defaultCompanyId} />
+        <ImportEmployeesFlow companies={selectable} defaultCompanyId={defaultCompanyId} canImportPrivate={canManageStaffPrivateDetails(session.role)} />
       </div>
     </div>
   );

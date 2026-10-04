@@ -42,7 +42,7 @@ export default async function DriversPage({
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[22px] font-extrabold text-text">Driver & Logistics</h1>
+          <h1 className="text-[22px] font-extrabold text-text">Operation Management</h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">{drivers.length} driver{drivers.length === 1 ? "" : "s"}</p>
         </div>
         <Link href={`/driver-logistics/drivers/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">

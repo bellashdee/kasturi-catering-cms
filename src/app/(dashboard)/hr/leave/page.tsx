@@ -8,6 +8,7 @@ import { LEAVE_TYPE_LABEL, LEAVE_STATUS_LABEL } from "@/lib/hr/constants";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { LeaveRowActions } from "@/components/hr/LeaveRowActions";
+import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 
 export default async function LeavePage({
   searchParams,
@@ -48,6 +49,7 @@ export default async function LeavePage({
                   <div className="text-[13.5px] font-semibold text-text">
                     <Link href={`/hr/${r.employee_id}`} className="hover:text-primary">{r.employees?.full_name}</Link>
                     <span className="ml-2 text-text-secondary font-normal">{LEAVE_TYPE_LABEL[r.leave_type] ?? r.leave_type}</span>
+                    {r.document_id && <DocumentViewLink documentId={r.document_id} label="📎 MC / file" className="ml-2 text-xs" />}
                   </div>
                   <div className="mt-0.5 text-xs text-text-muted">
                     {r.start_date} → {r.end_date} · {r.days} day(s) · {r.companies?.name}

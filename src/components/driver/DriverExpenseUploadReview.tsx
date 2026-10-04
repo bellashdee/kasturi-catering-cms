@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { uploadDocument } from "@/lib/documents/upload";
+import { uploadDocument, fileTypeFromMime, DOCUMENT_FILE_ACCEPT } from "@/lib/documents/upload";
 import { createDriverExpense } from "@/lib/driver/actions";
 
 type Tab = "manual" | "pdf" | "photo";
@@ -66,7 +66,7 @@ export function DriverExpenseUploadReview({
     setUploading(true);
     setError(null);
     try {
-      const doc = await uploadDocument({ companyId, module: "driver-logistics", fileType: tab === "pdf" ? "pdf" : "photo", file });
+      const doc = await uploadDocument({ companyId, module: "driver-logistics", fileType: fileTypeFromMime(file), file });
       setDocumentId(doc.id);
 
       const res = await fetch("/api/extract-document", {
@@ -135,7 +135,7 @@ export function DriverExpenseUploadReview({
             onClick={() => selectTab(t)}
             className={`border-b-2 px-4 py-3.5 text-[13.5px] font-bold ${tab === t ? "border-primary text-primary" : "border-transparent text-text-secondary"}`}
           >
-            {t === "manual" ? "Manual Entry" : t === "pdf" ? "Upload PDF" : "Photo / Screenshot"}
+            {t === "manual" ? "Manual Entry" : t === "pdf" ? "Upload File (PDF / Excel / CSV)" : "Photo / Screenshot"}
           </button>
         ))}
       </div>
@@ -164,7 +164,7 @@ export function DriverExpenseUploadReview({
               <span className="text-[14px] font-bold text-text">
                 {file ? file.name : `Click to choose a ${tab === "pdf" ? "PDF receipt" : "photo of the receipt"}`}
               </span>
-              <input type="file" accept={tab === "pdf" ? "application/pdf" : "image/*"} className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+              <input type="file" accept={tab === "pdf" ? DOCUMENT_FILE_ACCEPT : "image/*"} className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
             </label>
             {error && <div className="text-sm text-danger">{error}</div>}
             <button onClick={handleUploadAndExtract} disabled={!file || uploading} className="rounded-lg bg-primary px-5 py-2.5 text-[13.5px] font-semibold text-white disabled:opacity-60">

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { uploadDocument } from "@/lib/documents/upload";
+import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/documents/upload";
 import { createCampaignPerformance } from "@/lib/marketing/actions";
 
 type Tab = "manual" | "photo";
@@ -54,7 +54,7 @@ export function CampaignPerformanceUploadReview({ campaignId, companyId }: { cam
     setUploading(true);
     setError(null);
     try {
-      const doc = await uploadDocument({ companyId, module: "marketing", fileType: "photo", file });
+      const doc = await uploadDocument({ companyId, module: "marketing", fileType: fileTypeFromMime(file), file });
       setDocumentId(doc.id);
 
       const res = await fetch("/api/extract-document", {
@@ -144,7 +144,7 @@ export function CampaignPerformanceUploadReview({ campaignId, companyId }: { cam
                 {file ? file.name : "Click to choose an analytics screenshot"}
               </span>
               <span className="text-[12px] text-text-muted">e.g. Instagram Insights, Facebook Ads Manager, Google Ads</span>
-              <input type="file" accept="image/*" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+              <input type="file" accept={ANY_UPLOAD_ACCEPT} className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
             </label>
             {error && <div className="text-sm text-danger">{error}</div>}
             <button

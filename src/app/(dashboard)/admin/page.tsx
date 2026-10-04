@@ -6,7 +6,7 @@ import { getMonthlyCostBreakdown, getMonthlyRevenue, listCostCategories } from "
 import { MONTH_LABEL } from "@/lib/finance/constants";
 import { formatCurrency } from "@/lib/format";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
-import { AdminSubNav } from "@/components/finance/AdminSubNav";
+import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 
 function currentYearMonth() {
   const now = new Date();
@@ -67,11 +67,11 @@ export default async function AdminPage({
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-[22px] font-extrabold text-text">Admin</h1>
+        <h1 className="text-[22px] font-extrabold text-text">Admin &amp; Finance</h1>
         <p className="mt-0.5 text-[13px] text-text-secondary">Monthly Costing</p>
       </div>
 
-      <AdminSubNav />
+      <FinanceAdminSubNav />
 
       <form method="get" className="flex flex-wrap items-end gap-3">
         {requestedId && <input type="hidden" name="company" value={requestedId} />}

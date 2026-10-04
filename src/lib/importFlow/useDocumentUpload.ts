@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { uploadDocument, type DocumentFileType } from "@/lib/documents/upload";
+import { uploadDocument, fileTypeFromMime, type DocumentFileType } from "@/lib/documents/upload";
 import type { DuplicateMatch } from "@/lib/importFlow/types";
 
 export type ImportTab = "manual" | "pdf" | "photo";
@@ -62,7 +62,7 @@ export function useDocumentUpload() {
     setUploading(true);
     setError(null);
     try {
-      const fileType: DocumentFileType = tab === "pdf" ? "pdf" : "photo";
+      const fileType: DocumentFileType = fileTypeFromMime(file);
       const doc = await uploadDocument({ companyId: params.companyId, module: params.module, fileType, file });
       setDocumentId(doc.id);
 

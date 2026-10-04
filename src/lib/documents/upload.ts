@@ -2,6 +2,11 @@ import { createClient } from "@/lib/supabase/client";
 
 export type DocumentFileType = "pdf" | "excel" | "csv" | "photo" | "screenshot";
 
+/** What the "document" file picker accepts everywhere; photos/screenshots use "image/*". */
+export const DOCUMENT_FILE_ACCEPT = "application/pdf,.xlsx,.xls,.csv";
+/** Any supported file (PDF, Excel, CSV, photo, screenshot) in a single picker. */
+export const ANY_UPLOAD_ACCEPT = "application/pdf,image/*,.xlsx,.xls,.csv";
+
 export type UploadedDocument = {
   id: string;
   storage_path: string;

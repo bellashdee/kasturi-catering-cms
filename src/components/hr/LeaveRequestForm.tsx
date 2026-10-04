@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { requestLeave } from "@/lib/hr/actions";
+import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/documents/upload";
 
 const inputClass =
   "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
@@ -22,6 +23,7 @@ export function LeaveRequestForm({ employeeId, companyId }: { employeeId: string
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [reason, setReason] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,7 +38,12 @@ export function LeaveRequestForm({ employeeId, companyId }: { employeeId: string
     setSaving(true);
     setError(null);
     try {
-      await requestLeave({ employeeId, companyId, leaveType, startDate, endDate, days, reason });
+      let documentId: string | undefined;
+      if (file) {
+        const doc = await uploadDocument({ companyId, module: "hr", fileType: fileTypeFromMime(file), file });
+        documentId = doc.id;
+      }
+      await requestLeave({ employeeId, companyId, leaveType, startDate, endDate, days, reason, documentId });
       router.push(`/hr/${employeeId}`);
       router.refresh();
     } catch (err) {
@@ -76,6 +83,12 @@ export function LeaveRequestForm({ employeeId, companyId }: { employeeId: string
       <div>
         <label className={labelClass}>Reason</label>
         <textarea value={reason} onChange={(e) => setReason(e.target.value)} className="mt-1.5 h-20 w-full resize-none rounded-lg border border-border-strong px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" />
+      </div>
+
+      <div>
+        <label className={labelClass}>{leaveType === "medical" ? "Medical Certificate (MC) — upload" : "Supporting File (optional)"}</label>
+        <input type="file" accept={ANY_UPLOAD_ACCEPT} onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="mt-1.5 block w-full text-[13px]" />
+        <p className="mt-1 text-[11px] text-text-muted">PDF, Excel, CSV, screenshot or photo. Kept with this leave request.</p>
       </div>
 
       <div className="mt-2 flex justify-end gap-2.5">

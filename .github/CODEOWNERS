@@ -49,7 +49,7 @@
 /src/lib/kitchen/                       @kitchen-developer
 /src/components/kitchen/                @kitchen-developer
 
-# Driver & Logistics
+# Operation Management
 /src/app/(dashboard)/driver-logistics/  @logistics-developer
 /src/lib/driver/                        @logistics-developer
 /src/components/driver/                 @logistics-developer
@@ -59,12 +59,12 @@
 /src/lib/procurement/                       @procurement-developer
 /src/components/procurement/                @procurement-developer
 
-# Finance (separate from Admin — see CONTRIBUTING.md)
+# Admin & Finance (one module — Finance pages under /finance, Monthly Costing/Budgets/Categories under /admin)
 /src/app/(dashboard)/finance/           @finance-developer
 /src/lib/finance/                       @finance-developer
 /src/components/finance/                @finance-developer
 
-# Admin (Monthly Costing, Budgets, Categories — main developer owns for now)
+# Admin pages inside Admin & Finance (main developer owns for now)
 /src/app/(dashboard)/admin/             @bellashdee
 
 # Ingredient Calculator — Kitchen-owned

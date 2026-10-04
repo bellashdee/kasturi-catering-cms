@@ -11,7 +11,7 @@ import type { DuplicateMatch } from "@/lib/importFlow/types";
 export function ImportTabs({
   tab,
   onSelect,
-  pdfLabel = "Upload PDF",
+  pdfLabel = "Upload File (PDF / Excel / CSV)",
   photoLabel = "Photo / Screenshot",
 }: {
   tab: ImportTab;

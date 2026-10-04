@@ -121,7 +121,7 @@ export async function POST(request: Request) {
       });
 
       const response = await anthropic.messages.create({
-        model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5",
+        model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5",
         max_tokens: 700,
         system: systemPrompt,
         messages: [...history, { role: "user", content: message }],

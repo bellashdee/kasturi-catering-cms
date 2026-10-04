@@ -27,6 +27,40 @@ const HEADER_MAP: Record<string, keyof BulkEmployeeRow> = {
   phone: "phone",
   "phone number": "phone",
   email: "email",
+  "e-mail": "email",
+  nama: "fullName",
+  "nama staff": "fullName",
+  ic: "icPassportNo",
+  "no ic": "icPassportNo",
+  "no. ic": "icPassportNo",
+  "ic no": "icPassportNo",
+  "ic no.": "icPassportNo",
+  "mobile no": "phone",
+  "mobile no.": "phone",
+  mobile: "phone",
+  "no telefon": "phone",
+  "no. telefon": "phone",
+  "no tel": "phone",
+  "start date": "joinDate",
+  "tarikh start kerja": "joinDate",
+  "tarikh mula kerja": "joinDate",
+  jawatan: "position",
+  "bank name": "bankName",
+  bank: "bankName",
+  "nama bank": "bankName",
+  "bank a/c no": "bankAccountNo",
+  "bank a/c no.": "bankAccountNo",
+  "bank account": "bankAccountNo",
+  "bank account no": "bankAccountNo",
+  "account no": "bankAccountNo",
+  "a/c no": "bankAccountNo",
+  "no akaun": "bankAccountNo",
+  "no. akaun": "bankAccountNo",
+  "no kwsp": "epfNo",
+  "no. kwsp": "epfNo",
+  kwsp: "epfNo",
+  "epf no": "epfNo",
+  epf: "epfNo",
 };
 
 function normalizeRow(raw: Record<string, unknown>): BulkEmployeeRow {
@@ -45,9 +79,12 @@ const cellClass = "w-full rounded border border-border-strong px-2 py-1 text-[12
 export function ImportEmployeesFlow({
   companies,
   defaultCompanyId,
+  canImportPrivate = false,
 }: {
   companies: Company[];
   defaultCompanyId?: string;
+  /** Super Admin / Company Admin only: bank and KWSP columns are read and saved. */
+  canImportPrivate?: boolean;
 }) {
   const router = useRouter();
   const [companyId, setCompanyId] = useState(defaultCompanyId ?? companies[0]?.id ?? "");
@@ -56,6 +93,7 @@ export function ImportEmployeesFlow({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<number | null>(null);
+  const [privateSaved, setPrivateSaved] = useState(0);
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -74,7 +112,7 @@ export function ImportEmployeesFlow({
         return;
       }
 
-      setRows(raw.map(normalizeRow));
+      setRows(raw.map(normalizeRow).map((r) => (canImportPrivate ? r : { ...r, bankName: undefined, bankAccountNo: undefined, epfNo: undefined })));
     } catch {
       setError("Couldn't read that file. Make sure it's a valid .xlsx, .xls or .csv file.");
     }
@@ -98,7 +136,8 @@ export function ImportEmployeesFlow({
     setSaving(true);
     setError(null);
     try {
-      const { inserted } = await bulkImportEmployees(companyId, rows);
+      const { inserted, privateSaved: saved } = await bulkImportEmployees(companyId, rows);
+      setPrivateSaved(saved ?? 0);
       setResult(inserted);
       router.refresh();
     } catch (err) {
@@ -117,6 +156,7 @@ export function ImportEmployeesFlow({
           </svg>
         </div>
         <div className="text-lg font-bold text-text">{result} employee{result === 1 ? "" : "s"} imported</div>
+        {privateSaved > 0 && <div className="text-[13px] text-text-secondary">Bank and KWSP details saved for {privateSaved}.</div>}
         <button onClick={() => router.push("/hr")} className="mt-2 rounded-lg bg-primary px-5 py-2.5 text-[13.5px] font-semibold text-white">
           Back to Employee Database
         </button>
@@ -146,7 +186,7 @@ export function ImportEmployeesFlow({
             <line x1="9" y1="3" x2="9" y2="17" />
           </svg>
           <span className="text-[14px] font-bold text-text">Click to choose an Excel or CSV file</span>
-          <span className="text-[12.5px] text-text-muted">Columns like Full Name, Department, Position, Join Date are auto-detected</span>
+          <span className="text-[12.5px] text-text-muted">Columns like Name, IC, Mobile No, Email, Start Date, Position{canImportPrivate ? ", Bank, A/C No, KWSP" : ""} are auto-detected</span>
           <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFile} />
         </label>
       </div>
@@ -168,11 +208,16 @@ export function ImportEmployeesFlow({
         <table className="w-full border-collapse text-left">
           <thead className="sticky top-0 bg-surface-alt">
             <tr className="text-[11px] font-bold uppercase tracking-wide text-text-muted">
-              <th className="px-3 py-2">Full Name</th>
-              <th className="px-3 py-2">Department</th>
+              <th className="px-3 py-2">Name</th>
+              <th className="px-3 py-2">IC No.</th>
+              <th className="px-3 py-2">Mobile No.</th>
+              <th className="px-3 py-2">Email</th>
+              <th className="px-3 py-2">Start Date</th>
               <th className="px-3 py-2">Position</th>
-              <th className="px-3 py-2">Join Date</th>
-              <th className="px-3 py-2">Phone</th>
+              <th className="px-3 py-2">Department</th>
+              {canImportPrivate && <th className="px-3 py-2">Bank Name</th>}
+              {canImportPrivate && <th className="px-3 py-2">Bank A/C No.</th>}
+              {canImportPrivate && <th className="px-3 py-2">KWSP No.</th>}
               <th className="px-3 py-2"></th>
             </tr>
           </thead>
@@ -180,10 +225,15 @@ export function ImportEmployeesFlow({
             {rows.map((row, i) => (
               <tr key={i} className="border-t border-border">
                 <td className="px-3 py-1.5"><input className={cellClass} value={row.fullName} onChange={(e) => updateCell(i, "fullName", e.target.value)} /></td>
-                <td className="px-3 py-1.5"><input className={cellClass} value={row.department ?? ""} onChange={(e) => updateCell(i, "department", e.target.value)} /></td>
-                <td className="px-3 py-1.5"><input className={cellClass} value={row.position ?? ""} onChange={(e) => updateCell(i, "position", e.target.value)} /></td>
-                <td className="px-3 py-1.5"><input className={cellClass} value={row.joinDate ?? ""} onChange={(e) => updateCell(i, "joinDate", e.target.value)} placeholder="YYYY-MM-DD" /></td>
+                <td className="px-3 py-1.5"><input className={cellClass} value={row.icPassportNo ?? ""} onChange={(e) => updateCell(i, "icPassportNo", e.target.value)} /></td>
                 <td className="px-3 py-1.5"><input className={cellClass} value={row.phone ?? ""} onChange={(e) => updateCell(i, "phone", e.target.value)} /></td>
+                <td className="px-3 py-1.5"><input className={cellClass} value={row.email ?? ""} onChange={(e) => updateCell(i, "email", e.target.value)} /></td>
+                <td className="px-3 py-1.5"><input className={cellClass} value={row.joinDate ?? ""} onChange={(e) => updateCell(i, "joinDate", e.target.value)} placeholder="YYYY-MM-DD" /></td>
+                <td className="px-3 py-1.5"><input className={cellClass} value={row.position ?? ""} onChange={(e) => updateCell(i, "position", e.target.value)} /></td>
+                <td className="px-3 py-1.5"><input className={cellClass} value={row.department ?? ""} onChange={(e) => updateCell(i, "department", e.target.value)} /></td>
+                {canImportPrivate && <td className="px-3 py-1.5"><input className={cellClass} value={row.bankName ?? ""} onChange={(e) => updateCell(i, "bankName", e.target.value)} /></td>}
+                {canImportPrivate && <td className="px-3 py-1.5"><input className={cellClass} value={row.bankAccountNo ?? ""} onChange={(e) => updateCell(i, "bankAccountNo", e.target.value)} /></td>}
+                {canImportPrivate && <td className="px-3 py-1.5"><input className={cellClass} value={row.epfNo ?? ""} onChange={(e) => updateCell(i, "epfNo", e.target.value)} /></td>}
                 <td className="px-3 py-1.5"><button onClick={() => removeRow(i)} className="text-xs font-semibold text-danger">Remove</button></td>
               </tr>
             ))}

@@ -9,7 +9,7 @@ import { INVOICE_STATUS_LABEL, isOverdue } from "@/lib/finance/constants";
 import { formatCurrency } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow, SectionCard, StatRow } from "@/components/dashboard/SectionCard";
-import { FinanceSubNav } from "@/components/finance/FinanceSubNav";
+import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { MarkInvoicePaidAction } from "@/components/finance/MarkInvoicePaidAction";
 
 function todayIso(): string {
@@ -141,11 +141,11 @@ export default async function OutstandingPaymentPage({
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-[22px] font-extrabold text-text">Finance</h1>
+        <h1 className="text-[22px] font-extrabold text-text">Admin &amp; Finance</h1>
         <p className="mt-0.5 text-[13px] text-text-secondary">{rows.length} outstanding {view} invoice{rows.length === 1 ? "" : "s"}</p>
       </div>
 
-      <FinanceSubNav />
+      <FinanceAdminSubNav />
 
       <div className="flex gap-2">
         <Link href={`/finance/outstanding?${companyQuery}view=customer`} className={`rounded-lg px-4 py-2 text-[13px] font-bold ${view === "customer" ? "bg-primary text-white" : "border border-border-strong text-text-secondary"}`}>

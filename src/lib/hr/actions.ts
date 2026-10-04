@@ -23,7 +23,27 @@ export type EmployeeInput = {
   icPassportNo?: string;
   phone?: string;
   email?: string;
+  bankName?: string;
+  bankAccountNo?: string;
+  epfNo?: string;
 };
+
+async function savePrivateDetails(
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  employeeId: string,
+  companyId: string,
+  input: { bankName?: string; bankAccountNo?: string; epfNo?: string },
+) {
+  const { error } = await supabase.from("employee_private_details").upsert({
+    employee_id: employeeId,
+    company_id: companyId,
+    bank_name: input.bankName?.trim() || null,
+    bank_account_no: input.bankAccountNo?.trim() || null,
+    epf_no: input.epfNo?.trim() || null,
+    updated_at: new Date().toISOString(),
+  });
+  if (error) throw new Error("Only a Super Admin or Company Admin can save bank and KWSP details.");
+}
 
 export async function createEmployee(input: EmployeeInput) {
   const { supabase } = await requireUser();
@@ -46,6 +66,11 @@ export async function createEmployee(input: EmployeeInput) {
     .single();
 
   if (error) throw error;
+
+  if (input.bankName || input.bankAccountNo || input.epfNo) {
+    await savePrivateDetails(supabase, data.id, input.companyId, input);
+  }
+
   revalidatePath("/hr");
   return data;
 }
@@ -69,6 +94,12 @@ export async function updateEmployee(employeeId: string, input: Partial<Employee
     .eq("id", employeeId);
 
   if (error) throw error;
+
+  if (input.bankName !== undefined || input.bankAccountNo !== undefined || input.epfNo !== undefined) {
+    const { data: emp } = await supabase.from("employees").select("company_id").eq("id", employeeId).single();
+    if (emp) await savePrivateDetails(supabase, employeeId, emp.company_id, input);
+  }
+
   revalidatePath("/hr");
   revalidatePath(`/hr/${employeeId}`);
 }
@@ -83,6 +114,9 @@ export type BulkEmployeeRow = {
   icPassportNo?: string;
   phone?: string;
   email?: string;
+  bankName?: string;
+  bankAccountNo?: string;
+  epfNo?: string;
 };
 
 export async function bulkImportEmployees(companyId: string, rows: BulkEmployeeRow[]) {
@@ -103,13 +137,31 @@ export async function bulkImportEmployees(companyId: string, rows: BulkEmployeeR
       email: r.email || null,
     }));
 
-  if (payload.length === 0) return { inserted: 0 };
+  if (payload.length === 0) return { inserted: 0, privateSaved: 0, privateSkipped: 0 };
 
-  const { error, count } = await supabase.from("employees").insert(payload, { count: "exact" });
+  const { data: created, error } = await supabase.from("employees").insert(payload).select("id");
   if (error) throw error;
 
+  // Bank / KWSP columns only apply for admins; the rows come back in the same order they were inserted.
+  const valid = rows.filter((r) => r.fullName?.trim());
+  const privateRows = (created ?? [])
+    .map((emp, i) => ({ emp, r: valid[i] }))
+    .filter(({ r }) => r && (r.bankName || r.bankAccountNo || r.epfNo))
+    .map(({ emp, r }) => ({
+      employee_id: emp.id,
+      company_id: companyId,
+      bank_name: r.bankName?.trim() || null,
+      bank_account_no: r.bankAccountNo?.trim() || null,
+      epf_no: r.epfNo?.trim() || null,
+    }));
+  let privateSaved = 0;
+  if (privateRows.length > 0) {
+    const { error: privateError } = await supabase.from("employee_private_details").insert(privateRows);
+    if (!privateError) privateSaved = privateRows.length;
+  }
+
   revalidatePath("/hr");
-  return { inserted: count ?? payload.length };
+  return { inserted: created?.length ?? payload.length, privateSaved, privateSkipped: privateRows.length - privateSaved };
 }
 
 export type CertificateInput = {
@@ -119,7 +171,7 @@ export type CertificateInput = {
   certName: string;
   certNumber?: string;
   issuedDate?: string;
-  expiryDate: string;
+  expiryDate?: string;
   documentId?: string;
 };
 
@@ -135,7 +187,7 @@ export async function createCertificate(input: CertificateInput) {
       cert_name: input.certName,
       cert_number: input.certNumber || null,
       issued_date: input.issuedDate || null,
-      expiry_date: input.expiryDate,
+      expiry_date: input.expiryDate || null,
       document_id: input.documentId || null,
     })
     .select("id")
@@ -169,6 +221,7 @@ export type LeaveInput = {
   endDate: string;
   days: number;
   reason?: string;
+  documentId?: string;
 };
 
 export async function requestLeave(input: LeaveInput) {
@@ -184,12 +237,20 @@ export async function requestLeave(input: LeaveInput) {
       end_date: input.endDate,
       days: input.days,
       reason: input.reason || null,
+      document_id: input.documentId || null,
       status: "pending",
       created_by: userId,
     })
     .select("id")
     .single();
   if (leaveError) throw leaveError;
+
+  if (input.documentId) {
+    await supabase
+      .from("documents")
+      .update({ extraction_status: "confirmed", related_table: "leave_requests", related_id: leave.id, reviewed_by: userId, reviewed_at: new Date().toISOString() })
+      .eq("id", input.documentId);
+  }
 
   const { data: approval, error: approvalError } = await supabase
     .from("approvals")
@@ -342,4 +403,62 @@ export async function markPayrollPaid(payrollId: string) {
   const { error } = await supabase.from("payroll_records").update({ status: "paid" }).eq("id", payrollId);
   if (error) throw error;
   revalidatePath("/hr/payroll");
+}
+
+export type CompanyDocumentInput = {
+  companyId: string;
+  docType: string;
+  title: string;
+  referenceNumber?: string;
+  issuedDate?: string;
+  expiryDate?: string;
+  notes?: string;
+  documentId?: string;
+};
+
+/** Company-level licences and agreements (MBJB, Halal, tenancy) — separate from per-employee documents. */
+export async function createCompanyDocument(input: CompanyDocumentInput) {
+  const { supabase, userId } = await requireUser();
+
+  const { data, error } = await supabase
+    .from("company_documents")
+    .insert({
+      company_id: input.companyId,
+      doc_type: input.docType,
+      title: input.title,
+      reference_number: input.referenceNumber || null,
+      issued_date: input.issuedDate || null,
+      expiry_date: input.expiryDate || null,
+      notes: input.notes || null,
+      document_id: input.documentId || null,
+      created_by: userId,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+
+  if (input.documentId) {
+    await supabase
+      .from("documents")
+      .update({
+        extraction_status: "confirmed",
+        related_table: "company_documents",
+        related_id: data.id,
+        reviewed_by: userId,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq("id", input.documentId);
+  }
+
+  revalidatePath("/hr/documents");
+  revalidatePath("/");
+  return data;
+}
+
+export async function deleteCompanyDocument(id: string) {
+  const { supabase } = await requireUser();
+  const { error } = await supabase.from("company_documents").delete().eq("id", id);
+  if (error) throw error;
+  revalidatePath("/hr/documents");
+  revalidatePath("/");
 }

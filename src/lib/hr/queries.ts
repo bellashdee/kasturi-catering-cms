@@ -109,3 +109,14 @@ export async function listAttendanceForEmployee(supabase: DB, employeeId: string
   if (error) throw error;
   return data;
 }
+
+/** Returns null for anyone who isn't a Super Admin / Company Admin — the database hides the row from them. */
+export async function getEmployeePrivateDetails(supabase: DB, employeeId: string) {
+  const { data, error } = await supabase
+    .from("employee_private_details")
+    .select("bank_name, bank_account_no, epf_no")
+    .eq("employee_id", employeeId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}

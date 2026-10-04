@@ -15,7 +15,7 @@ import { formatCurrency } from "@/lib/format";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { StatusBadge } from "@/components/StatusBadge";
-import { FinanceSubNav } from "@/components/finance/FinanceSubNav";
+import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { PettyCashForm } from "@/components/finance/PettyCashForm";
 import { PettyCashPaymentAction } from "@/components/finance/PettyCashPaymentAction";
 
@@ -53,11 +53,11 @@ export default async function PettyCashPage({
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-[22px] font-extrabold text-text">Finance</h1>
+        <h1 className="text-[22px] font-extrabold text-text">Admin &amp; Finance</h1>
         <p className="mt-0.5 text-[13px] text-text-secondary">Petty Cash</p>
       </div>
 
-      <FinanceSubNav />
+      <FinanceAdminSubNav />
 
       {overdueClaims.length > 0 && (
         <div className="flex items-center gap-3 rounded-xl border border-danger/30 bg-danger-bg px-4 py-3">

@@ -154,6 +154,27 @@ export async function recordStockMovement(input: {
   revalidatePath("/kitchen/ingredients");
 }
 
+/**
+ * Duplicate check for invoice-driven stock entries: stock movements saved from
+ * an uploaded invoice carry "Invoice <number>" in their notes, so the same
+ * invoice number already recorded for this company and direction is a likely
+ * double upload.
+ */
+export async function findDuplicateStockInvoice(input: { companyId: string; invoiceNumber: string; movementType: "in" | "out" }) {
+  const { supabase } = await requireUser();
+  const invoiceNumber = input.invoiceNumber.trim();
+  if (!invoiceNumber) return false;
+  const { data, error } = await supabase
+    .from("stock_movements")
+    .select("id")
+    .eq("company_id", input.companyId)
+    .eq("movement_type", input.movementType)
+    .ilike("notes", `%Invoice ${invoiceNumber.replace(/[%_]/g, "")}%`)
+    .limit(1);
+  if (error) throw error;
+  return (data ?? []).length > 0;
+}
+
 export type MenuInput = {
   companyId: string;
   name: string;

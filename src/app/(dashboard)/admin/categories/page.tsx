@@ -4,7 +4,7 @@ import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listCostCategories } from "@/lib/finance/queries";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
-import { AdminSubNav } from "@/components/finance/AdminSubNav";
+import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { CostCategoryForm } from "@/components/finance/CostCategoryForm";
 
 export default async function CostCategoriesPage({
@@ -33,11 +33,11 @@ export default async function CostCategoriesPage({
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-[22px] font-extrabold text-text">Admin</h1>
+        <h1 className="text-[22px] font-extrabold text-text">Admin &amp; Finance</h1>
         <p className="mt-0.5 text-[13px] text-text-secondary">Cost Categories — used across Company Expenses and Budgets</p>
       </div>
 
-      <AdminSubNav />
+      <FinanceAdminSubNav />
 
       <CostCategoryForm companies={selectable} defaultCompanyId={defaultCompanyId} />
 

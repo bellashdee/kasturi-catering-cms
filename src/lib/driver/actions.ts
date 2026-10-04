@@ -29,7 +29,7 @@ export type DriverInput = {
 /**
  * Drivers are HR employees — if this person already exists in HR, this just
  * adds the driver-specific extras. If not, it creates a minimal employee row
- * first (position "Driver") so HR and Driver & Logistics share one record.
+ * first (position "Driver") so HR and Operation Management share one record.
  */
 export async function createDriver(input: DriverInput) {
   const { supabase } = await requireUser();

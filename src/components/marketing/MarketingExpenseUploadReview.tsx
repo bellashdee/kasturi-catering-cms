@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { uploadDocument } from "@/lib/documents/upload";
+import { uploadDocument, fileTypeFromMime, DOCUMENT_FILE_ACCEPT } from "@/lib/documents/upload";
 import { createMarketingExpense } from "@/lib/marketing/actions";
 
 type Tab = "manual" | "pdf" | "photo";
@@ -62,7 +62,7 @@ export function MarketingExpenseUploadReview({
     setUploading(true);
     setError(null);
     try {
-      const doc = await uploadDocument({ companyId, module: "marketing", fileType: tab === "pdf" ? "pdf" : "photo", file });
+      const doc = await uploadDocument({ companyId, module: "marketing", fileType: fileTypeFromMime(file), file });
       setDocumentId(doc.id);
 
       const res = await fetch("/api/extract-document", {
@@ -132,7 +132,7 @@ export function MarketingExpenseUploadReview({
               tab === t ? "border-primary text-primary" : "border-transparent text-text-secondary"
             }`}
           >
-            {t === "manual" ? "Manual Entry" : t === "pdf" ? "Upload PDF" : "Photo / Screenshot"}
+            {t === "manual" ? "Manual Entry" : t === "pdf" ? "Upload File (PDF / Excel / CSV)" : "Photo / Screenshot"}
           </button>
         ))}
       </div>
@@ -168,7 +168,7 @@ export function MarketingExpenseUploadReview({
               </span>
               <input
                 type="file"
-                accept={tab === "pdf" ? "application/pdf" : "image/*"}
+                accept={tab === "pdf" ? DOCUMENT_FILE_ACCEPT : "image/*"}
                 className="hidden"
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               />

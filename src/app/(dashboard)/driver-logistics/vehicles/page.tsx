@@ -42,7 +42,7 @@ export default async function VehiclesPage({
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[22px] font-extrabold text-text">Driver & Logistics</h1>
+          <h1 className="text-[22px] font-extrabold text-text">Operation Management</h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">{vehicles.length} vehicle{vehicles.length === 1 ? "" : "s"}</p>
         </div>
         <div className="flex gap-2.5">

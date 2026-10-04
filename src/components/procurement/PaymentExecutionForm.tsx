@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { uploadDocument } from "@/lib/documents/upload";
+import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/documents/upload";
 import { recordPaymentExecution } from "@/lib/procurement/actions";
 
 function todayIso(): string {
@@ -25,7 +25,7 @@ export function PaymentExecutionForm({ paymentId, companyId }: { paymentId: stri
     try {
       let receiptDocumentId: string | undefined;
       if (receipt) {
-        const doc = await uploadDocument({ companyId, module: "supplier-procurement", fileType: receipt.type === "application/pdf" ? "pdf" : "photo", file: receipt });
+        const doc = await uploadDocument({ companyId, module: "supplier-procurement", fileType: fileTypeFromMime(receipt), file: receipt });
         receiptDocumentId = doc.id;
       }
       await recordPaymentExecution(paymentId, {
@@ -67,7 +67,7 @@ export function PaymentExecutionForm({ paymentId, companyId }: { paymentId: stri
       </div>
       <div>
         <label className="text-[12px] font-semibold text-text-secondary">Receipt (optional)</label>
-        <input type="file" accept="application/pdf,image/*" onChange={(e) => setReceipt(e.target.files?.[0] ?? null)} className="mt-1 block w-full text-[13px]" />
+        <input type="file" accept={ANY_UPLOAD_ACCEPT} onChange={(e) => setReceipt(e.target.files?.[0] ?? null)} className="mt-1 block w-full text-[13px]" />
       </div>
       <div className="flex justify-end">
         <button type="submit" disabled={saving} className="rounded-lg bg-primary px-5 py-2 text-[13px] font-bold text-white disabled:opacity-60">

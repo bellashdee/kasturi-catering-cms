@@ -43,9 +43,9 @@ git checkout -b chore/finance-update-labels
 | Marketing | Marketing developer | `src/app/(dashboard)/marketing/`, `src/lib/marketing/`, `src/components/marketing/` |
 | Catering | Catering developer | `src/app/(dashboard)/catering/`, `src/lib/catering/`, `src/components/catering/` |
 | Kitchen | Kitchen developer | `src/app/(dashboard)/kitchen/`, `src/lib/kitchen/`, `src/components/kitchen/` |
-| Driver & Logistics | Logistics developer | `src/app/(dashboard)/driver-logistics/`, `src/lib/driver/`, `src/components/driver/` |
+| Operation Management | Logistics developer | `src/app/(dashboard)/driver-logistics/`, `src/lib/driver/`, `src/components/driver/` |
 | Supplier & Procurement | Procurement developer | `src/app/(dashboard)/supplier-procurement/`, `src/lib/procurement/`, `src/components/procurement/` |
-| Finance & Admin | Finance developer | `src/app/(dashboard)/finance-admin/`, `src/lib/finance/`, `src/components/finance/` |
+| Admin & Finance | Finance developer | `src/app/(dashboard)/finance/`, `src/app/(dashboard)/admin/`, `src/lib/finance/`, `src/components/finance/` |
 | Reports | Main developer (shared) | `src/app/(dashboard)/reports/`, `src/lib/reports/`, `src/components/reports/` |
 
 **Do not edit another module's folder directly.** If your feature genuinely needs a

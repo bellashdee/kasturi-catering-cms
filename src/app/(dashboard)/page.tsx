@@ -157,7 +157,8 @@ export default async function DashboardPage({
 
         <SectionCard title="HR">
           <StatRow label="Active staff" value={data.hr.staffCount} />
-          <StatRow label="Certificates expiring (30 days)" value={data.hr.expiringCertificates.length} />
+          <StatRow label="Staff documents expired / expiring (30 days)" value={data.hr.expiringCertificates.length} />
+          <StatRow label="Licences & agreements expired / expiring (30 days)" value={data.hr.expiringCompanyDocs.length} />
         </SectionCard>
 
         <SectionCard title="Marketing">

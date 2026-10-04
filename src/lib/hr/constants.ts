@@ -15,6 +15,19 @@ export const CERT_TYPE_LABEL: Record<string, string> = {
   typhoid: "Typhoid Certificate",
   work_permit: "Work Permit",
   training: "Training",
+  medical_certificate: "Medical Certificate (MC)",
+  confirmation_letter: "Confirmation Letter",
+  loa: "Letter of Appointment (LOA)",
+  other: "Other",
+};
+
+/** Employee document types that never expire, so no expiry date is asked for. */
+export const NO_EXPIRY_CERT_TYPES = ["confirmation_letter", "loa"];
+
+export const COMPANY_DOC_TYPE_LABEL: Record<string, string> = {
+  mbjb_licence: "MBJB Licence",
+  halal_licence: "Halal Licence",
+  tenancy_agreement: "Tenancy Agreement",
   other: "Other",
 };
 
@@ -44,8 +57,9 @@ export const PAYROLL_STATUS_LABEL: Record<string, string> = {
   paid: "Paid",
 };
 
-/** Certificate expiry thresholds, in days, used for the badge shown next to each cert. */
-export function certificateUrgency(expiryDate: string): "expired" | "expiring_soon" | "valid" {
+/** Expiry thresholds, in days, used for the badge shown next to each certificate / licence. */
+export function certificateUrgency(expiryDate: string | null): "expired" | "expiring_soon" | "valid" | "no_expiry" {
+  if (!expiryDate) return "no_expiry";
   const today = new Date().toISOString().slice(0, 10);
   const soon = new Date();
   soon.setDate(soon.getDate() + 30);
@@ -54,4 +68,9 @@ export function certificateUrgency(expiryDate: string): "expired" | "expiring_so
   if (expiryDate < today) return "expired";
   if (expiryDate <= soonIso) return "expiring_soon";
   return "valid";
+}
+
+/** Bank account and KWSP numbers are only visible to / editable by these roles (also enforced by the database). */
+export function canManageStaffPrivateDetails(role: string): boolean {
+  return role === "super_admin" || role === "company_admin";
 }

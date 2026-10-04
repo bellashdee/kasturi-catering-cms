@@ -8,7 +8,7 @@ import { INVOICE_STATUS_LABEL, isOverdue } from "@/lib/finance/constants";
 import { formatCurrency } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow, SectionCard, StatRow } from "@/components/dashboard/SectionCard";
-import { FinanceSubNav } from "@/components/finance/FinanceSubNav";
+import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 
 function statusTone(status: string, overdue: boolean): "success" | "warning" | "danger" {
   if (status === "paid") return "success";
@@ -45,7 +45,7 @@ export default async function CustomerInvoicesPage({
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[22px] font-extrabold text-text">Finance</h1>
+          <h1 className="text-[22px] font-extrabold text-text">Admin &amp; Finance</h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">{invoices.length} customer invoice{invoices.length === 1 ? "" : "s"}</p>
         </div>
         <Link href={`/finance/invoices/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
@@ -53,7 +53,7 @@ export default async function CustomerInvoicesPage({
         </Link>
       </div>
 
-      <FinanceSubNav />
+      <FinanceAdminSubNav />
 
       <SectionCard title="Customer Outstanding">
         <StatRow label="Total outstanding" value={formatCurrency(totalOutstanding)} />

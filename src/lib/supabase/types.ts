@@ -464,6 +464,70 @@ export type Database = {
         }
         Relationships: []
       }
+      company_documents: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          doc_type: string
+          document_id: string | null
+          expiry_date: string | null
+          id: string
+          issued_date: string | null
+          notes: string | null
+          reference_number: string | null
+          title: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          doc_type: string
+          document_id?: string | null
+          expiry_date?: string | null
+          id?: string
+          issued_date?: string | null
+          notes?: string | null
+          reference_number?: string | null
+          title: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          doc_type?: string
+          document_id?: string | null
+          expiry_date?: string | null
+          id?: string
+          issued_date?: string | null
+          notes?: string | null
+          reference_number?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_documents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_documents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_documents_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       content_items: {
         Row: {
           campaign_id: string | null
@@ -1166,7 +1230,7 @@ export type Database = {
           created_at: string
           document_id: string | null
           employee_id: string
-          expiry_date: string
+          expiry_date: string | null
           id: string
           issued_date: string | null
         }
@@ -1178,7 +1242,7 @@ export type Database = {
           created_at?: string
           document_id?: string | null
           employee_id: string
-          expiry_date: string
+          expiry_date?: string | null
           id?: string
           issued_date?: string | null
         }
@@ -1190,7 +1254,7 @@ export type Database = {
           created_at?: string
           document_id?: string | null
           employee_id?: string
-          expiry_date?: string
+          expiry_date?: string | null
           id?: string
           issued_date?: string | null
         }
@@ -1213,6 +1277,48 @@ export type Database = {
             foreignKeyName: "employee_certificates_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_private_details: {
+        Row: {
+          bank_account_no: string | null
+          bank_name: string | null
+          company_id: string
+          employee_id: string
+          epf_no: string | null
+          updated_at: string
+        }
+        Insert: {
+          bank_account_no?: string | null
+          bank_name?: string | null
+          company_id: string
+          employee_id: string
+          epf_no?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bank_account_no?: string | null
+          bank_name?: string | null
+          company_id?: string
+          employee_id?: string
+          epf_no?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_private_details_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_private_details_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
@@ -1663,6 +1769,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           days: number
+          document_id: string | null
           employee_id: string
           end_date: string
           id: string
@@ -1677,6 +1784,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           days: number
+          document_id?: string | null
           employee_id: string
           end_date: string
           id?: string
@@ -1691,6 +1799,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           days?: number
+          document_id?: string | null
           employee_id?: string
           end_date?: string
           id?: string
@@ -1719,6 +1828,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
             referencedColumns: ["id"]
           },
           {
@@ -3550,6 +3666,10 @@ export type Database = {
     Functions: {
       current_user_is_super_admin: { Args: never; Returns: boolean }
       user_has_company_access: {
+        Args: { target_company_id: string }
+        Returns: boolean
+      }
+      user_is_company_admin: {
         Args: { target_company_id: string }
         Returns: boolean
       }

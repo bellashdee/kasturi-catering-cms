@@ -9,7 +9,7 @@ import { PROOF_TYPE_LABEL } from "@/lib/taskProofs/constants";
 /**
  * Generic "Proof of Work" upload widget — pass any module's own table/row id
  * and it attaches one or more files as proof, with an audit-logged trail.
- * Built for Driver & Logistics deliveries; designed to be reused as-is by
+ * Built for Operation Management deliveries; designed to be reused as-is by
  * Kitchen, Catering, Maintenance, or any other operational module later.
  */
 export function TaskProofUpload({

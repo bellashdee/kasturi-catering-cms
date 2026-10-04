@@ -1,18 +1,28 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import * as XLSX from "xlsx";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
 const EXTRACTION_PROMPTS: Record<string, string> = {
-  employee_certificate: `You are reading a staff certificate or work permit (food handling certificate, typhoid certificate, work permit, or training certificate). Extract the following fields from the image/document and respond with ONLY a JSON object, no other text:
+  employee_certificate: `You are reading a staff document: a food handling certificate, typhoid certificate, work permit, training certificate, medical certificate (MC), confirmation letter, or letter of appointment/offer (LOA). Extract the following fields from the image/document and respond with ONLY a JSON object, no other text:
 {
-  "cert_type": one of "food_handling" | "typhoid" | "work_permit" | "training" | "other",
-  "cert_name": the certificate's title as printed,
+  "cert_type": one of "food_handling" | "typhoid" | "work_permit" | "training" | "medical_certificate" | "confirmation_letter" | "loa" | "other",
+  "cert_name": the document's title as printed,
   "cert_number": the certificate/reference number if visible, else null,
-  "issued_date": ISO date (YYYY-MM-DD) if visible, else null,
-  "expiry_date": ISO date (YYYY-MM-DD) if visible, else null,
-  "holder_name": the certificate holder's name as printed, else null
+  "issued_date": ISO date (YYYY-MM-DD) if visible (for an MC use its first day of leave), else null,
+  "expiry_date": ISO date (YYYY-MM-DD) if visible (for an MC use its last day of leave; confirmation letters and LOAs have none), else null,
+  "holder_name": the person's name as printed, else null
+}
+If a field is not visible or you are not confident, use null for it rather than guessing.`,
+  company_document: `You are reading a company licence or agreement: an MBJB (Majlis Bandaraya Johor Bahru) business licence, a Halal certificate/licence, a tenancy agreement, or a similar document. Extract the following fields and respond with ONLY a JSON object, no other text:
+{
+  "doc_type": one of "mbjb_licence" | "halal_licence" | "tenancy_agreement" | "other",
+  "title": the document's title or the premises/business it covers, as printed,
+  "reference_number": the licence/certificate/agreement number if visible, else null,
+  "issued_date": ISO date (YYYY-MM-DD) the licence starts or the agreement is dated, if visible, else null,
+  "expiry_date": ISO date (YYYY-MM-DD) the licence expires or the tenancy ends, if visible, else null
 }
 If a field is not visible or you are not confident, use null for it rather than guessing.`,
   marketing_expense: `You are reading a receipt or invoice for a marketing expense (ad spend, printing, event cost, influencer payment, etc). Extract the following fields and respond with ONLY a JSON object, no other text:
@@ -40,9 +50,21 @@ If a field is not visible or you are not confident, use null for it rather than 
   ]
 }
 List every distinct item you can identify. If a quantity is not legible, omit that item rather than guessing.`,
-  purchase_receipt: `You are reading a supplier delivery order or purchase receipt for kitchen ingredients. Extract every line item and respond with ONLY a JSON object, no other text:
+  customer_event_invoice: `You are reading an invoice or order sheet issued to a customer for a catering event. Stock will be deducted for what was supplied, so list every line item (a food item, dish, ingredient or supply, whatever is written) with its quantity. Respond with ONLY a JSON object, no other text:
+{
+  "customer_name": the customer's name as printed, else null,
+  "event_name": the event name or description if shown, else null,
+  "invoice_number": the invoice number as printed, else null,
+  "invoice_date": ISO date (YYYY-MM-DD) if visible, else null,
+  "items": [
+    { "ingredient_name": "the item exactly as written", "quantity": a plain number, "unit": "kg" | "g" | "l" | "ml" | "pcs" | "pack" | "other" | null }
+  ]
+}
+List every distinct line item. If a quantity is not legible, omit that item rather than guessing.`,
+  purchase_receipt: `You are reading a supplier invoice, delivery order or purchase receipt for kitchen ingredients. Extract every line item and respond with ONLY a JSON object, no other text:
 {
   "supplier_name": the supplier's name as printed, else null,
+  "invoice_number": the invoice or delivery order number as printed, else null,
   "receipt_date": ISO date (YYYY-MM-DD) if visible, else null,
   "items": [
     { "ingredient_name": "as written on the receipt", "quantity": a plain number, "unit": "kg" | "g" | "l" | "ml" | "pcs" | "pack" | "other" | null, "unit_price": a plain number if visible, else null }
@@ -97,6 +119,14 @@ If a field is not visible or you are not confident, use null for it rather than 
 If a field is not visible or you are not confident, use null for it rather than guessing.`,
 };
 
+/** Excel/CSV can't be shown to the model as an image, so flatten every sheet to CSV text (capped so a huge file can't blow the request). */
+function spreadsheetToText(buffer: ArrayBuffer): string {
+  const wb = XLSX.read(buffer, { type: "array" });
+  const parts = wb.SheetNames.map((name) => `--- Sheet: ${name} ---\n${XLSX.utils.sheet_to_csv(wb.Sheets[name], { blankrows: false })}`);
+  const text = parts.join("\n\n");
+  return text.length > 60000 ? `${text.slice(0, 60000)}\n[truncated]` : text;
+}
+
 function mimeTypeFor(filename: string, fallback: "pdf" | "photo" | "screenshot"): string {
   const ext = filename.split(".").pop()?.toLowerCase();
   if (fallback === "pdf" || ext === "pdf") return "application/pdf";
@@ -127,11 +157,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Document not found" }, { status: 404 });
   }
 
-  if (doc.file_type !== "pdf" && doc.file_type !== "photo" && doc.file_type !== "screenshot") {
-    return NextResponse.json(
-      { error: "This document type doesn't use AI extraction — read the file directly instead." },
-      { status: 400 },
-    );
+  const isSpreadsheet = doc.file_type === "excel" || doc.file_type === "csv";
+  if (!isSpreadsheet && doc.file_type !== "pdf" && doc.file_type !== "photo" && doc.file_type !== "screenshot") {
+    return NextResponse.json({ error: "This file type isn't supported for reading." }, { status: 400 });
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -163,8 +191,9 @@ export async function POST(request: Request) {
   try {
     const anthropic = new Anthropic({ apiKey });
 
-    const fileContentBlock =
-      mediaType === "application/pdf"
+    const fileContentBlock = isSpreadsheet
+      ? ({ type: "text", text: `The uploaded file is a spreadsheet. Its contents, sheet by sheet, as CSV:\n\n${spreadsheetToText(arrayBuffer)}` } as const)
+      : mediaType === "application/pdf"
         ? ({
             type: "document",
             source: { type: "base64", media_type: "application/pdf", data: base64Data },
@@ -179,7 +208,7 @@ export async function POST(request: Request) {
           } as const);
 
     const response = await anthropic.messages.create({
-      model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5",
+      model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5",
       max_tokens: 1024,
       messages: [
         {

@@ -82,7 +82,7 @@ export async function updateEvent(eventId: string, input: Partial<EventInput>) {
 
 /**
  * The Catering -> Kitchen and Catering -> Driver connection: confirming an
- * event gives Kitchen a production order and Driver & Logistics a delivery
+ * event gives Kitchen a production order and Operation Management a delivery
  * record to work from, automatically. Both modules just read tables that
  * already exist — no extra plumbing needed once they get their own UI.
  */
@@ -189,7 +189,7 @@ export async function createQuotation(input: QuotationInput) {
 
 /**
  * The Catering -> Finance connection: accepting a quotation creates the
- * customer invoice Finance & Admin (and the dashboard's Customer
+ * customer invoice Admin & Finance (and the dashboard's Customer
  * Outstanding / Revenue figures) already reads from.
  */
 export async function updateQuotationStatus(quotationId: string, status: string) {

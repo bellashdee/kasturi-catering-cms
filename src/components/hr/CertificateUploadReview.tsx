@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { uploadDocument } from "@/lib/documents/upload";
+import { uploadDocument, fileTypeFromMime, DOCUMENT_FILE_ACCEPT } from "@/lib/documents/upload";
 import { createCertificate } from "@/lib/hr/actions";
+import { CERT_TYPE_LABEL, NO_EXPIRY_CERT_TYPES } from "@/lib/hr/constants";
 
 type Tab = "manual" | "pdf" | "photo";
 
@@ -15,6 +16,10 @@ type ExtractedCertificate = {
   expiry_date?: string;
   holder_name?: string;
 };
+
+function needsExpiryValue(form: { certType: string; expiryDate: string }) {
+  return !NO_EXPIRY_CERT_TYPES.includes(form.certType) && !!form.expiryDate;
+}
 
 const inputClass =
   "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
@@ -57,7 +62,7 @@ export function CertificateUploadReview({ employeeId, companyId }: { employeeId:
       const doc = await uploadDocument({
         companyId,
         module: "hr",
-        fileType: tab === "pdf" ? "pdf" : "photo",
+        fileType: fileTypeFromMime(file),
         file,
       });
       setDocumentId(doc.id);
@@ -76,7 +81,7 @@ export function CertificateUploadReview({ employeeId, companyId }: { employeeId:
       } else {
         const extracted: ExtractedCertificate = result.extracted ?? {};
         setForm({
-          certType: extracted.cert_type && ["food_handling", "typhoid", "work_permit", "training"].includes(extracted.cert_type)
+          certType: extracted.cert_type && Object.keys(CERT_TYPE_LABEL).includes(extracted.cert_type)
             ? extracted.cert_type
             : "other",
           certName: extracted.cert_name ?? "",
@@ -95,8 +100,9 @@ export function CertificateUploadReview({ employeeId, companyId }: { employeeId:
   }
 
   async function handleConfirm() {
-    if (!form.certName || !form.expiryDate) {
-      setError("Certificate name and expiry date are required.");
+    const needsExpiry = !NO_EXPIRY_CERT_TYPES.includes(form.certType);
+    if (!form.certName || (needsExpiry && !form.expiryDate)) {
+      setError(needsExpiry ? "Document name and expiry date are required." : "Document name is required.");
       return;
     }
     setSaving(true);
@@ -109,7 +115,7 @@ export function CertificateUploadReview({ employeeId, companyId }: { employeeId:
         certName: form.certName,
         certNumber: form.certNumber || undefined,
         issuedDate: form.issuedDate || undefined,
-        expiryDate: form.expiryDate,
+        expiryDate: needsExpiryValue(form) ? form.expiryDate : undefined,
         documentId: documentId || undefined,
       });
       router.push(`/hr/${employeeId}`);
@@ -131,7 +137,7 @@ export function CertificateUploadReview({ employeeId, companyId }: { employeeId:
               tab === t ? "border-primary text-primary" : "border-transparent text-text-secondary"
             }`}
           >
-            {t === "manual" ? "Manual Entry" : t === "pdf" ? "Upload PDF" : "Photo / Screenshot"}
+            {t === "manual" ? "Manual Entry" : t === "pdf" ? "Upload File (PDF / Excel / CSV)" : "Photo / Screenshot"}
           </button>
         ))}
       </div>
@@ -145,12 +151,12 @@ export function CertificateUploadReview({ employeeId, companyId }: { employeeId:
                 <path d="M12 11v6M9.5 13.5L12 11l2.5 2.5" />
               </svg>
               <span className="text-[14px] font-bold text-text">
-                {file ? file.name : `Click to choose a ${tab === "pdf" ? "PDF" : "photo or screenshot"}`}
+                {file ? file.name : `Click to choose ${tab === "pdf" ? "a file (PDF, Excel or CSV)" : "a photo or screenshot"}`}
               </span>
               <span className="text-[12px] text-text-muted">Claude reads the document and pre-fills the form below</span>
               <input
                 type="file"
-                accept={tab === "pdf" ? "application/pdf" : "image/*"}
+                accept={tab === "pdf" ? DOCUMENT_FILE_ACCEPT : "image/*"}
                 className="hidden"
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               />
@@ -187,15 +193,13 @@ export function CertificateUploadReview({ employeeId, companyId }: { employeeId:
                   onChange={(e) => setForm((f) => ({ ...f, certType: e.target.value }))}
                   className={inputClass}
                 >
-                  <option value="food_handling">Food Handling Certificate</option>
-                  <option value="typhoid">Typhoid Certificate</option>
-                  <option value="work_permit">Work Permit</option>
-                  <option value="training">Training</option>
-                  <option value="other">Other</option>
+                  {Object.entries(CERT_TYPE_LABEL).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
                 </select>
               </div>
               <div>
-                <label className={labelClass}>Certificate Name *</label>
+                <label className={labelClass}>Document Name *</label>
                 <input
                   value={form.certName}
                   onChange={(e) => setForm((f) => ({ ...f, certName: e.target.value }))}
@@ -224,10 +228,11 @@ export function CertificateUploadReview({ employeeId, companyId }: { employeeId:
                 />
               </div>
               <div>
-                <label className={labelClass}>Expiry Date *</label>
+                <label className={labelClass}>{NO_EXPIRY_CERT_TYPES.includes(form.certType) ? "Expiry Date (not needed)" : form.certType === "medical_certificate" ? "MC End Date *" : "Expiry Date *"}</label>
                 <input
                   type="date"
                   value={form.expiryDate}
+                  disabled={NO_EXPIRY_CERT_TYPES.includes(form.certType)}
                   onChange={(e) => setForm((f) => ({ ...f, expiryDate: e.target.value }))}
                   className={inputClass}
                 />
