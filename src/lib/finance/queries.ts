@@ -256,3 +256,21 @@ export async function getCustomerInvoice(supabase: DB, id: string) {
   if (error) throw error;
   return data;
 }
+
+/**
+ * Total sales for the month. Uses the monthly sales figures recorded for the selected companies;
+ * when none is recorded, falls back to customer payments received that month.
+ */
+export async function getMonthlySales(supabase: DB, companyIds: string[], year: number, month: number) {
+  const { data } = await supabase
+    .from("monthly_sales")
+    .select("company_id, sales_amount")
+    .in("company_id", companyIds)
+    .eq("year", year)
+    .eq("month", month);
+  const recorded = data ?? [];
+  if (recorded.length > 0) {
+    return { amount: recorded.reduce((t, r) => t + Number(r.sales_amount), 0), recorded: true };
+  }
+  return { amount: await getMonthlyRevenue(supabase, companyIds, year, month), recorded: false };
+}

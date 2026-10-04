@@ -2,11 +2,12 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
-import { getMonthlyCostBreakdown, getMonthlyRevenue, listCostCategories } from "@/lib/finance/queries";
+import { getMonthlyCostBreakdown, getMonthlySales, listCostCategories } from "@/lib/finance/queries";
 import { MONTH_LABEL } from "@/lib/finance/constants";
 import { formatCurrency } from "@/lib/format";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
+import { MonthlySalesForm } from "@/components/finance/MonthlySalesForm";
 
 function currentYearMonth() {
   const now = new Date();
@@ -36,9 +37,9 @@ export default async function AdminPage({
   const year = Number(yearParam) || nowYear;
   const month = Number(monthParam) || nowMonth;
 
-  const [allRows, revenue, categories] = await Promise.all([
+  const [allRows, sales, categories] = await Promise.all([
     getMonthlyCostBreakdown(supabase, targetCompanyIds, year, month),
-    getMonthlyRevenue(supabase, targetCompanyIds, year, month),
+    getMonthlySales(supabase, targetCompanyIds, year, month),
     listCostCategories(supabase, targetCompanyIds),
   ]);
 
@@ -50,7 +51,11 @@ export default async function AdminPage({
   });
 
   const totalCost = rows.reduce((t, r) => t + r.amount, 0);
+  const revenue = sales.amount;
   const net = revenue - totalCost;
+  const pct = (value: number) => (revenue > 0 ? `${((value / revenue) * 100).toFixed(2)}%` : "—");
+  const profitPct = revenue > 0 ? (net / revenue) * 100 : null;
+  const singleCompanyId = targetCompanyIds.length === 1 ? targetCompanyIds[0] : null;
 
   const bySource = new Map<string, number>();
   const byCategory = new Map<string, { source: string; amount: number }>();
@@ -102,18 +107,40 @@ export default async function AdminPage({
         <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply Filters</button>
       </form>
 
-      <div className="grid grid-cols-3 gap-4">
+      {singleCompanyId && (
+        <MonthlySalesForm
+          key={`${singleCompanyId}-${year}-${month}`}
+          companyId={singleCompanyId}
+          year={year}
+          month={month}
+          monthLabel={MONTH_LABEL[month - 1]}
+          currentAmount={sales.recorded ? revenue : null}
+        />
+      )}
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
-          <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Revenue</div>
+          <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Sales</div>
           <div className="mt-1 text-xl font-extrabold text-text">{formatCurrency(revenue)}</div>
+          {!sales.recorded && <div className="mt-0.5 text-[11px] text-text-muted">From payments received (no monthly sales entered)</div>}
         </div>
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
           <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Monthly Costing</div>
           <div className="mt-1 text-xl font-extrabold text-text">{formatCurrency(totalCost)}</div>
         </div>
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
-          <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Net</div>
-          <div className={`mt-1 text-xl font-extrabold ${net >= 0 ? "text-success" : "text-danger"}`}>{formatCurrency(net)}</div>
+          <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">{net >= 0 ? "Profit" : "Loss"}</div>
+          <div className={`mt-1 text-xl font-extrabold ${net >= 0 ? "text-success" : "text-danger"}`}>{formatCurrency(Math.abs(net))}</div>
+        </div>
+        <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
+          <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">{net >= 0 ? "Profit %" : "Loss %"}</div>
+          <div className={`mt-1 text-xl font-extrabold ${net >= 0 ? "text-success" : "text-danger"}`}>{profitPct === null ? "—" : `${Math.abs(profitPct).toFixed(2)}%`}</div>
+          <div className="mt-0.5 text-[11px] text-text-muted">of sales</div>
+        </div>
+        <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
+          <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Cost vs Sales</div>
+          <div className="mt-1 text-xl font-extrabold text-text">{pct(totalCost)}</div>
+          <div className="mt-0.5 text-[11px] text-text-muted">cost as % of sales</div>
         </div>
       </div>
 
@@ -140,7 +167,10 @@ export default async function AdminPage({
             {categoryRows.map((c) => (
               <div key={c.key} className="flex items-center justify-between px-5 py-2.5 text-[13px]">
                 <span className="text-text">{c.key}</span>
-                <span className="font-semibold text-text">{formatCurrency(c.amount)}</span>
+                <span className="font-semibold text-text">
+                  {formatCurrency(c.amount)}
+                  <span className="ml-3 inline-block w-16 text-right text-[12px] font-medium text-text-muted">{pct(c.amount)}</span>
+                </span>
               </div>
             ))}
           </div>

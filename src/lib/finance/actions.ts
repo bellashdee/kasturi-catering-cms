@@ -294,3 +294,25 @@ export async function markCustomerInvoicePaid(input: {
   revalidatePath("/finance/outstanding");
   revalidatePath("/");
 }
+
+export async function saveMonthlySales(input: { companyId: string; year: number; month: number; salesAmount: number; notes?: string }) {
+  const { supabase, userId } = await requireUser();
+  if (!Number.isFinite(input.salesAmount) || input.salesAmount < 0) throw new Error("Enter a valid sales amount.");
+
+  const { error } = await supabase.from("monthly_sales").upsert(
+    {
+      company_id: input.companyId,
+      year: input.year,
+      month: input.month,
+      sales_amount: input.salesAmount,
+      notes: input.notes?.trim() || null,
+      updated_by: userId,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "company_id,year,month" },
+  );
+  if (error) throw error;
+
+  revalidatePath("/admin");
+  revalidatePath("/reports/monthly-costing");
+}

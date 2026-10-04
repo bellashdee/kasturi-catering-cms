@@ -2203,6 +2203,54 @@ export type Database = {
           },
         ]
       }
+      monthly_sales: {
+        Row: {
+          company_id: string
+          id: string
+          month: number
+          notes: string | null
+          sales_amount: number
+          updated_at: string
+          updated_by: string | null
+          year: number
+        }
+        Insert: {
+          company_id: string
+          id?: string
+          month: number
+          notes?: string | null
+          sales_amount: number
+          updated_at?: string
+          updated_by?: string | null
+          year: number
+        }
+        Update: {
+          company_id?: string
+          id?: string
+          month?: number
+          notes?: string | null
+          sales_amount?: number
+          updated_at?: string
+          updated_by?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_sales_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monthly_sales_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       overtime_records: {
         Row: {
           approval_id: string | null
