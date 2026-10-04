@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { geminiGenerate, getAiProvider } from "@/lib/ai/gemini";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext, ROLE_LABEL } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
@@ -98,10 +99,10 @@ export async function POST(request: Request) {
 
   const kbEntries = searchKnowledgeBase(message, pageModule);
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const provider = getAiProvider();
   let reply: string;
 
-  if (!apiKey) {
+  if (!provider) {
     reply = kbOnlyReply(kbEntries);
     if (liveDataBlock) reply = `${liveDataBlock}\n\n${reply}`;
   } else {
@@ -111,7 +112,6 @@ export async function POST(request: Request) {
         .slice(-10, -1) // exclude the user message we just saved; cap context
         .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
 
-      const anthropic = new Anthropic({ apiKey });
       const systemPrompt = buildSystemPrompt({
         pageLabel,
         userFullName: session.fullName,
@@ -120,15 +120,27 @@ export async function POST(request: Request) {
         liveDataBlock,
       });
 
-      const response = await anthropic.messages.create({
-        model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5",
-        max_tokens: 700,
-        system: systemPrompt,
-        messages: [...history, { role: "user", content: message }],
-      });
-
-      const textBlock = response.content.find((b) => b.type === "text");
-      reply = textBlock && "text" in textBlock ? textBlock.text : kbOnlyReply(kbEntries);
+      if (provider === "gemini") {
+        const text = await geminiGenerate({
+          system: systemPrompt,
+          turns: [
+            ...history.map((m) => ({ role: m.role === "assistant" ? ("model" as const) : ("user" as const), parts: [{ text: m.content }] })),
+            { role: "user", parts: [{ text: message }] },
+          ],
+          maxOutputTokens: 1500,
+        });
+        reply = text.trim() || kbOnlyReply(kbEntries);
+      } else {
+        const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        const response = await anthropic.messages.create({
+          model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5",
+          max_tokens: 700,
+          system: systemPrompt,
+          messages: [...history, { role: "user", content: message }],
+        });
+        const textBlock = response.content.find((b) => b.type === "text");
+        reply = textBlock && "text" in textBlock ? textBlock.text : kbOnlyReply(kbEntries);
+      }
     } catch {
       reply = kbOnlyReply(kbEntries);
       if (liveDataBlock) reply = `${liveDataBlock}\n\n${reply}`;

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { geminiGenerate, getAiProvider } from "@/lib/ai/gemini";
 import * as XLSX from "xlsx";
 import { createClient } from "@/lib/supabase/server";
 
@@ -162,13 +163,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "This file type isn't supported for reading." }, { status: 400 });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  const provider = getAiProvider();
+  if (!provider) {
     await supabase.from("documents").update({ extraction_status: "manual" }).eq("id", documentId);
     return NextResponse.json({
       configured: false,
       message:
-        "AI extraction isn't configured yet (no ANTHROPIC_API_KEY set). Fill in the fields below manually — the file is already saved and attached.",
+        "AI extraction isn't configured yet (no ANTHROPIC_API_KEY or GEMINI_API_KEY set). Fill in the fields below manually — the file is already saved and attached.",
     });
   }
 
@@ -189,7 +190,21 @@ export async function POST(request: Request) {
   const prompt = EXTRACTION_PROMPTS[kind] ?? EXTRACTION_PROMPTS.employee_certificate;
 
   try {
-    const anthropic = new Anthropic({ apiKey });
+    let raw = "";
+
+    if (provider === "gemini") {
+      const filePart = isSpreadsheet
+        ? { text: `The uploaded file is a spreadsheet. Its contents, sheet by sheet, as CSV:
+
+${spreadsheetToText(arrayBuffer)}` }
+        : { inline_data: { mime_type: mediaType, data: base64Data } };
+      raw = await geminiGenerate({
+        turns: [{ role: "user", parts: [filePart, { text: prompt }] }],
+        maxOutputTokens: 4096,
+        json: true,
+      });
+    } else {
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     const fileContentBlock = isSpreadsheet
       ? ({ type: "text", text: `The uploaded file is a spreadsheet. Its contents, sheet by sheet, as CSV:\n\n${spreadsheetToText(arrayBuffer)}` } as const)
@@ -219,7 +234,8 @@ export async function POST(request: Request) {
     });
 
     const textBlock = response.content.find((b) => b.type === "text");
-    const raw = textBlock && "text" in textBlock ? textBlock.text : "";
+    raw = textBlock && "text" in textBlock ? textBlock.text : "";
+    }
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     const extracted = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
 
