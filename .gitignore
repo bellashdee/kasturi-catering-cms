@@ -46,3 +46,5 @@ next-env.d.ts
 
 # report export scratch files
 /*.csv
+
+.vercel
