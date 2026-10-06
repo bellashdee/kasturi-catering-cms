@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { getDashboardData } from "@/lib/queries/dashboard";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatMalaysiaDate } from "@/lib/format";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { SectionCard, EmptyRow, StatRow } from "@/components/dashboard/SectionCard";
 import { AlertsPanel } from "@/components/dashboard/AlertsPanel";
@@ -148,7 +148,7 @@ export default async function DashboardPage({
               {data.deliveries.upcoming.map((d) => (
                 <div key={d.id} className="flex items-center justify-between py-2 text-[13.5px]">
                   <span className="font-medium text-text">{d.catering_events?.event_name ?? d.location ?? "Delivery"}</span>
-                  <span className="text-text-secondary">{d.scheduled_time ? new Date(d.scheduled_time).toLocaleDateString("en-MY") : "—"}</span>
+                  <span className="text-text-secondary">{formatMalaysiaDate(d.scheduled_time)}</span>
                 </div>
               ))}
             </div>

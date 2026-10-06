@@ -4,6 +4,7 @@ import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listAttendance, listActiveDriversForCompanies } from "@/lib/driverAttendance/queries";
 import { todayInMalaysia } from "@/lib/driverAttendance/date";
+import { formatMalaysiaTime } from "@/lib/format";
 import { computeAttendanceStatus, ATTENDANCE_STATUS_LABEL, ATTENDANCE_STATUS_TONE } from "@/lib/driver/constants";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -15,8 +16,7 @@ import { ReportTable } from "@/components/reports/ReportTable";
 import { buildReportRows } from "@/lib/reports/buildRows";
 
 function formatTime(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleTimeString("en-MY", { hour: "numeric", minute: "2-digit" });
+  return formatMalaysiaTime(iso);
 }
 
 export default async function DriverAttendancePage({

@@ -189,7 +189,6 @@ export async function bulkImportVehicles(companyId: string, rows: BulkVehicleRow
 export type DeliveryInput = {
   companyId: string;
   cateringEventId?: string;
-  scheduledTime: string;
   location?: string;
   itemsDescription?: string;
   vehicleId?: string;
@@ -207,7 +206,8 @@ export async function createDelivery(input: DeliveryInput) {
     .insert({
       company_id: input.companyId,
       catering_event_id: input.cateringEventId || null,
-      scheduled_time: input.scheduledTime,
+      // Always the server clock, never a value sent by the browser.
+      scheduled_time: new Date().toISOString(),
       location: input.location || null,
       items_description: input.itemsDescription || null,
       vehicle_id: input.vehicleId || null,
@@ -237,7 +237,7 @@ export async function updateDeliveryDetails(deliveryId: string, input: Partial<D
   const { error } = await supabase
     .from("deliveries")
     .update({
-      scheduled_time: input.scheduledTime,
+      // scheduled_time is the system-generated creation timestamp and is never edited.
       location: input.location || null,
       items_description: input.itemsDescription || null,
       vehicle_id: input.vehicleId || null,

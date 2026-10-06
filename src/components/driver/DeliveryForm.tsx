@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createDelivery, updateDeliveryDetails, type DeliveryInput } from "@/lib/driver/actions";
 import { decodeAssignee, encodeAssignee, type DeliveryPerson } from "@/lib/driver/deliveryPersons";
 import { DeliveryPersonSelect } from "@/components/driver/DeliveryPersonSelect";
+import { formatMalaysiaDateTime } from "@/lib/format";
 
 type Company = { id: string; name: string };
 type Event = { id: string; event_name: string; company_id: string };
@@ -14,11 +15,6 @@ const inputClass =
   "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
 const labelClass = "text-[12.5px] font-semibold text-text-secondary";
 
-function toDatetimeLocal(value: string | null | undefined): string {
-  if (!value) return "";
-  return value.slice(0, 16);
-}
-
 export function DeliveryForm({
   companies,
   defaultCompanyId,
@@ -27,6 +23,7 @@ export function DeliveryForm({
   deliveryPersons,
   deliveryId,
   initial,
+  scheduledTime,
 }: {
   companies: Company[];
   defaultCompanyId?: string;
@@ -35,6 +32,8 @@ export function DeliveryForm({
   deliveryPersons: DeliveryPerson[];
   deliveryId?: string;
   initial?: Partial<DeliveryInput>;
+  /** The system-generated creation timestamp (existing deliveries only). */
+  scheduledTime?: string | null;
 }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
@@ -42,7 +41,6 @@ export function DeliveryForm({
   const [companyId, setCompanyId] = useState(initial?.companyId ?? defaultCompanyId ?? companies[0]?.id ?? "");
   const [form, setForm] = useState({
     cateringEventId: initial?.cateringEventId ?? "",
-    scheduledTime: toDatetimeLocal(initial?.scheduledTime),
     location: initial?.location ?? "",
     itemsDescription: initial?.itemsDescription ?? "",
     vehicleId: initial?.vehicleId ?? "",
@@ -60,16 +58,11 @@ export function DeliveryForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.scheduledTime) {
-      setError("Scheduled time is required.");
-      return;
-    }
     setSaving(true);
     setError(null);
     const payload: DeliveryInput = {
       companyId,
       cateringEventId: form.cateringEventId || undefined,
-      scheduledTime: new Date(form.scheduledTime).toISOString(),
       location: form.location || undefined,
       itemsDescription: form.itemsDescription || undefined,
       vehicleId: form.vehicleId || undefined,
@@ -113,8 +106,10 @@ export function DeliveryForm({
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className={labelClass}>Scheduled Time *</label>
-          <input type="datetime-local" required value={form.scheduledTime} onChange={(e) => set("scheduledTime", e.target.value)} className={inputClass} />
+          <label className={labelClass}>Scheduled Time</label>
+          <div className="mt-1.5 flex h-10 w-full items-center rounded-lg border border-border bg-bg px-3 text-sm text-text-secondary" aria-readonly="true">
+            {scheduledTime ? `${formatMalaysiaDateTime(scheduledTime)} (Malaysia time)` : "Recorded automatically when you create the delivery"}
+          </div>
         </div>
         <div>
           <label className={labelClass}>Location</label>

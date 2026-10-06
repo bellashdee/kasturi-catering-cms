@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { formatMalaysiaDateTime } from "@/lib/format";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listDeliveries } from "@/lib/driver/queries";
@@ -71,7 +72,7 @@ export default async function DriverLogisticsPage({
                 href={`/driver-logistics/${d.id}${query}`}
                 className="grid grid-cols-[1.2fr_1.4fr_1fr_1fr_1fr_1fr] border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0 hover:bg-surface-alt"
               >
-                <div className="text-text-secondary">{d.scheduled_time ? new Date(d.scheduled_time).toLocaleString("en-MY") : "—"}</div>
+                <div className="text-text-secondary">{formatMalaysiaDateTime(d.scheduled_time)}</div>
                 <div className="font-semibold text-text">{d.catering_events?.event_name ?? d.location ?? "—"}</div>
                 <div className="text-text-secondary">{d.employees?.full_name ?? (d.delivery_vendors ? `${d.delivery_vendors.name} (external)` : "—")}</div>
                 <div className="text-text-secondary">{d.vehicles?.plate_number ?? "—"}</div>

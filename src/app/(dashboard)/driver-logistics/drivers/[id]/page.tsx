@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { formatMalaysiaDate } from "@/lib/format";
 import { getSessionContext } from "@/lib/auth";
 import { getDriver, listDeliveriesForDriver } from "@/lib/driver/queries";
 import { AVAILABILITY_LABEL, DELIVERY_STATUS_LABEL, isExpiringSoon } from "@/lib/driver/constants";
@@ -93,7 +94,7 @@ export default async function DriverDetailPage({
                   <span className="ml-2 text-text-muted">{d.vehicles?.plate_number ?? "No vehicle"}</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-text-secondary">{d.scheduled_time ? new Date(d.scheduled_time).toLocaleDateString("en-MY") : "—"}</span>
+                  <span className="text-text-secondary">{formatMalaysiaDate(d.scheduled_time)}</span>
                   <StatusBadge tone="neutral">{DELIVERY_STATUS_LABEL[d.status] ?? d.status}</StatusBadge>
                 </div>
               </div>

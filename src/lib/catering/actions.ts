@@ -351,7 +351,6 @@ export async function removeEquipmentAssignment(assignmentId: string, eventId: s
 export type DeliveryInput = {
   companyId: string;
   eventId: string;
-  scheduledTime: string;
   vehicleId?: string;
   driverId?: string;
   vendorId?: string;
@@ -372,7 +371,6 @@ export async function upsertDelivery(input: DeliveryInput) {
     const { error } = await supabase
       .from("deliveries")
       .update({
-        scheduled_time: input.scheduledTime,
         vehicle_id: input.vehicleId || null,
         driver_id: input.driverId || null,
         delivery_vendor_id: input.vendorId || null,
@@ -384,7 +382,8 @@ export async function upsertDelivery(input: DeliveryInput) {
     const { error } = await supabase.from("deliveries").insert({
       company_id: input.companyId,
       catering_event_id: input.eventId,
-      scheduled_time: input.scheduledTime,
+      // Always the server clock, never a value sent by the browser.
+      scheduled_time: new Date().toISOString(),
       vehicle_id: input.vehicleId || null,
       driver_id: input.driverId || null,
       delivery_vendor_id: input.vendorId || null,

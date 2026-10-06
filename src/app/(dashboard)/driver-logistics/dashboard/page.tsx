@@ -8,14 +8,11 @@ import { EmptyRow, SectionCard, StatRow } from "@/components/dashboard/SectionCa
 import { StatusBadge } from "@/components/StatusBadge";
 import { DriverLogisticsSubNav } from "@/components/driver/DriverLogisticsSubNav";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
+import { formatMalaysiaTime } from "@/lib/format";
+import { todayInMalaysia } from "@/lib/driverAttendance/date";
 
 function formatTime(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleTimeString("en-MY", { hour: "numeric", minute: "2-digit" });
+  return formatMalaysiaTime(iso);
 }
 
 function workingHours(clockIn: string | null, clockOut: string | null): string {
@@ -63,7 +60,7 @@ export default async function DriverDashboardPage({
   }
 
   const driverProfile = driverProfiles.find((d) => d.employee_id === driverId)!;
-  const today = todayIso();
+  const today = todayInMalaysia();
 
   const [{ data: attendance }, { data: todayDeliveries }] = await Promise.all([
     supabase.from("driver_attendance").select("*").eq("driver_id", driverId).eq("attendance_date", today).maybeSingle(),
@@ -72,8 +69,8 @@ export default async function DriverDashboardPage({
       .select("id, status, proof_status, scheduled_time, location, catering_events(event_name)")
       .eq("driver_id", driverId)
       .in("company_id", targetCompanyIds)
-      .gte("scheduled_time", `${today}T00:00:00`)
-      .lte("scheduled_time", `${today}T23:59:59.999`),
+      .gte("scheduled_time", `${today}T00:00:00+08:00`)
+      .lte("scheduled_time", `${today}T23:59:59.999+08:00`),
   ]);
 
   const deliveries = todayDeliveries ?? [];
@@ -153,7 +150,7 @@ export default async function DriverDashboardPage({
               <a key={d.id} href={`/driver-logistics/${d.id}${query}`} className="flex items-center justify-between rounded-lg border border-border px-3.5 py-2.5 text-[13px] hover:bg-bg">
                 <div>
                   <div className="font-semibold text-text">{d.catering_events?.event_name ?? d.location ?? "Delivery"}</div>
-                  <div className="text-[11.5px] text-text-muted">{d.scheduled_time ? new Date(d.scheduled_time).toLocaleTimeString("en-MY", { hour: "numeric", minute: "2-digit" }) : "—"}</div>
+                  <div className="text-[11.5px] text-text-muted">{formatMalaysiaTime(d.scheduled_time)}</div>
                 </div>
                 <StatusBadge tone={d.status === "delivered" ? "success" : d.status === "cancelled" ? "danger" : "warning"}>{d.status}</StatusBadge>
               </a>

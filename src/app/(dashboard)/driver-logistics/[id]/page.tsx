@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { formatMalaysiaDateTime } from "@/lib/format";
 import { getSessionContext } from "@/lib/auth";
 import { getDelivery, listDeliveryPersons } from "@/lib/driver/queries";
 import { DELIVERY_STATUS_LABEL } from "@/lib/driver/constants";
@@ -58,7 +59,7 @@ export default async function DeliveryDetailPage({
           <div className="mt-2 text-[20px] font-extrabold text-text">{delivery.catering_events?.event_name ?? "Delivery"}</div>
           <div className="text-[13px] text-text-secondary">
             {delivery.companies?.name}
-            {delivery.scheduled_time && ` · ${new Date(delivery.scheduled_time).toLocaleString("en-MY")}`}
+            {delivery.scheduled_time && ` · ${formatMalaysiaDateTime(delivery.scheduled_time)}`}
             {delivery.location && ` · ${delivery.location}`}
           </div>
         </div>
@@ -119,10 +120,10 @@ export default async function DeliveryDetailPage({
           vehicles={vehicles ?? []}
           deliveryPersons={deliveryPersons}
           deliveryId={id}
+          scheduledTime={delivery.scheduled_time}
           initial={{
             companyId: delivery.company_id,
             cateringEventId: delivery.catering_event_id ?? undefined,
-            scheduledTime: delivery.scheduled_time ?? undefined,
             location: delivery.location ?? undefined,
             itemsDescription: delivery.items_description ?? undefined,
             vehicleId: delivery.vehicle_id ?? undefined,

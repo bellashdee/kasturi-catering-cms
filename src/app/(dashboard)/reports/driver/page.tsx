@@ -6,7 +6,7 @@ import { resolveCompanyScope } from "@/lib/companyScope";
 import { listDeliveries, listDriverExpenses } from "@/lib/driver/queries";
 import { DELIVERY_STATUS_LABEL, EXPENSE_CATEGORY_LABEL } from "@/lib/driver/constants";
 import { monthDateRange } from "@/lib/finance/constants";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatMalaysiaDateTime, malaysiaDateOf } from "@/lib/format";
 import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { ReportTable } from "@/components/reports/ReportTable";
 import { buildReportRows } from "@/lib/reports/buildRows";
@@ -48,7 +48,7 @@ export default async function DriverReportPage({
     listDriverExpenses(supabase, targetCompanyIds),
   ]);
 
-  const monthDeliveries = allDeliveries.filter((d) => !!d.scheduled_time && d.scheduled_time.slice(0, 10) >= start && d.scheduled_time.slice(0, 10) <= end);
+  const monthDeliveries = allDeliveries.filter((d) => !!d.scheduled_time && malaysiaDateOf(d.scheduled_time) >= start && malaysiaDateOf(d.scheduled_time) <= end);
   const rows = statusParam ? monthDeliveries.filter((d) => d.status === statusParam) : monthDeliveries;
 
   const monthExpenses = allExpenses.filter((e) => e.expense_date >= start && e.expense_date <= end);
@@ -58,7 +58,7 @@ export default async function DriverReportPage({
   const { headers, tableRows } = buildReportRows(
     rows,
     [
-      { key: "date", label: "Scheduled", exportValue: (r) => (r.scheduled_time ? new Date(r.scheduled_time).toLocaleString("en-MY") : "—") },
+      { key: "date", label: "Scheduled", exportValue: (r) => formatMalaysiaDateTime(r.scheduled_time) },
       { key: "event", label: "Event / Location", exportValue: (r) => r.catering_events?.event_name ?? r.location ?? "—" },
       { key: "driver", label: "Driver", exportValue: (r) => r.employees?.full_name ?? "—" },
       { key: "vehicle", label: "Vehicle", exportValue: (r) => r.vehicles?.plate_number ?? "—" },

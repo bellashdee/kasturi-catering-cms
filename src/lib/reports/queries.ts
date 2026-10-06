@@ -102,7 +102,7 @@ export async function getCompanySummary(supabase: DB, companyIds: string[], year
     supabase.from("employees").select("id", { count: "exact", head: true }).in("company_id", companyIds).eq("status", "active"),
     supabase.from("campaigns").select("id", { count: "exact", head: true }).in("company_id", companyIds).eq("status", "active"),
     supabase.from("production_orders").select("id", { count: "exact", head: true }).in("company_id", companyIds).gte("planned_date", start).lte("planned_date", end),
-    supabase.from("deliveries").select("id", { count: "exact", head: true }).in("company_id", companyIds).gte("scheduled_time", `${start}T00:00:00`).lte("scheduled_time", `${end}T23:59:59.999`),
+    supabase.from("deliveries").select("id", { count: "exact", head: true }).in("company_id", companyIds).gte("scheduled_time", `${start}T00:00:00+08:00`).lte("scheduled_time", `${end}T23:59:59.999+08:00`),
     supabase.from("supplier_invoices").select("amount").in("company_id", companyIds).neq("status", "paid"),
     supabase.from("customer_invoices").select("amount").in("company_id", companyIds).neq("status", "paid"),
   ]);
