@@ -1696,6 +1696,149 @@ export type Database = {
           },
         ]
       }
+      finance_payments: {
+        Row: {
+          account_id: string | null
+          account_no: string | null
+          amount: number
+          approved_by: string | null
+          bank_name: string | null
+          category: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          document_id: string | null
+          due_date: string
+          id: string
+          invoice_date: string | null
+          invoice_number: string | null
+          paid_date: string | null
+          payee_name: string
+          payment_of: string | null
+          payment_reference: string | null
+          period_month: string
+          proof_document_id: string | null
+          remarks: string | null
+          status: string
+          updated_at: string
+          utility_location: string | null
+          utility_provider: string | null
+          utility_type: string | null
+          voucher_document_id: string | null
+          voucher_number: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          account_no?: string | null
+          amount: number
+          approved_by?: string | null
+          bank_name?: string | null
+          category: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          document_id?: string | null
+          due_date: string
+          id?: string
+          invoice_date?: string | null
+          invoice_number?: string | null
+          paid_date?: string | null
+          payee_name: string
+          payment_of?: string | null
+          payment_reference?: string | null
+          period_month: string
+          proof_document_id?: string | null
+          remarks?: string | null
+          status?: string
+          updated_at?: string
+          utility_location?: string | null
+          utility_provider?: string | null
+          utility_type?: string | null
+          voucher_document_id?: string | null
+          voucher_number?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          account_no?: string | null
+          amount?: number
+          approved_by?: string | null
+          bank_name?: string | null
+          category?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          document_id?: string | null
+          due_date?: string
+          id?: string
+          invoice_date?: string | null
+          invoice_number?: string | null
+          paid_date?: string | null
+          payee_name?: string
+          payment_of?: string | null
+          payment_reference?: string | null
+          period_month?: string
+          proof_document_id?: string | null
+          remarks?: string | null
+          status?: string
+          updated_at?: string
+          utility_location?: string | null
+          utility_provider?: string | null
+          utility_type?: string | null
+          voucher_document_id?: string | null
+          voucher_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_payments_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "payment_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_payments_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_payments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_payments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_payments_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_payments_proof_document_id_fkey"
+            columns: ["proof_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_payments_voucher_document_id_fkey"
+            columns: ["voucher_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ingredients: {
         Row: {
           category: string | null
@@ -2507,6 +2650,62 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "package_menus_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_accounts: {
+        Row: {
+          account_no: string | null
+          bank_name: string | null
+          category: string
+          company_id: string
+          created_at: string
+          default_due_day: number | null
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          provider: string | null
+          updated_at: string
+          utility_type: string | null
+        }
+        Insert: {
+          account_no?: string | null
+          bank_name?: string | null
+          category: string
+          company_id: string
+          created_at?: string
+          default_due_day?: number | null
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          provider?: string | null
+          updated_at?: string
+          utility_type?: string | null
+        }
+        Update: {
+          account_no?: string | null
+          bank_name?: string | null
+          category?: string
+          company_id?: string
+          created_at?: string
+          default_due_day?: number | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          provider?: string | null
+          updated_at?: string
+          utility_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_accounts_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"

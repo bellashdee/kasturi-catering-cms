@@ -5,7 +5,7 @@ import { monthDateRange } from "@/lib/finance/constants";
 type DB = SupabaseClient<Database>;
 
 export type CostRow = {
-  source: "Kitchen" | "Catering" | "Supplier" | "Driver" | "Marketing" | "HR" | "Company Expenses" | "Petty Cash";
+  source: "Kitchen" | "Catering" | "Supplier" | "Driver" | "Marketing" | "HR" | "Company Expenses" | "Petty Cash" | "Finance Payments";
   category: string;
   department: string | null;
   amount: number;
@@ -33,6 +33,7 @@ export async function getMonthlyCostBreakdown(supabase: DB, companyIds: string[]
     payrollRecords,
     companyExpenses,
     pettyCash,
+    financePayments,
   ] = await Promise.all([
     supabase
       .from("stock_movements")
@@ -86,6 +87,14 @@ export async function getMonthlyCostBreakdown(supabase: DB, companyIds: string[]
       .eq("type", "expense")
       .gte("transaction_date", start)
       .lte("transaction_date", end),
+    // Read-through only: paid Finance payments are never copied into another table, so nothing is counted twice.
+    supabase
+      .from("finance_payments")
+      .select("company_id, amount, category, utility_provider")
+      .in("company_id", companyIds)
+      .eq("status", "paid")
+      .gte("paid_date", start)
+      .lte("paid_date", end),
   ]);
 
   const rows: CostRow[] = [];
@@ -162,6 +171,16 @@ export async function getMonthlyCostBreakdown(supabase: DB, companyIds: string[]
       department: null,
       amount: Number(pc.amount),
       companyId: pc.company_id,
+    });
+  }
+
+  for (const fp of financePayments.data ?? []) {
+    rows.push({
+      source: "Finance Payments",
+      category: fp.category === "supplier" ? "Supplier Payment" : fp.category === "rental" ? "Rental" : `Utilities – ${fp.utility_provider ?? "Other"}`,
+      department: null,
+      amount: Number(fp.amount),
+      companyId: fp.company_id,
     });
   }
 

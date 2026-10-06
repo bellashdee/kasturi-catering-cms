@@ -109,6 +109,26 @@ List every distinct line item you can identify. If a field is not legible or you
   "expense_date": ISO date (YYYY-MM-DD) if visible, else null
 }
 If a field is not visible or you are not confident, use null for it rather than guessing.`,
+  finance_payment: `You are reading a document for a payment this company has to make: a supplier invoice or statement, a rental invoice or tenancy payment note, a utility bill (TNB electricity, SAJ water, Indah Water) or a payment voucher. Extract the following fields and respond with ONLY a JSON object, no other text:
+{
+  "payee_name": the supplier, landlord / payee or utility provider being paid, as printed, else null,
+  "bank_name": the payee's bank name if printed (e.g. "Maybank", "CIMB"), else null,
+  "bank_account_no": the payee's bank account number exactly as printed, else null,
+  "utility_provider": "TNB", "SAJ" or "Indah Water" if the document is clearly from one of them, else null,
+  "location": the premises / location / account name the bill is for if printed, else null,
+  "utility_account_no": the utility account number exactly as printed on a utility bill, else null,
+  "invoice_number": the invoice, bill or statement number as printed, else null,
+  "invoice_date": ISO date (YYYY-MM-DD) of the invoice / bill, else null,
+  "due_date": ISO date (YYYY-MM-DD) the payment is due, else null,
+  "amount": the total amount to pay as a plain number (no currency symbol or commas), else null,
+  "billing_month": the month the invoice / bill / payment is for as YYYY-MM, else null,
+  "payment_of": the wording after "in payment of" on a voucher (e.g. "A/C AUGUST 2026"), else null,
+  "voucher_number": the payment voucher number if this is a voucher, else null,
+  "payment_reference": a payment / transfer reference number if shown, else null,
+  "payment_date": ISO date (YYYY-MM-DD) the payment was actually made, if shown, else null,
+  "company_name": which company the document is addressed to or paid by (e.g. "Signature Solution", "Kasturi Indah", "O2 Life"), else null
+}
+Never invent or guess any amount, name or number. If a field is not visible or you are not confident, use null for it.`,
   customer_invoice: `You are reading an invoice this company issued to one of its own customers. Extract the following fields and respond with ONLY a JSON object, no other text:
 {
   "invoice_number": the invoice number as printed, else null,
