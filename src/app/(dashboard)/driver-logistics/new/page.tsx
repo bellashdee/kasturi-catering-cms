@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { DeliveryForm } from "@/components/driver/DeliveryForm";
+import { listDeliveryPersons } from "@/lib/driver/queries";
 
 export default async function NewDeliveryPage({
   searchParams,
@@ -21,10 +22,10 @@ export default async function NewDeliveryPage({
   const selectable = companies.filter((c) => accessibleIds.includes(c.id));
   const defaultCompanyId = requestedId && accessibleIds.includes(requestedId) ? requestedId : selectable[0]?.id;
 
-  const [{ data: events }, { data: vehicles }, { data: employees }] = await Promise.all([
+  const [{ data: events }, { data: vehicles }, deliveryPersons] = await Promise.all([
     supabase.from("catering_events").select("id, event_name, company_id").in("company_id", accessibleIds).order("event_date", { ascending: false }),
     supabase.from("vehicles").select("id, plate_number, company_id").in("company_id", accessibleIds).order("plate_number"),
-    supabase.from("employees").select("id, full_name, company_id").in("company_id", accessibleIds).eq("status", "active").order("full_name"),
+    listDeliveryPersons(supabase, accessibleIds),
   ]);
 
   return (
@@ -36,7 +37,7 @@ export default async function NewDeliveryPage({
           defaultCompanyId={defaultCompanyId}
           events={events ?? []}
           vehicles={vehicles ?? []}
-          employees={employees ?? []}
+          deliveryPersons={deliveryPersons}
         />
       </div>
     </div>

@@ -814,6 +814,7 @@ export type Database = {
           completed_at: string | null
           completion_remarks: string | null
           created_at: string
+          delivery_vendor_id: string | null
           driver_id: string | null
           id: string
           items_description: string | null
@@ -833,6 +834,7 @@ export type Database = {
           completed_at?: string | null
           completion_remarks?: string | null
           created_at?: string
+          delivery_vendor_id?: string | null
           driver_id?: string | null
           id?: string
           items_description?: string | null
@@ -852,6 +854,7 @@ export type Database = {
           completed_at?: string | null
           completion_remarks?: string | null
           created_at?: string
+          delivery_vendor_id?: string | null
           driver_id?: string | null
           id?: string
           items_description?: string | null
@@ -878,6 +881,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "deliveries_delivery_vendor_id_fkey"
+            columns: ["delivery_vendor_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_vendors"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "deliveries_driver_id_fkey"
             columns: ["driver_id"]
             isOneToOne: false
@@ -889,6 +899,38 @@ export type Database = {
             columns: ["vehicle_id"]
             isOneToOne: false
             referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_vendors: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_vendors_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]

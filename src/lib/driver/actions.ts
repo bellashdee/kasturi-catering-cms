@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { logTaskAudit } from "@/lib/taskProofs/actions";
+import { assertValidAssignee } from "@/lib/driver/assignee";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -192,12 +193,15 @@ export type DeliveryInput = {
   location?: string;
   itemsDescription?: string;
   vehicleId?: string;
+  /** Internal driver (employee id) - or vendorId for an external service such as Lalamove, never both. */
   driverId?: string;
+  vendorId?: string;
   notes?: string;
 };
 
 export async function createDelivery(input: DeliveryInput) {
   const { supabase } = await requireUser();
+  await assertValidAssignee(supabase, input.companyId, input.driverId, input.vendorId);
   const { data, error } = await supabase
     .from("deliveries")
     .insert({
@@ -208,6 +212,7 @@ export async function createDelivery(input: DeliveryInput) {
       items_description: input.itemsDescription || null,
       vehicle_id: input.vehicleId || null,
       driver_id: input.driverId || null,
+      delivery_vendor_id: input.vendorId || null,
       notes: input.notes || null,
       status: "scheduled",
     })
@@ -216,8 +221,8 @@ export async function createDelivery(input: DeliveryInput) {
   if (error) throw error;
 
   await logTaskAudit({ companyId: input.companyId, relatedTable: "deliveries", relatedId: data.id, action: "task_created" });
-  if (input.driverId) {
-    await logTaskAudit({ companyId: input.companyId, relatedTable: "deliveries", relatedId: data.id, action: "task_assigned", newValue: input.driverId });
+  if (input.driverId || input.vendorId) {
+    await logTaskAudit({ companyId: input.companyId, relatedTable: "deliveries", relatedId: data.id, action: "task_assigned", newValue: input.driverId ?? input.vendorId });
   }
 
   revalidatePath("/driver-logistics");
@@ -226,7 +231,8 @@ export async function createDelivery(input: DeliveryInput) {
 
 export async function updateDeliveryDetails(deliveryId: string, input: Partial<DeliveryInput>) {
   const { supabase } = await requireUser();
-  const { data: existing } = await supabase.from("deliveries").select("company_id, driver_id").eq("id", deliveryId).single();
+  const { data: existing } = await supabase.from("deliveries").select("company_id, driver_id, delivery_vendor_id").eq("id", deliveryId).single();
+  if (existing) await assertValidAssignee(supabase, existing.company_id, input.driverId, input.vendorId);
 
   const { error } = await supabase
     .from("deliveries")
@@ -236,19 +242,22 @@ export async function updateDeliveryDetails(deliveryId: string, input: Partial<D
       items_description: input.itemsDescription || null,
       vehicle_id: input.vehicleId || null,
       driver_id: input.driverId || null,
+      delivery_vendor_id: input.vendorId || null,
       notes: input.notes || null,
     })
     .eq("id", deliveryId);
   if (error) throw error;
 
-  if (existing && input.driverId && input.driverId !== existing.driver_id) {
+  const previousAssignee = existing?.driver_id ?? existing?.delivery_vendor_id ?? undefined;
+  const nextAssignee = input.driverId ?? input.vendorId;
+  if (existing && nextAssignee && nextAssignee !== previousAssignee) {
     await logTaskAudit({
       companyId: existing.company_id,
       relatedTable: "deliveries",
       relatedId: deliveryId,
       action: "task_assigned",
-      previousValue: existing.driver_id ?? undefined,
-      newValue: input.driverId,
+      previousValue: previousAssignee,
+      newValue: nextAssignee,
     });
   }
 

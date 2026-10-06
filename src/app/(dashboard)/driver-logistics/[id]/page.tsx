@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
-import { getDelivery } from "@/lib/driver/queries";
+import { getDelivery, listDeliveryPersons } from "@/lib/driver/queries";
 import { DELIVERY_STATUS_LABEL } from "@/lib/driver/constants";
 import { PROOF_STATUS_LABEL } from "@/lib/taskProofs/constants";
 import { listTaskProofs, listTaskAuditLog } from "@/lib/taskProofs/queries";
@@ -36,11 +36,11 @@ export default async function DeliveryDetailPage({
     notFound();
   }
 
-  const [{ data: allCompanies }, { data: events }, { data: vehicles }, { data: employees }, proofs, auditLog] = await Promise.all([
+  const [{ data: allCompanies }, { data: events }, { data: vehicles }, deliveryPersons, proofs, auditLog] = await Promise.all([
     supabase.from("companies").select("id, name").order("name"),
     supabase.from("catering_events").select("id, event_name, company_id").eq("company_id", delivery.company_id).order("event_date", { ascending: false }),
     supabase.from("vehicles").select("id, plate_number, company_id").eq("company_id", delivery.company_id).order("plate_number"),
-    supabase.from("employees").select("id, full_name, company_id").eq("company_id", delivery.company_id).eq("status", "active").order("full_name"),
+    listDeliveryPersons(supabase, [delivery.company_id]),
     listTaskProofs(supabase, "deliveries", id),
     listTaskAuditLog(supabase, "deliveries", id),
   ]);
@@ -70,8 +70,8 @@ export default async function DeliveryDetailPage({
 
       <div className="grid grid-cols-4 gap-4">
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
-          <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Driver</div>
-          <div className="mt-1 text-lg font-extrabold text-text">{delivery.employees?.full_name ?? "Not assigned"}</div>
+          <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Driver / Delivery Person</div>
+          <div className="mt-1 text-lg font-extrabold text-text">{delivery.employees?.full_name ?? (delivery.delivery_vendors ? `${delivery.delivery_vendors.name} (external)` : "Not assigned")}</div>
         </div>
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
           <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Vehicle</div>
@@ -117,7 +117,7 @@ export default async function DeliveryDetailPage({
           companies={allCompanies ?? []}
           events={events ?? []}
           vehicles={vehicles ?? []}
-          employees={employees ?? []}
+          deliveryPersons={deliveryPersons}
           deliveryId={id}
           initial={{
             companyId: delivery.company_id,
@@ -127,6 +127,7 @@ export default async function DeliveryDetailPage({
             itemsDescription: delivery.items_description ?? undefined,
             vehicleId: delivery.vehicle_id ?? undefined,
             driverId: delivery.driver_id ?? undefined,
+            vendorId: delivery.delivery_vendor_id ?? undefined,
             notes: delivery.notes ?? undefined,
           }}
         />

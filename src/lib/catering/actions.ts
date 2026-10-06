@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { assertValidAssignee } from "@/lib/driver/assignee";
 import type { Database } from "@/lib/supabase/types";
 
 type EventStatus = Database["public"]["Enums"]["event_status"];
@@ -353,11 +354,13 @@ export type DeliveryInput = {
   scheduledTime: string;
   vehicleId?: string;
   driverId?: string;
+  vendorId?: string;
   notes?: string;
 };
 
 export async function upsertDelivery(input: DeliveryInput) {
   const { supabase } = await requireUser();
+  await assertValidAssignee(supabase, input.companyId, input.driverId, input.vendorId);
 
   const { data: existing } = await supabase
     .from("deliveries")
@@ -372,6 +375,7 @@ export async function upsertDelivery(input: DeliveryInput) {
         scheduled_time: input.scheduledTime,
         vehicle_id: input.vehicleId || null,
         driver_id: input.driverId || null,
+        delivery_vendor_id: input.vendorId || null,
         notes: input.notes || null,
       })
       .eq("id", existing.id);
@@ -383,6 +387,7 @@ export async function upsertDelivery(input: DeliveryInput) {
       scheduled_time: input.scheduledTime,
       vehicle_id: input.vehicleId || null,
       driver_id: input.driverId || null,
+      delivery_vendor_id: input.vendorId || null,
       notes: input.notes || null,
       status: "scheduled",
     });

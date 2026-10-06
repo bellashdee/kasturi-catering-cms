@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createDelivery, updateDeliveryDetails, type DeliveryInput } from "@/lib/driver/actions";
+import { decodeAssignee, encodeAssignee, type DeliveryPerson } from "@/lib/driver/deliveryPersons";
+import { DeliveryPersonSelect } from "@/components/driver/DeliveryPersonSelect";
 
 type Company = { id: string; name: string };
 type Event = { id: string; event_name: string; company_id: string };
 type Vehicle = { id: string; plate_number: string; company_id: string };
-type Employee = { id: string; full_name: string; company_id: string };
 
 const inputClass =
   "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
@@ -23,7 +24,7 @@ export function DeliveryForm({
   defaultCompanyId,
   events,
   vehicles,
-  employees,
+  deliveryPersons,
   deliveryId,
   initial,
 }: {
@@ -31,7 +32,7 @@ export function DeliveryForm({
   defaultCompanyId?: string;
   events: Event[];
   vehicles: Vehicle[];
-  employees: Employee[];
+  deliveryPersons: DeliveryPerson[];
   deliveryId?: string;
   initial?: Partial<DeliveryInput>;
 }) {
@@ -45,13 +46,13 @@ export function DeliveryForm({
     location: initial?.location ?? "",
     itemsDescription: initial?.itemsDescription ?? "",
     vehicleId: initial?.vehicleId ?? "",
-    driverId: initial?.driverId ?? "",
+    assignee: encodeAssignee(initial?.driverId, initial?.vendorId),
     notes: initial?.notes ?? "",
   });
 
   const eventsForCompany = events.filter((e) => e.company_id === companyId);
   const vehiclesForCompany = vehicles.filter((v) => v.company_id === companyId);
-  const employeesForCompany = employees.filter((e) => e.company_id === companyId);
+  const personsForCompany = deliveryPersons.filter((p) => p.companyId === companyId);
 
   function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -72,7 +73,7 @@ export function DeliveryForm({
       location: form.location || undefined,
       itemsDescription: form.itemsDescription || undefined,
       vehicleId: form.vehicleId || undefined,
-      driverId: form.driverId || undefined,
+      ...decodeAssignee(form.assignee),
       notes: form.notes || undefined,
     };
     try {
@@ -97,7 +98,7 @@ export function DeliveryForm({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Company *</label>
-          <select required value={companyId} disabled={!!deliveryId} onChange={(e) => { setCompanyId(e.target.value); set("cateringEventId", ""); set("vehicleId", ""); set("driverId", ""); }} className={inputClass}>
+          <select required value={companyId} disabled={!!deliveryId} onChange={(e) => { setCompanyId(e.target.value); set("cateringEventId", ""); set("vehicleId", ""); set("assignee", ""); }} className={inputClass}>
             {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
@@ -129,13 +130,13 @@ export function DeliveryForm({
             {vehiclesForCompany.map((v) => <option key={v.id} value={v.id}>{v.plate_number}</option>)}
           </select>
         </div>
-        <div>
-          <label className={labelClass}>Driver</label>
-          <select value={form.driverId} onChange={(e) => set("driverId", e.target.value)} className={inputClass}>
-            <option value="">Not assigned yet</option>
-            {employeesForCompany.map((emp) => <option key={emp.id} value={emp.id}>{emp.full_name}</option>)}
-          </select>
-        </div>
+        <DeliveryPersonSelect
+          value={form.assignee}
+          onChange={(v) => set("assignee", v)}
+          persons={personsForCompany}
+          className={inputClass}
+          labelClassName={labelClass}
+        />
       </div>
 
       <div>

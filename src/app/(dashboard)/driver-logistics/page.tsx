@@ -60,7 +60,7 @@ export default async function DriverLogisticsPage({
             <div className="grid grid-cols-[1.2fr_1.4fr_1fr_1fr_1fr_1fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
               <div>Scheduled</div>
               <div>Event / Location</div>
-              <div>Driver</div>
+              <div>Driver / Delivery Person</div>
               <div>Vehicle</div>
               <div>Company</div>
               <div>Status</div>
@@ -73,7 +73,7 @@ export default async function DriverLogisticsPage({
               >
                 <div className="text-text-secondary">{d.scheduled_time ? new Date(d.scheduled_time).toLocaleString("en-MY") : "—"}</div>
                 <div className="font-semibold text-text">{d.catering_events?.event_name ?? d.location ?? "—"}</div>
-                <div className="text-text-secondary">{d.employees?.full_name ?? "—"}</div>
+                <div className="text-text-secondary">{d.employees?.full_name ?? (d.delivery_vendors ? `${d.delivery_vendors.name} (external)` : "—")}</div>
                 <div className="text-text-secondary">{d.vehicles?.plate_number ?? "—"}</div>
                 <div className="text-text-secondary">{d.companies?.name}</div>
                 <div>

@@ -27,6 +27,7 @@ import { CostingForm } from "@/components/catering/CostingForm";
 import { StaffAssignForm } from "@/components/catering/StaffAssignForm";
 import { EquipmentAssignForm } from "@/components/catering/EquipmentAssignForm";
 import { DeliveryForm } from "@/components/catering/DeliveryForm";
+import { listDeliveryPersons } from "@/lib/driver/queries";
 import { RemoveAssignmentButton } from "@/components/catering/RemoveAssignmentButton";
 
 function quotationTone(status: string): "success" | "warning" | "danger" | "neutral" {
@@ -71,6 +72,7 @@ export default async function EventDetailPage({
   ]);
 
   const employees = employeesRes.data ?? [];
+  const deliveryPersons = await listDeliveryPersons(supabase, [event.company_id]);
   const vehicles = vehiclesRes.data ?? [];
   const revenue = event.total_amount ?? 0;
 
@@ -210,8 +212,8 @@ export default async function EventDetailPage({
           companyId={event.company_id}
           eventId={id}
           vehicles={vehicles}
-          employees={employees}
-          initial={delivery ? { scheduled_time: delivery.scheduled_time, vehicle_id: delivery.vehicle_id, driver_id: delivery.driver_id, notes: delivery.notes } : null}
+          deliveryPersons={deliveryPersons}
+          initial={delivery ? { scheduled_time: delivery.scheduled_time, vehicle_id: delivery.vehicle_id, driver_id: delivery.driver_id, delivery_vendor_id: delivery.delivery_vendor_id, notes: delivery.notes } : null}
         />
       </SectionCard>
     </div>
