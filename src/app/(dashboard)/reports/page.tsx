@@ -8,6 +8,7 @@ const REPORTS = [
   { href: "/reports/expenses", title: "Expense Report", description: "Every cost transaction, as a flat exportable list." },
   { href: "/reports/supplier-outstanding", title: "Supplier Outstanding Report", description: "Unpaid supplier invoices." },
   { href: "/reports/supplier-payments", title: "Supplier Payment Report", description: "Every supplier payment request and its status." },
+  { href: "/reports/finance-payments", title: "Finance Payment Report", description: "Supplier, rental and utilities payments by month — paid, pending and overdue (Finance / Admin only)." },
   { href: "/reports/customer-outstanding", title: "Customer Outstanding Report", description: "Unpaid customer invoices." },
   { href: "/reports/catering", title: "Catering Report", description: "Events, revenue, cost and margin for the month." },
   { href: "/reports/kitchen", title: "Kitchen Report", description: "Production orders, ingredient cost and wastage." },
