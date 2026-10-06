@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listAttendance, listActiveDriversForCompanies } from "@/lib/driverAttendance/queries";
+import { todayInMalaysia } from "@/lib/driverAttendance/date";
 import { computeAttendanceStatus, ATTENDANCE_STATUS_LABEL, ATTENDANCE_STATUS_TONE } from "@/lib/driver/constants";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -43,11 +44,26 @@ export default async function DriverAttendancePage({
     listActiveDriversForCompanies(supabase, targetCompanyIds),
   ]);
 
+  // The clock in/out dropdown lists the central driver records. An admin of a company can pick any driver in it;
+  // everyone else only sees the record(s) linked to their own login, so nobody can clock in as someone else.
+  const driversInSelectable = await listActiveDriversForCompanies(supabase, selectable.map((c) => c.id));
+  const adminFlags = await Promise.all(
+    selectable.map(async (c) => {
+      const { data } = await supabase.rpc("user_is_company_admin", { target_company_id: c.id });
+      return [c.id, data === true] as const;
+    }),
+  );
+  const adminCompanyIds = new Set(adminFlags.filter(([, isAdmin]) => isAdmin).map(([id]) => id));
+  const clockDrivers = driversInSelectable
+    .filter((d) => adminCompanyIds.has(d.company_id) || d.user_id === session.userId)
+    .map((d) => ({ profileId: d.id, name: d.employees?.full_name ?? "", companyId: d.company_id }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
   const expectedClockInByDriver = new Map(driverProfiles.map((d) => [d.employee_id, d.expected_clock_in_time]));
   const expectedFor = (driverId: string | null) => (driverId ? expectedClockInByDriver.get(driverId) : undefined) ?? "08:00:00";
 
   const missingToday = attendance.filter((a) => {
-    const isToday = a.attendance_date === new Date().toISOString().slice(0, 10);
+    const isToday = a.attendance_date === todayInMalaysia();
     const status = computeAttendanceStatus(a, expectedFor(a.driver_id));
     return isToday && (status === "missing_clock_in" || status === "missing_clock_out");
   });
@@ -116,19 +132,18 @@ export default async function DriverAttendancePage({
         </div>
       )}
 
-      <ClockInOutWidget companies={selectable} />
+      <ClockInOutWidget companies={selectable} drivers={clockDrivers} />
 
       <form method="get" className="flex flex-wrap items-end gap-3">
         {requestedId && <input type="hidden" name="company" value={requestedId} />}
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Driver</label>
-          <input
-            type="text"
-            name="driver"
-            defaultValue={driverParam ?? ""}
-            placeholder="Search by name…"
-            className="mt-1 h-9 w-56 rounded-lg border border-border-strong px-2 text-[13px]"
-          />
+          <select name="driver" defaultValue={driverParam ?? ""} className="mt-1 h-9 w-56 rounded-lg border border-border-strong px-2 text-[13px]">
+            <option value="">All drivers</option>
+            {Array.from(new Set(driversInSelectable.map((d) => d.employees?.full_name).filter((n): n is string => !!n))).sort().map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Date</label>

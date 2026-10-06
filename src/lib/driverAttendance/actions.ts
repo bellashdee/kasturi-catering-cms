@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { logTaskAudit } from "@/lib/taskProofs/actions";
 import { haversineKm, GEOFENCE_RADIUS_KM } from "@/lib/driverAttendance/geo";
+import { todayInMalaysia } from "@/lib/driverAttendance/date";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -14,21 +15,33 @@ async function requireUser() {
   return { supabase, userId: user.id };
 }
 
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+type DB = Awaited<ReturnType<typeof requireUser>>["supabase"];
+
+async function isCompanyAdmin(supabase: DB, companyId: string): Promise<boolean> {
+  const { data } = await supabase.rpc("user_is_company_admin", { target_company_id: companyId });
+  return data === true;
 }
 
-/** Best-effort link to a real employee record when the typed name matches one exactly (case-insensitive) — never required. */
-async function resolveDriverId(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], companyId: string, driverName: string) {
-  const { data } = await supabase
-    .from("employees")
-    .select("id")
-    .eq("company_id", companyId)
-    .eq("status", "active")
-    .ilike("full_name", driverName.trim())
-    .limit(1)
+/**
+ * The driver is always chosen from the central staff list (a driver record), never typed.
+ * The name stored on the attendance row comes from that record, not from the client. A driver
+ * may only act as the record linked to their own login account; Super Admin / Company Admin may
+ * act for any driver in the company.
+ */
+async function resolveDriver(supabase: DB, userId: string, companyId: string, driverProfileId: string) {
+  const { data: profile } = await supabase
+    .from("driver_profiles")
+    .select("company_id, employee_id, user_id, employees(full_name, status)")
+    .eq("id", driverProfileId)
     .maybeSingle();
-  return data?.id ?? null;
+
+  if (!profile || profile.company_id !== companyId) throw new Error("Select a driver from the list.");
+  if (profile.employees?.status !== "active") throw new Error("This driver is not active.");
+
+  if (!(await isCompanyAdmin(supabase, companyId)) && profile.user_id !== userId) {
+    throw new Error("You can only clock in or out as yourself. Ask an admin to link your login to your driver record.");
+  }
+  return { driverId: profile.employee_id, driverName: profile.employees.full_name };
 }
 
 export type GeofenceResult = { distanceKm: number | null; blocked: boolean; message?: string };
@@ -70,7 +83,7 @@ async function checkGeofence(
 
 export type ClockInInput = {
   companyId: string;
-  driverName: string;
+  driverProfileId: string;
   documentId: string;
   remarks?: string;
   latitude: number;
@@ -78,22 +91,21 @@ export type ClockInInput = {
 };
 
 export async function clockIn(input: ClockInInput) {
-  const { supabase } = await requireUser();
-  const today = todayIso();
+  const { supabase, userId } = await requireUser();
+  const today = todayInMalaysia();
   const now = new Date().toISOString();
-  const driverName = input.driverName.trim();
+  const { driverId, driverName } = await resolveDriver(supabase, userId, input.companyId, input.driverProfileId);
 
   const { data: existing, error: fetchError } = await supabase
     .from("driver_attendance")
     .select("id, clock_in_time")
     .eq("company_id", input.companyId)
-    .eq("driver_name", driverName)
+    .eq("driver_id", driverId)
     .eq("attendance_date", today)
     .maybeSingle();
   if (fetchError) throw fetchError;
   if (existing?.clock_in_time) throw new Error("Already clocked in today.");
 
-  const driverId = await resolveDriverId(supabase, input.companyId, driverName);
   const geofence = await checkGeofence(supabase, driverId, input.latitude, input.longitude);
   if (geofence.blocked) throw new Error(geofence.message);
 
@@ -106,6 +118,7 @@ export async function clockIn(input: ClockInInput) {
         clock_in_document_id: input.documentId,
         clock_in_remarks: input.remarks || null,
         driver_id: driverId,
+        driver_name: driverName,
         clock_in_latitude: input.latitude,
         clock_in_longitude: input.longitude,
         clock_in_distance_km: geofence.distanceKm,
@@ -150,7 +163,7 @@ export async function clockIn(input: ClockInInput) {
 
 export type ClockOutInput = {
   companyId: string;
-  driverName: string;
+  driverProfileId: string;
   documentId: string;
   remarks?: string;
   latitude: number;
@@ -158,23 +171,22 @@ export type ClockOutInput = {
 };
 
 export async function clockOut(input: ClockOutInput) {
-  const { supabase } = await requireUser();
-  const today = todayIso();
+  const { supabase, userId } = await requireUser();
+  const today = todayInMalaysia();
   const now = new Date().toISOString();
-  const driverName = input.driverName.trim();
+  const { driverId } = await resolveDriver(supabase, userId, input.companyId, input.driverProfileId);
 
   const { data: existing, error: fetchError } = await supabase
     .from("driver_attendance")
     .select("id, clock_in_time, clock_out_time")
     .eq("company_id", input.companyId)
-    .eq("driver_name", driverName)
+    .eq("driver_id", driverId)
     .eq("attendance_date", today)
     .maybeSingle();
   if (fetchError) throw fetchError;
   if (!existing || !existing.clock_in_time) throw new Error("Clock in first before clocking out.");
   if (existing.clock_out_time) throw new Error("Already clocked out today.");
 
-  const driverId = await resolveDriverId(supabase, input.companyId, driverName);
   const geofence = await checkGeofence(supabase, driverId, input.latitude, input.longitude);
   if (geofence.blocked) throw new Error(geofence.message);
 
@@ -220,6 +232,7 @@ export type CorrectAttendanceInput = {
 export async function correctAttendance(input: CorrectAttendanceInput) {
   const { supabase, userId } = await requireUser();
   if (!input.reason?.trim()) throw new Error("A reason is required to correct attendance.");
+  if (!(await isCompanyAdmin(supabase, input.companyId))) throw new Error("Only an admin can correct attendance.");
 
   const { data: existing, error: fetchError } = await supabase
     .from("driver_attendance")
@@ -258,14 +271,15 @@ export async function correctAttendance(input: CorrectAttendanceInput) {
   revalidatePath("/");
 }
 
-export async function markOffDay(input: { companyId: string; driverName: string; date: string; reason?: string }) {
-  const { supabase } = await requireUser();
-  const driverName = input.driverName.trim();
+export async function markOffDay(input: { companyId: string; driverProfileId: string; date: string; reason?: string }) {
+  const { supabase, userId } = await requireUser();
+  if (!(await isCompanyAdmin(supabase, input.companyId))) throw new Error("Only an admin can mark an off day.");
+  const { driverId, driverName } = await resolveDriver(supabase, userId, input.companyId, input.driverProfileId);
   const { data: existing } = await supabase
     .from("driver_attendance")
     .select("id")
     .eq("company_id", input.companyId)
-    .eq("driver_name", driverName)
+    .eq("driver_id", driverId)
     .eq("attendance_date", input.date)
     .maybeSingle();
 
@@ -275,7 +289,6 @@ export async function markOffDay(input: { companyId: string; driverName: string;
     if (error) throw error;
     attendanceId = existing.id;
   } else {
-    const driverId = await resolveDriverId(supabase, input.companyId, driverName);
     const { data, error } = await supabase
       .from("driver_attendance")
       .insert({ company_id: input.companyId, driver_id: driverId, driver_name: driverName, attendance_date: input.date, is_off_day: true })

@@ -24,7 +24,14 @@ export type DriverInput = {
   notes?: string;
   approvedLatitude?: number;
   approvedLongitude?: number;
+  /** Login account allowed to clock in/out as this driver; null clears the link. */
+  userId?: string | null;
 };
+
+async function requireCompanyAdmin(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], companyId: string) {
+  const { data } = await supabase.rpc("user_is_company_admin", { target_company_id: companyId });
+  if (data !== true) throw new Error("Only an admin can manage the driver list.");
+}
 
 /**
  * Drivers are HR employees — if this person already exists in HR, this just
@@ -33,6 +40,7 @@ export type DriverInput = {
  */
 export async function createDriver(input: DriverInput) {
   const { supabase } = await requireUser();
+  await requireCompanyAdmin(supabase, input.companyId);
 
   let employeeId = input.employeeId;
   if (!employeeId) {
@@ -73,6 +81,10 @@ export async function createDriver(input: DriverInput) {
 
 export async function updateDriver(driverId: string, input: Partial<DriverInput>) {
   const { supabase } = await requireUser();
+  const { data: driver, error: driverError } = await supabase.from("driver_profiles").select("company_id").eq("id", driverId).single();
+  if (driverError) throw driverError;
+  await requireCompanyAdmin(supabase, driver.company_id);
+
   const { error } = await supabase
     .from("driver_profiles")
     .update({
@@ -81,9 +93,13 @@ export async function updateDriver(driverId: string, input: Partial<DriverInput>
       notes: input.notes || null,
       approved_latitude: input.approvedLatitude ?? null,
       approved_longitude: input.approvedLongitude ?? null,
+      ...(input.userId !== undefined ? { user_id: input.userId } : {}),
     })
     .eq("id", driverId);
-  if (error) throw error;
+  if (error) {
+    if (error.code === "23505") throw new Error("That login is already linked to another driver in this company.");
+    throw error;
+  }
   revalidatePath("/driver-logistics/drivers");
   revalidatePath(`/driver-logistics/drivers/${driverId}`);
 }

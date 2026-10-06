@@ -11,6 +11,7 @@ const labelClass = "text-[12.5px] font-semibold text-text-secondary";
 export function DriverProfileForm({
   driverId,
   initial,
+  accounts,
 }: {
   driverId: string;
   initial: {
@@ -19,9 +20,13 @@ export function DriverProfileForm({
     notes: string | null;
     approved_latitude: number | null;
     approved_longitude: number | null;
+    user_id: string | null;
   };
+  /** Login accounts that can be linked to this driver (admins only). */
+  accounts: { id: string; label: string }[];
 }) {
   const router = useRouter();
+  const [userId, setUserId] = useState(initial.user_id ?? "");
   const [licenseNumber, setLicenseNumber] = useState(initial.license_number ?? "");
   const [licenseExpiry, setLicenseExpiry] = useState(initial.license_expiry ?? "");
   const [notes, setNotes] = useState(initial.notes ?? "");
@@ -59,6 +64,7 @@ export function DriverProfileForm({
         notes: notes || undefined,
         approvedLatitude: approvedLatitude ? Number(approvedLatitude) : undefined,
         approvedLongitude: approvedLongitude ? Number(approvedLongitude) : undefined,
+        userId: userId || null,
       });
       router.refresh();
     } catch (err) {
@@ -80,6 +86,16 @@ export function DriverProfileForm({
           <label className={labelClass}>License Expiry</label>
           <input type="date" value={licenseExpiry} onChange={(e) => setLicenseExpiry(e.target.value)} className={inputClass} />
         </div>
+      </div>
+      <div>
+        <label className={labelClass}>Linked Login Account</label>
+        <select value={userId} onChange={(e) => setUserId(e.target.value)} className={inputClass}>
+          <option value="">Not linked</option>
+          {accounts.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
+        </select>
+        <p className="mt-1 text-[11px] text-text-muted">
+          This driver can only clock in/out when signed in with this account. Create the login first under Settings → Members.
+        </p>
       </div>
       <div>
         <label className={labelClass}>Notes</label>
