@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createIngredient, updateIngredient, type IngredientInput } from "@/lib/kitchen/actions";
+import { normalizeUnit, unitChoices } from "@/lib/kitchen/constants";
 
 type Company = { id: string; name: string };
 type Supplier = { id: string; name: string; company_id: string };
@@ -31,7 +32,7 @@ export function IngredientForm({
   const [form, setForm] = useState({
     name: initial?.name ?? "",
     category: initial?.category ?? "",
-    unitOfMeasure: initial?.unitOfMeasure ?? "kg",
+    unitOfMeasure: normalizeUnit(initial?.unitOfMeasure) || "KG",
     currentStockQty: String(initial?.currentStockQty ?? 0),
     reorderLevel: String(initial?.reorderLevel ?? 0),
     unitCost: String(initial?.unitCost ?? 0),
@@ -94,12 +95,7 @@ export function IngredientForm({
         <div>
           <label className={labelClass}>Unit of Measure</label>
           <select value={form.unitOfMeasure} onChange={(e) => setForm((f) => ({ ...f, unitOfMeasure: e.target.value }))} className={inputClass}>
-            <option value="kg">kg</option>
-            <option value="g">g</option>
-            <option value="l">l</option>
-            <option value="ml">ml</option>
-            <option value="pcs">pcs</option>
-            <option value="pack">pack</option>
+            {unitChoices(form.unitOfMeasure).map((u) => <option key={u} value={u}>{u}</option>)}
           </select>
         </div>
         <div>

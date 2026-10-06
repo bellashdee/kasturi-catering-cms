@@ -424,3 +424,14 @@ export async function updatePurchaseRequestStatus(requestId: string, status: str
 
   revalidatePath("/kitchen/purchase-requests");
 }
+
+/** Renames an ingredient without touching any of its other details. */
+export async function renameIngredient(ingredientId: string, name: string) {
+  const { supabase } = await requireUser();
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("Enter a name.");
+  const { error } = await supabase.from("ingredients").update({ name: trimmed }).eq("id", ingredientId);
+  if (error) throw error;
+  revalidatePath("/kitchen/ingredients");
+  revalidatePath(`/kitchen/ingredients/${ingredientId}`);
+}

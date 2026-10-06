@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createRecipe, type RecipeInput } from "@/lib/kitchen/actions";
+import { createIngredient, createRecipe, renameIngredient, type RecipeInput } from "@/lib/kitchen/actions";
+import { normalizeUnit, unitChoices } from "@/lib/kitchen/constants";
 
 type Company = { id: string; name: string };
 type MenuItem = { id: string; name: string; company_id: string };
@@ -12,6 +13,8 @@ type Line = { ingredientId: string; quantityPerYield: string; unit: string };
 const inputClass =
   "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
 const labelClass = "text-[12.5px] font-semibold text-text-secondary";
+
+const NEW_ITEM = "__new__";
 
 function emptyLine(): Line {
   return { ingredientId: "", quantityPerYield: "", unit: "" };
@@ -37,20 +40,69 @@ export function RecipeForm({
   const [yieldPax, setYieldPax] = useState("10");
   const [instructions, setInstructions] = useState("");
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
+  const [ingredientList, setIngredientList] = useState<Ingredient[]>(ingredients);
+  // Inline editor under an ingredient row: add a brand-new item, or rename the selected one.
+  const [editor, setEditor] = useState<{ index: number; mode: "new" | "rename"; name: string; unit: string } | null>(null);
+  const [editorBusy, setEditorBusy] = useState(false);
+  const [editorError, setEditorError] = useState<string | null>(null);
 
   const menuItemsForCompany = menuItems.filter((m) => m.company_id === companyId);
-  const ingredientsForCompany = ingredients.filter((i) => i.company_id === companyId);
+  const ingredientsForCompany = ingredientList.filter((i) => i.company_id === companyId);
 
   function updateLine(index: number, field: keyof Line, value: string) {
     setLines((prev) => {
       const next = [...prev];
       next[index] = { ...next[index], [field]: value };
       if (field === "ingredientId") {
-        const ing = ingredients.find((i) => i.id === value);
-        if (ing) next[index].unit = ing.unit_of_measure ?? "";
+        const ing = ingredientList.find((i) => i.id === value);
+        if (ing) next[index].unit = normalizeUnit(ing.unit_of_measure);
       }
       return next;
     });
+  }
+
+  function handleIngredientSelect(index: number, value: string) {
+    setEditorError(null);
+    if (value === NEW_ITEM) {
+      setEditor({ index, mode: "new", name: "", unit: normalizeUnit(lines[index].unit) || "KG" });
+      return;
+    }
+    setEditor(null);
+    updateLine(index, "ingredientId", value);
+  }
+
+  function startRename(index: number) {
+    const ing = ingredientList.find((i) => i.id === lines[index].ingredientId);
+    if (!ing) return;
+    setEditorError(null);
+    setEditor({ index, mode: "rename", name: ing.name, unit: "" });
+  }
+
+  async function saveEditor() {
+    if (!editor) return;
+    const name = editor.name.trim();
+    if (!name) {
+      setEditorError("Enter the item name.");
+      return;
+    }
+    setEditorBusy(true);
+    setEditorError(null);
+    try {
+      if (editor.mode === "new") {
+        const created = await createIngredient({ companyId, name, unitOfMeasure: editor.unit || undefined, currentStockQty: 0, reorderLevel: 0, unitCost: 0 });
+        setIngredientList((prev) => [...prev, { id: created.id, name, unit_of_measure: editor.unit || null, company_id: companyId }]);
+        setLines((prev) => prev.map((l, i) => (i === editor.index ? { ...l, ingredientId: created.id, unit: editor.unit } : l)));
+      } else {
+        const id = lines[editor.index].ingredientId;
+        await renameIngredient(id, name);
+        setIngredientList((prev) => prev.map((i) => (i.id === id ? { ...i, name } : i)));
+      }
+      setEditor(null);
+    } catch (err) {
+      setEditorError(err instanceof Error ? err.message : "Could not save the item.");
+    } finally {
+      setEditorBusy(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -127,26 +179,67 @@ export function RecipeForm({
         </div>
         <div className="flex flex-col gap-2">
           {lines.map((line, i) => (
-            <div key={i} className="grid grid-cols-[2fr_1fr_0.8fr_auto] items-center gap-2">
-              <select value={line.ingredientId} onChange={(e) => updateLine(i, "ingredientId", e.target.value)} className="h-9 rounded-lg border border-border-strong px-2 text-[13px]">
-                <option value="">Select ingredient</option>
-                {ingredientsForCompany.map((ing) => <option key={ing.id} value={ing.id}>{ing.name}</option>)}
-              </select>
-              <input type="number" min="0" step="0.001" value={line.quantityPerYield} onChange={(e) => updateLine(i, "quantityPerYield", e.target.value)} placeholder="Quantity" className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
-              <input value={line.unit} onChange={(e) => updateLine(i, "unit", e.target.value)} placeholder="Unit" className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
-              <button
-                type="button"
-                onClick={() => setLines((prev) => prev.filter((_, idx) => idx !== i))}
-                disabled={lines.length === 1}
-                className="text-xs font-semibold text-danger disabled:opacity-40"
-              >
-                Remove
-              </button>
+            <div key={i} className="flex flex-col gap-1.5">
+              <div className="grid grid-cols-[2fr_1fr_0.8fr_auto] items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  <select value={line.ingredientId} onChange={(e) => handleIngredientSelect(i, e.target.value)} className="h-9 min-w-0 flex-1 rounded-lg border border-border-strong px-2 text-[13px]">
+                    <option value="">Select ingredient</option>
+                    {ingredientsForCompany.map((ing) => <option key={ing.id} value={ing.id}>{ing.name}</option>)}
+                    <option value={NEW_ITEM}>＋ Add new item…</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => startRename(i)}
+                    disabled={!line.ingredientId}
+                    title="Edit item name"
+                    aria-label="Edit item name"
+                    className="h-9 shrink-0 rounded-lg border border-border-strong px-2 text-[12px] font-semibold text-primary disabled:opacity-40"
+                  >
+                    Edit
+                  </button>
+                </div>
+                <input type="number" min="0" step="0.001" value={line.quantityPerYield} onChange={(e) => updateLine(i, "quantityPerYield", e.target.value)} placeholder="Quantity" className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
+                <select value={normalizeUnit(line.unit)} onChange={(e) => updateLine(i, "unit", e.target.value)} className="h-9 rounded-lg border border-border-strong px-2 text-[13px]">
+                  <option value="">Unit</option>
+                  {unitChoices(line.unit).map((u) => <option key={u} value={u}>{u}</option>)}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => { setEditor(null); setLines((prev) => prev.filter((_, idx) => idx !== i)); }}
+                  disabled={lines.length === 1}
+                  className="text-xs font-semibold text-danger disabled:opacity-40"
+                >
+                  Remove
+                </button>
+              </div>
+              {editor && editor.index === i && (
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-bg px-3 py-2">
+                  <span className="text-[12px] font-semibold text-text-secondary">{editor.mode === "new" ? "New item name" : "Item name"}</span>
+                  <input
+                    autoFocus
+                    value={editor.name}
+                    onChange={(e) => setEditor({ ...editor, name: e.target.value })}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void saveEditor(); } }}
+                    placeholder="e.g. Ayam Whole"
+                    className="h-8 min-w-[10rem] flex-1 rounded-lg border border-border-strong px-2 text-[13px]"
+                  />
+                  {editor.mode === "new" && (
+                    <select value={editor.unit} onChange={(e) => setEditor({ ...editor, unit: e.target.value })} className="h-8 rounded-lg border border-border-strong px-2 text-[13px]">
+                      {unitChoices(editor.unit).map((u) => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                  )}
+                  <button type="button" onClick={() => void saveEditor()} disabled={editorBusy} className="h-8 rounded-lg bg-primary px-3 text-[12.5px] font-semibold text-white disabled:opacity-60">
+                    {editorBusy ? "Saving…" : editor.mode === "new" ? "Add item" : "Save name"}
+                  </button>
+                  <button type="button" onClick={() => setEditor(null)} className="h-8 rounded-lg border border-border-strong px-3 text-[12.5px] font-semibold text-text">Cancel</button>
+                  {editorError && <span className="w-full text-[12px] font-semibold text-danger">{editorError}</span>}
+                </div>
+              )}
             </div>
           ))}
         </div>
         {ingredientsForCompany.length === 0 && (
-          <p className="mt-2 text-xs text-text-muted">No ingredients yet for this company — add some in Ingredients first.</p>
+          <p className="mt-2 text-xs text-text-muted">No ingredients yet for this company — choose &quot;＋ Add new item…&quot; in the list to add one here.</p>
         )}
       </div>
 
