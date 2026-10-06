@@ -150,7 +150,7 @@ export const KNOWLEDGE_BASE: KBEntry[] = [
     title: "Submitting leave or overtime",
     keywords: ["leave request", "overtime", "apply leave", "submit overtime"],
     content:
-      "📌 How to Submit a Leave or Overtime Request\n1. Go to HR, open the employee's profile.\n2. Click + New Leave Request (or + New Overtime).\n3. Fill in the dates/hours and reason.\n4. Click Confirm & Save — this creates an approval request.\n5. A manager approves or rejects it from the Leave/Overtime list; the status updates automatically once decided.",
+      "📌 How to Submit a Leave Request or OT\nLeave: open the employee's profile in HR, click + Request, fill in the dates and reason, and save — a manager approves or rejects it from the Leave list.\nOT: go to HR → Overtime → + Staff OT Form. Select your name from the list, choose the OT date, enter the OT start and end time (the total OT hours are calculated automatically), add the reason and Submit. Each staff member can do up to 104 OT hours a month; once 104 hours is reached, further OT is sent as an OT Request and needs Manager Approval before it counts.",
   },
   {
     id: "tut-payroll",

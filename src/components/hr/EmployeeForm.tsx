@@ -16,6 +16,8 @@ export function EmployeeForm({
   employeeId,
   initial,
   canEditPrivate = false,
+  accounts,
+  initialUserId,
 }: {
   companies: Company[];
   defaultCompanyId?: string;
@@ -23,8 +25,12 @@ export function EmployeeForm({
   initial?: Partial<EmployeeInput>;
   /** Super Admin / Company Admin only: shows the bank and KWSP fields. */
   canEditPrivate?: boolean;
+  /** Admins only: login accounts that can be linked to this staff record (own OT submission). */
+  accounts?: { id: string; label: string }[];
+  initialUserId?: string | null;
 }) {
   const router = useRouter();
+  const [linkedUserId, setLinkedUserId] = useState(initialUserId ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<EmployeeInput>({
@@ -52,7 +58,8 @@ export function EmployeeForm({
     setSaving(true);
     setError(null);
     // Non-admins never send the bank / KWSP fields at all, so they can't blank them out by accident.
-    const payload: EmployeeInput = canEditPrivate ? form : { ...form, bankName: undefined, bankAccountNo: undefined, epfNo: undefined };
+    const base: EmployeeInput = canEditPrivate ? form : { ...form, bankName: undefined, bankAccountNo: undefined, epfNo: undefined };
+    const payload: EmployeeInput = accounts ? { ...base, userId: linkedUserId || null } : base;
     try {
       if (employeeId) {
         await updateEmployee(employeeId, payload);
@@ -144,6 +151,17 @@ export function EmployeeForm({
           <input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} className={inputClass} />
         </div>
       </div>
+
+      {accounts && employeeId && (
+        <div>
+          <label className={labelClass}>Linked Login Account</label>
+          <select value={linkedUserId} onChange={(e) => setLinkedUserId(e.target.value)} className={inputClass}>
+            <option value="">Not linked</option>
+            {accounts.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
+          </select>
+          <p className="mt-1 text-[11.5px] text-text-muted">Lets this person submit and view their own OT (Staff OT Form). Create the login first under Settings → Members.</p>
+        </div>
+      )}
 
       {canEditPrivate && (
         <div className="rounded-lg border border-border-strong p-4">

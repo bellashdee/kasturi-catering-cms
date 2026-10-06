@@ -49,6 +49,12 @@ export default async function HRPage({
         </div>
         <div className="flex gap-2.5">
           <Link
+            href={`/hr/overtime${query}`}
+            className="flex items-center gap-2 rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text"
+          >
+            Overtime &amp; OT Form
+          </Link>
+          <Link
             href={`/hr/documents${query}`}
             className="flex items-center gap-2 rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text"
           >

@@ -4,6 +4,7 @@ import { getSessionContext } from "@/lib/auth";
 import { getEmployee, getEmployeePrivateDetails } from "@/lib/hr/queries";
 import { canManageStaffPrivateDetails } from "@/lib/hr/constants";
 import { EmployeeForm } from "@/components/hr/EmployeeForm";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export default async function EditEmployeePage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionContext();
@@ -23,6 +24,14 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
   const canEditPrivate = canManageStaffPrivateDetails(session.role);
   const privateDetails = canEditPrivate ? await getEmployeePrivateDetails(supabase, id) : null;
 
+  // Only an admin of this company links logins to staff records.
+  const { data: isAdmin } = await supabase.rpc("user_is_company_admin", { target_company_id: employee.company_id });
+  let accounts: { id: string; label: string }[] | undefined;
+  if (isAdmin === true) {
+    const { data: profiles } = await createAdminClient().from("profiles").select("id, full_name, email, username").eq("is_active", true).order("full_name");
+    accounts = (profiles ?? []).map((p) => ({ id: p.id, label: `${p.full_name} (${p.username || p.email})` }));
+  }
+
   return (
     <div className="mx-auto max-w-2xl">
       <h1 className="text-[22px] font-extrabold text-text">Edit {employee.full_name}</h1>
@@ -30,6 +39,8 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
         <EmployeeForm
           employeeId={id}
           canEditPrivate={canEditPrivate}
+          accounts={accounts}
+          initialUserId={employee.user_id}
           companies={allCompanies ?? []}
           initial={{
             companyId: employee.company_id,

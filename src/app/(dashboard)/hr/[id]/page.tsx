@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { OT_STATUS_LABEL } from "@/lib/hr/overtime";
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
@@ -163,19 +164,19 @@ export default async function EmployeeProfilePage({
           )}
         </SectionCard>
 
-        <SectionCard title="Overtime" action={<Link href={`/hr/${id}/overtime/new${query}`} className="text-[12.5px] font-semibold text-primary">+ Log</Link>}>
+        <SectionCard title="Overtime" action={<Link href={`/hr/overtime/new?employee=${id}`} className="text-[12.5px] font-semibold text-primary">+ OT Form</Link>}>
           {overtime.length === 0 ? (
             <EmptyRow text="No overtime logged yet." />
           ) : (
             <div className="-mx-5 -mb-5 divide-y divide-border">
               {overtime.slice(0, 5).map((o) => (
-                <div key={o.id} className="flex items-center justify-between px-5 py-3">
+                <Link key={o.id} href={`/hr/overtime/${o.id}`} className="flex items-center justify-between px-5 py-3 hover:bg-bg">
                   <div>
                     <div className="text-[13px] font-semibold text-text">{o.work_date}</div>
-                    <div className="text-xs text-text-muted">{o.reason || "No reason given"}</div>
+                    <div className="text-xs text-text-muted">{o.reason || "No reason given"} · {OT_STATUS_LABEL[o.status] ?? o.status}</div>
                   </div>
                   <div className="text-[13px] font-bold text-text">{o.hours}h</div>
-                </div>
+                </Link>
               ))}
             </div>
           )}

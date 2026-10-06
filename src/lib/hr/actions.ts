@@ -26,6 +26,8 @@ export type EmployeeInput = {
   bankName?: string;
   bankAccountNo?: string;
   epfNo?: string;
+  /** Login account of this person (admin only); lets them submit and see their own OT. null clears the link. */
+  userId?: string | null;
 };
 
 async function savePrivateDetails(
@@ -78,6 +80,13 @@ export async function createEmployee(input: EmployeeInput) {
 export async function updateEmployee(employeeId: string, input: Partial<EmployeeInput>) {
   const { supabase } = await requireUser();
 
+  // Linking a login to a staff record is an admin-only change.
+  if (input.userId !== undefined) {
+    const { data: target } = await supabase.from("employees").select("company_id").eq("id", employeeId).single();
+    const { data: isAdmin } = target ? await supabase.rpc("user_is_company_admin", { target_company_id: target.company_id }) : { data: false };
+    if (isAdmin !== true) throw new Error("Only an admin can link a login account to a staff record.");
+  }
+
   const { error } = await supabase
     .from("employees")
     .update({
@@ -90,10 +99,14 @@ export async function updateEmployee(employeeId: string, input: Partial<Employee
       ic_passport_no: input.icPassportNo || null,
       phone: input.phone || null,
       email: input.email || null,
+      ...(input.userId !== undefined ? { user_id: input.userId } : {}),
     })
     .eq("id", employeeId);
 
-  if (error) throw error;
+  if (error) {
+    if (error.code === "23505") throw new Error("That login is already linked to another staff record in this company.");
+    throw error;
+  }
 
   if (input.bankName !== undefined || input.bankAccountNo !== undefined || input.epfNo !== undefined) {
     const { data: emp } = await supabase.from("employees").select("company_id").eq("id", employeeId).single();
@@ -296,78 +309,6 @@ export async function decideLeave(leaveRequestId: string, decision: "approved" |
 
   revalidatePath("/hr/leave");
   revalidatePath(`/hr/${leave.employee_id}`);
-  revalidatePath("/");
-}
-
-export type OvertimeInput = {
-  employeeId: string;
-  companyId: string;
-  workDate: string;
-  hours: number;
-  reason?: string;
-};
-
-export async function createOvertime(input: OvertimeInput) {
-  const { supabase, userId } = await requireUser();
-
-  const { data: overtime, error } = await supabase
-    .from("overtime_records")
-    .insert({
-      company_id: input.companyId,
-      employee_id: input.employeeId,
-      work_date: input.workDate,
-      hours: input.hours,
-      reason: input.reason || null,
-      created_by: userId,
-    })
-    .select("id")
-    .single();
-
-  if (error) throw error;
-
-  const { data: approval, error: approvalError } = await supabase
-    .from("approvals")
-    .insert({
-      company_id: input.companyId,
-      module: "hr",
-      related_table: "overtime_records",
-      related_id: overtime.id,
-      status: "pending",
-      requested_by: userId,
-    })
-    .select("id")
-    .single();
-  if (approvalError) throw approvalError;
-
-  await supabase.from("overtime_records").update({ approval_id: approval.id }).eq("id", overtime.id);
-
-  revalidatePath("/hr/overtime");
-  revalidatePath(`/hr/${input.employeeId}`);
-  revalidatePath("/");
-}
-
-export async function decideOvertime(overtimeId: string, decision: "approved" | "rejected") {
-  const { supabase } = await requireUser();
-
-  const { data: overtime, error: fetchError } = await supabase
-    .from("overtime_records")
-    .select("id, approval_id, employee_id")
-    .eq("id", overtimeId)
-    .single();
-  if (fetchError) throw fetchError;
-
-  const { error: updateError } = await supabase
-    .from("overtime_records")
-    .update({ status: decision })
-    .eq("id", overtimeId);
-  if (updateError) throw updateError;
-
-  if (overtime.approval_id) {
-    await supabase.from("approvals").update({ status: decision }).eq("id", overtime.approval_id);
-  }
-
-  revalidatePath("/hr/overtime");
-  revalidatePath(`/hr/${overtime.employee_id}`);
   revalidatePath("/");
 }
 

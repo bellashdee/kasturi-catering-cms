@@ -1391,6 +1391,7 @@ export type Database = {
           position: string | null
           resign_date: string | null
           status: string
+          user_id: string | null
         }
         Insert: {
           company_id: string
@@ -1406,6 +1407,7 @@ export type Database = {
           position?: string | null
           resign_date?: string | null
           status?: string
+          user_id?: string | null
         }
         Update: {
           company_id?: string
@@ -1421,6 +1423,7 @@ export type Database = {
           position?: string | null
           resign_date?: string | null
           status?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -1428,6 +1431,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -2306,38 +2316,71 @@ export type Database = {
       overtime_records: {
         Row: {
           approval_id: string | null
+          approved_hours: number | null
           company_id: string
           created_at: string
           created_by: string | null
+          document_id: string | null
           employee_id: string
+          exceeds_limit: boolean
           hours: number
           id: string
+          manager_remarks: string | null
+          normal_working_hours: number | null
+          ot_end_time: string | null
+          ot_start_time: string | null
           reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           status: string
+          submitted_at: string | null
+          updated_at: string
           work_date: string
         }
         Insert: {
           approval_id?: string | null
+          approved_hours?: number | null
           company_id: string
           created_at?: string
           created_by?: string | null
+          document_id?: string | null
           employee_id: string
+          exceeds_limit?: boolean
           hours: number
           id?: string
+          manager_remarks?: string | null
+          normal_working_hours?: number | null
+          ot_end_time?: string | null
+          ot_start_time?: string | null
           reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string
+          submitted_at?: string | null
+          updated_at?: string
           work_date: string
         }
         Update: {
           approval_id?: string | null
+          approved_hours?: number | null
           company_id?: string
           created_at?: string
           created_by?: string | null
+          document_id?: string | null
           employee_id?: string
+          exceeds_limit?: boolean
           hours?: number
           id?: string
+          manager_remarks?: string | null
+          normal_working_hours?: number | null
+          ot_end_time?: string | null
+          ot_start_time?: string | null
           reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string
+          submitted_at?: string | null
+          updated_at?: string
           work_date?: string
         }
         Relationships: [
@@ -2363,10 +2406,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "overtime_records_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "overtime_records_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "overtime_records_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -3771,6 +3828,14 @@ export type Database = {
       }
       user_is_company_admin: {
         Args: { target_company_id: string }
+        Returns: boolean
+      }
+      user_is_ot_manager: {
+        Args: { target_company_id: string }
+        Returns: boolean
+      }
+      user_owns_employee: {
+        Args: { target_employee_id: string }
         Returns: boolean
       }
     }
