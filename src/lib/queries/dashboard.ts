@@ -3,6 +3,7 @@ import type { Database } from "@/lib/supabase/types";
 import { getMonthlyCostBreakdown } from "@/lib/finance/queries";
 import { isPettyCashOverdue, pettyCashDaysPending } from "@/lib/finance/constants";
 import { LATE_GRACE_MINUTES } from "@/lib/driver/constants";
+import { DUE_SOON_DAYS, formatRM, paymentUrgency } from "@/lib/finance/payments";
 
 type DB = SupabaseClient<Database>;
 
@@ -422,8 +423,20 @@ export function buildAlerts(input: {
   driverAttendance: Awaited<ReturnType<typeof getDriverAttendanceAlerts>>;
   financeAdmin: Awaited<ReturnType<typeof getFinanceAdminSummary>>;
   promotions: Awaited<ReturnType<typeof getPromotionsEndingSoon>>;
+  financePayments: Awaited<ReturnType<typeof getFinancePaymentsSummary>>;
 }): Alert[] {
   const alerts: Alert[] = [];
+
+  const fp = input.financePayments;
+  if (fp.overdueCount > 0) {
+    alerts.push({ severity: "danger", title: `🔴 ${fp.overdueCount} overdue Finance payment(s) — ${formatRM(fp.overdueAmount)}`, meta: "Admin & Finance · Payment Dashboard" });
+  }
+  if (fp.dueTodayCount > 0) {
+    alerts.push({ severity: "warning", title: `🟠 ${fp.dueTodayCount} Finance payment(s) due today — ${formatRM(fp.dueTodayAmount)}`, meta: "Admin & Finance · Payment Dashboard" });
+  }
+  if (fp.dueSoonCount > 0) {
+    alerts.push({ severity: "info", title: `🟡 ${fp.dueSoonCount} Finance payment(s) due within ${DUE_SOON_DAYS} days — ${formatRM(fp.dueSoonAmount)}`, meta: "Admin & Finance · Payment Dashboard" });
+  }
 
   if (input.supplierPayments.overdueCount > 0) {
     alerts.push({
@@ -556,6 +569,30 @@ export function buildAlerts(input: {
   return alerts;
 }
 
+/**
+ * Unpaid Finance payments (supplier, rental, utilities): overdue, due today and due soon.
+ * Only Finance / Admin users can read these records, so `accessible` is false for everyone else and the card stays hidden.
+ */
+export async function getFinancePaymentsSummary(supabase: DB, companyIds: string[]) {
+  const empty = { accessible: false, unpaidTotal: 0, overdueCount: 0, overdueAmount: 0, dueTodayCount: 0, dueTodayAmount: 0, dueSoonCount: 0, dueSoonAmount: 0 };
+  const adminFlags = await Promise.all(companyIds.map(async (id) => (await supabase.rpc("user_is_company_admin", { target_company_id: id })).data === true));
+  const adminIds = companyIds.filter((_, i) => adminFlags[i]);
+  if (adminIds.length === 0) return empty;
+
+  const { data } = await supabase.from("finance_payments").select("amount, due_date, status").in("company_id", adminIds).eq("status", "pending");
+  const today = todayIso();
+  const summary = { ...empty, accessible: true };
+  for (const p of data ?? []) {
+    const amount = Number(p.amount);
+    summary.unpaidTotal += amount;
+    const urgency = paymentUrgency(p.status, p.due_date, today);
+    if (urgency === "overdue") { summary.overdueCount += 1; summary.overdueAmount += amount; }
+    else if (urgency === "due_today") { summary.dueTodayCount += 1; summary.dueTodayAmount += amount; }
+    else if (urgency === "due_soon") { summary.dueSoonCount += 1; summary.dueSoonAmount += amount; }
+  }
+  return summary;
+}
+
 /** Runs every section query in parallel for the Main Dashboard page. */
 export async function getDashboardData(supabase: DB, companyIds: string[]) {
   const [
@@ -576,6 +613,7 @@ export async function getDashboardData(supabase: DB, companyIds: string[]) {
     driverAttendance,
     financeAdmin,
     promotions,
+    financePayments,
   ] = await Promise.all([
     getFinancialOverview(supabase, companyIds),
     getSupplierPayments(supabase, companyIds),
@@ -594,6 +632,7 @@ export async function getDashboardData(supabase: DB, companyIds: string[]) {
     getDriverAttendanceAlerts(supabase, companyIds),
     getFinanceAdminSummary(supabase, companyIds),
     getPromotionsEndingSoon(supabase, companyIds),
+    getFinancePaymentsSummary(supabase, companyIds),
   ]);
 
   const alerts = buildAlerts({
@@ -608,6 +647,7 @@ export async function getDashboardData(supabase: DB, companyIds: string[]) {
     driverAttendance,
     financeAdmin,
     promotions,
+    financePayments,
   });
 
   return {
@@ -625,6 +665,7 @@ export async function getDashboardData(supabase: DB, companyIds: string[]) {
     driverFleet,
     driverAttendance,
     financeAdmin,
+    financePayments,
     alerts,
   };
 }

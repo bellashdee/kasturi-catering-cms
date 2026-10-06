@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
@@ -109,6 +110,15 @@ export default async function DashboardPage({
           <StatRow label="Upcoming" value={data.supplierPayments.upcomingCount} />
           <StatRow label="Paid this month" value={formatCurrency(data.supplierPayments.paidThisMonth)} />
         </SectionCard>
+
+        {data.financePayments.accessible && (
+          <SectionCard title="Finance Payments" action={<Link href="/finance/payments" className="text-[12.5px] font-semibold text-primary">Open</Link>}>
+            <StatRow label="Still to be paid" value={formatCurrency(data.financePayments.unpaidTotal)} />
+            <StatRow label="🔴 Overdue" value={`${data.financePayments.overdueCount} · ${formatCurrency(data.financePayments.overdueAmount)}`} />
+            <StatRow label="🟠 Due today" value={`${data.financePayments.dueTodayCount} · ${formatCurrency(data.financePayments.dueTodayAmount)}`} />
+            <StatRow label="🟡 Due soon" value={`${data.financePayments.dueSoonCount} · ${formatCurrency(data.financePayments.dueSoonAmount)}`} />
+          </SectionCard>
+        )}
 
         <SectionCard title="Customer Outstanding">
           <StatRow label="Outstanding" value={formatCurrency(data.customerOutstanding.outstanding)} />
