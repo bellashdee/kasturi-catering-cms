@@ -21,6 +21,8 @@ export type CreateMemberInput = {
   password: string;
   role: UserRole;
   companyId: string | null;
+  /** null = every module. */
+  allowedModules?: string[] | null;
 };
 
 export async function createMember(input: CreateMemberInput) {
@@ -46,6 +48,7 @@ export async function createMember(input: CreateMemberInput) {
     user_id: userId,
     company_id: input.companyId,
     role: input.role,
+    allowed_modules: input.allowedModules ?? null,
   });
   if (accessError) throw accessError;
 
@@ -58,6 +61,8 @@ export type UpdateMemberInput = {
   username?: string;
   role?: UserRole;
   companyId?: string | null;
+  /** null = every module; a list = only those modules. */
+  allowedModules?: string[] | null;
   newPassword?: string;
 };
 
@@ -91,7 +96,7 @@ export async function updateMember(userId: string, input: UpdateMemberInput) {
     if (existingAccess) {
       const { error } = await admin
         .from("user_company_access")
-        .update({ role: input.role, company_id: input.companyId ?? null })
+        .update({ role: input.role, company_id: input.companyId ?? null, ...(input.allowedModules !== undefined ? { allowed_modules: input.allowedModules } : {}) })
         .eq("id", existingAccess.id);
       if (error) throw error;
     } else {
@@ -99,6 +104,7 @@ export async function updateMember(userId: string, input: UpdateMemberInput) {
         user_id: userId,
         company_id: input.companyId ?? null,
         role: input.role,
+        allowed_modules: input.allowedModules ?? null,
       });
       if (error) throw error;
     }

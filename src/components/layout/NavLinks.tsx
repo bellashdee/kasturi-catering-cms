@@ -119,14 +119,15 @@ export function MainDashboardLink() {
   return <NavItem href="/" icon="dashboard" label="Main Dashboard" />;
 }
 
-export function ModuleLinks() {
+export function ModuleLinks({ allowedModules }: { allowedModules: string[] | null }) {
+  const show = (key: string) => !allowedModules || allowedModules.includes(key);
   return (
     <>
-      {MODULES.filter((m) => m.key !== "reports" && m.key !== "ai-assistant").map((m) => (
+      {MODULES.filter((m) => m.key !== "reports" && m.key !== "ai-assistant" && show(m.key)).map((m) => (
         <NavItem key={m.key} href={m.href} icon={m.key} label={m.label} matchPrefixes={m.matchPrefixes} />
       ))}
-      <NavItem href="/reports" icon="reports" label="Reports" />
-      <NavItem href="/ai-assistant" icon="ai-assistant" label="🤖 AI Assistant" />
+      {show("reports") && <NavItem href="/reports" icon="reports" label="Reports" />}
+      {show("ai-assistant") && <NavItem href="/ai-assistant" icon="ai-assistant" label="🤖 AI Assistant" />}
     </>
   );
 }

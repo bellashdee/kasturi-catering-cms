@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createMember } from "@/lib/users/actions";
+import { ModulePicker } from "@/components/settings/ModulePicker";
 import { PasswordInput } from "@/components/shared/PasswordInput";
 import { ROLE_LABEL } from "@/lib/users/constants";
 import type { Database } from "@/lib/supabase/types";
@@ -30,6 +31,7 @@ export function AddMemberForm({ companies }: { companies: Company[] }) {
   const [password, setPassword] = useState(randomPassword());
   const [role, setRole] = useState<UserRole>("staff");
   const [companyId, setCompanyId] = useState<string>("");
+  const [modules, setModules] = useState<string[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<{ fullName: string; username: string; email: string; password: string } | null>(null);
@@ -46,6 +48,7 @@ export function AddMemberForm({ companies }: { companies: Company[] }) {
         password,
         role,
         companyId: companyId || null,
+        allowedModules: modules,
       });
       setCreated({ fullName, username, email, password });
       setFullName("");
@@ -133,6 +136,8 @@ export function AddMemberForm({ companies }: { companies: Company[] }) {
           </select>
         </div>
       </div>
+
+      <ModulePicker value={modules} onChange={setModules} />
 
       <div className="flex justify-end gap-2.5">
         <button type="button" onClick={() => setOpen(false)} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13.5px] font-semibold text-text">

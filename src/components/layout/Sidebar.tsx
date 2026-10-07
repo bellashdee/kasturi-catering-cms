@@ -8,7 +8,7 @@ import { useMobileNav } from "./MobileNavContext";
 
 type Company = { id: string; name: string; legal_name: string };
 
-export function Sidebar({ companies }: { companies: Company[] }) {
+export function Sidebar({ companies, allowedModules }: { companies: Company[]; allowedModules: string[] | null }) {
   const { open, setOpen } = useMobileNav();
   const pathname = usePathname();
 
@@ -45,7 +45,7 @@ export function Sidebar({ companies }: { companies: Company[] }) {
           <MainDashboardLink />
           <CompanyQuickLinks companies={companies} />
           <div className="my-2 h-px bg-white/8" />
-          <ModuleLinks />
+          <ModuleLinks allowedModules={allowedModules} />
         </nav>
 
         <div className="border-t border-white/8 p-3">

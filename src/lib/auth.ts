@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { mergeAllowedModules } from "@/lib/modules";
 import type { Database } from "@/lib/supabase/types";
 
 type AccessRow = Database["public"]["Tables"]["user_company_access"]["Row"];
@@ -14,6 +15,8 @@ export type SessionContext = {
   hasAllCompaniesAccess: boolean;
   /** Company ids the user can see (only meaningful when hasAllCompaniesAccess is false). */
   companyIds: string[];
+  /** Modules the user may open; null = every module. */
+  allowedModules: string[] | null;
 };
 
 const ROLE_RANK: Record<Database["public"]["Enums"]["user_role"], number> = {
@@ -57,6 +60,7 @@ export const getSessionContext = cache(async (): Promise<SessionContext | null> 
     role,
     hasAllCompaniesAccess,
     companyIds,
+    allowedModules: mergeAllowedModules(rows.map((r) => r.allowed_modules)),
   };
 });
 

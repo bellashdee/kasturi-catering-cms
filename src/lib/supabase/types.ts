@@ -3866,6 +3866,7 @@ export type Database = {
       }
       user_company_access: {
         Row: {
+          allowed_modules: string[] | null
           company_id: string | null
           granted_at: string
           id: string
@@ -3873,6 +3874,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          allowed_modules?: string[] | null
           company_id?: string | null
           granted_at?: string
           id?: string
@@ -3880,6 +3882,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          allowed_modules?: string[] | null
           company_id?: string | null
           granted_at?: string
           id?: string
@@ -4023,6 +4026,10 @@ export type Database = {
       current_user_is_super_admin: { Args: never; Returns: boolean }
       user_has_company_access: {
         Args: { target_company_id: string }
+        Returns: boolean
+      }
+      user_has_module: {
+        Args: { module_key: string; target_company_id: string }
         Returns: boolean
       }
       user_is_company_admin: {

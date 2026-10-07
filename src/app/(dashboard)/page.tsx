@@ -8,11 +8,13 @@ import { formatCurrency, formatMalaysiaDate } from "@/lib/format";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { SectionCard, EmptyRow, StatRow } from "@/components/dashboard/SectionCard";
 import { AlertsPanel } from "@/components/dashboard/AlertsPanel";
+import { MODULES } from "@/lib/constants";
+import { canAccessModule } from "@/lib/modules";
 
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string }>;
+  searchParams: Promise<{ company?: string; denied?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -21,7 +23,7 @@ export default async function DashboardPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId } = await searchParams;
+  const { company: requestedId, denied } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
 
   const selectedCompany = companies.find((c) => targetCompanyIds.length === 1 && c.id === targetCompanyIds[0]);
@@ -41,8 +43,21 @@ export default async function DashboardPage({
 
   const data = await getDashboardData(supabase, targetCompanyIds);
 
+  // A member limited to some modules only sees the dashboard cards and alerts of those modules.
+  const can = (key: Parameters<typeof canAccessModule>[1]) => canAccessModule(session.allowedModules, key);
+  const alerts = data.alerts.filter((a) => {
+    const owner = MODULES.find((m) => a.meta.startsWith(m.label));
+    return !owner || can(owner.key);
+  });
+
   return (
     <div className="flex flex-col gap-6">
+      {denied && (
+        <div className="rounded-lg border border-warning/40 bg-warning-bg px-4 py-2.5 text-[13px] font-semibold text-warning">
+          You don&apos;t have access to that module. Ask a Super Admin if you need it.
+        </div>
+      )}
+
       <div>
         <h1 className="text-[22px] font-extrabold text-text">
           {new Date().toLocaleDateString("en-MY", {
@@ -58,40 +73,40 @@ export default async function DashboardPage({
       </div>
 
       <div className="grid grid-cols-4 gap-4">
-        <KpiCard label="Revenue (MTD)" value={formatCurrency(data.financial.revenue)} hint="From confirmed customer payments" />
-        <KpiCard label="Expenses" value={formatCurrency(data.financial.expenses)} tone="warning" iconTone="warning" hint="Supplier payments + other expenses" />
-        <KpiCard label="Monthly Costing" value={formatCurrency(data.financial.monthlyCosting)} hint="This calendar month" />
-        <KpiCard
+        {can("finance-admin") && <KpiCard label="Revenue (MTD)" value={formatCurrency(data.financial.revenue)} hint="From confirmed customer payments" />}
+        {can("finance-admin") && <KpiCard label="Expenses" value={formatCurrency(data.financial.expenses)} tone="warning" iconTone="warning" hint="Supplier payments + other expenses" />}
+        {can("finance-admin") && <KpiCard label="Monthly Costing" value={formatCurrency(data.financial.monthlyCosting)} hint="This calendar month" />}
+        {can("supplier-procurement") && <KpiCard
           label="Supplier Outstanding"
           value={formatCurrency(data.supplierPayments.outstanding)}
           tone={data.supplierPayments.overdueCount > 0 ? "danger" : "neutral"}
           iconTone="danger"
           hint={`${data.supplierPayments.overdueCount} overdue`}
-        />
-        <KpiCard
+        />}
+        {can("finance-admin") && <KpiCard
           label="Customer Outstanding"
           value={formatCurrency(data.customerOutstanding.outstanding)}
           tone={data.customerOutstanding.overdueCount > 0 ? "danger" : "neutral"}
           iconTone="warning"
           hint={`${data.customerOutstanding.overdueCount} overdue`}
-        />
-        <KpiCard label="Upcoming Events" value={String(data.cateringEvents.upcomingCount)} hint="Next 14 days" />
-        <KpiCard
+        />}
+        {can("catering") && <KpiCard label="Upcoming Events" value={String(data.cateringEvents.upcomingCount)} hint="Next 14 days" />}
+        {(can("finance-admin") || can("supplier-procurement")) && <KpiCard
           label="Pending Payments"
           value={String(data.supplierPayments.openCount + data.customerOutstanding.openCount)}
           hint="Supplier + customer invoices"
-        />
-        <KpiCard
+        />}
+        {(can("hr") || can("finance-admin") || can("supplier-procurement")) && <KpiCard
           label="Pending Approvals"
           value={String(data.approvals.pendingCount)}
           tone={data.approvals.pendingCount > 0 ? "warning" : "neutral"}
           iconTone="warning"
           hint="Needs your review"
-        />
+        />}
       </div>
 
       <div className="grid grid-cols-2 gap-5">
-        <SectionCard title="Financial Overview">
+        {can("finance-admin") && <SectionCard title="Financial Overview">
           <StatRow label="Revenue (MTD)" value={formatCurrency(data.financial.revenue)} />
           <StatRow label="Expenses (MTD)" value={formatCurrency(data.financial.expenses)} />
           <StatRow label="Monthly Costing" value={formatCurrency(data.financial.monthlyCosting)} />
@@ -100,18 +115,18 @@ export default async function DashboardPage({
             label="Petty Cash Pending Payment"
             value={`${data.financeAdmin.pettyCashPending.count} · ${formatCurrency(data.financeAdmin.pettyCashPending.totalAmount)}`}
           />
-        </SectionCard>
+        </SectionCard>}
 
-        <SectionCard title="Supplier Payments">
+        {can("supplier-procurement") && <SectionCard title="Supplier Payments">
           <StatRow label="Outstanding" value={formatCurrency(data.supplierPayments.outstanding)} />
           <StatRow label="Overdue invoices" value={data.supplierPayments.overdueCount} />
           <StatRow label="Due today" value={data.supplierPayments.dueTodayCount} />
           <StatRow label="Due this week" value={data.supplierPayments.dueThisWeekCount} />
           <StatRow label="Upcoming" value={data.supplierPayments.upcomingCount} />
           <StatRow label="Paid this month" value={formatCurrency(data.supplierPayments.paidThisMonth)} />
-        </SectionCard>
+        </SectionCard>}
 
-        {data.financePayments.accessible && (
+        {data.financePayments.accessible && can("finance-admin") && (
           <SectionCard title="Finance Payments" action={<Link href="/finance/payments" className="text-[12.5px] font-semibold text-primary">Open</Link>}>
             <StatRow label="Still to be paid" value={formatCurrency(data.financePayments.unpaidTotal)} />
             <StatRow label="🔴 Overdue" value={`${data.financePayments.overdueCount} · ${formatCurrency(data.financePayments.overdueAmount)}`} />
@@ -120,12 +135,12 @@ export default async function DashboardPage({
           </SectionCard>
         )}
 
-        <SectionCard title="Customer Outstanding">
+        {can("finance-admin") && <SectionCard title="Customer Outstanding">
           <StatRow label="Outstanding" value={formatCurrency(data.customerOutstanding.outstanding)} />
           <StatRow label="Overdue invoices" value={data.customerOutstanding.overdueCount} />
-        </SectionCard>
+        </SectionCard>}
 
-        <SectionCard title="Catering Events">
+        {can("catering") && <SectionCard title="Catering Events">
           {data.cateringEvents.upcoming.length === 0 ? (
             <EmptyRow text="No catering events in the next 14 days." />
           ) : (
@@ -138,15 +153,15 @@ export default async function DashboardPage({
               ))}
             </div>
           )}
-        </SectionCard>
+        </SectionCard>}
 
-        <SectionCard title="Kitchen Production">
+        {can("kitchen") && <SectionCard title="Kitchen Production">
           <StatRow label="Production orders in progress" value={data.kitchen.inProgressCount} />
           <StatRow label="Ingredients low on stock" value={data.lowStock.length} />
           <StatRow label="Purchase requests pending" value={data.purchaseRequests.pendingCount} />
-        </SectionCard>
+        </SectionCard>}
 
-        <SectionCard title="Driver Deliveries">
+        {can("driver-logistics") && <SectionCard title="Driver Deliveries">
           <StatRow label="Deliveries pending" value={data.deliveries.pendingCount} />
           <StatRow label="Available drivers" value={`${data.driverFleet.availableDrivers} / ${data.driverFleet.totalDrivers}`} />
           <StatRow label="Missing clock-in today" value={data.driverAttendance.missingClockInCount} />
@@ -163,22 +178,22 @@ export default async function DashboardPage({
               ))}
             </div>
           )}
-        </SectionCard>
+        </SectionCard>}
 
-        <SectionCard title="HR">
+        {can("hr") && <SectionCard title="HR">
           <StatRow label="Active staff" value={data.hr.staffCount} />
           <StatRow label="Staff documents expired / expiring (30 days)" value={data.hr.expiringCertificates.length} />
           <StatRow label="Licences & agreements expired / expiring (30 days)" value={data.hr.expiringCompanyDocs.length} />
-        </SectionCard>
+        </SectionCard>}
 
-        <SectionCard title="Marketing">
+        {can("marketing") && <SectionCard title="Marketing">
           <StatRow label="Active campaigns" value={data.marketing.activeCampaigns} />
           <StatRow label="New leads (this month)" value={data.marketing.newLeadsCount} />
           <StatRow label="Marketing spend (MTD)" value={formatCurrency(data.marketing.monthlySpend)} />
-        </SectionCard>
+        </SectionCard>}
       </div>
 
-      <AlertsPanel alerts={data.alerts} />
+      <AlertsPanel alerts={alerts} />
     </div>
   );
 }

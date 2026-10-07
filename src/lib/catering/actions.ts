@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { assertValidAssignee } from "@/lib/driver/assignee";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/types";
 
 type EventStatus = Database["public"]["Enums"]["event_status"];
@@ -212,9 +213,13 @@ export async function updateQuotationStatus(quotationId: string, status: string)
     // someone had confirmed the event manually.
     await updateEventStatus(quotation.catering_event_id, "confirmed");
 
+    // The invoice belongs to Finance, so a member limited to Catering cannot write it themselves. The user was
+    // already verified for this quotation above (it was read and updated under their own access), so the
+    // system creates the invoice on their behalf.
+    const finance = createAdminClient();
     const customerId = quotation.catering_events?.customer_id;
     if (customerId) {
-      const { data: existingInvoice } = await supabase
+      const { data: existingInvoice } = await finance
         .from("customer_invoices")
         .select("id")
         .eq("quotation_id", quotationId)
@@ -225,7 +230,7 @@ export async function updateQuotationStatus(quotationId: string, status: string)
         const dueDate = new Date(today);
         dueDate.setDate(dueDate.getDate() + 14);
 
-        await supabase.from("customer_invoices").insert({
+        await finance.from("customer_invoices").insert({
           company_id: quotation.company_id,
           customer_id: customerId,
           catering_event_id: quotation.catering_event_id,

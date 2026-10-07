@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { updateMember, deleteMember } from "@/lib/users/actions";
 import { PasswordInput } from "@/components/shared/PasswordInput";
 import { ROLE_LABEL } from "@/lib/users/constants";
+import { ModulePicker } from "@/components/settings/ModulePicker";
 import type { Database } from "@/lib/supabase/types";
 
 type Company = { id: string; name: string };
@@ -20,7 +21,7 @@ export function MemberActions({
 }: {
   userId: string;
   companies: Company[];
-  initial: { fullName: string; username: string; role: UserRole; companyId: string | null };
+  initial: { fullName: string; username: string; role: UserRole; companyId: string | null; allowedModules: string[] | null };
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -28,6 +29,7 @@ export function MemberActions({
   const [username, setUsername] = useState(initial.username);
   const [role, setRole] = useState<UserRole>(initial.role);
   const [companyId, setCompanyId] = useState(initial.companyId ?? "");
+  const [modules, setModules] = useState<string[] | null>(initial.allowedModules);
   const [newPassword, setNewPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -35,6 +37,10 @@ export function MemberActions({
   const [error, setError] = useState<string | null>(null);
 
   async function handleSave() {
+    if (modules !== null && modules.length === 0) {
+      setError("Select at least one module, or choose All modules.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -43,6 +49,7 @@ export function MemberActions({
         username,
         role,
         companyId: companyId || null,
+        allowedModules: modules,
         newPassword: newPassword || undefined,
       });
       setEditing(false);
@@ -118,6 +125,7 @@ export function MemberActions({
           </select>
         </div>
       </div>
+      <ModulePicker value={modules} onChange={setModules} />
       <div className="mt-2">
         <label className={labelClass}>Set New Password (optional)</label>
         <PasswordInput value={newPassword} onChange={setNewPassword} placeholder="Leave blank to keep current password" className={inputClass} />

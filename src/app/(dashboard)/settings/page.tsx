@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext, ROLE_LABEL } from "@/lib/auth";
 import { listMembers } from "@/lib/users/queries";
+import { MODULES } from "@/lib/constants";
 import { SectionCard, EmptyRow } from "@/components/dashboard/SectionCard";
 import { AddMemberForm } from "@/components/settings/AddMemberForm";
 import { MemberActions } from "@/components/settings/MemberActions";
@@ -61,6 +62,9 @@ export default async function SettingsPage() {
                   <div className="text-text-secondary">{m.email}</div>
                   <div className="text-text-secondary">
                     {access ? `${ROLE_LABEL[access.role]} · ${access.companies?.name ?? "All Companies"}` : "No access yet"}
+                    {access?.allowed_modules && (
+                      <div className="mt-0.5 text-[11.5px] text-text-muted">Modules: {access.allowed_modules.map((k) => MODULES.find((m) => m.key === k)?.label ?? k).join(", ")}</div>
+                    )}
                   </div>
                   <MemberActions
                     userId={m.id}
@@ -70,6 +74,7 @@ export default async function SettingsPage() {
                       username: m.username ?? "",
                       role: access?.role ?? "staff",
                       companyId: access?.company_id ?? null,
+                      allowedModules: access?.allowed_modules ?? null,
                     }}
                   />
                 </div>
