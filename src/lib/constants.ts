@@ -9,6 +9,8 @@ export type ModuleKey =
   | "ingredient-calculator"
   | "reports"
   | "ai-assistant"
+  /** Sub-permission: only the OT pages of HR (Staff OT Form, OT dashboard and approvals), not the rest of HR. */
+  | "overtime"
   | "settings";
 
 export const MODULES: { key: ModuleKey; label: string; href: string; matchPrefixes?: string[] }[] = [

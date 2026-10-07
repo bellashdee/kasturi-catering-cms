@@ -22,6 +22,18 @@ export function moduleForPath(pathname: string): ModuleKey | null {
   return null;
 }
 
+/**
+ * Whether the user may open this page. The OT pages (/hr/overtime) are open to members with the full HR module
+ * or with the separate "overtime" permission; every other page follows its module.
+ */
+export function canAccessPath(allowed: string[] | null | undefined, pathname: string): boolean {
+  if (pathname === "/hr/overtime" || pathname.startsWith("/hr/overtime/")) {
+    return canAccessModule(allowed, "hr") || canAccessModule(allowed, "overtime");
+  }
+  const key = moduleForPath(pathname);
+  return key === null || canAccessModule(allowed, key);
+}
+
 /** allowed = null means every module. */
 export function canAccessModule(allowed: string[] | null | undefined, key: ModuleKey): boolean {
   return !allowed || allowed.includes(key);
@@ -34,7 +46,10 @@ export function mergeAllowedModules(grants: (string[] | null)[]): string[] | nul
 }
 
 /** The modules that can be switched on or off for a member (Settings is always Super Admin only). */
-export const ASSIGNABLE_MODULES = MODULES.map((m) => ({ key: m.key, label: m.label }));
+export const ASSIGNABLE_MODULES: { key: string; label: string }[] = [
+  ...MODULES.map((m) => ({ key: m.key as string, label: m.label })),
+  { key: "overtime", label: "HR – Overtime approvals only" },
+];
 
 export function firstAllowedHref(allowed: string[] | null | undefined): string {
   const first = MODULES.find((m) => canAccessModule(allowed, m.key));

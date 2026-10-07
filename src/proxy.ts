@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { canAccessModule, mergeAllowedModules, moduleForPath } from "@/lib/modules";
+import { canAccessPath, mergeAllowedModules, moduleForPath } from "@/lib/modules";
 
 const PUBLIC_PATHS = ["/login", "/signup", "/auth"];
 
@@ -54,7 +54,7 @@ export async function proxy(request: NextRequest) {
     if (moduleKey) {
       const { data: grants } = await supabase.from("user_company_access").select("allowed_modules").eq("user_id", user.id);
       const allowed = mergeAllowedModules((grants ?? []).map((g) => g.allowed_modules));
-      if (!canAccessModule(allowed, moduleKey)) {
+      if (!canAccessPath(allowed, request.nextUrl.pathname)) {
         const url = request.nextUrl.clone();
         url.pathname = "/";
         url.search = "?denied=1";

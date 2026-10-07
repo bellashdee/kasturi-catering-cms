@@ -126,6 +126,7 @@ export function ModuleLinks({ allowedModules }: { allowedModules: string[] | nul
       {MODULES.filter((m) => m.key !== "reports" && m.key !== "ai-assistant" && show(m.key)).map((m) => (
         <NavItem key={m.key} href={m.href} icon={m.key} label={m.label} matchPrefixes={m.matchPrefixes} />
       ))}
+      {!show("hr") && show("overtime") && <NavItem href="/hr/overtime" icon="hr" label="Overtime (OT)" />}
       {show("reports") && <NavItem href="/reports" icon="reports" label="Reports" />}
       {show("ai-assistant") && <NavItem href="/ai-assistant" icon="ai-assistant" label="🤖 AI Assistant" />}
     </>

@@ -96,7 +96,7 @@ export default async function DashboardPage({
           value={String(data.supplierPayments.openCount + data.customerOutstanding.openCount)}
           hint="Supplier + customer invoices"
         />}
-        {(can("hr") || can("finance-admin") || can("supplier-procurement")) && <KpiCard
+        {(can("hr") || can("overtime") || can("finance-admin") || can("supplier-procurement")) && <KpiCard
           label="Pending Approvals"
           value={String(data.approvals.pendingCount)}
           tone={data.approvals.pendingCount > 0 ? "warning" : "neutral"}
