@@ -22,6 +22,7 @@ type Initial = {
   invoiceNumber: string;
   invoiceDate: string;
   dueDate: string;
+  priority: "" | "high" | "medium" | "low";
   amount: string;
   voucherNumber: string;
   remarks: string;
@@ -59,7 +60,8 @@ export function PaymentEditForm({ paymentId, initial, redirectTo }: { paymentId:
         periodMonth: `${form.periodMonth}-01`,
         invoiceNumber: form.invoiceNumber || undefined,
         invoiceDate: form.invoiceDate || undefined,
-        dueDate: form.dueDate,
+        dueDate: form.dueDate || undefined,
+        priority: form.priority || undefined,
         amount: Number(form.amount),
         voucherNumber: form.voucherNumber || undefined,
         remarks: form.remarks || undefined,
@@ -136,11 +138,20 @@ export function PaymentEditForm({ paymentId, initial, redirectTo }: { paymentId:
           <input type="number" step="0.01" min="0" required value={form.amount} onChange={(e) => set("amount", e.target.value)} className={inputClass} />
         </div>
         <div>
-          <label className={labelClass}>Due Date *</label>
-          <input type="date" required value={form.dueDate} onChange={(e) => set("dueDate", e.target.value)} className={inputClass} />
+          <label className={labelClass}>Due Date</label>
+          <input type="date" value={form.dueDate} onChange={(e) => set("dueDate", e.target.value)} className={inputClass} />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className={labelClass}>Priority</label>
+          <select value={form.priority} onChange={(e) => set("priority", e.target.value as Initial["priority"])} className={inputClass}>
+            <option value="">Not set</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
         <div>
           <label className={labelClass}>Payment Voucher No.</label>
           <input value={form.voucherNumber} onChange={(e) => set("voucherNumber", e.target.value)} className={inputClass} />

@@ -52,7 +52,9 @@ export type PaymentInput = {
   periodMonth: string;
   invoiceNumber?: string;
   invoiceDate?: string;
-  dueDate: string;
+  /** Optional: a payment imported from a checklist may not have a due date yet. */
+  dueDate?: string;
+  priority?: "high" | "medium" | "low";
   amount: number;
   voucherNumber?: string;
   documentId?: string;
@@ -62,7 +64,7 @@ export type PaymentInput = {
 function validate(input: PaymentInput) {
   if (!input.payeeName?.trim()) throw new Error("Enter the payee / supplier name.");
   if (!/^\d{4}-\d{2}-01$/.test(input.periodMonth)) throw new Error("Select the payment month.");
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.dueDate)) throw new Error("Enter the due date.");
+  if (input.dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(input.dueDate)) throw new Error("Enter a valid due date.");
   if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("Enter the amount to pay (it must be more than 0).");
 }
 
@@ -155,7 +157,8 @@ export async function createPayment(input: PaymentInput, options: { allowDuplica
       period_month: input.periodMonth,
       invoice_number: input.invoiceNumber?.trim() || null,
       invoice_date: input.invoiceDate || null,
-      due_date: input.dueDate,
+      due_date: input.dueDate || null,
+      priority: input.priority ?? null,
       amount: input.amount,
       voucher_number: input.voucherNumber?.trim() || null,
       document_id: input.documentId ?? null,
@@ -172,7 +175,7 @@ export async function createPayment(input: PaymentInput, options: { allowDuplica
     relatedTable: "finance_payments",
     relatedId: data.id,
     action: "payment_created",
-    newValue: `${input.payeeName.trim()} · RM ${input.amount.toFixed(2)} · due ${input.dueDate}`,
+    newValue: `${input.payeeName.trim()} · RM ${input.amount.toFixed(2)}${input.dueDate ? ` · due ${input.dueDate}` : ""}`,
     reason: options.allowDuplicate ? "Saved after a possible-duplicate warning" : undefined,
   });
 
@@ -196,6 +199,7 @@ const EDITABLE: EditableField[] = [
   { key: "invoiceNumber", column: "invoice_number", label: "Invoice / bill no." },
   { key: "invoiceDate", column: "invoice_date", label: "Invoice / bill date" },
   { key: "dueDate", column: "due_date", label: "Due date" },
+  { key: "priority", column: "priority", label: "Priority" },
   { key: "amount", column: "amount", label: "Amount" },
   { key: "voucherNumber", column: "voucher_number", label: "Voucher no." },
   { key: "remarks", column: "remarks", label: "Remarks" },
@@ -222,7 +226,8 @@ export async function updatePayment(paymentId: string, input: PaymentInput): Pro
     period_month: input.periodMonth,
     invoice_number: input.invoiceNumber?.trim() || null,
     invoice_date: input.invoiceDate || null,
-    due_date: input.dueDate,
+    due_date: input.dueDate || null,
+    priority: input.priority ?? null,
     amount: input.amount,
     voucher_number: input.voucherNumber?.trim() || null,
     remarks: input.remarks?.trim() || null,
@@ -375,4 +380,20 @@ export async function saveAccount(input: AccountInput, accountId?: string) {
 function revalidatePaymentPaths(paymentId?: string) {
   for (const path of ["/finance/payments", "/finance/supplier-payment", "/finance/rental-payment", "/finance/utilities-payment", "/admin", "/"]) revalidatePath(path);
   if (paymentId) revalidatePath(`/finance/payments/${paymentId}`);
+}
+
+/** Checklist step before payment: Not Started (pending) <-> In Progress. Paying still goes through Mark as Paid. */
+export async function setPaymentProgress(paymentId: string, progress: "pending" | "in_progress") {
+  const { supabase } = await requireUser();
+  const { data: current } = await supabase.from("finance_payments").select("company_id, status").eq("id", paymentId).maybeSingle();
+  if (!current) throw new Error("Payment not found.");
+  await requireFinanceAdmin(supabase, current.company_id);
+  if (current.status === "paid") throw new Error("This payment is already paid.");
+  if (current.status === progress) return;
+
+  const { error } = await supabase.from("finance_payments").update({ status: progress }).eq("id", paymentId);
+  if (error) throw error;
+  await logTaskAudit({ companyId: current.company_id, relatedTable: "finance_payments", relatedId: paymentId, action: "payment_progress", previousValue: current.status, newValue: progress });
+  revalidatePaymentPaths(paymentId);
+  revalidatePath("/finance/payments/checklist");
 }

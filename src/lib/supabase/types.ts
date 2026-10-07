@@ -1708,7 +1708,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           document_id: string | null
-          due_date: string
+          due_date: string | null
           id: string
           invoice_date: string | null
           invoice_number: string | null
@@ -1717,6 +1717,7 @@ export type Database = {
           payment_of: string | null
           payment_reference: string | null
           period_month: string
+          priority: string | null
           proof_document_id: string | null
           remarks: string | null
           status: string
@@ -1738,7 +1739,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           document_id?: string | null
-          due_date: string
+          due_date?: string | null
           id?: string
           invoice_date?: string | null
           invoice_number?: string | null
@@ -1747,6 +1748,7 @@ export type Database = {
           payment_of?: string | null
           payment_reference?: string | null
           period_month: string
+          priority?: string | null
           proof_document_id?: string | null
           remarks?: string | null
           status?: string
@@ -1768,7 +1770,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           document_id?: string | null
-          due_date?: string
+          due_date?: string | null
           id?: string
           invoice_date?: string | null
           invoice_number?: string | null
@@ -1777,6 +1779,7 @@ export type Database = {
           payment_of?: string | null
           payment_reference?: string | null
           period_month?: string
+          priority?: string | null
           proof_document_id?: string | null
           remarks?: string | null
           status?: string

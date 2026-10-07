@@ -109,7 +109,7 @@ export default async function PaymentDashboardPage({ searchParams }: { searchPar
   const reminders = filtered
     .filter((p) => p.status !== "paid")
     .map((p) => ({ p, u: paymentUrgency(p.status, p.due_date, today) }))
-    .sort((a, b) => a.p.due_date.localeCompare(b.p.due_date));
+    .sort((a, b) => (a.p.due_date ?? "9999").localeCompare(b.p.due_date ?? "9999"));
 
   type Row = (typeof filtered)[number];
   const { headers, tableRows } = buildReportRows(
@@ -121,7 +121,7 @@ export default async function PaymentDashboardPage({ searchParams }: { searchPar
       { key: "account", label: "Account No.", exportValue: (r: Row) => accountDisplay(r.account_no) },
       { key: "company", label: "Company", exportValue: (r: Row) => r.companies?.name ?? "—" },
       { key: "amount", label: "Amount", exportValue: (r: Row) => Number(r.amount), display: (r: Row) => formatRM(Number(r.amount)) },
-      { key: "due", label: "Due Date", exportValue: (r: Row) => formatMalaysiaDate(`${r.due_date}T12:00:00+08:00`) },
+      { key: "due", label: "Due Date", exportValue: (r: Row) => (r.due_date ? formatMalaysiaDate(`${r.due_date}T12:00:00+08:00`) : "—") },
       {
         key: "status",
         label: "Status",
@@ -216,7 +216,7 @@ export default async function PaymentDashboardPage({ searchParams }: { searchPar
               <Link key={p.id} href={`/finance/payments/${p.id}`} className="flex items-center justify-between px-5 py-2.5 text-[13px] hover:bg-bg">
                 <div>
                   <div className="font-semibold text-text">{p.payee_name}{p.utility_provider ? <span className="ml-2 font-normal text-text-secondary">{p.utility_provider}</span> : null}</div>
-                  <div className="text-xs text-text-muted">{PAYMENT_CATEGORY_LABEL[p.category as PaymentCategory]} · {p.companies?.name} · due {formatMalaysiaDate(`${p.due_date}T12:00:00+08:00`)}</div>
+                  <div className="text-xs text-text-muted">{PAYMENT_CATEGORY_LABEL[p.category as PaymentCategory]} · {p.companies?.name} · {p.due_date ? `due ${formatMalaysiaDate(`${p.due_date}T12:00:00+08:00`)}` : "no due date"}</div>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="font-bold text-text">{formatRM(Number(p.amount))}</span>

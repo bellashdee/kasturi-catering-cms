@@ -68,8 +68,9 @@ function daysBetween(fromIso: string, toIso: string): number {
 }
 
 /** Overdue / due today / due soon are worked out from the due date and today's date in Malaysia time. */
-export function paymentUrgency(status: string, dueDate: string, today: string): PaymentUrgency {
+export function paymentUrgency(status: string, dueDate: string | null, today: string): PaymentUrgency {
   if (status === "paid") return "paid";
+  if (!dueDate) return "pending";
   const days = daysBetween(today, dueDate);
   if (days < 0) return "overdue";
   if (days === 0) return "due_today";
@@ -103,7 +104,7 @@ export function formatRM(amount: number): string {
   return `RM ${amount.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-export type PaymentLike = { amount: number | string; status: string; due_date: string };
+export type PaymentLike = { amount: number | string; status: string; due_date: string | null };
 
 export type PaymentSummary = {
   count: number;
@@ -144,3 +145,16 @@ export function matchesStatusFilter(urgency: PaymentUrgency, filter: string | un
   if (filter === "unpaid") return urgency !== "paid";
   return urgency === filter;
 }
+
+export type Priority = "high" | "medium" | "low";
+
+export const PRIORITY_LABEL: Record<Priority, string> = { high: "High", medium: "Medium", low: "Low" };
+
+/** Checklist score of a payment by priority: High 5, Medium 3, Low 1 (a payment without a priority counts as 1). */
+export const PRIORITY_WEIGHT: Record<Priority, number> = { high: 5, medium: 3, low: 1 };
+
+export function priorityWeight(priority: string | null | undefined): number {
+  return PRIORITY_WEIGHT[(priority ?? "low") as Priority] ?? 1;
+}
+
+export const PRIORITY_TONE: Record<Priority, "danger" | "warning" | "neutral"> = { high: "danger", medium: "warning", low: "neutral" };

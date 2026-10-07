@@ -154,7 +154,7 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
         </dl>
       </SectionCard>
 
-      {payment.status === "pending" && (
+      {payment.status !== "paid" && (
         <SectionCard title="Mark as Paid">
           <MarkPaidForm paymentId={id} companyId={payment.company_id} maxDate={today} />
         </SectionCard>

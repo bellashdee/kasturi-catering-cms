@@ -59,7 +59,7 @@ export async function listUnpaidDueBy(supabase: DB, companyIds: string[], dueOnO
     .from("finance_payments")
     .select("id, company_id, category, payee_name, utility_provider, utility_location, amount, due_date, period_month, companies(name)")
     .in("company_id", companyIds)
-    .eq("status", "pending")
+    .neq("status", "paid")
     .lte("due_date", dueOnOrBefore)
     .order("due_date");
   if (error) throw error;
@@ -82,4 +82,14 @@ export async function listFinanceAudit(supabase: DB, relatedTable: "finance_paym
     for (const p of people ?? []) names.set(p.id, p.full_name);
   }
   return (data ?? []).map((r) => ({ ...r, performerName: r.performed_by ? names.get(r.performed_by) ?? null : null }));
+}
+
+/** Payments for the checklist: every month unless one is given, paid and unpaid, so progress can be scored. */
+export async function listPaymentsForChecklist(supabase: DB, companyIds: string[], filters: { year?: number; month?: number; category?: PaymentCategory } = {}) {
+  let query = supabase.from("finance_payments").select("*, companies(name)").in("company_id", companyIds).order("period_month", { ascending: true }).order("payee_name");
+  if (filters.year && filters.month) query = query.eq("period_month", periodStart(filters.year, filters.month));
+  if (filters.category) query = query.eq("category", filters.category);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data;
 }
