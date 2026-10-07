@@ -41,7 +41,7 @@ export default async function DashboardPage({
     );
   }
 
-  const data = await getDashboardData(supabase, targetCompanyIds);
+  const data = await getDashboardData(supabase, targetCompanyIds, session.allowedModules);
 
   // A member limited to some modules only sees the dashboard cards and alerts of those modules.
   const can = (key: Parameters<typeof canAccessModule>[1]) => canAccessModule(session.allowedModules, key);

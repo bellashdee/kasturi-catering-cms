@@ -4,6 +4,8 @@ import { getMonthlyCostBreakdown } from "@/lib/finance/queries";
 import { isPettyCashOverdue, pettyCashDaysPending } from "@/lib/finance/constants";
 import { LATE_GRACE_MINUTES } from "@/lib/driver/constants";
 import { DUE_SOON_DAYS, formatRM, paymentUrgency } from "@/lib/finance/payments";
+import { canAccessModule } from "@/lib/modules";
+import type { ModuleKey } from "@/lib/constants";
 
 type DB = SupabaseClient<Database>;
 
@@ -368,14 +370,19 @@ export async function getPromotionsEndingSoon(supabase: DB, companyIds: string[]
   return data ?? [];
 }
 
-export async function getPendingApprovals(supabase: DB, companyIds: string[]) {
-  const { count } = await supabase
-    .from("approvals")
-    .select("id", { count: "exact", head: true })
-    .in("company_id", companyIds)
-    .eq("status", "pending");
+/**
+ * Pending approvals the signed-in user is allowed to act on: a member limited to some modules only counts the
+ * approvals of those modules (OT approvals count for HR or for the separate Overtime permission).
+ */
+export async function getPendingApprovals(supabase: DB, companyIds: string[], allowedModules: string[] | null = null) {
+  const { data } = await supabase.from("approvals").select("module, related_table").in("company_id", companyIds).eq("status", "pending");
 
-  return { pendingCount: count ?? 0 };
+  const pendingCount = (data ?? []).filter((a) => {
+    if (a.related_table === "overtime_records") return canAccessModule(allowedModules, "hr") || canAccessModule(allowedModules, "overtime");
+    return canAccessModule(allowedModules, a.module as ModuleKey);
+  }).length;
+
+  return { pendingCount };
 }
 
 export async function getLowStockIngredients(supabase: DB, companyIds: string[]) {
@@ -594,7 +601,7 @@ export async function getFinancePaymentsSummary(supabase: DB, companyIds: string
 }
 
 /** Runs every section query in parallel for the Main Dashboard page. */
-export async function getDashboardData(supabase: DB, companyIds: string[]) {
+export async function getDashboardData(supabase: DB, companyIds: string[], allowedModules: string[] | null = null) {
   const [
     financial,
     supplierPayments,
@@ -623,7 +630,7 @@ export async function getDashboardData(supabase: DB, companyIds: string[]) {
     getDriverDeliveries(supabase, companyIds),
     getHRSummary(supabase, companyIds),
     getMarketingSummary(supabase, companyIds),
-    getPendingApprovals(supabase, companyIds),
+    getPendingApprovals(supabase, companyIds, allowedModules),
     getLowStockIngredients(supabase, companyIds),
     getPendingPurchaseRequests(supabase, companyIds),
     getVehiclesDueMaintenance(supabase, companyIds),
