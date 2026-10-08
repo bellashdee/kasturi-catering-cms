@@ -93,8 +93,11 @@ export async function getMonthlyCostBreakdown(supabase: DB, companyIds: string[]
       .select("company_id, amount, category, utility_provider")
       .in("company_id", companyIds)
       .eq("status", "paid")
-      .gte("paid_date", start)
-      .lte("paid_date", end),
+      // Supplier payments settle purchases that are already counted in the costing (daily purchase costs), so only
+      // rental and utilities flow in here; adding supplier payments too would count the same cost twice.
+      .neq("category", "supplier")
+      // Paid with a payment date in the month; a payment ticked as paid without a date yet counts in its payment month.
+      .or(`and(paid_date.gte.${start},paid_date.lte.${end}),and(paid_date.is.null,period_month.eq.${start})`),
   ]);
 
   const rows: CostRow[] = [];

@@ -1713,6 +1713,7 @@ export type Database = {
           invoice_date: string | null
           invoice_number: string | null
           paid_date: string | null
+          paid_details_pending: boolean
           payee_name: string
           payment_of: string | null
           payment_reference: string | null
@@ -1744,6 +1745,7 @@ export type Database = {
           invoice_date?: string | null
           invoice_number?: string | null
           paid_date?: string | null
+          paid_details_pending?: boolean
           payee_name: string
           payment_of?: string | null
           payment_reference?: string | null
@@ -1775,6 +1777,7 @@ export type Database = {
           invoice_date?: string | null
           invoice_number?: string | null
           paid_date?: string | null
+          paid_details_pending?: boolean
           payee_name?: string
           payment_of?: string | null
           payment_reference?: string | null

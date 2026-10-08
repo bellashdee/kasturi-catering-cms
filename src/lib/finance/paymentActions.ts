@@ -271,14 +271,15 @@ export async function markPaymentPaid(paymentId: string, input: { paidDate: stri
   if (input.paidDate > todayInMalaysia()) throw new Error("The payment date cannot be in the future.");
   if (!input.paymentReference?.trim()) throw new Error("Enter the payment reference.");
 
-  const { data: current } = await supabase.from("finance_payments").select("company_id, status, amount, payee_name").eq("id", paymentId).maybeSingle();
+  const { data: current } = await supabase.from("finance_payments").select("company_id, status, amount, payee_name, paid_details_pending").eq("id", paymentId).maybeSingle();
   if (!current) throw new Error("Payment not found.");
   await requireFinanceAdmin(supabase, current.company_id);
-  if (current.status === "paid") throw new Error("This payment is already marked as paid.");
+  // A payment ticked as completed in the checklist can still get its payment date and reference afterwards.
+  if (current.status === "paid" && !current.paid_details_pending) throw new Error("This payment is already marked as paid.");
 
   const { error } = await supabase
     .from("finance_payments")
-    .update({ status: "paid", paid_date: input.paidDate, payment_reference: input.paymentReference.trim(), proof_document_id: input.proofDocumentId ?? null })
+    .update({ status: "paid", paid_details_pending: false, paid_date: input.paidDate, payment_reference: input.paymentReference.trim(), ...(input.proofDocumentId ? { proof_document_id: input.proofDocumentId } : {}) })
     .eq("id", paymentId);
   if (error) throw error;
 
@@ -287,7 +288,7 @@ export async function markPaymentPaid(paymentId: string, input: { paidDate: stri
     relatedTable: "finance_payments",
     relatedId: paymentId,
     action: "payment_paid",
-    previousValue: "pending",
+    previousValue: current.paid_details_pending ? "paid (details pending)" : current.status,
     newValue: `paid ${input.paidDate} · ref ${input.paymentReference.trim()}${input.proofDocumentId ? " · proof attached" : ""}`,
   });
   revalidatePaymentPaths(paymentId);

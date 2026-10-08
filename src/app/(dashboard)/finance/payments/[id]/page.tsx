@@ -154,8 +154,8 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
         </dl>
       </SectionCard>
 
-      {payment.status !== "paid" && (
-        <SectionCard title="Mark as Paid">
+      {(payment.status !== "paid" || payment.paid_details_pending) && (
+        <SectionCard title={payment.paid_details_pending ? "Add Payment Date & Reference (marked as paid in the checklist)" : "Mark as Paid"}>
           <MarkPaidForm paymentId={id} companyId={payment.company_id} maxDate={today} />
         </SectionCard>
       )}

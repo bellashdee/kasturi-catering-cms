@@ -179,6 +179,7 @@ export default async function PaymentChecklistPage({ searchParams }: { searchPar
                                   </Link>
                                   <div className="truncate text-xs text-text-muted">
                                     {PAYMENT_CATEGORY_LABEL[p.category as PaymentCategory]} · {p.bank_name ? `${p.bank_name} ` : ""}{accountDisplay(p.account_no)}
+                                    {p.status === "paid" && p.paid_details_pending ? " · ⚠ payment date & reference not entered yet" : ""}
                                     {p.due_date ? ` · due ${formatMalaysiaDate(`${p.due_date}T12:00:00+08:00`)}` : ""}
                                     {p.remarks?.replace(/^Imported from [^·]*· sheet [^·]*(· )?/, "") ? ` · ${p.remarks.replace(/^Imported from [^·]*· sheet [^·]*(· )?/, "")}` : ""}
                                   </div>
