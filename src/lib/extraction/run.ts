@@ -99,61 +99,68 @@ export async function runExtraction(params: {
   const prompt = basePromptFor(kind) + wrapperInstructions(describe(inspected));
   const textLayer = textLayerBlock(inspected);
 
-  let raw = "";
-  let finish: string | null = null;
+  const startedAt = Date.now();
+  let parsed: Record<string, unknown> | null = null;
   let model: string | null = null;
 
-  try {
-    if (provider === "gemini") {
-      const parts: GeminiPart[] = [];
-      if (inspected.sheetText) parts.push({ text: `The uploaded file is a spreadsheet. Its contents, sheet by sheet, as CSV:\n\n${inspected.sheetText}` });
-      else parts.push({ inline_data: { mime_type: inspected.mime, data: Buffer.from(buffer).toString("base64") } });
-      if (textLayer) parts.push({ text: textLayer });
-      parts.push({ text: prompt });
-      const result = await geminiGenerateDetailed({ turns: [{ role: "user", parts }], maxOutputTokens: 16384, json: true });
-      raw = result.text;
-      finish = result.finishReason;
-      model = result.model;
-    } else {
-      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-      const blocks: Anthropic.ContentBlockParam[] = [];
-      if (inspected.sheetText) blocks.push({ type: "text", text: `The uploaded file is a spreadsheet. Its contents, sheet by sheet, as CSV:\n\n${inspected.sheetText}` });
-      else if (inspected.mime === "application/pdf") blocks.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: Buffer.from(buffer).toString("base64") } });
-      else blocks.push({ type: "image", source: { type: "base64", media_type: inspected.mime as "image/jpeg" | "image/png" | "image/webp" | "image/gif", data: Buffer.from(buffer).toString("base64") } });
-      if (textLayer) blocks.push({ type: "text", text: textLayer });
-      blocks.push({ type: "text", text: prompt });
-      model = process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
-      const response = await anthropic.messages.create({ model, max_tokens: 8192, messages: [{ role: "user", content: blocks }] });
-      const textBlock = response.content.find((b) => b.type === "text");
-      raw = textBlock && "text" in textBlock ? textBlock.text : "";
-      finish = response.stop_reason === "max_tokens" ? "MAX_TOKENS" : response.stop_reason;
+  // A garbled answer (rare, mostly from the lighter fallback models) gets one more try if there is time left.
+  for (let attempt = 0; attempt < 2 && !parsed; attempt++) {
+    let raw = "";
+    let finish: string | null = null;
+    try {
+      if (provider === "gemini") {
+        const parts: GeminiPart[] = [];
+        if (inspected.sheetText) parts.push({ text: `The uploaded file is a spreadsheet. Its contents, sheet by sheet, as CSV:\n\n${inspected.sheetText}` });
+        else parts.push({ inline_data: { mime_type: inspected.mime, data: Buffer.from(buffer).toString("base64") } });
+        if (textLayer) parts.push({ text: textLayer });
+        parts.push({ text: prompt });
+        const result = await geminiGenerateDetailed({ turns: [{ role: "user", parts }], maxOutputTokens: 16384, json: true, budgetMs: 52_000 - (Date.now() - startedAt) });
+        raw = result.text;
+        finish = result.finishReason;
+        model = result.model;
+      } else {
+        const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        const blocks: Anthropic.ContentBlockParam[] = [];
+        if (inspected.sheetText) blocks.push({ type: "text", text: `The uploaded file is a spreadsheet. Its contents, sheet by sheet, as CSV:\n\n${inspected.sheetText}` });
+        else if (inspected.mime === "application/pdf") blocks.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: Buffer.from(buffer).toString("base64") } });
+        else blocks.push({ type: "image", source: { type: "base64", media_type: inspected.mime as "image/jpeg" | "image/png" | "image/webp" | "image/gif", data: Buffer.from(buffer).toString("base64") } });
+        if (textLayer) blocks.push({ type: "text", text: textLayer });
+        blocks.push({ type: "text", text: prompt });
+        model = process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
+        const response = await anthropic.messages.create({ model, max_tokens: 8192, messages: [{ role: "user", content: blocks }] });
+        const textBlock = response.content.find((b) => b.type === "text");
+        raw = textBlock && "text" in textBlock ? textBlock.text : "";
+        finish = response.stop_reason === "max_tokens" ? "MAX_TOKENS" : response.stop_reason;
+      }
+    } catch (err) {
+      if (err instanceof ExtractionError) throw err;
+      if (err instanceof GeminiError) throw mapGeminiError(err, inspected);
+      const message = err instanceof Error ? err.message : "unknown error";
+      throw new ExtractionError("ai_failed", `The AI reader could not process this file (${message}).`, "Try again; if it keeps failing, enter the details manually.", 502);
     }
-  } catch (err) {
-    if (err instanceof ExtractionError) throw err;
-    if (err instanceof GeminiError) throw mapGeminiError(err, inspected);
-    const message = err instanceof Error ? err.message : "unknown error";
-    throw new ExtractionError("ai_failed", `The AI reader could not process this file (${message}).`, "Try again; if it keeps failing, enter the details manually.", 502);
+
+    if (finish === "MAX_TOKENS") {
+      throw new ExtractionError(
+        "ai_truncated",
+        "This document has more content than could be read in one go, so the result was cut off and was not used (a partial result could silently miss lines).",
+        inspected.info.kind === "pdf" ? "Split the file into smaller parts (about 5–10 pages each) and upload them separately." : "Upload only the relevant sheet / part of the file.",
+        422,
+      );
+    }
+    if (finish && /SAFETY|RECITATION|PROHIBITED|BLOCKLIST|SPII/i.test(finish) && !raw.trim()) {
+      throw new ExtractionError("ai_blocked", `The AI service declined to read this file (${finish}).`, "Upload a different copy of the document, or enter the details manually.", 422);
+    }
+    if (!raw.trim()) {
+      throw new ExtractionError("ai_empty", "The AI reader returned nothing for this file.", "Try again; if it keeps failing, upload a clearer copy or enter the details manually.", 502);
+    }
+
+    parsed = parseModelJson(raw);
+    if (!parsed && (attempt === 1 || Date.now() - startedAt > 24_000)) {
+      throw new ExtractionError("ai_parse_failed", "The AI reader's answer could not be understood.", "Choose the file again to retry. If it keeps failing, enter the details manually.", 502);
+    }
   }
 
-  if (finish === "MAX_TOKENS") {
-    throw new ExtractionError(
-      "ai_truncated",
-      "This document has more content than could be read in one go, so the result was cut off and was not used (a partial result could silently miss lines).",
-      inspected.info.kind === "pdf" ? "Split the file into smaller parts (about 5–10 pages each) and upload them separately." : "Upload only the relevant sheet / part of the file.",
-      422,
-    );
-  }
-  if (finish && /SAFETY|RECITATION|PROHIBITED|BLOCKLIST|SPII/i.test(finish) && !raw.trim()) {
-    throw new ExtractionError("ai_blocked", `The AI service declined to read this file (${finish}).`, "Upload a different copy of the document, or enter the details manually.", 422);
-  }
-  if (!raw.trim()) {
-    throw new ExtractionError("ai_empty", "The AI reader returned nothing for this file.", "Try again; if it keeps failing, upload a clearer copy or enter the details manually.", 502);
-  }
-
-  const parsed = parseModelJson(raw);
-  if (!parsed) {
-    throw new ExtractionError("ai_parse_failed", "The AI reader's answer could not be understood.", "Choose the file again to retry. If it keeps failing, enter the details manually.", 502);
-  }
+  if (!parsed) throw new ExtractionError("ai_parse_failed", "The AI reader's answer could not be understood.", "Choose the file again to retry. If it keeps failing, enter the details manually.", 502);
 
   const result = buildReport({ parsed, kind, inspected, model });
 
