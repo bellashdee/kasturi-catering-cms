@@ -586,7 +586,7 @@ export async function getFinancePaymentsSummary(supabase: DB, companyIds: string
   const adminIds = companyIds.filter((_, i) => adminFlags[i]);
   if (adminIds.length === 0) return empty;
 
-  const { data } = await supabase.from("finance_payments").select("amount, due_date, status").in("company_id", adminIds).neq("status", "paid");
+  const { data } = await supabase.from("finance_payments").select("amount, due_date, status").in("company_id", adminIds).not("status", "in", "(paid,cancelled)");
   const today = todayIso();
   const summary = { ...empty, accessible: true };
   for (const p of data ?? []) {
