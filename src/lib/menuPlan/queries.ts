@@ -21,7 +21,7 @@ export async function listMenuCategories(supabase: DB, companyIds: string[]) {
 export async function getMenuPlanTree(supabase: DB, companyId: string) {
   const { data, error } = await supabase
     .from("menu_plan_categories")
-    .select("id, code, name, menu_plan_weeks(id, week_number, menu_plan_meals(id, meal_time, menu_plan_dishes(id, name, sort_order)))")
+    .select("id, code, name, menu_plan_weeks(id, week_number, menu_plan_meals(id, meal_time, day_of_week, menu_plan_dishes(id, name, sort_order)))")
     .eq("company_id", companyId)
     .order("code");
   if (error) throw error;
@@ -47,7 +47,7 @@ export async function getWeekPlan(supabase: DB, categoryId: string, weekNumber: 
   const { data, error } = await supabase
     .from("menu_plan_weeks")
     .select(
-      "id, week_number, menu_plan_meals(id, meal_time, menu_plan_dishes(id, name, sort_order, menu_plan_ingredients(id, name, base_quantity, base_pax, unit, reference_quantity, reference_pax, remark, sort_order)))",
+      "id, week_number, menu_plan_meals(id, meal_time, day_of_week, menu_plan_dishes(id, name, sort_order, menu_plan_ingredients(id, name, base_quantity, base_pax, unit, reference_quantity, reference_pax, remark, sort_order)))",
     )
     .eq("category_id", categoryId)
     .eq("week_number", weekNumber)

@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listMenuCategories, getWeekPlan } from "@/lib/menuPlan/queries";
-import { calculateQuantity, formatQuantity, MEAL_ORDER, MEAL_LABEL } from "@/lib/menuPlan/calc";
+import { calculateQuantity, formatQuantity, mealRank, mealTitle, MEAL_ORDER, MEAL_LABEL } from "@/lib/menuPlan/calc";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 
 export default async function IngredientCalculatorPage({
@@ -117,12 +117,12 @@ async function CategoryWeekView({
 
   const meals = [...week.menu_plan_meals]
     .filter((m) => !mealFilter || m.meal_time === mealFilter)
-    .sort((a, b) => MEAL_ORDER.indexOf(a.meal_time as never) - MEAL_ORDER.indexOf(b.meal_time as never));
+    .sort((a, b) => mealRank(a) - mealRank(b));
 
   return (
     <div className="flex flex-col gap-4">
       {meals.map((meal) => (
-        <SectionCard key={meal.id} title={MEAL_LABEL[meal.meal_time] ?? meal.meal_time}>
+        <SectionCard key={meal.id} title={mealTitle(meal)}>
           <div className="flex flex-col gap-4">
             {[...meal.menu_plan_dishes]
               .sort((a, b) => a.sort_order - b.sort_order)

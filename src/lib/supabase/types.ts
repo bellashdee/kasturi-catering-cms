@@ -2308,6 +2308,7 @@ export type Database = {
         Row: {
           company_id: string
           created_at: string
+          day_of_week: string | null
           id: string
           meal_time: string
           week_id: string
@@ -2315,6 +2316,7 @@ export type Database = {
         Insert: {
           company_id: string
           created_at?: string
+          day_of_week?: string | null
           id?: string
           meal_time: string
           week_id: string
@@ -2322,6 +2324,7 @@ export type Database = {
         Update: {
           company_id?: string
           created_at?: string
+          day_of_week?: string | null
           id?: string
           meal_time?: string
           week_id?: string

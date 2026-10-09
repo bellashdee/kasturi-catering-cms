@@ -2,17 +2,17 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { mealRank, mealTitle } from "@/lib/menuPlan/calc";
 import { createProductionOrder, type ProductionOrderInput } from "@/lib/kitchen/actions";
 
 type Company = { id: string; name: string };
 type Recipe = { id: string; name: string; yield_pax: number; company_id: string };
 
 type Dish = { id: string; name: string; sort_order: number };
-type Meal = { id: string; meal_time: string; menu_plan_dishes: Dish[] };
+type Meal = { id: string; meal_time: string; day_of_week: string | null; menu_plan_dishes: Dish[] };
 type Week = { id: string; week_number: number; menu_plan_meals: Meal[] };
 type Category = { id: string; code: string; name: string; menu_plan_weeks: Week[] };
 
-const MEAL_LABEL: Record<string, string> = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner" };
 
 const inputClass =
   "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
@@ -51,7 +51,7 @@ export function ProductionOrderForm({
   const category = categories.find((c) => c.id === categoryId);
   const weeks = category?.menu_plan_weeks ?? [];
   const week = weeks.find((w) => w.id === weekId);
-  const meals = week?.menu_plan_meals ?? [];
+  const meals = [...(week?.menu_plan_meals ?? [])].sort((a, b) => mealRank(a) - mealRank(b));
   const meal = meals.find((m) => m.id === mealId);
   const dishes = meal?.menu_plan_dishes ?? [];
 
@@ -127,10 +127,10 @@ export function ProductionOrderForm({
               </select>
             </div>
             <div>
-              <label className="text-[11px] text-text-muted">Meal</label>
+              <label className="text-[11px] text-text-muted">Meal / Day</label>
               <select value={mealId} onChange={(e) => { setMealId(e.target.value); setDishId(""); }} disabled={!weekId} className={inputClass}>
                 <option value="">Select</option>
-                {meals.map((m) => <option key={m.id} value={m.id}>{MEAL_LABEL[m.meal_time] ?? m.meal_time}</option>)}
+                {meals.map((m) => <option key={m.id} value={m.id}>{mealTitle(m)}</option>)}
               </select>
             </div>
             <div>
