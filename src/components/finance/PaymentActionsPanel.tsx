@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { uploadDocument, fileTypeFromMime } from "@/lib/documents/upload";
 import { attachPaymentVoucher, markPaymentPaid } from "@/lib/finance/paymentActions";
+import { requestExtraction } from "@/lib/importFlow/extractClient";
 
 const inputClass = "mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]";
 const labelClass = "text-[12px] font-semibold text-text-secondary";
@@ -90,12 +91,7 @@ export function VoucherUpload({ paymentId, companyId, companyName, currentVouche
     try {
       const doc = await uploadDocument({ companyId, module: "finance", fileType: fileTypeFromMime(file), file });
       setDocumentId(doc.id);
-      const res = await fetch("/api/extract-document", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documentId: doc.id, kind: "finance_payment" }),
-      });
-      const result = await res.json().catch(() => ({}));
+      const { res, result } = await requestExtraction(doc.id, "finance_payment");
       const extracted = res.ok && result.extracted ? (result.extracted as { voucher_number?: string | null; company_name?: string | null }) : null;
       if (extracted?.voucher_number) setVoucherNo(extracted.voucher_number);
       if (extracted?.company_name && !sameName(extracted.company_name, companyName)) {

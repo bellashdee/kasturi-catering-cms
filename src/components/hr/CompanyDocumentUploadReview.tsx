@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/documents/upload";
 import { createCompanyDocument } from "@/lib/hr/actions";
 import { COMPANY_DOC_TYPE_LABEL } from "@/lib/hr/constants";
+import { requestExtraction } from "@/lib/importFlow/extractClient";
 
 type Company = { id: string; name: string };
 type Extracted = {
@@ -55,12 +56,7 @@ export function CompanyDocumentUploadReview({ companies, defaultCompanyId, redir
       const doc = await uploadDocument({ companyId, module: "hr", fileType: fileTypeFromMime(file), file });
       setDocumentId(doc.id);
 
-      const res = await fetch("/api/extract-document", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documentId: doc.id, kind: "company_document" }),
-      });
-      const result = await res.json();
+      const { res, result } = await requestExtraction(doc.id, "company_document");
 
       if (!res.ok) {
         setNotice(`Extraction failed (${result.error ?? "unknown error"}) — the file is saved, please fill in the fields manually.`);

@@ -3,6 +3,7 @@ import { GeminiError, geminiGenerateDetailed, isLightModel, type AiProvider, typ
 import { basePromptFor, wrapperInstructions } from "./docTypes";
 import { ExtractionError } from "./errors";
 import { inspectFile, type Inspected } from "./inspect";
+import { logExtraction, safeMessage } from "./log";
 import { buildReport, parseModelJson } from "./report";
 import type { ExtractionReport } from "./types";
 
@@ -67,8 +68,11 @@ export async function runExtraction(params: {
   fileType: string;
   kind: string;
   provider: AiProvider;
+  /** When the HTTP request started, so the whole request stays inside the platform's time limit. */
+  requestStartedAt?: number;
 }): Promise<ExtractionResult> {
   const { buffer, filename, fileType, kind, provider } = params;
+  const requestStartedAt = params.requestStartedAt ?? Date.now();
   const isSpreadsheet = fileType === "excel" || fileType === "csv";
 
   if (!isSpreadsheet && buffer.byteLength > MAX_FILE_BYTES) {
@@ -80,6 +84,17 @@ export async function runExtraction(params: {
   }
 
   const inspected = await inspectFile({ buffer, filename, fileType, spreadsheetCharLimit: provider === "gemini" ? 400_000 : 150_000 });
+
+  logExtraction("inspected", {
+    kind: inspected.info.kind,
+    pages: inspected.info.pageCount,
+    textPages: inspected.info.textPages.length,
+    scannedPages: inspected.info.scannedPages.length,
+    imageWidth: inspected.imageQuality?.width,
+    imageSharpness: inspected.imageQuality?.sharpness,
+    textLayerEmpty: inspected.info.kind === "pdf" ? inspected.info.textPages.length === 0 : undefined,
+    processor: provider,
+  });
 
   if (provider === "anthropic" && (inspected.mime === "image/heic" || inspected.mime === "image/heif")) {
     throw new ExtractionError("heic_unsupported", "iPhone HEIC photos can't be read.", "Take a screenshot of the photo or save it as JPG/PNG, then upload that.");
@@ -114,10 +129,11 @@ export async function runExtraction(params: {
         else parts.push({ inline_data: { mime_type: inspected.mime, data: Buffer.from(buffer).toString("base64") } });
         if (textLayer) parts.push({ text: textLayer });
         parts.push({ text: prompt });
-        const result = await geminiGenerateDetailed({ turns: [{ role: "user", parts }], maxOutputTokens: 16384, json: true, budgetMs: 52_000 - (Date.now() - startedAt) });
+        const result = await geminiGenerateDetailed({ turns: [{ role: "user", parts }], maxOutputTokens: 16384, json: true, budgetMs: Math.min(52_000, 56_000 - (Date.now() - requestStartedAt)) });
         raw = result.text;
         finish = result.finishReason;
         model = result.model;
+        logExtraction("ai_done", { model: result.model, finish: result.finishReason, ms: Date.now() - startedAt, answerChars: result.text.length, attempt });
       } else {
         const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
         const blocks: Anthropic.ContentBlockParam[] = [];
@@ -134,6 +150,7 @@ export async function runExtraction(params: {
       }
     } catch (err) {
       if (err instanceof ExtractionError) throw err;
+      logExtraction("ai_error", { attempt, ms: Date.now() - startedAt, message: safeMessage(err) });
       if (err instanceof GeminiError) throw mapGeminiError(err, inspected);
       const message = err instanceof Error ? err.message : "unknown error";
       throw new ExtractionError("ai_failed", `The AI reader could not process this file (${message}).`, "Try again; if it keeps failing, enter the details manually.", 502);
@@ -163,6 +180,17 @@ export async function runExtraction(params: {
   if (!parsed) throw new ExtractionError("ai_parse_failed", "The AI reader's answer could not be understood.", "Choose the file again to retry. If it keeps failing, enter the details manually.", 502);
 
   const result = buildReport({ parsed, kind, inspected, model });
+
+  logExtraction("parsed", {
+    model,
+    fieldsFound: result.report.fields.filter((f) => f.status === "found").length,
+    fieldsTotal: result.report.fields.length,
+    tableRows: result.report.tables.reduce((n, t) => n + t.rows.length, 0),
+    issues: result.report.issues.length,
+    needsReview: result.report.needsReview,
+    legibility: result.report.legibility,
+    ms: Date.now() - requestStartedAt,
+  });
 
   // An empty result must never look like a successful read.
   const foundFields = result.report.fields.filter((f) => f.status === "found").length;

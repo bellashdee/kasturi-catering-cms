@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/documents/upload";
 import { recordStockMovement, findDuplicateStockInvoice } from "@/lib/kitchen/actions";
 import { MOVEMENT_TYPE_LABEL } from "@/lib/kitchen/constants";
+import { requestExtraction } from "@/lib/importFlow/extractClient";
 
 type Tab = "manual" | "count" | "supplier_invoice" | "customer_invoice";
 type Company = { id: string; name: string };
@@ -130,12 +131,7 @@ export function StockUploadReview({
       const doc = await uploadDocument({ companyId, module: "kitchen", fileType: fileTypeFromMime(file), file });
       setDocumentId(doc.id);
 
-      const res = await fetch("/api/extract-document", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documentId: doc.id, kind: EXTRACTION_KIND[tab] }),
-      });
-      const result = await res.json();
+      const { res, result } = await requestExtraction(doc.id, EXTRACTION_KIND[tab]);
 
       if (!res.ok) {
         setNotice(`Extraction failed (${result.error ?? "unknown error"}) — the file is saved, please add rows manually below.`);

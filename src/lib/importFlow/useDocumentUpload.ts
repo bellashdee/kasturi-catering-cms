@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { uploadDocument, fileTypeFromMime, type DocumentFileType } from "@/lib/documents/upload";
 import type { DuplicateMatch } from "@/lib/importFlow/types";
+import { requestExtraction } from "@/lib/importFlow/extractClient";
 import type { ExtractionReport } from "@/lib/extraction/types";
 
 export type ImportTab = "manual" | "pdf" | "photo";
@@ -70,20 +71,11 @@ export function useDocumentUpload() {
       const doc = await uploadDocument({ companyId: params.companyId, module: params.module, fileType, file });
       setDocumentId(doc.id);
 
-      // Only an unexplained server failure (no error code, e.g. a platform timeout) is retried once; explained failures are not.
-      const callExtract = async () => {
-        const res = await fetch("/api/extract-document", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ documentId: doc.id, kind: params.extractionKind }),
-        });
-        const result = await res.json().catch(() => ({}));
-        return { res, result };
-      };
-      let { res, result } = await callExtract();
-      if (!res.ok && res.status >= 500 && !result.code) {
+      // A failure with no explanation from the server (platform timeout, dropped connection) is retried once; explained failures are not.
+      let { res, result } = await requestExtraction(doc.id, params.extractionKind);
+      if (!res.ok && (result.code === "network" || result.code?.startsWith("http_5"))) {
         await new Promise((r) => setTimeout(r, 3000));
-        ({ res, result } = await callExtract());
+        ({ res, result } = await requestExtraction(doc.id, params.extractionKind));
       }
 
       if (!res.ok) {
@@ -104,6 +96,7 @@ export function useDocumentUpload() {
         setStep("review");
         return null;
       }
+      console.debug("[extract] preview ready", { fields: Object.keys(result.extracted ?? {}).length, needsReview: result.report?.needsReview ?? null });
       setNotice("This information was extracted automatically. Please check every field before saving.");
       setStep("review");
       return result.extracted ?? null;

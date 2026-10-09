@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { uploadDocument, fileTypeFromMime, DOCUMENT_FILE_ACCEPT } from "@/lib/documents/upload";
 import { createMarketingExpense } from "@/lib/marketing/actions";
+import { requestExtraction } from "@/lib/importFlow/extractClient";
 
 type Tab = "manual" | "pdf" | "photo";
 type Campaign = { id: string; name: string; company_id: string };
@@ -65,12 +66,7 @@ export function MarketingExpenseUploadReview({
       const doc = await uploadDocument({ companyId, module: "marketing", fileType: fileTypeFromMime(file), file });
       setDocumentId(doc.id);
 
-      const res = await fetch("/api/extract-document", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documentId: doc.id, kind: "marketing_expense" }),
-      });
-      const result = await res.json();
+      const { res, result } = await requestExtraction(doc.id, "marketing_expense");
 
       if (!res.ok) {
         setNotice(`Extraction failed (${result.error ?? "unknown error"}) — the file is saved, please fill in the fields manually.`);

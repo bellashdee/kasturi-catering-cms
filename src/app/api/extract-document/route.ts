@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAiProvider } from "@/lib/ai/gemini";
 import { createClient } from "@/lib/supabase/server";
 import { ExtractionError } from "@/lib/extraction/errors";
+import { logExtraction, safeMessage } from "@/lib/extraction/log";
 import { runExtraction } from "@/lib/extraction/run";
 
 export const runtime = "nodejs";
@@ -15,6 +16,7 @@ const SUPPORTED_TYPES = ["excel", "csv", "pdf", "photo", "screenshot"];
  * detected document type, per-field source page / confidence / notes, line-item tables, figure checks and issues.
  */
 export async function POST(request: Request) {
+  const requestStartedAt = Date.now();
   const body = await request.json().catch(() => null);
   const documentId: string | undefined = body?.documentId;
   const kind: string = body?.kind ?? "employee_certificate";
@@ -43,11 +45,13 @@ export async function POST(request: Request) {
     });
   }
 
+  logExtraction("start", { documentId, kind, fileType: doc.file_type, processor: provider });
   await supabase.from("documents").update({ extraction_status: "processing" }).eq("id", documentId);
 
   const { data: fileBlob, error: downloadError } = await supabase.storage.from("documents").download(doc.storage_path);
   if (downloadError || !fileBlob) {
     await supabase.from("documents").update({ extraction_status: "failed" }).eq("id", documentId);
+    logExtraction("error", { documentId, code: "download_failed", message: safeMessage(downloadError) });
     const err = new ExtractionError("download_failed", "The uploaded file could not be retrieved from storage.", "Upload the file again.", 500);
     return NextResponse.json(err.toBody(), { status: err.status });
   }
@@ -55,6 +59,7 @@ export async function POST(request: Request) {
   try {
     const { extracted, report } = await runExtraction({
       buffer: await fileBlob.arrayBuffer(),
+      requestStartedAt,
       filename: doc.original_filename,
       fileType: doc.file_type,
       kind,
@@ -62,10 +67,15 @@ export async function POST(request: Request) {
     });
 
     await supabase.from("documents").update({ extraction_status: "extracted", extracted_data: extracted as never }).eq("id", documentId);
+    logExtraction("done", { documentId, ms: Date.now() - requestStartedAt, fields: Object.keys(extracted).length, needsReview: report.needsReview });
     return NextResponse.json({ configured: true, extracted, report });
   } catch (err) {
     await supabase.from("documents").update({ extraction_status: "failed" }).eq("id", documentId);
-    if (err instanceof ExtractionError) return NextResponse.json(err.toBody(), { status: err.status });
+    if (err instanceof ExtractionError) {
+      logExtraction("error", { documentId, code: err.code, status: err.status, ms: Date.now() - requestStartedAt });
+      return NextResponse.json(err.toBody(), { status: err.status });
+    }
+    logExtraction("error", { documentId, code: "unexpected", message: safeMessage(err), ms: Date.now() - requestStartedAt });
     const message = err instanceof Error ? err.message : "Extraction failed.";
     const wrapped = new ExtractionError("unexpected", `Reading the file failed unexpectedly (${message}).`, "Try again; if it keeps failing, enter the details manually.", 500);
     return NextResponse.json(wrapped.toBody(), { status: wrapped.status });

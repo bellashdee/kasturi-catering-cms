@@ -7,6 +7,7 @@ import { DUPLICATE_INVOICE_MESSAGE } from "@/lib/finance/constants";
 import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/documents/upload";
 import type { ExtractionReport } from "@/lib/extraction/types";
 import { ExtractionReportPanel } from "@/components/shared/import/ExtractionReportPanel";
+import { requestExtraction } from "@/lib/importFlow/extractClient";
 
 type Company = { id: string; name: string };
 type Customer = { id: string; name: string; company_id: string };
@@ -55,12 +56,7 @@ export function CustomerInvoiceForm({ companies, defaultCompanyId, customers }: 
     try {
       const doc = await uploadDocument({ companyId, module: "finance", fileType: fileTypeFromMime(file), file });
       setDocumentId(doc.id);
-      const res = await fetch("/api/extract-document", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documentId: doc.id, kind: "customer_invoice" }),
-      });
-      const data = await res.json();
+      const { result: data } = await requestExtraction(doc.id, "customer_invoice");
       if (data.configured === false) {
         setExtractNotice(data.message);
         return;

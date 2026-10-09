@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { uploadDocument, fileTypeFromMime, DOCUMENT_FILE_ACCEPT } from "@/lib/documents/upload";
 import { createCertificate } from "@/lib/hr/actions";
 import { CERT_TYPE_LABEL, NO_EXPIRY_CERT_TYPES } from "@/lib/hr/constants";
+import { requestExtraction } from "@/lib/importFlow/extractClient";
 
 type Tab = "manual" | "pdf" | "photo";
 
@@ -67,12 +68,7 @@ export function CertificateUploadReview({ employeeId, companyId }: { employeeId:
       });
       setDocumentId(doc.id);
 
-      const res = await fetch("/api/extract-document", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documentId: doc.id, kind: "employee_certificate" }),
-      });
-      const result = await res.json();
+      const { res, result } = await requestExtraction(doc.id, "employee_certificate");
 
       if (!res.ok) {
         setNotice(`Extraction failed (${result.error ?? "unknown error"}) — the file is saved, please fill in the fields manually.`);
