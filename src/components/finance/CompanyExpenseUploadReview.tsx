@@ -117,7 +117,7 @@ export function CompanyExpenseUploadReview({
 
         {flow.step === "review" && (
           <div className="flex flex-col gap-4">
-            <ExtractionNotice notice={flow.notice} />
+            <ExtractionNotice notice={flow.notice} report={flow.report} />
             <FormError error={flow.error} />
 
             <div className="grid grid-cols-2 gap-4">

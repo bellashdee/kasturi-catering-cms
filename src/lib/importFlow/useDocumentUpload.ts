@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { uploadDocument, fileTypeFromMime, type DocumentFileType } from "@/lib/documents/upload";
 import type { DuplicateMatch } from "@/lib/importFlow/types";
+import type { ExtractionReport } from "@/lib/extraction/types";
 
 export type ImportTab = "manual" | "pdf" | "photo";
 
@@ -24,6 +25,7 @@ export function useDocumentUpload() {
   const [uploading, setUploading] = useState(false);
   const [documentId, setDocumentId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [report, setReport] = useState<ExtractionReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [duplicates, setDuplicates] = useState<DuplicateMatch[] | null>(null);
@@ -35,6 +37,7 @@ export function useDocumentUpload() {
     setFile(null);
     setDocumentId(null);
     setNotice(null);
+    setReport(null);
     setError(null);
     setDuplicates(null);
     setDuplicatesChecked(false);
@@ -61,12 +64,13 @@ export function useDocumentUpload() {
     if (!file) return null;
     setUploading(true);
     setError(null);
+    setReport(null);
     try {
       const fileType: DocumentFileType = fileTypeFromMime(file);
       const doc = await uploadDocument({ companyId: params.companyId, module: params.module, fileType, file });
       setDocumentId(doc.id);
 
-      // Transient AI failures (busy / overloaded) are retried once without re-uploading the file.
+      // Only an unexplained server failure (no error code, e.g. a platform timeout) is retried once; explained failures are not.
       const callExtract = async () => {
         const res = await fetch("/api/extract-document", {
           method: "POST",
@@ -77,13 +81,13 @@ export function useDocumentUpload() {
         return { res, result };
       };
       let { res, result } = await callExtract();
-      if (!res.ok && res.status >= 500) {
+      if (!res.ok && res.status >= 500 && !result.code) {
         await new Promise((r) => setTimeout(r, 3000));
         ({ res, result } = await callExtract());
       }
 
       if (!res.ok) {
-        setNotice(`Could not read the file (${result.error ?? "unknown error"}) — the file is saved, please fill in the fields manually, or choose the file again to retry.`);
+        setNotice(`Could not read the file: ${result.error ?? "the server did not give a reason"} The file is saved — fill in the fields manually, or choose the file again to retry.`);
         setStep("review");
         return null;
       }
@@ -92,10 +96,11 @@ export function useDocumentUpload() {
         setStep("review");
         return null;
       }
+      setReport(result.report ?? null);
       const values = result.extracted && typeof result.extracted === "object" ? Object.values(result.extracted as Record<string, unknown>) : [];
       const nothingRead = values.every((v) => v === null || v === undefined || v === "" || (Array.isArray(v) && v.length === 0));
       if (nothingRead) {
-        setNotice("The AI could not read any details from this file (it may be blurry, cut off or the wrong document type). The file is saved — fill in the fields manually, or try a clearer copy.");
+        setNotice(result.report?.valuesWithheld ? "This file is too blurry to trust, so nothing was filled in. The suggestions below are only a guide — type the correct values from the original, or upload a clearer copy." : "The AI could not read any details from this file (it may be blurry, cut off or the wrong document type). The file is saved — fill in the fields manually, or try a clearer copy.");
         setStep("review");
         return null;
       }
@@ -149,6 +154,7 @@ export function useDocumentUpload() {
     uploading,
     documentId,
     notice,
+    report,
     error,
     saving,
     duplicates,

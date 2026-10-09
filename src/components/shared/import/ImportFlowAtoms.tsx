@@ -2,6 +2,8 @@
 
 import type { ImportTab } from "@/lib/importFlow/useDocumentUpload";
 import type { DuplicateMatch } from "@/lib/importFlow/types";
+import type { ExtractionReport } from "@/lib/extraction/types";
+import { ExtractionReportPanel } from "@/components/shared/import/ExtractionReportPanel";
 
 /**
  * The shared visual chrome every Upload/OCR flow in the system uses, so a
@@ -62,15 +64,20 @@ export function FileDropZone({
   );
 }
 
-export function ExtractionNotice({ notice }: { notice: string | null }) {
-  if (!notice) return null;
+export function ExtractionNotice({ notice, report }: { notice: string | null; report?: ExtractionReport | null }) {
+  if (!notice && !report) return null;
   return (
-    <div className="flex items-start gap-2 rounded-lg border border-[#CFE1F2] bg-info-bg px-3.5 py-3 text-[13px] text-[#0F3A63]">
-      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="var(--color-primary)" strokeWidth="1.6" className="mt-0.5 shrink-0">
-        <circle cx="10" cy="10" r="7.2" />
-        <line x1="10" y1="9" x2="10" y2="14" />
-      </svg>
-      <span>{notice}</span>
+    <div className="flex flex-col gap-2">
+      {notice && (
+        <div className="flex items-start gap-2 rounded-lg border border-[#CFE1F2] bg-info-bg px-3.5 py-3 text-[13px] text-[#0F3A63]">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="var(--color-primary)" strokeWidth="1.6" className="mt-0.5 shrink-0">
+            <circle cx="10" cy="10" r="7.2" />
+            <line x1="10" y1="9" x2="10" y2="14" />
+          </svg>
+          <span>{notice}</span>
+        </div>
+      )}
+      <ExtractionReportPanel report={report} />
     </div>
   );
 }

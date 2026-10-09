@@ -15,53 +15,139 @@ export function getAiProvider(): AiProvider | null {
 export type GeminiPart = { text: string } | { inline_data: { mime_type: string; data: string } };
 export type GeminiTurn = { role: "user" | "model"; parts: GeminiPart[] };
 
-export async function geminiGenerate({
+/** Why a Gemini call failed, so callers can tell "busy, retry later" from "this request is wrong". */
+export class GeminiError extends Error {
+  constructor(
+    message: string,
+    readonly kind: "busy" | "rate_limit" | "timeout" | "bad_request" | "blocked" | "other",
+    readonly status?: number,
+  ) {
+    super(message);
+    this.name = "GeminiError";
+  }
+}
+
+export type GeminiResult = { text: string; finishReason: string | null; model: string };
+
+/**
+ * Models tried in order. The preferred model is often "experiencing high demand" (HTTP 503) on the free tier, so rather
+ * than waiting and retrying the same one we move on to the next, within an overall time budget.
+ */
+const FALLBACK_MODELS = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.7-flash", "gemini-3-flash-preview", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"];
+/** A model that just answered "overloaded" is tried last for a couple of minutes (remembered per server instance). */
+const COOLDOWN_MS = 120_000;
+const overloadedAt = new Map<string, number>();
+
+function modelChain(): string[] {
+  const preferred = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+  const all = Array.from(new Set([preferred, ...FALLBACK_MODELS]));
+  const hot = (m: string) => Date.now() - (overloadedAt.get(m) ?? 0) < COOLDOWN_MS;
+  return [...all.filter((m) => !hot(m)), ...all.filter(hot)];
+}
+
+export function isLightModel(model: string | null): boolean {
+  return !!model && /lite/i.test(model);
+}
+
+type RawResponse = {
+  error?: { message?: string };
+  candidates?: { finishReason?: string; content?: { parts?: { text?: string; thought?: boolean }[] } }[];
+  promptFeedback?: { blockReason?: string };
+};
+
+export async function geminiGenerateDetailed({
   system,
   turns,
   maxOutputTokens,
   json,
+  budgetMs = 52_000,
 }: {
   system?: string;
   turns: GeminiTurn[];
   maxOutputTokens: number;
   json?: boolean;
-}): Promise<string> {
+  /** Total time allowed across all models/attempts (the serverless function itself is limited to 60s). */
+  budgetMs?: number;
+}): Promise<GeminiResult> {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY is not set.");
-  const model = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+  if (!apiKey) throw new GeminiError("GEMINI_API_KEY is not set.", "other");
 
-  const body = JSON.stringify({
-    ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
-    contents: turns,
-    generationConfig: {
+  const started = Date.now();
+  let lastError: GeminiError | null = null;
+
+  const chain = modelChain();
+  for (const [index, model] of chain.entries()) {
+    const remaining = budgetMs - (Date.now() - started);
+    if (remaining < 4_000) break;
+    // A hung model must not eat the whole budget while others could answer.
+    const attemptMs = index === chain.length - 1 ? remaining : Math.max(20_000, remaining / 2);
+
+    // "low" thinking keeps reading fast and leaves the output budget for the actual JSON.
+    const generationConfig = {
       maxOutputTokens,
+      thinkingConfig: { thinkingLevel: "low" },
       ...(json ? { responseMimeType: "application/json" } : {}),
-    },
-  });
-
-  // The free tier is rate limited and sometimes overloaded: retry a couple of times before giving up.
-  let res: Response | null = null;
-  let data: { error?: { message?: string }; candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] } | null = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    res = await fetch(`${GEMINI_ENDPOINT}/${model}:generateContent`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-      body,
+    };
+    const body = JSON.stringify({
+      ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
+      contents: turns,
+      generationConfig,
     });
-    data = await res.json().catch(() => null);
-    if (res.ok || ![429, 500, 503].includes(res.status)) break;
-    await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+
+    let res: Response;
+    let data: RawResponse | null = null;
+    try {
+      res = await fetch(`${GEMINI_ENDPOINT}/${model}:generateContent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+        body,
+        signal: AbortSignal.timeout(Math.min(attemptMs, remaining)),
+      });
+      data = (await res.json().catch(() => null)) as RawResponse | null;
+    } catch {
+      lastError = new GeminiError("The AI service did not answer in time.", "timeout");
+      overloadedAt.set(model, Date.now());
+      continue; // try the next model with whatever time is left
+    }
+
+    if (res.ok) {
+      const candidate = data?.candidates?.[0];
+      const text = (candidate?.content?.parts ?? [])
+        .filter((p) => !p.thought && typeof p.text === "string")
+        .map((p) => p.text)
+        .join("");
+      if (!text && data?.promptFeedback?.blockReason) {
+        throw new GeminiError(`The AI service refused to read this file (${data.promptFeedback.blockReason}).`, "blocked", 200);
+      }
+      return { text, finishReason: candidate?.finishReason ?? null, model };
+    }
+
+    if (res.status === 429 || res.status === 503 || res.status === 500) overloadedAt.set(model, Date.now());
+    if (res.status === 429) lastError = new GeminiError("The AI service is busy or the free daily limit was reached.", "rate_limit", 429);
+    else if (res.status === 503 || res.status === 500) lastError = new GeminiError("The AI service is temporarily overloaded.", "busy", res.status);
+    else if (res.status === 404 || (res.status === 400 && /thinking/i.test(data?.error?.message ?? ""))) {
+      lastError = new GeminiError(data?.error?.message ?? `Model ${model} is not usable.`, "other", res.status);
+    } else {
+      throw new GeminiError(data?.error?.message ?? `AI request failed (${res.status}).`, "bad_request", res.status);
+    }
   }
 
-  if (!res || !res.ok) {
-    if (res?.status === 429) throw new Error("The AI service is busy or the free daily limit was reached. Wait a minute and try again.");
-    if (res?.status === 503 || res?.status === 500) throw new Error("The AI service is temporarily overloaded. Try again shortly.");
-    throw new Error(data?.error?.message ?? `AI request failed (${res?.status}).`);
-  }
+  throw lastError ?? new GeminiError("The AI service did not answer in time.", "timeout");
+}
 
-  const parts: { text?: string; thought?: boolean }[] = data?.candidates?.[0]?.content?.parts ?? [];
-  return parts
-    .filter((p) => !p.thought && typeof p.text === "string")
-    .map((p) => p.text)
-    .join("");
+export async function geminiGenerate(params: {
+  system?: string;
+  turns: GeminiTurn[];
+  maxOutputTokens: number;
+  json?: boolean;
+}): Promise<string> {
+  try {
+    return (await geminiGenerateDetailed(params)).text;
+  } catch (err) {
+    if (err instanceof GeminiError) {
+      if (err.kind === "rate_limit") throw new Error("The AI service is busy or the free daily limit was reached. Wait a minute and try again.");
+      if (err.kind === "busy" || err.kind === "timeout") throw new Error("The AI service is temporarily overloaded. Try again shortly.");
+    }
+    throw err;
+  }
 }

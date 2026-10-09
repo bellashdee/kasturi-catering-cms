@@ -229,7 +229,7 @@ export function PaymentForm({
 
   const formBody = (
     <div className="flex flex-col gap-4">
-      <ExtractionNotice notice={flow.notice} />
+      <ExtractionNotice notice={flow.notice} report={flow.report} />
       {mismatch && <div className="rounded-lg border border-warning/40 bg-warning-bg px-3 py-2 text-[13px] font-semibold text-warning">{mismatch}</div>}
       <FormError error={flow.error} />
 

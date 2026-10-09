@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { createCustomerInvoice, type CustomerInvoiceInput } from "@/lib/finance/actions";
 import { DUPLICATE_INVOICE_MESSAGE } from "@/lib/finance/constants";
 import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/documents/upload";
+import type { ExtractionReport } from "@/lib/extraction/types";
+import { ExtractionReportPanel } from "@/components/shared/import/ExtractionReportPanel";
 
 type Company = { id: string; name: string };
 type Customer = { id: string; name: string; company_id: string };
@@ -36,6 +38,7 @@ export function CustomerInvoiceForm({ companies, defaultCompanyId, customers }: 
   const [documentId, setDocumentId] = useState<string | undefined>(undefined);
   const [extracting, setExtracting] = useState(false);
   const [extractNotice, setExtractNotice] = useState<string | null>(null);
+  const [report, setReport] = useState<ExtractionReport | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [duplicatePending, setDuplicatePending] = useState(false);
@@ -48,6 +51,7 @@ export function CustomerInvoiceForm({ companies, defaultCompanyId, customers }: 
     setExtracting(true);
     setError(null);
     setExtractNotice(null);
+    setReport(null);
     try {
       const doc = await uploadDocument({ companyId, module: "finance", fileType: fileTypeFromMime(file), file });
       setDocumentId(doc.id);
@@ -62,9 +66,10 @@ export function CustomerInvoiceForm({ companies, defaultCompanyId, customers }: 
         return;
       }
       if (data.error) {
-        setExtractNotice("Could not read the file automatically — the file is attached, fill in the fields below manually.");
+        setExtractNotice(`Could not read the file: ${data.error} The file is attached — fill in the fields below manually.`);
         return;
       }
+      setReport(data.report ?? null);
       const extracted = data.extracted as Extracted;
       if (extracted.invoice_number) setInvoiceNumber(extracted.invoice_number);
       if (extracted.invoice_date) setInvoiceDate(extracted.invoice_date);
@@ -153,6 +158,7 @@ export function CustomerInvoiceForm({ companies, defaultCompanyId, customers }: 
           </button>
         </div>
         {extractNotice && <p className="mt-1.5 text-xs text-text-secondary">{extractNotice}</p>}
+        <div className="mt-2"><ExtractionReportPanel report={report} /></div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
