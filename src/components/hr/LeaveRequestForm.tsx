@@ -43,7 +43,12 @@ export function LeaveRequestForm({ employeeId, companyId }: { employeeId: string
         const doc = await uploadDocument({ companyId, module: "hr", fileType: fileTypeFromMime(file), file });
         documentId = doc.id;
       }
-      await requestLeave({ employeeId, companyId, leaveType, startDate, endDate, days, reason, documentId });
+      const res = await requestLeave({ employeeId, companyId, leaveType, startDate, endDate, days, reason, documentId });
+      if (!res.ok) {
+        setError(res.error);
+        setSaving(false);
+        return;
+      }
       router.push(`/hr/${employeeId}`);
       router.refresh();
     } catch (err) {

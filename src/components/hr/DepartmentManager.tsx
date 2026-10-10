@@ -19,16 +19,20 @@ export function DepartmentManager({ companyId, departments }: { companyId: strin
   const [toggle, setToggle] = useState<Dept | null>(null);
   const [toggleError, setToggleError] = useState<string | null>(null);
 
-  async function run(action: () => Promise<void>, success: string) {
+  async function run(action: () => Promise<{ ok: boolean; error?: string }>, success: string) {
     setBusy(true);
     setMessage(null);
     try {
-      await action();
+      const res = await action();
+      if (!res.ok) {
+        setMessage({ tone: "error", text: res.error ?? "Something went wrong." });
+        return false;
+      }
       setMessage({ tone: "success", text: success });
       router.refresh();
       return true;
-    } catch (err) {
-      setMessage({ tone: "error", text: err instanceof Error ? err.message : "Something went wrong." });
+    } catch {
+      setMessage({ tone: "error", text: "Something went wrong. Check your connection and try again." });
       return false;
     } finally {
       setBusy(false);
@@ -52,7 +56,11 @@ export function DepartmentManager({ companyId, departments }: { companyId: strin
     setBusy(true);
     setToggleError(null);
     try {
-      await setDepartmentActive(toggle.id, !toggle.is_active);
+      const res = await setDepartmentActive(toggle.id, !toggle.is_active);
+      if (!res.ok) {
+        setToggleError(res.error);
+        return;
+      }
       setToggle(null);
       router.refresh();
     } catch (err) {

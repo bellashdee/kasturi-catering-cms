@@ -25,7 +25,8 @@ export function PhotoUpload({ employeeId, companyId }: { employeeId: string; com
     try {
       const { error: uploadError } = await createClient().storage.from("hr-documents").upload(path, file, { contentType: file.type, upsert: true });
       if (uploadError) throw new Error("The photo could not be uploaded. Try again.");
-      await setEmployeePhoto(employeeId, path);
+      const res = await setEmployeePhoto(employeeId, path);
+      if (!res.ok) throw new Error(res.error);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed.");

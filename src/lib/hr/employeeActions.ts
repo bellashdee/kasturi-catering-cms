@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { UserError, runAction, type ActionResult } from "./actionResult";
 
 /**
  * Employee Management server actions. Each one re-checks on the server that the caller is an HR Admin of the
@@ -16,15 +17,15 @@ async function requireHr(companyId: string) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not signed in.");
+  if (!user) throw new UserError("Not signed in.");
   const { data } = await supabase.rpc("user_is_hr_admin", { target_company_id: companyId });
-  if (data !== true) throw new Error("Only an HR Admin of this company can do that.");
+  if (data !== true) throw new UserError("Only an HR Admin of this company can do that.");
   return { supabase, userId: user.id };
 }
 
 async function companyOfEmployee(supabase: Supabase, employeeId: string) {
   const { data } = await supabase.from("employees").select("id, company_id, full_name, status").eq("id", employeeId).maybeSingle();
-  if (!data) throw new Error("Employee not found, or you don't have access to this record.");
+  if (!data) throw new UserError("Employee not found, or you don't have access to this record.");
   return data;
 }
 
@@ -39,7 +40,7 @@ function clean(value: string | undefined | null): string | null {
 function validDate(value: string | null | undefined, label: string): string | null {
   const v = clean(value);
   if (!v) return null;
-  if (!DATE_RE.test(v) || Number.isNaN(Date.parse(v))) throw new Error(`${label} is not a valid date.`);
+  if (!DATE_RE.test(v) || Number.isNaN(Date.parse(v))) throw new UserError(`${label} is not a valid date.`);
   return v;
 }
 
@@ -89,41 +90,41 @@ type Checked = {
 
 async function validateEmployee(supabase: Supabase, companyId: string, input: EmployeeInput, ownId?: string): Promise<Checked> {
   const fullName = clean(input.fullName);
-  if (!fullName) throw new Error("Full name is required.");
-  if (fullName.length > 200) throw new Error("Full name is too long.");
-  if (!["full_time", "part_time", "contract"].includes(input.employmentType)) throw new Error("Choose a valid employment type.");
+  if (!fullName) throw new UserError("Full name is required.");
+  if (fullName.length > 200) throw new UserError("Full name is too long.");
+  if (!["full_time", "part_time", "contract"].includes(input.employmentType)) throw new UserError("Choose a valid employment type.");
 
   const email = clean(input.email);
-  if (email && !EMAIL_RE.test(email)) throw new Error("Email address is not valid.");
+  if (email && !EMAIL_RE.test(email)) throw new UserError("Email address is not valid.");
   const phone = clean(input.phone);
-  if (phone && !/^[0-9+()\-\s]{6,20}$/.test(phone)) throw new Error("Phone number is not valid.");
+  if (phone && !/^[0-9+()\-\s]{6,20}$/.test(phone)) throw new UserError("Phone number is not valid.");
 
   const joinDate = validDate(input.joinDate, "Start date");
   const probationStart = validDate(input.probationStart, "Probation start date");
   const probationEnd = validDate(input.probationEnd, "Probation end date");
   const contractEnd = validDate(input.contractEnd, "Contract end date");
-  if (probationStart && probationEnd && probationEnd < probationStart) throw new Error("Probation end date cannot be before its start date.");
-  if (joinDate && contractEnd && contractEnd < joinDate) throw new Error("Contract end date cannot be before the start date.");
+  if (probationStart && probationEnd && probationEnd < probationStart) throw new UserError("Probation end date cannot be before its start date.");
+  if (joinDate && contractEnd && contractEnd < joinDate) throw new UserError("Contract end date cannot be before the start date.");
 
   let departmentId: string | null = null;
   let departmentName: string | null = null;
   if (clean(input.departmentId)) {
     const { data: dept } = await supabase.from("departments").select("id, name, company_id").eq("id", input.departmentId as string).maybeSingle();
-    if (!dept || dept.company_id !== companyId) throw new Error("That department does not belong to this company.");
+    if (!dept || dept.company_id !== companyId) throw new UserError("That department does not belong to this company.");
     departmentId = dept.id;
     departmentName = dept.name;
   }
 
   const managerId = clean(input.reportingManagerId);
   if (managerId) {
-    if (ownId && managerId === ownId) throw new Error("An employee cannot report to themselves.");
+    if (ownId && managerId === ownId) throw new UserError("An employee cannot report to themselves.");
     const { data: manager } = await supabase.from("employees").select("id, company_id").eq("id", managerId).maybeSingle();
-    if (!manager || manager.company_id !== companyId) throw new Error("The reporting manager must be an employee of the same company.");
+    if (!manager || manager.company_id !== companyId) throw new UserError("The reporting manager must be an employee of the same company.");
     // Walk up the reporting chain: if it leads back to this employee, the relationship would be circular.
     if (ownId) {
       let cursor: string | null = managerId;
       for (let depth = 0; cursor && depth < 25; depth++) {
-        if (cursor === ownId) throw new Error("That reporting line would be circular (the manager already reports to this employee).");
+        if (cursor === ownId) throw new UserError("That reporting line would be circular (the manager already reports to this employee).");
         const next: { data: { reporting_manager_id: string | null } | null } = await supabase
           .from("employees")
           .select("reporting_manager_id")
@@ -151,14 +152,14 @@ async function validateEmployee(supabase: Supabase, companyId: string, input: Em
   };
 }
 
-function friendlyDbError(error: { code?: string; message: string }): Error {
+function friendlyDbError(error: { code?: string; message: string }): UserError {
   if (error.code === "23505") {
-    if (error.message.includes("employee_no")) return new Error("That employee ID is already used in this company.");
-    if (error.message.includes("company_user")) return new Error("That login is already linked to another staff record in this company.");
-    return new Error("That record already exists.");
+    if (error.message.includes("employee_no")) return new UserError("That employee ID is already used in this company.");
+    if (error.message.includes("company_user")) return new UserError("That login is already linked to another staff record in this company.");
+    return new UserError("That record already exists.");
   }
-  if (error.code === "42501") return new Error("You don't have permission to do that.");
-  return new Error("The change could not be saved. Please check the details and try again.");
+  if (error.code === "42501") return new UserError("You don't have permission to do that.");
+  return new UserError("The change could not be saved. Please check the details and try again.");
 }
 
 async function savePrivateDetails(supabase: Supabase, employeeId: string, companyId: string, input: EmployeeInput) {
@@ -175,10 +176,10 @@ async function savePrivateDetails(supabase: Supabase, employeeId: string, compan
     epf_no: clean(input.epfNo),
     updated_at: new Date().toISOString(),
   });
-  if (error) throw new Error("The restricted details (IC, address, emergency contact, bank) could not be saved.");
+  if (error) throw new UserError("The restricted details (IC, address, emergency contact, bank) could not be saved.");
 }
 
-export async function createEmployee(input: EmployeeInput) {
+async function createEmployeeImpl(input: EmployeeInput) {
   const { supabase } = await requireHr(input.companyId);
   const v = await validateEmployee(supabase, input.companyId, input);
   const stage = input.employmentStage === "probation" || input.employmentStage === "confirmed" ? input.employmentStage : null;
@@ -222,7 +223,7 @@ export async function createEmployee(input: EmployeeInput) {
   return data;
 }
 
-export async function updateEmployee(employeeId: string, input: EmployeeInput) {
+async function updateEmployeeImpl(employeeId: string, input: EmployeeInput) {
   const existing = await companyOfEmployee(await createClient(), employeeId);
   // The company of an employee never changes through this form.
   const { supabase } = await requireHr(existing.company_id);
@@ -231,7 +232,7 @@ export async function updateEmployee(employeeId: string, input: EmployeeInput) {
   // Linking a login to a staff record is an admin-only change (the database also guards it).
   if (input.userId !== undefined) {
     const { data: isAdmin } = await supabase.rpc("user_is_company_admin", { target_company_id: existing.company_id });
-    if (isAdmin !== true) throw new Error("Only an admin can link a login account to a staff record.");
+    if (isAdmin !== true) throw new UserError("Only an admin can link a login account to a staff record.");
   }
 
   const { error } = await supabase
@@ -272,15 +273,15 @@ export type EmploymentEventInput = {
 };
 
 /** Confirm, probation review, resignation, termination, activate/deactivate. One database transaction each. */
-export async function recordEmploymentEvent(input: EmploymentEventInput) {
+async function recordEmploymentEventImpl(input: EmploymentEventInput) {
   const existing = await companyOfEmployee(await createClient(), input.employeeId);
   const { supabase } = await requireHr(existing.company_id);
 
   const effective = validDate(input.effectiveDate, "Effective date");
-  if (!effective) throw new Error("An effective date is required.");
+  if (!effective) throw new UserError("An effective date is required.");
   const newEnd = validDate(input.newProbationEnd, "New probation end date");
   const details = clean(input.details);
-  if (details && details.length > 2000) throw new Error("The notes are too long (2000 characters at most).");
+  if (details && details.length > 2000) throw new UserError("The notes are too long (2000 characters at most).");
 
   const { error } = await supabase.rpc("hr_record_employment_event", {
     p_employee_id: input.employeeId,
@@ -294,7 +295,7 @@ export async function recordEmploymentEvent(input: EmploymentEventInput) {
   if (error) {
     // These messages are written by our own database function for HR users; anything else stays generic.
     const known = /^(Only|This employee|Probation|Choose|Provide|A reason|An effective|Status can|The employee|Unknown|Employee not found)/;
-    throw new Error(known.test(error.message) ? error.message : "The change could not be saved.");
+    throw new UserError(known.test(error.message) ? error.message : "The change could not be saved.");
   }
 
   revalidatePath("/hr");
@@ -305,29 +306,29 @@ export async function recordEmploymentEvent(input: EmploymentEventInput) {
 // Departments
 // ---------------------------------------------------------------------------
 
-export async function createDepartment(companyId: string, name: string, code?: string) {
+async function createDepartmentImpl(companyId: string, name: string, code?: string) {
   const { supabase } = await requireHr(companyId);
   const n = clean(name);
-  if (!n) throw new Error("Department name is required.");
-  if (n.length > 100) throw new Error("Department name is too long.");
+  if (!n) throw new UserError("Department name is required.");
+  if (n.length > 100) throw new UserError("Department name is too long.");
   const { error } = await supabase.from("departments").insert({ company_id: companyId, name: n, code: clean(code) });
   if (error) {
-    if (error.code === "23505") throw new Error("This company already has a department with that name.");
+    if (error.code === "23505") throw new UserError("This company already has a department with that name.");
     throw friendlyDbError(error);
   }
   revalidatePath("/hr/departments");
 }
 
-export async function renameDepartment(departmentId: string, name: string) {
+async function renameDepartmentImpl(departmentId: string, name: string) {
   const supabase = await createClient();
   const { data: dept } = await supabase.from("departments").select("id, company_id").eq("id", departmentId).maybeSingle();
-  if (!dept) throw new Error("Department not found.");
+  if (!dept) throw new UserError("Department not found.");
   await requireHr(dept.company_id);
   const n = clean(name);
-  if (!n) throw new Error("Department name is required.");
+  if (!n) throw new UserError("Department name is required.");
   const { error } = await supabase.from("departments").update({ name: n }).eq("id", departmentId);
   if (error) {
-    if (error.code === "23505") throw new Error("This company already has a department with that name.");
+    if (error.code === "23505") throw new UserError("This company already has a department with that name.");
     throw friendlyDbError(error);
   }
   // Other modules still read the department as text, so keep that copy in step.
@@ -337,10 +338,10 @@ export async function renameDepartment(departmentId: string, name: string) {
 }
 
 /** Departments are never deleted: an obsolete one is marked inactive so history stays readable. */
-export async function setDepartmentActive(departmentId: string, active: boolean) {
+async function setDepartmentActiveImpl(departmentId: string, active: boolean) {
   const supabase = await createClient();
   const { data: dept } = await supabase.from("departments").select("id, company_id").eq("id", departmentId).maybeSingle();
-  if (!dept) throw new Error("Department not found.");
+  if (!dept) throw new UserError("Department not found.");
   await requireHr(dept.company_id);
   const { error } = await supabase.from("departments").update({ is_active: active }).eq("id", departmentId);
   if (error) throw friendlyDbError(error);
@@ -353,7 +354,7 @@ export async function setDepartmentActive(departmentId: string, active: boolean)
 
 const DOC_CATEGORIES = ["offer_letter", "employment_contract", "confirmation_letter", "warning_letter", "resignation_letter", "other"];
 
-export async function recordEmployeeDocument(input: {
+async function recordEmployeeDocumentImpl(input: {
   employeeId: string;
   category: string;
   title: string;
@@ -363,11 +364,11 @@ export async function recordEmployeeDocument(input: {
 }) {
   const existing = await companyOfEmployee(await createClient(), input.employeeId);
   const { supabase, userId } = await requireHr(existing.company_id);
-  if (!DOC_CATEGORIES.includes(input.category)) throw new Error("Choose a valid document category.");
+  if (!DOC_CATEGORIES.includes(input.category)) throw new UserError("Choose a valid document category.");
   const title = clean(input.title);
-  if (!title) throw new Error("A document title is required.");
+  if (!title) throw new UserError("A document title is required.");
   if (!input.storagePath.startsWith(`${existing.company_id}/docs/`) || input.storagePath.includes("..")) {
-    throw new Error("The uploaded file is not in the expected location.");
+    throw new UserError("The uploaded file is not in the expected location.");
   }
   const { error } = await supabase.from("employee_documents").insert({
     company_id: existing.company_id,
@@ -383,14 +384,14 @@ export async function recordEmployeeDocument(input: {
   revalidatePath(`/hr/${input.employeeId}`);
 }
 
-export async function deleteEmployeeDocument(documentId: string) {
+async function deleteEmployeeDocumentImpl(documentId: string) {
   const supabase = await createClient();
   const { data: doc } = await supabase
     .from("employee_documents")
     .select("id, company_id, employee_id, storage_path")
     .eq("id", documentId)
     .maybeSingle();
-  if (!doc) throw new Error("Document not found.");
+  if (!doc) throw new UserError("Document not found.");
   const { supabase: hr } = await requireHr(doc.company_id);
   const { error } = await hr.from("employee_documents").delete().eq("id", documentId);
   if (error) throw friendlyDbError(error);
@@ -398,11 +399,11 @@ export async function deleteEmployeeDocument(documentId: string) {
   revalidatePath(`/hr/${doc.employee_id}`);
 }
 
-export async function setEmployeePhoto(employeeId: string, storagePath: string) {
+async function setEmployeePhotoImpl(employeeId: string, storagePath: string) {
   const existing = await companyOfEmployee(await createClient(), employeeId);
   const { supabase } = await requireHr(existing.company_id);
   if (!storagePath.startsWith(`${existing.company_id}/photos/`) || storagePath.includes("..")) {
-    throw new Error("The uploaded photo is not in the expected location.");
+    throw new UserError("The uploaded photo is not in the expected location.");
   }
   const { error } = await supabase.from("employees").update({ photo_path: storagePath }).eq("id", employeeId);
   if (error) throw friendlyDbError(error);
@@ -430,11 +431,11 @@ export type BulkEmployeeRow = {
   epfNo?: string;
 };
 
-export async function bulkImportEmployees(companyId: string, rows: BulkEmployeeRow[]) {
+async function bulkImportEmployeesImpl(companyId: string, rows: BulkEmployeeRow[]) {
   const { supabase } = await requireHr(companyId);
   const valid = rows.filter((r) => r.fullName?.trim());
   if (valid.length === 0) return { inserted: 0, privateSaved: 0, privateSkipped: 0 };
-  if (valid.length > 500) throw new Error("Import at most 500 employees at a time.");
+  if (valid.length > 500) throw new UserError("Import at most 500 employees at a time.");
 
   const { data: departments } = await supabase.from("departments").select("id, name").eq("company_id", companyId);
   const deptByName = new Map((departments ?? []).map((d) => [d.name.toLowerCase(), d]));
@@ -481,4 +482,42 @@ export async function bulkImportEmployees(companyId: string, rows: BulkEmployeeR
 
   revalidatePath("/hr");
   return { inserted: created?.length ?? payload.length, privateSaved, privateSkipped: privateRows.length - privateSaved };
+}
+
+// ---------------------------------------------------------------------------
+// Public actions. Each returns { ok, data } or { ok: false, error } so the real reason reaches the screen.
+// ---------------------------------------------------------------------------
+
+export async function createEmployee(input: EmployeeInput): Promise<ActionResult<{ id: string }>> {
+  return runAction(() => createEmployeeImpl(input));
+}
+export async function updateEmployee(employeeId: string, input: EmployeeInput): Promise<ActionResult> {
+  return runAction(() => updateEmployeeImpl(employeeId, input));
+}
+export async function recordEmploymentEvent(input: EmploymentEventInput): Promise<ActionResult> {
+  return runAction(() => recordEmploymentEventImpl(input));
+}
+export async function createDepartment(companyId: string, name: string, code?: string): Promise<ActionResult> {
+  return runAction(() => createDepartmentImpl(companyId, name, code));
+}
+export async function renameDepartment(departmentId: string, name: string): Promise<ActionResult> {
+  return runAction(() => renameDepartmentImpl(departmentId, name));
+}
+export async function setDepartmentActive(departmentId: string, active: boolean): Promise<ActionResult> {
+  return runAction(() => setDepartmentActiveImpl(departmentId, active));
+}
+export async function recordEmployeeDocument(input: Parameters<typeof recordEmployeeDocumentImpl>[0]): Promise<ActionResult> {
+  return runAction(() => recordEmployeeDocumentImpl(input));
+}
+export async function deleteEmployeeDocument(documentId: string): Promise<ActionResult> {
+  return runAction(() => deleteEmployeeDocumentImpl(documentId));
+}
+export async function setEmployeePhoto(employeeId: string, storagePath: string): Promise<ActionResult> {
+  return runAction(() => setEmployeePhotoImpl(employeeId, storagePath));
+}
+export async function bulkImportEmployees(
+  companyId: string,
+  rows: BulkEmployeeRow[],
+): Promise<ActionResult<{ inserted: number; privateSaved: number; privateSkipped: number }>> {
+  return runAction(() => bulkImportEmployeesImpl(companyId, rows));
 }

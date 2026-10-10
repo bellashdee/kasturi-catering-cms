@@ -7,23 +7,30 @@ export function DecisionButtons({
   onApprove,
   onReject,
 }: {
-  onApprove: () => Promise<void>;
-  onReject: () => Promise<void>;
+  /** May return { ok: false, error } to report a refused decision; plain void still works for older callers. */
+  onApprove: () => Promise<void | { ok: boolean; error?: string }>;
+  onReject: () => Promise<void | { ok: boolean; error?: string }>;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  async function run(action: () => Promise<void>) {
+  async function run(action: () => Promise<void | { ok: boolean; error?: string }>) {
     setPending(true);
+    setError(null);
     try {
-      await action();
-      router.refresh();
+      const result = await action();
+      if (result && result.ok === false) setError(result.error ?? "The decision could not be saved.");
+      else router.refresh();
+    } catch {
+      setError("The decision could not be saved. Check your connection and try again.");
     } finally {
       setPending(false);
     }
   }
 
   return (
+    <div className="flex flex-col items-end gap-1.5">
     <div className="flex gap-2">
       <button
         disabled={pending}
@@ -39,6 +46,8 @@ export function DecisionButtons({
       >
         Approve
       </button>
+    </div>
+    {error && <p role="alert" className="max-w-xs text-right text-[11.5px] font-semibold text-danger">{error}</p>}
     </div>
   );
 }

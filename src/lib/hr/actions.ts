@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { UserError, runAction, type ActionResult } from "./actionResult";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -74,7 +75,7 @@ export type LeaveInput = {
   documentId?: string;
 };
 
-export async function requestLeave(input: LeaveInput) {
+async function requestLeaveImpl(input: LeaveInput) {
   const { supabase, userId } = await requireUser();
 
   const { data: leave, error: leaveError } = await supabase
@@ -93,7 +94,12 @@ export async function requestLeave(input: LeaveInput) {
     })
     .select("id")
     .single();
-  if (leaveError) throw leaveError;
+  if (leaveError) {
+    if (leaveError.code === "23P01") throw new UserError("This employee already has pending or approved leave that overlaps those dates.");
+    if (leaveError.code === "23514") throw new UserError("Check the dates and the number of days: the end date cannot be before the start date and the days must be more than zero.");
+    if (leaveError.code === "42501") throw new UserError("You are not allowed to file leave for this employee.");
+    throw new UserError("The leave request could not be saved.");
+  }
 
   if (input.documentId) {
     await supabase
@@ -124,29 +130,46 @@ export async function requestLeave(input: LeaveInput) {
   return leave;
 }
 
-export async function decideLeave(leaveRequestId: string, decision: "approved" | "rejected") {
+/** Messages the database raises on purpose (see the leave integrity migration) are safe to show to the user. */
+const LEAVE_RULE_MESSAGE = /^(You are not allowed|This leave request has already|A decided leave request)/;
+
+export async function requestLeave(input: LeaveInput): Promise<ActionResult<{ id: string }>> {
+  return runAction(() => requestLeaveImpl(input));
+}
+
+async function decideLeaveImpl(leaveRequestId: string, decision: "approved" | "rejected") {
   const { supabase } = await requireUser();
 
-  const { data: leave, error: fetchError } = await supabase
+  const { data: leave } = await supabase
     .from("leave_requests")
     .select("id, approval_id, employee_id")
     .eq("id", leaveRequestId)
-    .single();
-  if (fetchError) throw fetchError;
+    .maybeSingle();
+  if (!leave) throw new UserError("This leave request is not available to you.");
 
-  const { error: updateError } = await supabase
+  // .select() makes the update report how many rows it really changed (the database hides rows outside your scope).
+  const { data: changed, error: updateError } = await supabase
     .from("leave_requests")
     .update({ status: decision })
-    .eq("id", leaveRequestId);
-  if (updateError) throw updateError;
+    .eq("id", leaveRequestId)
+    .select("id");
+  if (updateError) {
+    throw new UserError(LEAVE_RULE_MESSAGE.test(updateError.message) ? updateError.message : "The decision could not be saved.");
+  }
+  if (!changed || changed.length === 0) throw new UserError("You are not allowed to decide this leave request.");
 
   if (leave.approval_id) {
-    await supabase.from("approvals").update({ status: decision }).eq("id", leave.approval_id);
+    const { error: approvalError } = await supabase.from("approvals").update({ status: decision }).eq("id", leave.approval_id);
+    if (approvalError) throw new UserError("The leave was updated but its approval record could not be. Please tell an administrator.");
   }
 
   revalidatePath("/hr/leave");
   revalidatePath(`/hr/${leave.employee_id}`);
   revalidatePath("/");
+}
+
+export async function decideLeave(leaveRequestId: string, decision: "approved" | "rejected"): Promise<ActionResult> {
+  return runAction(() => decideLeaveImpl(leaveRequestId, decision));
 }
 
 export type PayrollInput = {

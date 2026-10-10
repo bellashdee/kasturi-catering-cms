@@ -99,11 +99,21 @@ export function EmployeeForm({
     const payload: EmployeeInput = accounts ? { ...form, userId: linkedUserId || null } : form;
     try {
       if (employeeId) {
-        await updateEmployee(employeeId, payload);
+        const res = await updateEmployee(employeeId, payload);
+        if (!res.ok) {
+          setError(res.error);
+          setSaving(false);
+          return;
+        }
         router.push(`/hr/${employeeId}`);
       } else {
-        const created = await createEmployee(payload);
-        router.push(`/hr/${created.id}`);
+        const res = await createEmployee(payload);
+        if (!res.ok) {
+          setError(res.error);
+          setSaving(false);
+          return;
+        }
+        router.push(`/hr/${res.data.id}`);
       }
       router.refresh();
     } catch (err) {

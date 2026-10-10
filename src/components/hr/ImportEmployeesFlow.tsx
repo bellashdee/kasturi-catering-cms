@@ -136,9 +136,13 @@ export function ImportEmployeesFlow({
     setSaving(true);
     setError(null);
     try {
-      const { inserted, privateSaved: saved } = await bulkImportEmployees(companyId, rows);
-      setPrivateSaved(saved ?? 0);
-      setResult(inserted);
+      const res = await bulkImportEmployees(companyId, rows);
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      setPrivateSaved(res.data.privateSaved ?? 0);
+      setResult(res.data.inserted);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Import failed.");

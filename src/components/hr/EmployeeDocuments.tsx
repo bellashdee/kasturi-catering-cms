@@ -65,18 +65,17 @@ export function EmployeeDocuments({
     try {
       const { error: uploadError } = await supabase.storage.from("hr-documents").upload(path, file, { contentType: file.type });
       if (uploadError) throw new Error("The file could not be uploaded. Check your connection and try again.");
-      try {
-        await recordEmployeeDocument({
-          employeeId,
-          category,
-          title,
-          storagePath: path,
-          originalFilename: file.name,
-          visibleToEmployee: visible,
-        });
-      } catch (err) {
+      const recorded = await recordEmployeeDocument({
+        employeeId,
+        category,
+        title,
+        storagePath: path,
+        originalFilename: file.name,
+        visibleToEmployee: visible,
+      });
+      if (!recorded.ok) {
         await supabase.storage.from("hr-documents").remove([path]); // don't leave an orphaned file behind
-        throw err;
+        throw new Error(recorded.error);
       }
       setTitle("");
       if (fileRef.current) fileRef.current.value = "";
@@ -94,7 +93,11 @@ export function EmployeeDocuments({
     setDeleting(true);
     setDeleteError(null);
     try {
-      await deleteEmployeeDocument(toDelete.id);
+      const res = await deleteEmployeeDocument(toDelete.id);
+      if (!res.ok) {
+        setDeleteError(res.error);
+        return;
+      }
       setToDelete(null);
       router.refresh();
     } catch (err) {

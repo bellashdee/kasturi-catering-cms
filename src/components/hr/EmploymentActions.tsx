@@ -90,7 +90,12 @@ export function EmploymentActions({
       : kind === "termination" ? { ...base, event: "termination" }
       : { ...base, event: "status_change", toStatus: kind === "deactivate" ? "inactive" : "active" };
     try {
-      await recordEmploymentEvent(input);
+      const res = await recordEmploymentEvent(input);
+      if (!res.ok) {
+        setError(res.error);
+        setStep("form");
+        return;
+      }
       setKind(null);
       setDone(`${TITLE[kind]} — saved.`);
       router.refresh();
