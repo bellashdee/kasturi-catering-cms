@@ -63,9 +63,9 @@ Sets `employees.ic_passport_no` to empty **only where an identical copy already 
 
 ## 3. Things users will notice after the migrations (behaviour changes)
 
-1. **Existing "Department Manager" login** currently has access to *all companies* (its access row has no company). The new rules scope managers to a company **and** a department/direct reports, so until HR assigns a company and department scope it will see **no** leave, attendance, or history. There is **no screen** to set this scope yet; it must be set by SQL (with your approval) or a small settings screen built next.
+1. **Existing "Department Manager" login** (verified 2026-10-10): access to **all companies**, but only the modules `catering, driver-logistics, kitchen, overtime`: **not HR**. It never had leave, attendance, history or payroll access, so these migrations change nothing for it. Overtime approval keeps working (that rule is unchanged). Its company/department scope is still to be decided by the owner (see the Phase 4 report and the chat summary). It is not linked to any employee record.
 2. The existing **Company Admin** login keeps working (treated as HR Admin).
-3. The Dept Manager login can no longer read payroll (intended).
+3. Payroll was already hidden from the Dept Manager login by its module restriction; the new payroll rule adds a second, database-level barrier.
 4. Employees can no longer edit anything in `employees` (they never could in the app; now the database agrees).
 5. Old app code (currently live) still works against the new schema for the Company Admin: all changes are additive. That is why migrate-then-deploy is safe in this order.
 
