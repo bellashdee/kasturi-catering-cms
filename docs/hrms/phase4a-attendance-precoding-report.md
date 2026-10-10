@@ -80,7 +80,7 @@ All additive. Nothing existing is dropped, renamed or rewritten. Driver tables u
 ### 3.2 Records
 | Table / change | Purpose and key fields |
 |---|---|
-| `attendance_records` (extend) | Add `clock_in_at`, `clock_out_at` (timestamptz), `workplace_id`, `geofence_version_id`, `schedule_id` (the schedule that applied, if any), in/out latitude, longitude, accuracy_m, distance_m, `face_status_in/out` (default `not_configured`), `source` (`clock` / `exception` / `hr_correction` / `import`), `exception_id`, `late_minutes` (only when a rule exists). Old `check_in/check_out` kept. |
+| `attendance_records` (extend) | Add `clock_in_at`, `clock_out_at` (timestamptz), `workplace_id`, `geofence_version_id`, `schedule_id` (the schedule that applied, if any), in/out latitude, longitude, accuracy_m, distance_m, `location_status_in/out` (accepted / retry_accuracy / rejected_distance / denied, **separate from face**), `face_status_in/out` (default `not_configured`; a pass in one never covers a failure in the other), `source` (`clock` / `exception` / `hr_correction` / `import`), `exception_id`, `late_minutes` (only when a rule exists). Old `check_in/check_out` kept. |
 | `attendance_events` | **One row per attempt, including rejected ones:** `employee_id, company_id, action, outcome, reject_reason, idempotency_key, workplace_id, geofence_version_id, latitude, longitude, accuracy_m, distance_m, face_status, server_time, user_agent`. Server-only writes; no image data. |
 | `attendance_exceptions` | See §6. |
 | `attendance_exception_events` | Step-by-step history of each exception (actor, role, action, comment, timestamp). Append-only. |
