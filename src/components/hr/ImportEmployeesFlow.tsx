@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
-import { bulkImportEmployees, type BulkEmployeeRow } from "@/lib/hr/actions";
+import { bulkImportEmployees, type BulkEmployeeRow } from "@/lib/hr/employeeActions";
 
 type Company = { id: string; name: string };
 

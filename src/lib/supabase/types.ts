@@ -1336,6 +1336,11 @@ export type Database = {
       }
       employee_private_details: {
         Row: {
+          ic_passport_no: string | null
+          residential_address: string | null
+          emergency_contact_name: string | null
+          emergency_contact_relationship: string | null
+          emergency_contact_phone: string | null
           bank_account_no: string | null
           bank_name: string | null
           company_id: string
@@ -1344,6 +1349,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ic_passport_no?: string | null
+          residential_address?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_relationship?: string | null
+          emergency_contact_phone?: string | null
           bank_account_no?: string | null
           bank_name?: string | null
           company_id: string
@@ -1352,6 +1362,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ic_passport_no?: string | null
+          residential_address?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_relationship?: string | null
+          emergency_contact_phone?: string | null
           bank_account_no?: string | null
           bank_name?: string | null
           company_id?: string
@@ -1376,8 +1391,158 @@ export type Database = {
           },
         ]
       }
+      departments: {
+        Row: {
+          id: string
+          company_id: string
+          name: string
+          code: string | null
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          name: string
+          code?: string | null
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          name?: string
+          code?: string | null
+          is_active?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
+      employment_history: {
+        Row: {
+          id: string
+          company_id: string
+          employee_id: string
+          event_type: string
+          effective_date: string
+          from_status: string | null
+          to_status: string | null
+          outcome: string | null
+          details: string | null
+          recorded_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          employee_id: string
+          event_type: string
+          effective_date?: string
+          from_status?: string | null
+          to_status?: string | null
+          outcome?: string | null
+          details?: string | null
+          recorded_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          employee_id?: string
+          event_type?: string
+          effective_date?: string
+          from_status?: string | null
+          to_status?: string | null
+          outcome?: string | null
+          details?: string | null
+          recorded_by?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      employee_documents: {
+        Row: {
+          id: string
+          company_id: string
+          employee_id: string
+          category: string
+          title: string
+          storage_path: string
+          original_filename: string
+          visible_to_employee: boolean
+          uploaded_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          employee_id: string
+          category: string
+          title: string
+          storage_path: string
+          original_filename: string
+          visible_to_employee?: boolean
+          uploaded_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          employee_id?: string
+          category?: string
+          title?: string
+          storage_path?: string
+          original_filename?: string
+          visible_to_employee?: boolean
+          uploaded_by?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      audit_log: {
+        Row: {
+          id: string
+          company_id: string | null
+          actor_id: string | null
+          action: string
+          table_name: string
+          record_id: string | null
+          changed_fields: string[] | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          company_id?: string | null
+          actor_id?: string | null
+          action: string
+          table_name: string
+          record_id?: string | null
+          changed_fields?: string[] | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          company_id?: string | null
+          actor_id?: string | null
+          action?: string
+          table_name?: string
+          record_id?: string | null
+          changed_fields?: string[] | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       employees: {
         Row: {
+          employee_no: string | null
+          department_id: string | null
+          reporting_manager_id: string | null
+          employment_stage: string | null
+          probation_start: string | null
+          probation_end: string | null
+          confirmation_date: string | null
+          contract_end: string | null
+          photo_path: string | null
           company_id: string
           created_at: string
           department: string | null
@@ -1394,6 +1559,15 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          employee_no?: string | null
+          department_id?: string | null
+          reporting_manager_id?: string | null
+          employment_stage?: string | null
+          probation_start?: string | null
+          probation_end?: string | null
+          confirmation_date?: string | null
+          contract_end?: string | null
+          photo_path?: string | null
           company_id: string
           created_at?: string
           department?: string | null
@@ -1410,6 +1584,15 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          employee_no?: string | null
+          department_id?: string | null
+          reporting_manager_id?: string | null
+          employment_stage?: string | null
+          probation_start?: string | null
+          probation_end?: string | null
+          confirmation_date?: string | null
+          contract_end?: string | null
+          photo_path?: string | null
           company_id?: string
           created_at?: string
           department?: string | null
@@ -3875,6 +4058,8 @@ export type Database = {
       }
       user_company_access: {
         Row: {
+          hr_role: string | null
+          department_scope: string[] | null
           allowed_modules: string[] | null
           company_id: string | null
           granted_at: string
@@ -3883,6 +4068,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          hr_role?: string | null
+          department_scope?: string[] | null
           allowed_modules?: string[] | null
           company_id?: string | null
           granted_at?: string
@@ -3891,6 +4078,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          hr_role?: string | null
+          department_scope?: string[] | null
           allowed_modules?: string[] | null
           company_id?: string | null
           granted_at?: string
@@ -4033,6 +4222,18 @@ export type Database = {
     }
     Functions: {
       current_user_is_super_admin: { Args: never; Returns: boolean }
+      hr_record_employment_event: {
+        Args: {
+          p_details?: string
+          p_effective: string
+          p_employee_id: string
+          p_event: string
+          p_new_probation_end?: string
+          p_outcome?: string
+          p_to_status?: string
+        }
+        Returns: undefined
+      }
       user_has_company_access: {
         Args: { target_company_id: string }
         Returns: boolean
@@ -4047,6 +4248,22 @@ export type Database = {
       }
       user_is_ot_manager: {
         Args: { target_company_id: string }
+        Returns: boolean
+      }
+      user_is_hr_admin: {
+        Args: { target_company_id: string }
+        Returns: boolean
+      }
+      user_is_director: {
+        Args: { target_company_id: string }
+        Returns: boolean
+      }
+      user_is_finance: {
+        Args: { target_company_id: string }
+        Returns: boolean
+      }
+      user_manages_employee: {
+        Args: { target_employee_id: string }
         Returns: boolean
       }
       user_owns_employee: {
