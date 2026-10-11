@@ -32,25 +32,26 @@ Priority set by the owner: **protect existing company data, prevent unauthorised
 | P11 | Real-device testing before production | **Required**: test on the actual phones staff use (Android Chrome, iPhone Safari) | Indoor GPS accuracy varies; 50 m may reject valid staff | A tested accuracy limit | Risk of many false rejections | ☐ ☐ ☐ |
 | P12 | Driver clock-in integration | Keep separate now; propose later | D8; avoids disrupting drivers | Two systems remain (5 km selfie vs 100 m) | n/a | ☐ ☐ ☐ |
 
-## 3. Workplace configuration (sourced from the REFERENCES folder where possible; still UNCONFIRMED)
+## 3. Workplace configuration (addresses supplied by the owner; coordinates still PENDING)
 
-**What was read (owner asked to refer to REFERENCES, 2026-10-10):** only company letterhead text: the company-level file "Letterhead Signature Solution" and the **header text only** of one offer letter each for Kasturi Indah and O2 Life. **No staff letters were read, and no payslips, salaries, ICs or personal files were opened.** The folder holds 196 files, mostly personal.
+**Sources:** (a) **owner-supplied addresses, 2026-10-11** (in chat); (b) company letterheads in the REFERENCES folder (only letterhead header text was read: no staff letters, payslips or personal files). Registration numbers come from the letterheads only.
 
-| Company (as in system) | Name on letterhead | Registration no. on letterhead | Address on letterhead | Phone on letterhead | Workplace name | Latitude | Longitude | Radius | Max accuracy |
-|---|---|---|---|---|---|---|---|---|---|
-| Signature Solution | SIGNATURE SOLUTION SDN BHD | 1313182-V | No 3, Jalan Mutiara Emas 5/23, Taman Mount Austin, **81300** Johor Bahru, Johor Darul Takzim | none shown | PENDING MANAGEMENT CONFIRMATION | PENDING MANAGEMENT CONFIRMATION | PENDING MANAGEMENT CONFIRMATION | 100 m (fixed) | 50 m (staging) |
-| Kasturi Indah | KASTURI INDAH SDN. BHD. | 1352376-H | No 3, Jalan Mutiara Emas 5/23, Taman Mount Austin, **81100** Johor Bahru, Johor Darul Takzim | none shown | PENDING MANAGEMENT CONFIRMATION | PENDING MANAGEMENT CONFIRMATION | PENDING MANAGEMENT CONFIRMATION | 100 m (fixed) | 50 m (staging) |
-| O2 Life | O2 LIFE SDN BHD | 1392751-T | NO. 3, JALAN MUTIARA EMAS 5/23, TAMAN MOUNT AUSTIN, **81100** JOHOR BAHRU, JOHOR | 019-700 7005 | PENDING MANAGEMENT CONFIRMATION | PENDING MANAGEMENT CONFIRMATION | PENDING MANAGEMENT CONFIRMATION | 100 m (fixed) | 50 m (staging) |
+| Company (as in system) | Name (owner / letterhead) | Registration no. (letterhead only) | **Address supplied by owner (2026-10-11)** | Workplace name | Latitude | Longitude | Radius | Max accuracy |
+|---|---|---|---|---|---|---|---|---|
+| Signature Solution | SIGNATURE SOLUTION SDN BHD | 1313182-V | 3, Jalan Mutiara Emas 5/23, Taman Mount Austin, **81100** Johor Bahru, Johor Darul Ta'zim | PENDING MANAGEMENT CONFIRMATION | PENDING MANAGEMENT CONFIRMATION | PENDING MANAGEMENT CONFIRMATION | 100 m (fixed) | 50 m (staging) |
+| Kasturi Indah | KASTURI INDAH SDN BHD (letterhead: "SDN. BHD.") | 1352376-H | 3, Jalan Mutiara Emas 5/23, Taman Mount Austin, 81100 Johor Bahru, Johor Darul Ta'zim (**same site as Signature Solution**) | PENDING MANAGEMENT CONFIRMATION | PENDING MANAGEMENT CONFIRMATION | PENDING MANAGEMENT CONFIRMATION | 100 m (fixed) | 50 m (staging) |
+| O2 Life | "02 LIFE SDN BHD" (owner) / "O2 LIFE SDN BHD" (letterhead) | 1392751-T | 13, Jln Persiaran Senibong, Bandar Baru Permas Jaya, 81750 Johor Bahru, Johor Darul Ta'zim | PENDING MANAGEMENT CONFIRMATION | PENDING MANAGEMENT CONFIRMATION | PENDING MANAGEMENT CONFIRMATION | 100 m (fixed) | 50 m (staging) |
 
-Everything in the letterhead columns is **taken from letterheads, not from SSM records, and is PENDING MANAGEMENT CONFIRMATION.** Add a row for every other site staff clock in at.
+**Resolved by the owner's message:** the Signature Solution postcode is **81100** (the letterhead had 81300).
 
-**Things management must resolve:**
-1. All three letterheads show the **same street address**, but the Signature Solution postcode is **81300** while the other two are **81100**. One of them is likely a typo: confirm.
-2. A letterhead address is normally an **office / registered address**. It is not proof of where staff clock in (kitchen, event sites, drivers' base). Management must say which physical sites count as workplaces.
-3. The name is written inconsistently ("SDN BHD" vs "SDN. BHD."). The registered name should be confirmed against the **SSM certificate**. The O2 letterhead uses the letter **O** ("O2 LIFE"), matching the system, so the earlier "02Life" spelling appears to be a typo (please confirm).
-4. **No latitude or longitude exists anywhere** (not in the system, not in the references). I did not derive any from the address, because that would be an estimate. Coordinates must come from a verified on-site source (D5).
+**Still to confirm:**
+1. **O2 Life has a different address from its own letterhead.** The letterhead shows *No. 3, Jalan Mutiara Emas 5/23, Taman Mount Austin, 81100*, while the owner gave *13, Jln Persiaran Senibong, Permas Jaya, 81750*. Which is the registered address and which is where staff actually work? (Possibly two sites: if so, both need a row.)
+2. **Signature Solution and Kasturi Indah share one address.** If both companies' staff clock in at the same building, a single physical site can be assigned to employees of both companies, but each company still needs its own workplace record (company isolation), with the same verified coordinates.
+3. These are **office/registered addresses as given**. Management must still say whether any other place (kitchen, event sites, drivers' base) counts as a clock-in workplace.
+4. **Name spelling:** "02 LIFE" (zero, as typed) vs "O2 LIFE" (letter O, letterhead and system). Confirm against the SSM certificate. "SDN. BHD." vs "SDN BHD" also differs.
+5. **No latitude or longitude exists anywhere.** I have not derived any from the addresses (that would be an estimate). Coordinates must come from a verified on-site source, entered by one person, verified by a second, approved by the director (D5).
 
-**Working hours: PENDING MANAGEMENT CONFIRMATION for all three companies.** The only source found is the Signature Solution *sample* offer template, which shows a **placeholder example** ("[e.g., 9:00 AM to 6:00 PM, Monday to Saturday]") and an example leave figure in square brackets. Those are template examples, **not approved schedules**, and were not used. Kasturi Indah and O2 Life have only personal letters in the folder, which were not read; management should supply the approved hours (or an approved template) for each company.
+**Working hours: PENDING MANAGEMENT CONFIRMATION for all three companies.** The only text found is a *placeholder example* in the Signature Solution sample offer template ("[e.g., 9:00 AM to 6:00 PM, Monday to Saturday]"), which is not an approved schedule and was not used.
 
 ## 4. Attendance requirements: GPS and face kept separate
 
