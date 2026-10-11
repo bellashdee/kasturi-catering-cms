@@ -42,6 +42,8 @@ Priority set by the owner: **protect existing company data, prevent unauthorised
 | Kasturi Indah | KASTURI INDAH SDN BHD (letterhead: "SDN. BHD.") | 1352376-H | 3, Jalan Mutiara Emas 5/23, Taman Mount Austin, 81100 Johor Bahru, Johor Darul Ta'zim (**same site as Signature Solution**) | PENDING MANAGEMENT CONFIRMATION | PENDING MANAGEMENT CONFIRMATION | PENDING MANAGEMENT CONFIRMATION | 100 m (fixed) | 50 m (staging) |
 | O2 Life | "02 LIFE SDN BHD" (owner) / "O2 LIFE SDN BHD" (letterhead) | 1392751-T | 13, Jln Persiaran Senibong, Bandar Baru Permas Jaya, 81750 Johor Bahru, Johor Darul Ta'zim | PENDING MANAGEMENT CONFIRMATION | PENDING MANAGEMENT CONFIRMATION | PENDING MANAGEMENT CONFIRMATION | 100 m (fixed) | 50 m (staging) |
 
+**Owner confirmation, 2026-10-11:** the addresses above are the current information. For O2 Life the address is *pending confirmation of its registered address and its actual staff workplace*; registered address and operational workplace are **not assumed to be the same** for any company; whether O2 Life needs **one or two** workplace locations is to be confirmed. O2 Life's **exact GPS coordinates, official working hours and registered company name remain pending verification**.
+
 **Resolved by the owner's message:** the Signature Solution postcode is **81100** (the letterhead had 81300).
 
 **Still to confirm:**
