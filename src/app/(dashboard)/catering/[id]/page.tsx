@@ -122,8 +122,8 @@ export default async function EventDetailPage({
       {(event.meal_types?.length > 0 || event.service_type) && (
         <div className="flex flex-wrap items-center gap-2 text-[12.5px]">
           {event.meal_types?.map((m: string) => <StatusBadge key={m} tone="info">{MEAL_TYPE_LABEL[m] ?? m}</StatusBadge>)}
-          {event.service_type && <StatusBadge tone="success">{SERVICE_TYPE_LABEL[event.service_type] ?? event.service_type}</StatusBadge>}
-          {event.second_service_type && <StatusBadge tone="neutral">{SERVICE_TYPE_LABEL[event.second_service_type] ?? event.second_service_type}</StatusBadge>}
+          {event.service_type && <StatusBadge tone="success">{SERVICE_TYPE_LABEL[event.service_type] ?? event.service_type}{event.service_pax ? ` · ${event.service_pax} pax` : ""}</StatusBadge>}
+          {event.second_service_type && <StatusBadge tone="neutral">{SERVICE_TYPE_LABEL[event.second_service_type] ?? event.second_service_type}{event.second_service_pax ? ` · ${event.second_service_pax} pax` : ""}</StatusBadge>}
         </div>
       )}
 

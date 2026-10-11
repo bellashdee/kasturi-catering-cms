@@ -379,7 +379,9 @@ export type Database = {
           package_menu_id: string | null
           pax_count: number | null
           remarks: string | null
+          second_service_pax: number | null
           second_service_type: string | null
+          service_pax: number | null
           service_type: string | null
           special_requirements: string | null
           status: Database["public"]["Enums"]["event_status"]
@@ -402,7 +404,9 @@ export type Database = {
           package_menu_id?: string | null
           pax_count?: number | null
           remarks?: string | null
+          second_service_pax?: number | null
           second_service_type?: string | null
+          service_pax?: number | null
           service_type?: string | null
           special_requirements?: string | null
           status?: Database["public"]["Enums"]["event_status"]
@@ -425,7 +429,9 @@ export type Database = {
           package_menu_id?: string | null
           pax_count?: number | null
           remarks?: string | null
+          second_service_pax?: number | null
           second_service_type?: string | null
+          service_pax?: number | null
           service_type?: string | null
           special_requirements?: string | null
           status?: Database["public"]["Enums"]["event_status"]

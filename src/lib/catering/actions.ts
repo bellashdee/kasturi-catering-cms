@@ -34,7 +34,11 @@ export type EventInput = {
   mealTypes?: string[];
   /** The first service type is required; the second is optional. */
   serviceType?: string;
+  /** How many guests get the first service type. */
+  servicePax?: number;
   secondServiceType?: string;
+  /** How many guests get the second service type. */
+  secondServicePax?: number;
   eventDetails?: string;
   remarks?: string;
   status: string;
@@ -43,6 +47,11 @@ export type EventInput = {
 
 function validateServiceDetails(input: Partial<EventInput>, required: boolean) {
   if (required && !input.serviceType) throw new Error("Select the service type (the first choice is required).");
+  const validPax = (n: number | undefined) => n !== undefined && Number.isInteger(n) && n > 0;
+  if (input.serviceType && !validPax(input.servicePax)) throw new Error("State how many pax for the first service type.");
+  if (!input.serviceType && input.servicePax !== undefined) throw new Error("Select the service type for the pax entered.");
+  if (input.secondServiceType && !validPax(input.secondServicePax)) throw new Error("State how many pax for the second service type.");
+  if (!input.secondServiceType && input.secondServicePax !== undefined) throw new Error("Select the second service type for the pax entered.");
   if (input.serviceType && !SERVICE_TYPE_LABEL[input.serviceType]) throw new Error("Select a valid service type.");
   if (input.secondServiceType) {
     if (!SERVICE_TYPE_LABEL[input.secondServiceType]) throw new Error("Select a valid second service type.");
@@ -56,7 +65,9 @@ function serviceColumns(input: Partial<EventInput>) {
   return {
     meal_types: input.mealTypes ?? [],
     service_type: input.serviceType || null,
+    service_pax: input.serviceType ? input.servicePax ?? null : null,
     second_service_type: input.secondServiceType || null,
+    second_service_pax: input.secondServiceType ? input.secondServicePax ?? null : null,
     event_details: input.eventDetails?.trim() || null,
     remarks: input.remarks?.trim() || null,
   };
@@ -93,7 +104,7 @@ export async function createEvent(input: EventInput) {
 export async function updateEvent(eventId: string, input: Partial<EventInput>) {
   const { supabase } = await requireUser();
   // the edit form always sends the service details; other callers that only change other fields leave them untouched
-  const touchesService = input.serviceType !== undefined || input.mealTypes !== undefined || input.secondServiceType !== undefined || input.eventDetails !== undefined || input.remarks !== undefined;
+  const touchesService = input.serviceType !== undefined || input.servicePax !== undefined || input.mealTypes !== undefined || input.secondServiceType !== undefined || input.eventDetails !== undefined || input.remarks !== undefined;
   if (touchesService) validateServiceDetails(input, true);
   const { error } = await supabase
     .from("catering_events")

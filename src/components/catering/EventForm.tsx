@@ -53,7 +53,9 @@ export function EventForm({
     specialRequirements: initial?.specialRequirements ?? "",
     mealTypes: initial?.mealTypes ?? [],
     serviceType: initial?.serviceType ?? "",
+    servicePax: initial?.servicePax,
     secondServiceType: initial?.secondServiceType ?? "",
+    secondServicePax: initial?.secondServicePax,
     eventDetails: initial?.eventDetails ?? "",
     remarks: initial?.remarks ?? "",
     status: initial?.status ?? "enquiry",
@@ -73,6 +75,8 @@ export function EventForm({
   function set<K extends keyof EventInput>(key: K, value: EventInput[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
+
+  const servicePaxTotal = (form.servicePax ?? 0) + (form.secondServiceType ? form.secondServicePax ?? 0 : 0);
 
   function toggleMeal(key: string) {
     const current = form.mealTypes ?? [];
@@ -187,22 +191,62 @@ export function EventForm({
             value={form.serviceType ?? ""}
             onChange={(e) => {
               set("serviceType", e.target.value);
-              if (e.target.value && e.target.value === form.secondServiceType) set("secondServiceType", "");
+              if (!e.target.value) set("servicePax", undefined);
+              if (e.target.value && e.target.value === form.secondServiceType) {
+                set("secondServiceType", "");
+                set("secondServicePax", undefined);
+              }
             }}
             className={inputClass}
           >
             <option value="">Select service type</option>
             {Object.entries(SERVICE_TYPE_LABEL).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
           </select>
+          <label className={`${labelClass} mt-3 block`}>Pax for this service *</label>
+          <input
+            type="number"
+            min="1"
+            required={!!form.serviceType}
+            disabled={!form.serviceType}
+            value={form.servicePax ?? ""}
+            onChange={(e) => set("servicePax", e.target.value ? Number(e.target.value) : undefined)}
+            className={inputClass}
+            placeholder="e.g. 60"
+          />
         </div>
         <div>
           <label className={labelClass}>Second service type (optional)</label>
-          <select value={form.secondServiceType ?? ""} onChange={(e) => set("secondServiceType", e.target.value)} disabled={!form.serviceType} className={inputClass}>
+          <select
+            value={form.secondServiceType ?? ""}
+            onChange={(e) => {
+              set("secondServiceType", e.target.value);
+              if (!e.target.value) set("secondServicePax", undefined);
+            }}
+            disabled={!form.serviceType}
+            className={inputClass}
+          >
             <option value="">None</option>
             {Object.entries(SERVICE_TYPE_LABEL).filter(([key]) => key !== form.serviceType).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
           </select>
+          <label className={`${labelClass} mt-3 block`}>Pax for this service{form.secondServiceType ? " *" : ""}</label>
+          <input
+            type="number"
+            min="1"
+            required={!!form.secondServiceType}
+            disabled={!form.secondServiceType}
+            value={form.secondServicePax ?? ""}
+            onChange={(e) => set("secondServicePax", e.target.value ? Number(e.target.value) : undefined)}
+            className={inputClass}
+            placeholder="e.g. 20"
+          />
         </div>
       </div>
+      {servicePaxTotal > 0 && (
+        <p className={`-mt-2 text-xs ${form.paxCount && form.paxCount !== servicePaxTotal ? "font-semibold text-warning" : "text-text-muted"}`}>
+          Service pax total: {servicePaxTotal}
+          {form.paxCount && form.paxCount !== servicePaxTotal ? ` — differs from the event Pax (${form.paxCount}). Check the numbers.` : form.paxCount ? " — matches the event Pax." : ""}
+        </p>
+      )}
 
       {!eventId && (
         <div>
