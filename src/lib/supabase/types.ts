@@ -741,6 +741,88 @@ export type Database = {
           },
         ]
       }
+      customer_intake_submissions: {
+        Row: {
+          area: string | null
+          billing_address: string | null
+          company_id: string
+          contact_person: string | null
+          created_at: string
+          customer_id: string | null
+          delivery_address: string | null
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          registration_no: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          sales_agent: string
+          status: string
+        }
+        Insert: {
+          area?: string | null
+          billing_address?: string | null
+          company_id: string
+          contact_person?: string | null
+          created_at?: string
+          customer_id?: string | null
+          delivery_address?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          registration_no?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sales_agent: string
+          status?: string
+        }
+        Update: {
+          area?: string | null
+          billing_address?: string | null
+          company_id?: string
+          contact_person?: string | null
+          created_at?: string
+          customer_id?: string | null
+          delivery_address?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          registration_no?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sales_agent?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_intake_submissions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_intake_submissions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_intake_submissions_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_invoices: {
         Row: {
           amount: number

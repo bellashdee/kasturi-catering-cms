@@ -28,6 +28,11 @@ export default async function CateringCustomersPage({
   }
 
   const customers = await listCustomersWithHistory(supabase, targetCompanyIds, q);
+  const { count: pendingCount } = await supabase
+    .from("customer_intake_submissions")
+    .select("id", { count: "exact", head: true })
+    .in("company_id", targetCompanyIds)
+    .eq("status", "pending");
 
   return (
     <div className="flex flex-col gap-5">
@@ -37,9 +42,14 @@ export default async function CateringCustomersPage({
           <h1 className="mt-1 text-[22px] font-extrabold text-text">Customer Database</h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">{customers.length} customer{customers.length === 1 ? "" : "s"}</p>
         </div>
-        <Link href={`/catering/customers/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
-          + Add Customer
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href={`/catering/customers/submissions${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text">
+            Submissions{pendingCount ? ` (${pendingCount})` : ""}
+          </Link>
+          <Link href={`/catering/customers/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
+            + Add Customer
+          </Link>
+        </div>
       </div>
 
       <SearchBox placeholder="Search customers by name..." />

@@ -3,6 +3,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { canAccessPath, mergeAllowedModules, moduleForPath } from "@/lib/modules";
 
 const PUBLIC_PATHS = ["/login", "/signup", "/auth"];
+// open to anyone, signed in or not (sales agents send customer details here without an account)
+const OPEN_PATHS = ["/customer-form"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -35,6 +37,8 @@ export async function proxy(request: NextRequest) {
   const isPublicPath = PUBLIC_PATHS.some((path) =>
     request.nextUrl.pathname.startsWith(path),
   );
+
+  if (OPEN_PATHS.some((path) => request.nextUrl.pathname.startsWith(path))) return response;
 
   if (!user && !isPublicPath) {
     const url = request.nextUrl.clone();
