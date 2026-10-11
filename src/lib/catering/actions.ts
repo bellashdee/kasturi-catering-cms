@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { assertValidAssignee } from "@/lib/driver/assignee";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/types";
-import { MEAL_TYPE_LABEL, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
+import { MAX_EVENT_DAYS, MEAL_TYPE_LABEL, SALES_AGENTS, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
+import { dayPax, type EventDay } from "@/lib/catering/days";
 
 type EventStatus = Database["public"]["Enums"]["event_status"];
 
@@ -41,6 +42,19 @@ export type EventInput = {
   secondServicePax?: number;
   eventDetails?: string;
   remarks?: string;
+  setupTime?: string;
+  picName?: string;
+  picPhone?: string;
+  salesAgent?: string;
+  kitchenSetup?: string;
+  cateringSetup?: string;
+  /** Price per pax for a single-day event (a multi-day event has a price on each day). */
+  pricePerPax?: number;
+  /**
+   * A multi-day event (e.g. 3-5 days): one row per day. When there are days, the event's own date, end date, time,
+   * set-up time and pax are worked out from them, and the event-level meal/service/price fields are left empty.
+   */
+  days?: EventDay[];
   status: string;
   totalAmount?: number;
 };
@@ -61,7 +75,42 @@ function validateServiceDetails(input: Partial<EventInput>, required: boolean) {
   for (const m of input.mealTypes ?? []) if (!MEAL_TYPE_LABEL[m]) throw new Error("Select a valid meal type.");
 }
 
-function serviceColumns(input: Partial<EventInput>) {
+function validateDays(days: EventDay[]) {
+  if (days.length > MAX_EVENT_DAYS) throw new Error(`A multi-day event can have at most ${MAX_EVENT_DAYS} days.`);
+  const seen = new Set<string>();
+  days.forEach((day, i) => {
+    const label = `Day ${i + 1}`;
+    if (!day.dayDate) throw new Error(`${label}: pick the date.`);
+    if (seen.has(day.dayDate)) throw new Error(`${label}: the date ${day.dayDate} is already used by another day.`);
+    seen.add(day.dayDate);
+    try {
+      validateServiceDetails(day, true);
+    } catch (e) {
+      throw new Error(`${label}: ${e instanceof Error ? e.message : "check the service details."}`);
+    }
+    if (day.pricePerPax !== undefined && !(day.pricePerPax >= 0)) throw new Error(`${label}: the price per pax cannot be negative.`);
+  });
+}
+
+function validateContact(input: Partial<EventInput>) {
+  if (input.salesAgent && !SALES_AGENTS.includes(input.salesAgent)) throw new Error("Select a sales agent from the list.");
+  if (input.pricePerPax !== undefined && !(input.pricePerPax >= 0)) throw new Error("The price per pax cannot be negative.");
+}
+
+const clean = (s: string | undefined) => s?.trim() || null;
+
+function contactColumns(input: Partial<EventInput>) {
+  return {
+    setup_time: input.setupTime || null,
+    pic_name: clean(input.picName),
+    pic_phone: clean(input.picPhone),
+    sales_agent: input.salesAgent || null,
+    kitchen_setup: clean(input.kitchenSetup),
+    catering_setup: clean(input.cateringSetup),
+  };
+}
+
+function singleDayColumns(input: Partial<EventInput>) {
   return {
     meal_types: input.mealTypes ?? [],
     service_type: input.serviceType || null,
@@ -70,60 +119,130 @@ function serviceColumns(input: Partial<EventInput>) {
     second_service_pax: input.secondServiceType ? input.secondServicePax ?? null : null,
     event_details: input.eventDetails?.trim() || null,
     remarks: input.remarks?.trim() || null,
+    price_per_pax: input.pricePerPax ?? null,
   };
+}
+
+/**
+ * What the event row stores. For a multi-day event the dates, times and pax come from the days (first day = start,
+ * last day = end, biggest day = pax) and the meal/service/price columns stay empty because each day holds its own.
+ */
+function eventColumns(input: EventInput) {
+  const days = [...(input.days ?? [])].sort((a, b) => a.dayDate.localeCompare(b.dayDate));
+  if (days.length === 0) {
+    return {
+      event_date: input.eventDate,
+      end_date: null,
+      event_time: input.eventTime || null,
+      pax_count: input.paxCount ?? null,
+      ...contactColumns(input),
+      ...singleDayColumns(input),
+    };
+  }
+  const first = days[0];
+  const last = days[days.length - 1];
+  return {
+    event_date: first.dayDate,
+    end_date: last.dayDate !== first.dayDate ? last.dayDate : null,
+    event_time: first.eventTime || null,
+    pax_count: Math.max(...days.map(dayPax)),
+    ...contactColumns({ ...input, setupTime: first.setupTime }),
+    ...singleDayColumns({ eventDetails: input.eventDetails, remarks: input.remarks }),
+  };
+}
+
+function dayRows(companyId: string, eventId: string, input: EventInput) {
+  const days = [...(input.days ?? [])].sort((a, b) => a.dayDate.localeCompare(b.dayDate));
+  return days.map((d, i) => ({
+    company_id: companyId,
+    catering_event_id: eventId,
+    day_date: d.dayDate,
+    setup_time: d.setupTime || null,
+    event_time: d.eventTime || null,
+    meal_types: d.mealTypes ?? [],
+    service_type: d.serviceType,
+    service_pax: d.servicePax as number,
+    second_service_type: d.secondServiceType || null,
+    second_service_pax: d.secondServiceType ? d.secondServicePax ?? null : null,
+    menu_details: clean(d.menuDetails),
+    price_per_pax: d.pricePerPax ?? null,
+    remarks: clean(d.remarks),
+    sort_order: i,
+  }));
+}
+
+function validateEvent(input: EventInput) {
+  validateContact(input);
+  if ((input.days?.length ?? 0) > 0) validateDays(input.days ?? []);
+  else validateServiceDetails(input, true);
 }
 
 export async function createEvent(input: EventInput) {
   const { supabase } = await requireUser();
-  validateServiceDetails(input, true);
+  validateEvent(input);
   const { data, error } = await supabase
     .from("catering_events")
     .insert({
       company_id: input.companyId,
       customer_id: input.customerId || null,
       event_name: input.eventName,
-      event_date: input.eventDate,
-      event_time: input.eventTime || null,
       location: input.location || null,
-      pax_count: input.paxCount ?? null,
       event_type: input.eventType,
       package_menu_id: input.packageMenuId || null,
       menu_description: input.menuDescription || null,
       special_requirements: input.specialRequirements || null,
-      ...serviceColumns(input),
+      ...eventColumns(input),
       status: input.status as EventStatus,
       total_amount: input.totalAmount ?? null,
     })
     .select("id")
     .single();
   if (error) throw error;
+
+  const rows = dayRows(input.companyId, data.id, input);
+  if (rows.length > 0) {
+    const { error: daysError } = await supabase.from("catering_event_days").insert(rows);
+    if (daysError) {
+      // do not leave a half-saved multi-day event behind
+      await supabase.from("catering_events").delete().eq("id", data.id);
+      throw daysError;
+    }
+  }
   revalidatePath("/catering");
   return data;
 }
 
-export async function updateEvent(eventId: string, input: Partial<EventInput>) {
+export async function updateEvent(eventId: string, input: EventInput) {
   const { supabase } = await requireUser();
-  // the edit form always sends the service details; other callers that only change other fields leave them untouched
-  const touchesService = input.serviceType !== undefined || input.servicePax !== undefined || input.mealTypes !== undefined || input.secondServiceType !== undefined || input.eventDetails !== undefined || input.remarks !== undefined;
-  if (touchesService) validateServiceDetails(input, true);
+  validateEvent(input);
+
+  const { data: existing, error: existingError } = await supabase.from("catering_events").select("company_id").eq("id", eventId).single();
+  if (existingError) throw existingError;
+
   const { error } = await supabase
     .from("catering_events")
     .update({
       customer_id: input.customerId || null,
       event_name: input.eventName,
-      event_date: input.eventDate,
-      event_time: input.eventTime || null,
       location: input.location || null,
-      pax_count: input.paxCount ?? null,
       event_type: input.eventType,
       package_menu_id: input.packageMenuId || null,
       menu_description: input.menuDescription || null,
       special_requirements: input.specialRequirements || null,
-      ...(touchesService ? serviceColumns(input) : {}),
+      ...eventColumns(input),
       total_amount: input.totalAmount ?? null,
     })
     .eq("id", eventId);
   if (error) throw error;
+
+  // the form always sends the full list of days, so the saved days are replaced by it
+  const { error: clearError } = await supabase.from("catering_event_days").delete().eq("catering_event_id", eventId);
+  if (clearError) throw clearError;
+  const rows = dayRows(existing.company_id, eventId, input);
+  if (rows.length > 0) {
+    const { error: daysError } = await supabase.from("catering_event_days").insert(rows);
+    if (daysError) throw daysError;
+  }
   revalidatePath("/catering");
   revalidatePath(`/catering/${eventId}`);
 }

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import {
   getEvent,
+  listEventDays,
   listQuotationsForEvent,
   getCosting,
   listStaffForEvent,
@@ -20,7 +21,9 @@ import {
   PAYMENT_STATUS_LABEL,
   STAFF_ROLE_LABEL,
 } from "@/lib/catering/constants";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatPrice } from "@/lib/format";
+import { dayAmount, dayPax } from "@/lib/catering/days";
+import { toEventDays } from "@/lib/catering/queries";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SectionCard, EmptyRow } from "@/components/dashboard/SectionCard";
 import { EventStatusSelect } from "@/components/catering/EventStatusSelect";
@@ -62,6 +65,7 @@ export default async function EventDetailPage({
     notFound();
   }
 
+  const eventDays = toEventDays(await listEventDays(supabase, id));
   const [quotations, costing, staff, eventEquipment, companyEquipment, delivery, employeesRes, vehiclesRes] = await Promise.all([
     listQuotationsForEvent(supabase, id),
     getCosting(supabase, id),
@@ -88,7 +92,7 @@ export default async function EventDetailPage({
           <div className="mt-2 text-[20px] font-extrabold text-text">{event.event_name}</div>
           <div className="text-[13px] text-text-secondary">
             {event.customers?.name ?? "No customer linked"} · {event.companies?.name} · {event.event_date}
-            {event.event_time && ` ${event.event_time}`}
+            {event.end_date ? ` → ${event.end_date} (${eventDays.length || "multi"} days)` : event.event_time ? ` ${event.event_time.slice(0, 5)}` : ""}
             {event.location && ` · ${event.location}`}
           </div>
         </div>
@@ -118,6 +122,78 @@ export default async function EventDetailPage({
           <div className="mt-1 text-xl font-extrabold text-text">{EVENT_STATUS_LABEL[event.status] ?? event.status}</div>
         </div>
       </div>
+
+      {(event.pic_name || event.pic_phone || event.sales_agent || event.setup_time || event.price_per_pax !== null) && (
+        <div className="grid grid-cols-4 gap-4">
+          {(event.pic_name || event.pic_phone) && (
+            <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
+              <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">PIC</div>
+              <div className="mt-1 text-[14px] font-bold text-text">{event.pic_name ?? "—"}</div>
+              <div className="text-xs text-text-secondary">{event.pic_phone ?? ""}</div>
+            </div>
+          )}
+          {event.sales_agent && (
+            <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
+              <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Sales agent</div>
+              <div className="mt-1 text-[14px] font-bold text-text">{event.sales_agent}</div>
+            </div>
+          )}
+          {event.setup_time && (
+            <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
+              <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Set-up time</div>
+              <div className="mt-1 text-[14px] font-bold text-text">{event.setup_time.slice(0, 5)}</div>
+            </div>
+          )}
+          {event.price_per_pax !== null && (
+            <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
+              <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Price per pax</div>
+              <div className="mt-1 text-[14px] font-bold text-text">{formatPrice(event.price_per_pax)}</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {eventDays.length > 0 && (
+        <SectionCard title={`Event days (${eventDays.length})`}>
+          <div className="-mx-5 -mb-5 divide-y divide-border">
+            {eventDays.map((d, i) => (
+              <div key={d.dayDate} className="px-5 py-3 text-[13px]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-bold text-text">Day {i + 1} · {d.dayDate}</span>
+                  <span className="text-text-muted">
+                    {d.setupTime ? `Set-up ${d.setupTime}` : ""}{d.setupTime && d.eventTime ? " · " : ""}{d.eventTime ? `Event ${d.eventTime}` : ""}
+                  </span>
+                  {d.mealTypes.map((m) => <StatusBadge key={m} tone="info">{MEAL_TYPE_LABEL[m] ?? m}</StatusBadge>)}
+                  <StatusBadge tone="success">{SERVICE_TYPE_LABEL[d.serviceType] ?? d.serviceType} · {d.servicePax} pax</StatusBadge>
+                  {d.secondServiceType && <StatusBadge tone="neutral">{SERVICE_TYPE_LABEL[d.secondServiceType] ?? d.secondServiceType} · {d.secondServicePax} pax</StatusBadge>}
+                  <span className="ml-auto font-semibold text-text">
+                    {dayPax(d)} pax{d.pricePerPax ? ` × ${formatPrice(d.pricePerPax)} = ${formatPrice(dayAmount(d))}` : ""}
+                  </span>
+                </div>
+                {d.menuDetails && <div className="mt-1 whitespace-pre-line text-text-secondary">{d.menuDetails}</div>}
+                {d.remarks && <div className="mt-1 whitespace-pre-line text-xs text-text-muted">Remarks: {d.remarks}</div>}
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
+      {(event.kitchen_setup || event.catering_setup) && (
+        <div className="grid grid-cols-2 gap-4">
+          {event.kitchen_setup && (
+            <div className="whitespace-pre-line rounded-xl border border-border bg-surface p-4 text-[13px] shadow-sm">
+              <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-text-muted">Kitchen set-up</div>
+              {event.kitchen_setup}
+            </div>
+          )}
+          {event.catering_setup && (
+            <div className="whitespace-pre-line rounded-xl border border-border bg-surface p-4 text-[13px] shadow-sm">
+              <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-text-muted">Catering set-up</div>
+              {event.catering_setup}
+            </div>
+          )}
+        </div>
+      )}
 
       {(event.meal_types?.length > 0 || event.service_type) && (
         <div className="flex flex-wrap items-center gap-2 text-[12.5px]">

@@ -87,7 +87,7 @@ export default async function CateringPage({
                   {companies.length > 1 && <span className="ml-2 text-[11px] font-normal text-text-muted">{e.companies?.name}</span>}
                 </div>
                 <div className="text-text-secondary">{e.customers?.name || "—"}</div>
-                <div className="text-text-secondary">{e.event_date}</div>
+                <div className="text-text-secondary">{e.event_date}{e.end_date ? ` → ${e.end_date}` : ""}</div>
                 <div className="text-text-secondary">{e.pax_count ?? "—"}</div>
                 <div className="text-text-secondary">{EVENT_TYPE_LABEL[e.event_type] ?? e.event_type}</div>
                 <div className="text-text-secondary">{e.total_amount != null ? formatCurrency(e.total_amount) : "—"}</div>

@@ -361,11 +361,85 @@ export type Database = {
           },
         ]
       }
+      catering_event_days: {
+        Row: {
+          catering_event_id: string
+          company_id: string
+          created_at: string
+          day_date: string
+          event_time: string | null
+          id: string
+          meal_types: string[]
+          menu_details: string | null
+          price_per_pax: number | null
+          remarks: string | null
+          second_service_pax: number | null
+          second_service_type: string | null
+          service_pax: number
+          service_type: string
+          setup_time: string | null
+          sort_order: number
+        }
+        Insert: {
+          catering_event_id: string
+          company_id: string
+          created_at?: string
+          day_date: string
+          event_time?: string | null
+          id?: string
+          meal_types?: string[]
+          menu_details?: string | null
+          price_per_pax?: number | null
+          remarks?: string | null
+          second_service_pax?: number | null
+          second_service_type?: string | null
+          service_pax: number
+          service_type: string
+          setup_time?: string | null
+          sort_order?: number
+        }
+        Update: {
+          catering_event_id?: string
+          company_id?: string
+          created_at?: string
+          day_date?: string
+          event_time?: string | null
+          id?: string
+          meal_types?: string[]
+          menu_details?: string | null
+          price_per_pax?: number | null
+          remarks?: string | null
+          second_service_pax?: number | null
+          second_service_type?: string | null
+          service_pax?: number
+          service_type?: string
+          setup_time?: string | null
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catering_event_days_catering_event_id_fkey"
+            columns: ["catering_event_id"]
+            isOneToOne: false
+            referencedRelation: "catering_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catering_event_days_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       catering_events: {
         Row: {
+          catering_setup: string | null
           company_id: string
           created_at: string
           customer_id: string | null
+          end_date: string | null
           event_date: string
           event_details: string | null
           event_name: string
@@ -373,24 +447,32 @@ export type Database = {
           event_time: string | null
           event_type: string
           id: string
+          kitchen_setup: string | null
           location: string | null
           meal_types: string[]
           menu_description: string | null
           package_menu_id: string | null
           pax_count: number | null
+          pic_name: string | null
+          pic_phone: string | null
+          price_per_pax: number | null
           remarks: string | null
+          sales_agent: string | null
           second_service_pax: number | null
           second_service_type: string | null
           service_pax: number | null
           service_type: string | null
+          setup_time: string | null
           special_requirements: string | null
           status: Database["public"]["Enums"]["event_status"]
           total_amount: number | null
         }
         Insert: {
+          catering_setup?: string | null
           company_id: string
           created_at?: string
           customer_id?: string | null
+          end_date?: string | null
           event_date: string
           event_details?: string | null
           event_name: string
@@ -398,24 +480,32 @@ export type Database = {
           event_time?: string | null
           event_type?: string
           id?: string
+          kitchen_setup?: string | null
           location?: string | null
           meal_types?: string[]
           menu_description?: string | null
           package_menu_id?: string | null
           pax_count?: number | null
+          pic_name?: string | null
+          pic_phone?: string | null
+          price_per_pax?: number | null
           remarks?: string | null
+          sales_agent?: string | null
           second_service_pax?: number | null
           second_service_type?: string | null
           service_pax?: number | null
           service_type?: string | null
+          setup_time?: string | null
           special_requirements?: string | null
           status?: Database["public"]["Enums"]["event_status"]
           total_amount?: number | null
         }
         Update: {
+          catering_setup?: string | null
           company_id?: string
           created_at?: string
           customer_id?: string | null
+          end_date?: string | null
           event_date?: string
           event_details?: string | null
           event_name?: string
@@ -423,16 +513,22 @@ export type Database = {
           event_time?: string | null
           event_type?: string
           id?: string
+          kitchen_setup?: string | null
           location?: string | null
           meal_types?: string[]
           menu_description?: string | null
           package_menu_id?: string | null
           pax_count?: number | null
+          pic_name?: string | null
+          pic_phone?: string | null
+          price_per_pax?: number | null
           remarks?: string | null
+          sales_agent?: string | null
           second_service_pax?: number | null
           second_service_type?: string | null
           service_pax?: number | null
           service_type?: string | null
+          setup_time?: string | null
           special_requirements?: string | null
           status?: Database["public"]["Enums"]["event_status"]
           total_amount?: number | null

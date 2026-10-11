@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createQuotation } from "@/lib/catering/actions";
 import { formatCurrency } from "@/lib/format";
+import type { QuotationSeedRow } from "@/lib/catering/days";
 
 type Row = { itemName: string; quantity: string; unitPrice: string; discountPercent: string };
 
@@ -16,10 +17,13 @@ function lineTotal(row: Row): number {
   return qty * price * (1 - discount / 100);
 }
 
-export function QuotationForm({ companyId, eventId }: { companyId: string; eventId: string }) {
+const seedToRows = (seed: QuotationSeedRow[]): Row[] =>
+  seed.map((r) => ({ itemName: r.itemName, quantity: String(r.quantity), unitPrice: String(r.unitPrice), discountPercent: "0" }));
+
+export function QuotationForm({ companyId, eventId, seedRows = [] }: { companyId: string; eventId: string; seedRows?: QuotationSeedRow[] }) {
   const router = useRouter();
   const [quotationNumber, setQuotationNumber] = useState(() => `Q-${Date.now().toString().slice(-6)}`);
-  const [rows, setRows] = useState<Row[]>([{ ...emptyRow }]);
+  const [rows, setRows] = useState<Row[]>(seedRows.length > 0 ? seedToRows(seedRows) : [{ ...emptyRow }]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,6 +78,15 @@ export function QuotationForm({ companyId, eventId }: { companyId: string; event
         <label className="text-[12.5px] font-semibold text-text-secondary">Quotation Number</label>
         <input value={quotationNumber} onChange={(e) => setQuotationNumber(e.target.value)} className="mt-1.5 h-10 w-full max-w-xs rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" />
       </div>
+
+      {seedRows.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface-alt px-3 py-2 text-xs text-text-secondary">
+          <span>Lines were filled from the event (one per day, pax × price per pax). Check them and edit if needed.</span>
+          <button type="button" onClick={() => setRows(seedToRows(seedRows))} className="font-semibold text-primary">
+            Refill from event
+          </button>
+        </div>
+      )}
 
       <div className="rounded-lg border border-border">
         <div className="grid grid-cols-[2fr_0.8fr_1fr_0.8fr_1fr_0.4fr] gap-2 border-b border-border bg-surface-alt px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-text-muted">

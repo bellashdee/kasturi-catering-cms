@@ -1,12 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
+import type { EventDay } from "@/lib/catering/days";
 
 type DB = SupabaseClient<Database>;
 
 export async function listEvents(supabase: DB, companyIds: string[], search?: string) {
   let query = supabase
     .from("catering_events")
-    .select("id, event_name, event_date, event_time, pax_count, event_type, status, total_amount, company_id, customers(name), companies(name)")
+    .select("id, event_name, event_date, end_date, event_time, pax_count, event_type, status, total_amount, company_id, customers(name), companies(name)")
     .in("company_id", companyIds)
     .order("event_date", { ascending: false });
 
@@ -25,6 +26,33 @@ export async function getEvent(supabase: DB, eventId: string) {
     .single();
   if (error) throw error;
   return data;
+}
+
+export async function listEventDays(supabase: DB, eventId: string) {
+  const { data, error } = await supabase
+    .from("catering_event_days")
+    .select("*")
+    .eq("catering_event_id", eventId)
+    .order("day_date");
+  if (error) throw error;
+  return data;
+}
+
+/** The saved days of an event, shaped the way the event form and the quotation seed expect them. */
+export function toEventDays(rows: Awaited<ReturnType<typeof listEventDays>>): EventDay[] {
+  return rows.map((d) => ({
+    dayDate: d.day_date,
+    setupTime: d.setup_time?.slice(0, 5) ?? "",
+    eventTime: d.event_time?.slice(0, 5) ?? "",
+    mealTypes: d.meal_types ?? [],
+    serviceType: d.service_type,
+    servicePax: d.service_pax,
+    secondServiceType: d.second_service_type ?? "",
+    secondServicePax: d.second_service_pax ?? undefined,
+    menuDetails: d.menu_details ?? "",
+    pricePerPax: d.price_per_pax !== null ? Number(d.price_per_pax) : undefined,
+    remarks: d.remarks ?? "",
+  }));
 }
 
 export async function listQuotationsForEvent(supabase: DB, eventId: string) {

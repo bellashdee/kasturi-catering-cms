@@ -8,6 +8,13 @@ export function formatCurrency(amount: number): string {
     .replace("MYR", "RM");
 }
 
+/** With sen, for unit prices such as a price per pax (RM 42.50) where rounding to whole ringgit would mislead. */
+export function formatPrice(amount: number): string {
+  return new Intl.NumberFormat("en-MY", { style: "currency", currency: "MYR", minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    .format(amount)
+    .replace("MYR", "RM");
+}
+
 /** All timestamps in the system are shown in Malaysia time, whatever the device or server timezone is. */
 export const MALAYSIA_TIMEZONE = "Asia/Kuala_Lumpur";
 

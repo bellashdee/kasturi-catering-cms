@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
-import { getEvent } from "@/lib/catering/queries";
+import { getEvent, listEventDays, toEventDays } from "@/lib/catering/queries";
 import { EventForm } from "@/components/catering/EventForm";
 
 type PackageRow = { id: string; name: string; price_per_pax: number; minimum_pax: number; company_id: string; package_menu_items: { meal_type: string; item_name: string; sort_order: number }[] };
@@ -20,6 +20,7 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
     notFound();
   }
 
+  const days = toEventDays(await listEventDays(supabase, id));
   const { data: allCompanies } = await supabase.from("companies").select("id, name").order("name");
   const { data: customers } = await supabase.from("customers").select("id, name, company_id").order("name");
   const { data: packageMenus } = await supabase
@@ -37,12 +38,20 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
           companies={allCompanies ?? []}
           customers={customers ?? []}
           packageMenus={(packageMenus ?? []) as PackageRow[]}
+          initialDays={days}
           initial={{
             companyId: event.company_id,
             customerId: event.customer_id ?? undefined,
             eventName: event.event_name,
             eventDate: event.event_date,
-            eventTime: event.event_time ?? "",
+            eventTime: event.event_time?.slice(0, 5) ?? "",
+            setupTime: event.setup_time?.slice(0, 5) ?? "",
+            picName: event.pic_name ?? "",
+            picPhone: event.pic_phone ?? "",
+            salesAgent: event.sales_agent ?? "",
+            kitchenSetup: event.kitchen_setup ?? "",
+            cateringSetup: event.catering_setup ?? "",
+            pricePerPax: event.price_per_pax !== null ? Number(event.price_per_pax) : undefined,
             location: event.location ?? "",
             paxCount: event.pax_count ?? undefined,
             eventType: event.event_type,
