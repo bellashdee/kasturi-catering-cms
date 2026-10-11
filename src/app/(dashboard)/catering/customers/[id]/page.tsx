@@ -48,6 +48,28 @@ export default async function CustomerHistoryPage({ params }: { params: Promise<
         </div>
       </div>
 
+      {(customer.registration_no || customer.billing_address || customer.delivery_address || customer.credit_term || customer.credit_limit || customer.email || customer.account_code) && (
+        <SectionCard title="Customer details">
+          <div className="grid gap-x-6 gap-y-3 text-[13px] sm:grid-cols-2">
+            {([
+              ["Registration no.", customer.registration_no],
+              ["Email", customer.email],
+              ["Billing address", customer.billing_address],
+              ["Delivery address", customer.delivery_address],
+              ["Area", customer.area],
+              ["Credit term", customer.credit_term],
+              ["Credit limit", customer.credit_limit ? formatCurrency(Number(customer.credit_limit)) : null],
+              ["AutoCount account", customer.account_code],
+            ] as const).filter(([, v]) => v).map(([label, value]) => (
+              <div key={label}>
+                <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">{label}</div>
+                <div className="mt-0.5 font-semibold text-text">{value}</div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
           <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Total Events</div>

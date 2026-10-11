@@ -74,6 +74,26 @@ export default async function SupplierDetailPage({
         </div>
       </div>
 
+      {(supplier.registration_no || supplier.billing_address || supplier.email || supplier.credit_limit || supplier.account_code) && (
+        <SectionCard title="Supplier details">
+          <div className="grid gap-x-6 gap-y-3 text-[13px] sm:grid-cols-2">
+            {([
+              ["Registration no.", supplier.registration_no],
+              ["Email", supplier.email],
+              ["Address", supplier.billing_address],
+              ["Area", supplier.area],
+              ["Credit limit", supplier.credit_limit ? formatCurrency(Number(supplier.credit_limit)) : null],
+              ["AutoCount account", supplier.account_code],
+            ] as const).filter(([, v]) => v).map(([label, value]) => (
+              <div key={label}>
+                <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">{label}</div>
+                <div className="mt-0.5 font-semibold text-text">{value}</div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
       <SectionCard title="Recent Purchase Orders" action={<Link href={`/supplier-procurement/orders/new?supplier=${id}${requestedId ? `&company=${requestedId}` : ""}`} className="text-[12.5px] font-semibold text-primary">+ New PO</Link>}>
         {!orders || orders.length === 0 ? (
           <EmptyRow text="No purchase orders yet." />

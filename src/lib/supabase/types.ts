@@ -771,31 +771,55 @@ export type Database = {
       }
       customers: {
         Row: {
+          account_code: string | null
+          area: string | null
+          billing_address: string | null
           company_id: string
           contact_person: string | null
           created_at: string
+          credit_limit: number | null
+          credit_term: string | null
+          delivery_address: string | null
           email: string | null
           id: string
           name: string
+          notes: string | null
           phone: string | null
+          registration_no: string | null
         }
         Insert: {
+          account_code?: string | null
+          area?: string | null
+          billing_address?: string | null
           company_id: string
           contact_person?: string | null
           created_at?: string
+          credit_limit?: number | null
+          credit_term?: string | null
+          delivery_address?: string | null
           email?: string | null
           id?: string
           name: string
+          notes?: string | null
           phone?: string | null
+          registration_no?: string | null
         }
         Update: {
+          account_code?: string | null
+          area?: string | null
+          billing_address?: string | null
           company_id?: string
           contact_person?: string | null
           created_at?: string
+          credit_limit?: number | null
+          credit_term?: string | null
+          delivery_address?: string | null
           email?: string | null
           id?: string
           name?: string
+          notes?: string | null
           phone?: string | null
+          registration_no?: string | null
         }
         Relationships: [
           {
@@ -4003,39 +4027,60 @@ export type Database = {
       }
       suppliers: {
         Row: {
+          account_code: string | null
+          area: string | null
+          billing_address: string | null
           category: string | null
           company_id: string
           contact_person: string | null
           created_at: string
+          credit_limit: number | null
+          email: string | null
           id: string
           is_active: boolean
           name: string
+          notes: string | null
           payment_terms: string | null
           phone: string | null
+          registration_no: string | null
           status: string
         }
         Insert: {
+          account_code?: string | null
+          area?: string | null
+          billing_address?: string | null
           category?: string | null
           company_id: string
           contact_person?: string | null
           created_at?: string
+          credit_limit?: number | null
+          email?: string | null
           id?: string
           is_active?: boolean
           name: string
+          notes?: string | null
           payment_terms?: string | null
           phone?: string | null
+          registration_no?: string | null
           status?: string
         }
         Update: {
+          account_code?: string | null
+          area?: string | null
+          billing_address?: string | null
           category?: string | null
           company_id?: string
           contact_person?: string | null
           created_at?: string
+          credit_limit?: number | null
+          email?: string | null
           id?: string
           is_active?: boolean
           name?: string
+          notes?: string | null
           payment_terms?: string | null
           phone?: string | null
+          registration_no?: string | null
           status?: string
         }
         Relationships: [
