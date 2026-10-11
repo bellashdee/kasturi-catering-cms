@@ -60,8 +60,8 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
     );
   }
 
-  const entryIds = [...detail.revenue.map((r) => r.id), ...detail.costs.map((c) => c.id), id];
-  const { data: auditRows } = await supabase.from("task_audit_log").select("*").in("related_id", entryIds).order("created_at", { ascending: false }).limit(60);
+  // every change to this event's revenue, costs and budget is logged against the event itself, so removed entries stay in the history
+  const { data: auditRows } = await supabase.from("task_audit_log").select("*").eq("related_table", "event_pnl").eq("related_id", id).order("created_at", { ascending: false }).limit(100);
   const actorIds = Array.from(new Set((auditRows ?? []).map((a) => a.performed_by).filter((x): x is string => !!x)));
   const actors = new Map<string, string>();
   if (actorIds.length > 0) {

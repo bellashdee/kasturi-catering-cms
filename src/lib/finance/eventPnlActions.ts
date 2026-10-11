@@ -81,7 +81,7 @@ export async function addRevenueEntry(input: RevenueEntryInput) {
     .select("id")
     .single();
   if (error) throw error;
-  await logTaskAudit({ companyId: event.company_id, relatedTable: "event_revenue_entries", relatedId: data.id, action: "revenue_added", newValue: `${event.event_name} · ${REVENUE_TYPE_LABEL[input.entryType]} · ${rm(input.amount)}` });
+  await logTaskAudit({ companyId: event.company_id, relatedTable: "event_pnl", relatedId: event.id, action: "revenue_added", newValue: `${event.event_name} · ${REVENUE_TYPE_LABEL[input.entryType]} · ${rm(input.amount)}` });
   paths(input.eventId);
   return { id: data.id };
 }
@@ -101,8 +101,8 @@ export async function updateRevenueEntry(entryId: string, input: Omit<RevenueEnt
   if (error) throw error;
   await logTaskAudit({
     companyId: event.company_id,
-    relatedTable: "event_revenue_entries",
-    relatedId: entryId,
+    relatedTable: "event_pnl",
+    relatedId: event.id,
     action: "revenue_edited",
     previousValue: `${REVENUE_TYPE_LABEL[before.entry_type]} · ${rm(Number(before.amount))} · ${before.entry_date}`,
     newValue: `${REVENUE_TYPE_LABEL[input.entryType]} · ${rm(input.amount)} · ${input.entryDate}`,
@@ -120,7 +120,7 @@ export async function addInvoiceAsRevenue(eventId: string, invoiceId: string) {
   if ((used ?? []).length > 0) throw new Error("This invoice is already counted as revenue.");
 
   // revenue is the amount before tax: SST / tax collected is not the company's revenue
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("event_revenue_entries")
     .insert({
       company_id: event.company_id,
@@ -132,11 +132,9 @@ export async function addInvoiceAsRevenue(eventId: string, invoiceId: string) {
       customer_invoice_id: invoice.id,
       document_id: invoice.document_id,
       created_by: userId,
-    })
-    .select("id")
-    .single();
+    });
   if (error) throw error;
-  await logTaskAudit({ companyId: event.company_id, relatedTable: "event_revenue_entries", relatedId: data.id, action: "revenue_added", newValue: `${event.event_name} · invoice ${invoice.invoice_number} · ${rm(Number(invoice.amount))}` });
+  await logTaskAudit({ companyId: event.company_id, relatedTable: "event_pnl", relatedId: event.id, action: "revenue_added", newValue: `${event.event_name} · invoice ${invoice.invoice_number} · ${rm(Number(invoice.amount))}` });
   paths(eventId);
 }
 
@@ -148,7 +146,7 @@ export async function deleteRevenueEntry(entryId: string, reason: string) {
   if (!reason.trim()) throw new Error("Enter the reason for removing this entry.");
   const { error } = await supabase.from("event_revenue_entries").delete().eq("id", entryId);
   if (error) throw error;
-  await logTaskAudit({ companyId: event.company_id, relatedTable: "event_revenue_entries", relatedId: entryId, action: "revenue_removed", previousValue: `${REVENUE_TYPE_LABEL[entry.entry_type]} · ${rm(Number(entry.amount))}${entry.description ? ` · ${entry.description}` : ""}`, reason: reason.trim() });
+  await logTaskAudit({ companyId: event.company_id, relatedTable: "event_pnl", relatedId: event.id, action: "revenue_removed", previousValue: `${REVENUE_TYPE_LABEL[entry.entry_type]} · ${rm(Number(entry.amount))}${entry.description ? ` · ${entry.description}` : ""}`, reason: reason.trim() });
   paths(entry.catering_event_id);
 }
 
@@ -229,7 +227,7 @@ export async function addCostEntry(input: CostEntryInput) {
     .select("id")
     .single();
   if (error) throw error;
-  await logTaskAudit({ companyId: event.company_id, relatedTable: "event_cost_entries", relatedId: data.id, action: "cost_added", newValue: `${event.event_name} · ${input.costBasis} · ${labels[input.costType]} · ${rm(input.amount)}` });
+  await logTaskAudit({ companyId: event.company_id, relatedTable: "event_pnl", relatedId: event.id, action: "cost_added", newValue: `${event.event_name} · ${input.costBasis} · ${labels[input.costType]} · ${rm(input.amount)}` });
   paths(input.eventId);
   return { id: data.id };
 }
@@ -265,8 +263,8 @@ export async function updateCostEntry(entryId: string, input: Omit<CostEntryInpu
   if (error) throw error;
   await logTaskAudit({
     companyId: event.company_id,
-    relatedTable: "event_cost_entries",
-    relatedId: entryId,
+    relatedTable: "event_pnl",
+    relatedId: event.id,
     action: "cost_edited",
     previousValue: `${before.cost_basis} · ${DIRECT_COST_TYPE_LABEL[before.cost_type] ?? ADDITIONAL_COST_TYPE_LABEL[before.cost_type]} · ${rm(Number(before.amount))} · ${before.cost_date}`,
     newValue: `${input.costBasis} · ${labels[input.costType]} · ${rm(input.amount)} · ${input.costDate}`,
@@ -283,7 +281,7 @@ export async function deleteCostEntry(entryId: string, reason: string) {
   const { error } = await supabase.from("event_cost_entries").delete().eq("id", entryId);
   if (error) throw error;
   const label = DIRECT_COST_TYPE_LABEL[entry.cost_type] ?? ADDITIONAL_COST_TYPE_LABEL[entry.cost_type] ?? entry.cost_type;
-  await logTaskAudit({ companyId: event.company_id, relatedTable: "event_cost_entries", relatedId: entryId, action: "cost_removed", previousValue: `${label} · ${rm(Number(entry.amount))}${entry.description ? ` · ${entry.description}` : ""}`, reason: reason.trim() });
+  await logTaskAudit({ companyId: event.company_id, relatedTable: "event_pnl", relatedId: event.id, action: "cost_removed", previousValue: `${label} · ${rm(Number(entry.amount))}${entry.description ? ` · ${entry.description}` : ""}`, reason: reason.trim() });
   paths(entry.catering_event_id);
 }
 
@@ -312,6 +310,6 @@ export async function saveEventBudget(input: BudgetInput) {
   const { error } = await supabase.from("event_budgets").upsert(row, { onConflict: "catering_event_id" });
   if (error) throw error;
   const fmt = (r: { budget_revenue: number | null; budget_direct_costs: number | null; budget_additional_costs: number | null } | null) => (r ? `revenue ${r.budget_revenue ?? "not set"} · direct ${r.budget_direct_costs ?? "not set"} · additional ${r.budget_additional_costs ?? "not set"}` : "none");
-  await logTaskAudit({ companyId: event.company_id, relatedTable: "event_budgets", relatedId: input.eventId, action: "budget_saved", previousValue: fmt(before as never), newValue: fmt(row) });
+  await logTaskAudit({ companyId: event.company_id, relatedTable: "event_pnl", relatedId: event.id, action: "budget_saved", previousValue: fmt(before as never), newValue: fmt(row) });
   paths(input.eventId);
 }
