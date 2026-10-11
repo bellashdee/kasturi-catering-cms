@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 const TABS = [
   { href: "/admin", label: "Monthly Costing", match: (p: string) => p === "/admin" },
+  { href: "/finance/event-pnl", label: "Event P&L", match: (p: string) => p.startsWith("/finance/event-pnl") },
   { href: "/finance/invoices", label: "Customer Invoices", match: (p: string) => p.startsWith("/finance/invoices") },
   { href: "/finance/outstanding", label: "Outstanding Payment", match: (p: string) => p.startsWith("/finance/outstanding") },
   { href: "/finance/payments", label: "Payment Dashboard", match: (p: string) => (p.startsWith("/finance/payments") && !p.startsWith("/finance/payments/checklist")) || p.startsWith("/finance/payment-accounts") },

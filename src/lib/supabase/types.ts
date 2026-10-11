@@ -368,6 +368,7 @@ export type Database = {
           customer_id: string | null
           event_date: string
           event_name: string
+          event_reference: string | null
           event_time: string | null
           event_type: string
           id: string
@@ -385,6 +386,7 @@ export type Database = {
           customer_id?: string | null
           event_date: string
           event_name: string
+          event_reference?: string | null
           event_time?: string | null
           event_type?: string
           id?: string
@@ -402,6 +404,7 @@ export type Database = {
           customer_id?: string | null
           event_date?: string
           event_name?: string
+          event_reference?: string | null
           event_time?: string | null
           event_type?: string
           id?: string
@@ -1477,6 +1480,182 @@ export type Database = {
           },
         ]
       }
+      event_budgets: {
+        Row: {
+          budget_additional_costs: number | null
+          budget_direct_costs: number | null
+          budget_revenue: number | null
+          catering_event_id: string
+          company_id: string
+          id: string
+          notes: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          budget_additional_costs?: number | null
+          budget_direct_costs?: number | null
+          budget_revenue?: number | null
+          catering_event_id: string
+          company_id: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          budget_additional_costs?: number | null
+          budget_direct_costs?: number | null
+          budget_revenue?: number | null
+          catering_event_id?: string
+          company_id?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_budgets_catering_event_id_fkey"
+            columns: ["catering_event_id"]
+            isOneToOne: true
+            referencedRelation: "catering_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_budgets_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_budgets_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_cost_entries: {
+        Row: {
+          amount: number
+          catering_event_id: string
+          company_id: string
+          cost_basis: string
+          cost_class: string
+          cost_date: string
+          cost_type: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          document_id: string | null
+          id: string
+          notes: string | null
+          payment_status: string
+          quantity: number | null
+          reference_no: string | null
+          supplier_invoice_id: string | null
+          supplier_name: string | null
+          unit: string | null
+          unit_cost: number | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          amount: number
+          catering_event_id: string
+          company_id: string
+          cost_basis?: string
+          cost_class: string
+          cost_date: string
+          cost_type: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          document_id?: string | null
+          id?: string
+          notes?: string | null
+          payment_status?: string
+          quantity?: number | null
+          reference_no?: string | null
+          supplier_invoice_id?: string | null
+          supplier_name?: string | null
+          unit?: string | null
+          unit_cost?: number | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          amount?: number
+          catering_event_id?: string
+          company_id?: string
+          cost_basis?: string
+          cost_class?: string
+          cost_date?: string
+          cost_type?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          document_id?: string | null
+          id?: string
+          notes?: string | null
+          payment_status?: string
+          quantity?: number | null
+          reference_no?: string | null
+          supplier_invoice_id?: string | null
+          supplier_name?: string | null
+          unit?: string | null
+          unit_cost?: number | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_cost_entries_catering_event_id_fkey"
+            columns: ["catering_event_id"]
+            isOneToOne: false
+            referencedRelation: "catering_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_cost_entries_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_cost_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_cost_entries_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_cost_entries_supplier_invoice_id_fkey"
+            columns: ["supplier_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_cost_entries_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_costing: {
         Row: {
           catering_event_id: string
@@ -1579,6 +1758,100 @@ export type Database = {
             columns: ["equipment_id"]
             isOneToOne: false
             referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_revenue_entries: {
+        Row: {
+          amount: number
+          catering_event_id: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          customer_invoice_id: string | null
+          description: string | null
+          document_id: string | null
+          entry_date: string
+          entry_type: string
+          id: string
+          notes: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          amount: number
+          catering_event_id: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          customer_invoice_id?: string | null
+          description?: string | null
+          document_id?: string | null
+          entry_date: string
+          entry_type: string
+          id?: string
+          notes?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          amount?: number
+          catering_event_id?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          customer_invoice_id?: string | null
+          description?: string | null
+          document_id?: string | null
+          entry_date?: string
+          entry_type?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_revenue_entries_catering_event_id_fkey"
+            columns: ["catering_event_id"]
+            isOneToOne: false
+            referencedRelation: "catering_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_revenue_entries_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_revenue_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_revenue_entries_customer_invoice_id_fkey"
+            columns: ["customer_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "customer_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_revenue_entries_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_revenue_entries_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
