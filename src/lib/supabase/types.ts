@@ -367,15 +367,20 @@ export type Database = {
           created_at: string
           customer_id: string | null
           event_date: string
+          event_details: string | null
           event_name: string
           event_reference: string | null
           event_time: string | null
           event_type: string
           id: string
           location: string | null
+          meal_types: string[]
           menu_description: string | null
           package_menu_id: string | null
           pax_count: number | null
+          remarks: string | null
+          second_service_type: string | null
+          service_type: string | null
           special_requirements: string | null
           status: Database["public"]["Enums"]["event_status"]
           total_amount: number | null
@@ -385,15 +390,20 @@ export type Database = {
           created_at?: string
           customer_id?: string | null
           event_date: string
+          event_details?: string | null
           event_name: string
           event_reference?: string | null
           event_time?: string | null
           event_type?: string
           id?: string
           location?: string | null
+          meal_types?: string[]
           menu_description?: string | null
           package_menu_id?: string | null
           pax_count?: number | null
+          remarks?: string | null
+          second_service_type?: string | null
+          service_type?: string | null
           special_requirements?: string | null
           status?: Database["public"]["Enums"]["event_status"]
           total_amount?: number | null
@@ -403,15 +413,20 @@ export type Database = {
           created_at?: string
           customer_id?: string | null
           event_date?: string
+          event_details?: string | null
           event_name?: string
           event_reference?: string | null
           event_time?: string | null
           event_type?: string
           id?: string
           location?: string | null
+          meal_types?: string[]
           menu_description?: string | null
           package_menu_id?: string | null
           pax_count?: number | null
+          remarks?: string | null
+          second_service_type?: string | null
+          service_type?: string | null
           special_requirements?: string | null
           status?: Database["public"]["Enums"]["event_status"]
           total_amount?: number | null

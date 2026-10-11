@@ -14,6 +14,8 @@ import {
 import {
   EVENT_STATUS_LABEL,
   EVENT_TYPE_LABEL,
+  MEAL_TYPE_LABEL,
+  SERVICE_TYPE_LABEL,
   QUOTATION_STATUS_LABEL,
   PAYMENT_STATUS_LABEL,
   STAFF_ROLE_LABEL,
@@ -117,11 +119,36 @@ export default async function EventDetailPage({
         </div>
       </div>
 
+      {(event.meal_types?.length > 0 || event.service_type) && (
+        <div className="flex flex-wrap items-center gap-2 text-[12.5px]">
+          {event.meal_types?.map((m: string) => <StatusBadge key={m} tone="info">{MEAL_TYPE_LABEL[m] ?? m}</StatusBadge>)}
+          {event.service_type && <StatusBadge tone="success">{SERVICE_TYPE_LABEL[event.service_type] ?? event.service_type}</StatusBadge>}
+          {event.second_service_type && <StatusBadge tone="neutral">{SERVICE_TYPE_LABEL[event.second_service_type] ?? event.second_service_type}</StatusBadge>}
+        </div>
+      )}
+
+      {(event.event_details || event.remarks) && (
+        <div className="grid grid-cols-2 gap-4">
+          {event.event_details && (
+            <div className="whitespace-pre-line rounded-xl border border-border bg-surface p-4 text-[13px] shadow-sm">
+              <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-text-muted">Event details</div>
+              {event.event_details}
+            </div>
+          )}
+          {event.remarks && (
+            <div className="whitespace-pre-line rounded-xl border border-border bg-surface p-4 text-[13px] shadow-sm">
+              <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-text-muted">Remarks</div>
+              {event.remarks}
+            </div>
+          )}
+        </div>
+      )}
+
       {(event.menu_description || event.special_requirements) && (
         <div className="grid grid-cols-2 gap-4">
           {event.menu_description && (
             <div className="rounded-xl border border-border bg-surface p-4 text-[13px] shadow-sm">
-              <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-text-muted">Menu</div>
+              <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-text-muted">Menu details</div>
               {event.menu_description}
             </div>
           )}

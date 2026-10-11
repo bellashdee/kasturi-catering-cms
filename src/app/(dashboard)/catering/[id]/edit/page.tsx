@@ -49,6 +49,11 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
             packageMenuId: event.package_menu_id ?? undefined,
             menuDescription: event.menu_description ?? "",
             specialRequirements: event.special_requirements ?? "",
+            mealTypes: event.meal_types ?? [],
+            serviceType: event.service_type ?? "",
+            secondServiceType: event.second_service_type ?? "",
+            eventDetails: event.event_details ?? "",
+            remarks: event.remarks ?? "",
             status: event.status,
           }}
         />

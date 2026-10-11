@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createEvent, updateEvent, type EventInput } from "@/lib/catering/actions";
+import { MEAL_TYPE_LABEL, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
 
 type Company = { id: string; name: string };
 type Customer = { id: string; name: string; company_id: string };
@@ -50,6 +51,11 @@ export function EventForm({
     packageMenuId: initial?.packageMenuId,
     menuDescription: initial?.menuDescription ?? "",
     specialRequirements: initial?.specialRequirements ?? "",
+    mealTypes: initial?.mealTypes ?? [],
+    serviceType: initial?.serviceType ?? "",
+    secondServiceType: initial?.secondServiceType ?? "",
+    eventDetails: initial?.eventDetails ?? "",
+    remarks: initial?.remarks ?? "",
     status: initial?.status ?? "enquiry",
   });
 
@@ -66,6 +72,11 @@ export function EventForm({
 
   function set<K extends keyof EventInput>(key: K, value: EventInput[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function toggleMeal(key: string) {
+    const current = form.mealTypes ?? [];
+    set("mealTypes", current.includes(key) ? current.filter((m) => m !== key) : [...current, key]);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -152,6 +163,47 @@ export function EventForm({
         </div>
       </div>
 
+      <div>
+        <label className={labelClass}>Meal type</label>
+        <div className="mt-1.5 flex flex-wrap gap-2">
+          {Object.entries(MEAL_TYPE_LABEL).map(([key, label]) => {
+            const on = (form.mealTypes ?? []).includes(key);
+            return (
+              <label key={key} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-[13px] font-semibold ${on ? "border-primary bg-info-bg text-primary" : "border-border-strong text-text-secondary"}`}>
+                <input type="checkbox" checked={on} onChange={() => toggleMeal(key)} className="accent-[var(--color-primary)]" />
+                {label}
+              </label>
+            );
+          })}
+        </div>
+        <p className="mt-1 text-xs text-text-muted">Tick every meal this event serves.</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelClass}>Service type *</label>
+          <select
+            required
+            value={form.serviceType ?? ""}
+            onChange={(e) => {
+              set("serviceType", e.target.value);
+              if (e.target.value && e.target.value === form.secondServiceType) set("secondServiceType", "");
+            }}
+            className={inputClass}
+          >
+            <option value="">Select service type</option>
+            {Object.entries(SERVICE_TYPE_LABEL).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={labelClass}>Second service type (optional)</label>
+          <select value={form.secondServiceType ?? ""} onChange={(e) => set("secondServiceType", e.target.value)} disabled={!form.serviceType} className={inputClass}>
+            <option value="">None</option>
+            {Object.entries(SERVICE_TYPE_LABEL).filter(([key]) => key !== form.serviceType).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+          </select>
+        </div>
+      </div>
+
       {!eventId && (
         <div>
           <label className={labelClass}>Status</label>
@@ -174,7 +226,7 @@ export function EventForm({
       )}
 
       <div>
-        <label className={labelClass}>Menu</label>
+        <label className={labelClass}>Menu details</label>
         <textarea value={form.menuDescription} onChange={(e) => set("menuDescription", e.target.value)} className="mt-1.5 h-20 w-full resize-none rounded-lg border border-border-strong px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" placeholder="Menu items or package name" />
         <p className="mt-1 text-xs text-text-muted">
           Selecting a package above fills this in — review and edit before saving. This does not automatically create a production order or purchase request.
@@ -182,8 +234,18 @@ export function EventForm({
       </div>
 
       <div>
+        <label className={labelClass}>Event details</label>
+        <textarea value={form.eventDetails} onChange={(e) => set("eventDetails", e.target.value)} className="mt-1.5 h-20 w-full resize-none rounded-lg border border-border-strong px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" placeholder="Programme, timing, setup, contact person on the day, etc." />
+      </div>
+
+      <div>
         <label className={labelClass}>Special Requirements</label>
         <textarea value={form.specialRequirements} onChange={(e) => set("specialRequirements", e.target.value)} className="mt-1.5 h-20 w-full resize-none rounded-lg border border-border-strong px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" placeholder="Dietary restrictions, setup needs, etc." />
+      </div>
+
+      <div>
+        <label className={labelClass}>Remarks</label>
+        <textarea value={form.remarks} onChange={(e) => set("remarks", e.target.value)} className="mt-1.5 h-20 w-full resize-none rounded-lg border border-border-strong px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" placeholder="Any other note" />
       </div>
 
       <div className="mt-2 flex justify-end gap-2.5">

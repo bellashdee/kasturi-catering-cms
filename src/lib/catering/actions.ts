@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { assertValidAssignee } from "@/lib/driver/assignee";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/types";
+import { MEAL_TYPE_LABEL, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
 
 type EventStatus = Database["public"]["Enums"]["event_status"];
 
@@ -29,12 +30,41 @@ export type EventInput = {
   packageMenuId?: string;
   menuDescription?: string;
   specialRequirements?: string;
+  /** Breakfast / lunch / hi-tea / dinner (one or more). */
+  mealTypes?: string[];
+  /** The first service type is required; the second is optional. */
+  serviceType?: string;
+  secondServiceType?: string;
+  eventDetails?: string;
+  remarks?: string;
   status: string;
   totalAmount?: number;
 };
 
+function validateServiceDetails(input: Partial<EventInput>, required: boolean) {
+  if (required && !input.serviceType) throw new Error("Select the service type (the first choice is required).");
+  if (input.serviceType && !SERVICE_TYPE_LABEL[input.serviceType]) throw new Error("Select a valid service type.");
+  if (input.secondServiceType) {
+    if (!SERVICE_TYPE_LABEL[input.secondServiceType]) throw new Error("Select a valid second service type.");
+    if (!input.serviceType) throw new Error("Select the first service type before a second one.");
+    if (input.secondServiceType === input.serviceType) throw new Error("The second service type must be different from the first.");
+  }
+  for (const m of input.mealTypes ?? []) if (!MEAL_TYPE_LABEL[m]) throw new Error("Select a valid meal type.");
+}
+
+function serviceColumns(input: Partial<EventInput>) {
+  return {
+    meal_types: input.mealTypes ?? [],
+    service_type: input.serviceType || null,
+    second_service_type: input.secondServiceType || null,
+    event_details: input.eventDetails?.trim() || null,
+    remarks: input.remarks?.trim() || null,
+  };
+}
+
 export async function createEvent(input: EventInput) {
   const { supabase } = await requireUser();
+  validateServiceDetails(input, true);
   const { data, error } = await supabase
     .from("catering_events")
     .insert({
@@ -49,6 +79,7 @@ export async function createEvent(input: EventInput) {
       package_menu_id: input.packageMenuId || null,
       menu_description: input.menuDescription || null,
       special_requirements: input.specialRequirements || null,
+      ...serviceColumns(input),
       status: input.status as EventStatus,
       total_amount: input.totalAmount ?? null,
     })
@@ -61,6 +92,9 @@ export async function createEvent(input: EventInput) {
 
 export async function updateEvent(eventId: string, input: Partial<EventInput>) {
   const { supabase } = await requireUser();
+  // the edit form always sends the service details; other callers that only change other fields leave them untouched
+  const touchesService = input.serviceType !== undefined || input.mealTypes !== undefined || input.secondServiceType !== undefined || input.eventDetails !== undefined || input.remarks !== undefined;
+  if (touchesService) validateServiceDetails(input, true);
   const { error } = await supabase
     .from("catering_events")
     .update({
@@ -74,6 +108,7 @@ export async function updateEvent(eventId: string, input: Partial<EventInput>) {
       package_menu_id: input.packageMenuId || null,
       menu_description: input.menuDescription || null,
       special_requirements: input.specialRequirements || null,
+      ...(touchesService ? serviceColumns(input) : {}),
       total_amount: input.totalAmount ?? null,
     })
     .eq("id", eventId);
