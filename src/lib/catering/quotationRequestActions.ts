@@ -10,6 +10,10 @@ import { INTAKE_COMPANIES, INTAKE_HOURLY_LIMIT } from "@/lib/catering/intake";
 import { MAX_EXTRA_ITEMS, type ExtraItem, type QuotationRequestInput } from "@/lib/catering/quotationRequest";
 import { validateDays } from "@/lib/catering/validation";
 import { createEvent, createQuotation } from "@/lib/catering/actions";
+import { QUOTATION_NOTIFY_EMAIL, SITE_URL } from "@/lib/catering/intake";
+import { escapeHtml, sendNotificationEmail } from "@/lib/notify/email";
+import { dayAmount } from "@/lib/catering/days";
+import { formatPrice } from "@/lib/format";
 
 type Result = { ok: boolean; error?: string; eventId?: string };
 
@@ -109,7 +113,59 @@ async function saveQuotationRequest(companySlug: string, input: QuotationRequest
     extra_items: extraItems as unknown as Json,
   });
   if (error) throw new Error("Could not save. Please try again.");
+
+  // tell the office; the request is already saved, so a missing or failing email never fails the form
+  try {
+    const total = days.reduce((t, d) => t + dayAmount(d), 0) + extraItems.reduce((t, i) => t + i.quantity * i.unitPrice, 0);
+    const result = await notifyNewQuotationRequest({
+      companyName: company.name,
+      salesAgent: input.salesAgent,
+      customerName,
+      eventName,
+      days,
+      total,
+    });
+    if (!result.sent) console.warn("Quotation request saved; email not sent:", result.reason);
+  } catch (err) {
+    console.warn("Quotation request saved; email step failed:", err instanceof Error ? err.message : err);
+  }
   return { ok: true };
+}
+
+async function notifyNewQuotationRequest(r: { companyName: string; salesAgent: string; customerName: string; eventName: string; days: EventDay[]; total: number }) {
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? SITE_URL).replace(/\/$/, "");
+  const reviewUrl = `${siteUrl}/catering/quotation-requests`;
+  const to = process.env.QUOTATION_NOTIFY_EMAIL ?? QUOTATION_NOTIFY_EMAIL;
+  const first = r.days[0].dayDate;
+  const last = r.days[r.days.length - 1].dayDate;
+  const dates = first === last ? first : `${first} to ${last} (${r.days.length} days)`;
+  const totalText = r.total > 0 ? formatPrice(r.total) : "no price entered";
+
+  const text = [
+    `New quotation request from ${r.salesAgent} (${r.companyName})`,
+    "",
+    `Event: ${r.eventName}`,
+    `Customer: ${r.customerName}`,
+    `Date: ${dates}`,
+    `Estimated total: ${totalText}`,
+    "",
+    `Review and approve it here: ${reviewUrl}`,
+    "Nothing is saved to the system until you approve it.",
+  ].join("\n");
+  const html = `<div style="font-family:Arial,sans-serif;font-size:14px;color:#1a2433">
+<h3 style="margin:0 0 8px">New quotation request from ${escapeHtml(r.salesAgent)}</h3>
+<p style="margin:0 0 4px;color:#5a6577">${escapeHtml(r.companyName)}</p>
+<table style="border-collapse:collapse;margin:12px 0">
+<tr><td style="padding:3px 12px 3px 0;color:#5a6577">Event</td><td><b>${escapeHtml(r.eventName)}</b></td></tr>
+<tr><td style="padding:3px 12px 3px 0;color:#5a6577">Customer</td><td>${escapeHtml(r.customerName)}</td></tr>
+<tr><td style="padding:3px 12px 3px 0;color:#5a6577">Date</td><td>${escapeHtml(dates)}</td></tr>
+<tr><td style="padding:3px 12px 3px 0;color:#5a6577">Estimated total</td><td>${escapeHtml(totalText)}</td></tr>
+</table>
+<p><a href="${reviewUrl}" style="background:#1d6fd6;color:#fff;padding:9px 16px;border-radius:6px;text-decoration:none;font-weight:bold">Review and approve</a></p>
+<p style="color:#5a6577;font-size:12px">Nothing is saved to the system until you approve it.</p>
+</div>`;
+
+  return sendNotificationEmail({ to, subject: `New quotation request: ${r.eventName} (${r.salesAgent})`, text, html });
 }
 
 async function requireUser() {

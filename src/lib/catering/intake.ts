@@ -22,5 +22,11 @@ export type CustomerIntakeInput = {
   website?: string;
 };
 
+/** Who is emailed when a sales agent sends a quotation request (override with QUOTATION_NOTIFY_EMAIL on the server). */
+export const QUOTATION_NOTIFY_EMAIL = "nabilahshidee@gmail.com";
+
+/** The live site, used for the links inside notification emails (override with NEXT_PUBLIC_SITE_URL). */
+export const SITE_URL = "https://kasturi-catering-cms.vercel.app";
+
 /** At most this many public submissions per company per hour (stops a bot flooding the review list). */
 export const INTAKE_HOURLY_LIMIT = 30;

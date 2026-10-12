@@ -93,7 +93,7 @@ function Icon({ name }: { name: string }) {
   );
 }
 
-function NavItem({ href, icon, label, matchPrefixes }: { href: string; icon: string; label: string; matchPrefixes?: string[] }) {
+function NavItem({ href, icon, label, matchPrefixes, badge }: { href: string; icon: string; label: string; matchPrefixes?: string[]; badge?: number }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const active = pathname === href || (matchPrefixes?.some((p) => pathname === p || pathname.startsWith(`${p}/`)) ?? false);
@@ -111,6 +111,11 @@ function NavItem({ href, icon, label, matchPrefixes }: { href: string; icon: str
     >
       <Icon name={icon} />
       <span>{label}</span>
+      {badge ? (
+        <span title="Waiting for your review" className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1.5 text-[11px] font-bold text-white">
+          {badge}
+        </span>
+      ) : null}
     </Link>
   );
 }
@@ -119,12 +124,12 @@ export function MainDashboardLink() {
   return <NavItem href="/" icon="dashboard" label="Main Dashboard" />;
 }
 
-export function ModuleLinks({ allowedModules }: { allowedModules: string[] | null }) {
+export function ModuleLinks({ allowedModules, badges = {} }: { allowedModules: string[] | null; badges?: Record<string, number> }) {
   const show = (key: string) => !allowedModules || allowedModules.includes(key);
   return (
     <>
       {MODULES.filter((m) => m.key !== "reports" && m.key !== "ai-assistant" && show(m.key)).map((m) => (
-        <NavItem key={m.key} href={m.href} icon={m.key} label={m.label} matchPrefixes={m.matchPrefixes} />
+        <NavItem key={m.key} href={m.href} icon={m.key} label={m.label} matchPrefixes={m.matchPrefixes} badge={badges[m.key]} />
       ))}
       {!show("hr") && show("overtime") && <NavItem href="/hr/overtime" icon="hr" label="Overtime (OT)" />}
       {show("reports") && <NavItem href="/reports" icon="reports" label="Reports" />}

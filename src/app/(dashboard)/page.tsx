@@ -10,6 +10,9 @@ import { SectionCard, EmptyRow, StatRow } from "@/components/dashboard/SectionCa
 import { AlertsPanel } from "@/components/dashboard/AlertsPanel";
 import { MODULES } from "@/lib/constants";
 import { canAccessModule } from "@/lib/modules";
+import { getPendingSubmissions } from "@/lib/catering/pending";
+import { SalesAgentSubmissionsAlert } from "@/components/dashboard/SalesAgentSubmissionsAlert";
+import { AutoRefresh } from "@/components/dashboard/AutoRefresh";
 
 export default async function DashboardPage({
   searchParams,
@@ -45,6 +48,8 @@ export default async function DashboardPage({
 
   // A member limited to some modules only sees the dashboard cards and alerts of those modules.
   const can = (key: Parameters<typeof canAccessModule>[1]) => canAccessModule(session.allowedModules, key);
+  const pendingSubmissions = can("catering") ? await getPendingSubmissions(supabase, targetCompanyIds) : null;
+  const companyQuery = requestedId ? `?company=${requestedId}` : "";
   const alerts = data.alerts.filter((a) => {
     const owner = MODULES.find((m) => a.meta.startsWith(m.label));
     return !owner || can(owner.key);
@@ -52,6 +57,7 @@ export default async function DashboardPage({
 
   return (
     <div className="flex flex-col gap-6">
+      <AutoRefresh />
       {denied && (
         <div className="rounded-lg border border-warning/40 bg-warning-bg px-4 py-2.5 text-[13px] font-semibold text-warning">
           You don&apos;t have access to that module. Ask a Super Admin if you need it.
@@ -71,6 +77,15 @@ export default async function DashboardPage({
           Showing figures for <b>{viewLabel}</b>
         </p>
       </div>
+
+      {pendingSubmissions && (
+        <SalesAgentSubmissionsAlert
+          customerCount={pendingSubmissions.customerCount}
+          quotationCount={pendingSubmissions.quotationCount}
+          items={pendingSubmissions.items}
+          companyQuery={companyQuery}
+        />
+      )}
 
       <div className="grid grid-cols-4 gap-4">
         {can("finance-admin") && <KpiCard label="Revenue (MTD)" value={formatCurrency(data.financial.revenue)} hint="From confirmed customer payments" />}
