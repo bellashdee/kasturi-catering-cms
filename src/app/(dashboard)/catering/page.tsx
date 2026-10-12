@@ -39,6 +39,11 @@ export default async function CateringPage({
   }
 
   const events = await listEvents(supabase, targetCompanyIds, q);
+  const { count: pendingRequests } = await supabase
+    .from("quotation_requests")
+    .select("id", { count: "exact", head: true })
+    .in("company_id", targetCompanyIds)
+    .eq("status", "pending");
 
   return (
     <div className="flex flex-col gap-5">
@@ -50,6 +55,9 @@ export default async function CateringPage({
         <div className="flex gap-2.5">
           <Link href={`/catering/customers${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text">
             Customers
+          </Link>
+          <Link href={`/catering/quotation-requests${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text">
+            Quotation Requests{pendingRequests ? ` (${pendingRequests})` : ""}
           </Link>
           <Link href={`/catering/quotations${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text">
             Quotations

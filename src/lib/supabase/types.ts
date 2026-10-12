@@ -3831,6 +3831,104 @@ export type Database = {
           },
         ]
       }
+      quotation_requests: {
+        Row: {
+          catering_event_id: string | null
+          catering_setup: string | null
+          company_id: string
+          created_at: string
+          customer_name: string
+          days: Json
+          event_name: string
+          event_type: string
+          extra_items: Json
+          id: string
+          kitchen_setup: string | null
+          location: string | null
+          pic_name: string | null
+          pic_phone: string | null
+          quotation_id: string | null
+          remarks: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          sales_agent: string
+          status: string
+        }
+        Insert: {
+          catering_event_id?: string | null
+          catering_setup?: string | null
+          company_id: string
+          created_at?: string
+          customer_name: string
+          days: Json
+          event_name: string
+          event_type?: string
+          extra_items?: Json
+          id?: string
+          kitchen_setup?: string | null
+          location?: string | null
+          pic_name?: string | null
+          pic_phone?: string | null
+          quotation_id?: string | null
+          remarks?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sales_agent: string
+          status?: string
+        }
+        Update: {
+          catering_event_id?: string | null
+          catering_setup?: string | null
+          company_id?: string
+          created_at?: string
+          customer_name?: string
+          days?: Json
+          event_name?: string
+          event_type?: string
+          extra_items?: Json
+          id?: string
+          kitchen_setup?: string | null
+          location?: string | null
+          pic_name?: string | null
+          pic_phone?: string | null
+          quotation_id?: string | null
+          remarks?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sales_agent?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotation_requests_catering_event_id_fkey"
+            columns: ["catering_event_id"]
+            isOneToOne: false
+            referencedRelation: "catering_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotation_requests_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotation_requests_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotation_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quotations: {
         Row: {
           catering_event_id: string

@@ -4,7 +4,7 @@ import { canAccessPath, mergeAllowedModules, moduleForPath } from "@/lib/modules
 
 const PUBLIC_PATHS = ["/login", "/signup", "/auth"];
 // open to anyone, signed in or not (sales agents send customer details here without an account)
-const OPEN_PATHS = ["/customer-form"];
+const OPEN_PATHS = ["/customer-form", "/quotation-form"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
