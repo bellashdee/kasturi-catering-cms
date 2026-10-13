@@ -4,10 +4,18 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/types";
-import { EVENT_TYPE_LABEL, MAX_EVENT_DAYS, SALES_AGENTS } from "@/lib/catering/constants";
+import { EVENT_TYPE_LABEL, MAX_EVENT_DAYS, MEAL_TYPE_LABEL, SALES_AGENTS, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
 import { dayPax, quotationSeedRows, type EventDay } from "@/lib/catering/days";
 import { INTAKE_COMPANIES, INTAKE_HOURLY_LIMIT } from "@/lib/catering/intake";
-import { MAX_EXTRA_ITEMS, type ExtraItem, type QuotationRequestInput } from "@/lib/catering/quotationRequest";
+import {
+  MAX_EXTRA_ITEMS,
+  additionalServiceLines,
+  describeSecondChoice,
+  type AdditionalServices,
+  type ExtraItem,
+  type QuotationRequestInput,
+  type SecondChoice,
+} from "@/lib/catering/quotationRequest";
 import { validateDays } from "@/lib/catering/validation";
 import { createEvent, createQuotation } from "@/lib/catering/actions";
 import { QUOTATION_NOTIFY_EMAIL, SITE_URL } from "@/lib/catering/intake";
@@ -54,6 +62,42 @@ function sanitizeExtras(items: ExtraItem[]): ExtraItem[] {
     });
 }
 
+/** The optional second choice: ignored when nothing is filled in, otherwise it needs a menu, pax and service type. */
+function sanitizeSecondChoice(c: SecondChoice | undefined): SecondChoice | null {
+  if (!c) return null;
+  const menu = clean(c.menu, 3000);
+  const touched = menu || c.pax !== undefined || (c.mealTypes?.length ?? 0) > 0 || c.serviceType || c.pricePerMeal !== undefined;
+  if (!touched) return null;
+  if (!menu) throw new Error("Second choice: enter the menu.");
+  if (c.pax === undefined || !Number.isInteger(c.pax) || c.pax <= 0) throw new Error("Second choice: state the qty pax.");
+  if (!SERVICE_TYPE_LABEL[c.serviceType]) throw new Error("Second choice: select the service type.");
+  const mealTypes = c.mealTypes ?? [];
+  if (mealTypes.some((m) => !MEAL_TYPE_LABEL[m])) throw new Error("Second choice: select a valid meal type.");
+  if (c.pricePerMeal !== undefined && !(c.pricePerMeal >= 0)) throw new Error("Second choice: the price per meal cannot be negative.");
+  return { menu, pax: c.pax, mealTypes, serviceType: c.serviceType, pricePerMeal: c.pricePerMeal };
+}
+
+/** The ticked additional services; a ticked staff serving or transportation needs its price. */
+function sanitizeAdditional(a: AdditionalServices | undefined): AdditionalServices | undefined {
+  if (!a) return undefined;
+  const price = (v: number | undefined, label: string, required: boolean) => {
+    if (v === undefined) {
+      if (required) throw new Error(`${label}: enter the price (RM).`);
+      return undefined;
+    }
+    if (!(v >= 0)) throw new Error(`${label}: the price cannot be negative.`);
+    return v;
+  };
+  return {
+    equipmentHandling: !!a.equipmentHandling,
+    equipmentHandlingPrice: a.equipmentHandling ? price(a.equipmentHandlingPrice, "Equipment handling", false) : undefined,
+    staffServing: !!a.staffServing,
+    staffServingPricePerPax: a.staffServing ? price(a.staffServingPricePerPax, "Staff serving", true) : undefined,
+    transportation: !!a.transportation,
+    transportationPrice: a.transportation ? price(a.transportationPrice, "Transportation", true) : undefined,
+  };
+}
+
 /**
  * Public (no login): a sales agent sends a quotation request. The company comes from the link, the request is only
  * stored as "pending" and never becomes an event or quotation until someone with Catering access approves it.
@@ -84,7 +128,10 @@ async function saveQuotationRequest(companySlug: string, input: QuotationRequest
   if (input.days.length > MAX_EVENT_DAYS) throw new Error(`At most ${MAX_EVENT_DAYS} days.`);
   const days = input.days.map(sanitizeDay).sort((a, b) => a.dayDate.localeCompare(b.dayDate));
   validateDays(days);
-  const extraItems = sanitizeExtras(input.extraItems ?? []);
+  const secondChoice = sanitizeSecondChoice(input.secondChoice);
+  const totalServings = days.reduce((t, d) => t + dayPax(d), 0);
+  const extraItems = [...additionalServiceLines(sanitizeAdditional(input.additional), totalServings), ...sanitizeExtras(input.extraItems ?? [])];
+  if (extraItems.length > MAX_EXTRA_ITEMS) throw new Error(`At most ${MAX_EXTRA_ITEMS} extra items.`);
   const hasPrice = days.some((d) => (d.pricePerPax ?? 0) > 0) || extraItems.some((i) => i.unitPrice > 0);
   if (!hasPrice) throw new Error("Enter the price per pax for at least one day (or an extra item with a price).");
 
@@ -111,6 +158,7 @@ async function saveQuotationRequest(companySlug: string, input: QuotationRequest
     remarks: clean(input.remarks, 2000),
     days: days as unknown as Json,
     extra_items: extraItems as unknown as Json,
+    second_choice: secondChoice as unknown as Json,
   });
   if (error) throw new Error("Could not save. Please try again.");
 
@@ -197,6 +245,7 @@ async function approveRequest(requestId: string): Promise<Result> {
 
   const days = (r.days as unknown as EventDay[]).map((d) => ({ ...d, mealTypes: d.mealTypes ?? [] }));
   const extras = r.extra_items as unknown as ExtraItem[];
+  const secondChoice = (r.second_choice as unknown as SecondChoice | null) ?? null;
   const submittedOn = r.created_at.slice(0, 10);
 
   // 1) the event (skipped when an earlier attempt already created it)
@@ -232,7 +281,12 @@ async function approveRequest(requestId: string): Promise<Result> {
       salesAgent: r.sales_agent,
       kitchenSetup: r.kitchen_setup ?? undefined,
       cateringSetup: r.catering_setup ?? undefined,
-      eventDetails: `Requested by sales agent ${r.sales_agent} through the quotation form on ${submittedOn}.`,
+      eventDetails: [
+        `Requested by sales agent ${r.sales_agent} through the quotation form on ${submittedOn}.`,
+        secondChoice ? describeSecondChoice(secondChoice, { meal: MEAL_TYPE_LABEL, service: SERVICE_TYPE_LABEL }) : "",
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
       status: "enquiry",
     };
     const only = days.length === 1 ? days[0] : null;

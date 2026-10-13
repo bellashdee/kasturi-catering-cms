@@ -4083,6 +4083,7 @@ export type Database = {
           reviewed_at: string | null
           reviewed_by: string | null
           sales_agent: string
+          second_choice: Json | null
           status: string
         }
         Insert: {
@@ -4105,6 +4106,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           sales_agent: string
+          second_choice?: Json | null
           status?: string
         }
         Update: {
@@ -4127,6 +4129,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           sales_agent?: string
+          second_choice?: Json | null
           status?: string
         }
         Relationships: [
