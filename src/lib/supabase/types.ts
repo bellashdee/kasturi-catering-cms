@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -3602,6 +3602,205 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_list_items: {
+        Row: {
+          breakdown: Json
+          calculated_quantity: number | null
+          company_id: string
+          final_quantity: number | null
+          flags: string[]
+          id: string
+          ingredient_name: string
+          purchase_list_id: string
+          remark: string | null
+          rounding_note: string | null
+          sort_order: number
+          status: string
+          stock_available: number | null
+          stock_status: string
+          supplier: string | null
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          breakdown?: Json
+          calculated_quantity?: number | null
+          company_id: string
+          final_quantity?: number | null
+          flags?: string[]
+          id?: string
+          ingredient_name: string
+          purchase_list_id: string
+          remark?: string | null
+          rounding_note?: string | null
+          sort_order?: number
+          status?: string
+          stock_available?: number | null
+          stock_status?: string
+          supplier?: string | null
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          breakdown?: Json
+          calculated_quantity?: number | null
+          company_id?: string
+          final_quantity?: number | null
+          flags?: string[]
+          id?: string
+          ingredient_name?: string
+          purchase_list_id?: string
+          remark?: string | null
+          rounding_note?: string | null
+          sort_order?: number
+          status?: string
+          stock_available?: number | null
+          stock_status?: string
+          supplier?: string | null
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_list_items_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_list_items_purchase_list_id_fkey"
+            columns: ["purchase_list_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_list_menus: {
+        Row: {
+          company_id: string
+          group_label: string | null
+          id: string
+          menu_label: string
+          purchase_list_id: string
+          sort_order: number
+          source_id: string
+          source_type: string
+        }
+        Insert: {
+          company_id: string
+          group_label?: string | null
+          id?: string
+          menu_label: string
+          purchase_list_id: string
+          sort_order?: number
+          source_id: string
+          source_type: string
+        }
+        Update: {
+          company_id?: string
+          group_label?: string | null
+          id?: string
+          menu_label?: string
+          purchase_list_id?: string
+          sort_order?: number
+          source_id?: string
+          source_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_list_menus_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_list_menus_purchase_list_id_fkey"
+            columns: ["purchase_list_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_lists: {
+        Row: {
+          catering_event_id: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          customer_name: string | null
+          event_date: string | null
+          event_name: string
+          id: string
+          meal_session: string | null
+          meal_sessions: string[]
+          menu_category: string | null
+          notes: string | null
+          required_pax: number
+          updated_at: string
+          week_numbers: number[]
+        }
+        Insert: {
+          catering_event_id?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          customer_name?: string | null
+          event_date?: string | null
+          event_name: string
+          id?: string
+          meal_session?: string | null
+          meal_sessions?: string[]
+          menu_category?: string | null
+          notes?: string | null
+          required_pax: number
+          updated_at?: string
+          week_numbers?: number[]
+        }
+        Update: {
+          catering_event_id?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          customer_name?: string | null
+          event_date?: string | null
+          event_name?: string
+          id?: string
+          meal_session?: string | null
+          meal_sessions?: string[]
+          menu_category?: string | null
+          notes?: string | null
+          required_pax?: number
+          updated_at?: string
+          week_numbers?: number[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_lists_catering_event_id_fkey"
+            columns: ["catering_event_id"]
+            isOneToOne: false
+            referencedRelation: "catering_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_lists_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_lists_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

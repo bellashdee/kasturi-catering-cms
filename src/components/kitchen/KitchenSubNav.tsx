@@ -10,6 +10,7 @@ const TABS = [
   { href: "/kitchen/menus", label: "Menus", match: (p: string) => p.startsWith("/kitchen/menus") },
   { href: "/kitchen/packages", label: "Package Menu", match: (p: string) => p.startsWith("/kitchen/packages") },
   { href: "/kitchen/stock", label: "Stock", match: (p: string) => p.startsWith("/kitchen/stock") },
+  { href: "/kitchen/purchase-lists", label: "Purchase List", match: (p: string) => p.startsWith("/kitchen/purchase-lists") },
   { href: "/kitchen/purchase-requests", label: "Purchase Requests", match: (p: string) => p.startsWith("/kitchen/purchase-requests") },
   { href: "/kitchen/reports", label: "Daily Report", match: (p: string) => p.startsWith("/kitchen/reports") },
   { href: "/ingredient-calculator", label: "Ingredient Calculator", match: (p: string) => p.startsWith("/ingredient-calculator") },
