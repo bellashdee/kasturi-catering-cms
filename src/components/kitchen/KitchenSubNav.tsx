@@ -5,9 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 const TABS = [
   { href: "/kitchen", label: "Production Schedule", match: (p: string) => p === "/kitchen" || /^\/kitchen\/[0-9a-f-]{36}$/.test(p) },
-  { href: "/kitchen/ingredients", label: "Ingredients", match: (p: string) => p.startsWith("/kitchen/ingredients") },
   { href: "/kitchen/recipes", label: "Recipes", match: (p: string) => p.startsWith("/kitchen/recipes") },
-  { href: "/kitchen/menus", label: "Menus", match: (p: string) => p.startsWith("/kitchen/menus") },
   { href: "/kitchen/packages", label: "Package Menu", match: (p: string) => p.startsWith("/kitchen/packages") },
   { href: "/kitchen/stock", label: "Stock", match: (p: string) => p.startsWith("/kitchen/stock") },
   { href: "/kitchen/purchase-lists", label: "Purchase List", match: (p: string) => p.startsWith("/kitchen/purchase-lists") },
