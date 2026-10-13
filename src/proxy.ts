@@ -4,7 +4,8 @@ import { canAccessPath, mergeAllowedModules, moduleForPath } from "@/lib/modules
 
 const PUBLIC_PATHS = ["/login", "/signup", "/auth"];
 // open to anyone, signed in or not (sales agents send customer details here without an account)
-const OPEN_PATHS = ["/customer-form", "/quotation-form"];
+// /api/convert_to_markdown is the Python MarkItDown function: it checks the signed-in user itself (Supabase token) and only fetches files from this project's storage
+const OPEN_PATHS = ["/customer-form", "/quotation-form", "/api/convert_to_markdown"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
