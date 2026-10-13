@@ -74,6 +74,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // /supabase/* is left out on purpose: Vercel forwards it straight to Supabase (no function in between, so large uploads are not limited to 4.5 MB)
+    "/((?!_next/static|_next/image|favicon.ico|supabase/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
