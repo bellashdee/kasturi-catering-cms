@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { ensureDocumentMarkdown } from "@/lib/documents/markdown";
 
@@ -19,6 +20,14 @@ export async function getDocumentSignedUrl(documentId: string): Promise<string> 
   const { data, error: urlError } = await supabase.storage.from("documents").createSignedUrl(doc.storage_path, 300);
   if (urlError || !data) throw new Error("Could not generate a viewing link.");
 
+  // open the file through this site's own address too (same reason as the browser client: supabase.co may not be reachable)
+  const direct = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  if (direct && host && data.signedUrl.startsWith(direct)) {
+    const proto = h.get("x-forwarded-proto") ?? (/^localhost|^127./.test(host) ? "http" : "https");
+    return data.signedUrl.replace(direct, `${proto}://${host}/supabase`);
+  }
   return data.signedUrl;
 }
 
