@@ -1168,6 +1168,10 @@ export type Database = {
           extraction_status: string
           file_type: string
           id: string
+          markdown_at: string | null
+          markdown_note: string | null
+          markdown_status: string
+          markdown_text: string | null
           module: string
           original_filename: string
           related_id: string | null
@@ -1184,6 +1188,10 @@ export type Database = {
           extraction_status?: string
           file_type: string
           id?: string
+          markdown_at?: string | null
+          markdown_note?: string | null
+          markdown_status?: string
+          markdown_text?: string | null
           module: string
           original_filename: string
           related_id?: string | null
@@ -1200,6 +1208,10 @@ export type Database = {
           extraction_status?: string
           file_type?: string
           id?: string
+          markdown_at?: string | null
+          markdown_note?: string | null
+          markdown_status?: string
+          markdown_text?: string | null
           module?: string
           original_filename?: string
           related_id?: string | null

@@ -1,0 +1,2 @@
+# Python packages for the MarkItDown conversion function (api/convert_to_markdown.py); Vercel installs these for Python functions only.
+markitdown[pdf,docx,xlsx,xls]==0.1.8

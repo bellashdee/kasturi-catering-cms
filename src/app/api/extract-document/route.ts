@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ExtractionError } from "@/lib/extraction/errors";
 import { logExtraction, safeMessage } from "@/lib/extraction/log";
 import { runExtraction } from "@/lib/extraction/run";
+import { ensureDocumentMarkdown } from "@/lib/documents/markdown";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -56,8 +57,13 @@ export async function POST(request: Request) {
     return NextResponse.json(err.toBody(), { status: err.status });
   }
 
+  // Every file is converted to Markdown (MarkItDown) before the AI reads it; normally this was already done at upload.
+  const markdownResult = await ensureDocumentMarkdown(supabase, documentId);
+  logExtraction("markdown", { documentId, status: markdownResult.status, chars: markdownResult.markdown?.length ?? 0 });
+
   try {
     const { extracted, report } = await runExtraction({
+      markdown: markdownResult.status === "done" ? markdownResult.markdown : null,
       buffer: await fileBlob.arrayBuffer(),
       requestStartedAt,
       filename: doc.original_filename,

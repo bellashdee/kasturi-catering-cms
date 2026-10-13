@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { ensureDocumentMarkdown } from "@/lib/documents/markdown";
 
 /**
  * The "documents" bucket is private (see documents_bucket_select storage
@@ -19,4 +20,18 @@ export async function getDocumentSignedUrl(documentId: string): Promise<string> 
   if (urlError || !data) throw new Error("Could not generate a viewing link.");
 
   return data.signedUrl;
+}
+
+/**
+ * Converts a freshly uploaded document to Markdown (MarkItDown) and stores it with the document. Called right after every
+ * upload; never throws, so an upload is never lost because the conversion had a problem.
+ */
+export async function generateDocumentMarkdown(documentId: string): Promise<{ status: "done" | "skipped" | "failed"; note: string | null }> {
+  try {
+    const supabase = await createClient();
+    const outcome = await ensureDocumentMarkdown(supabase, documentId);
+    return { status: outcome.status, note: outcome.note };
+  } catch (err) {
+    return { status: "failed", note: err instanceof Error ? err.message : "Markdown conversion failed." };
+  }
 }

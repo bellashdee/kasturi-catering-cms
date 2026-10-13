@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { generateDocumentMarkdown } from "@/lib/documents/actions";
 
 export type DocumentFileType = "pdf" | "excel" | "csv" | "photo" | "screenshot";
 
@@ -50,6 +51,13 @@ export async function uploadDocument(params: {
     .single();
 
   if (error) throw error;
+
+  // Every uploaded file is converted to Markdown (MarkItDown) first. A conversion problem is recorded with its reason and never loses the upload.
+  try {
+    await generateDocumentMarkdown(data.id);
+  } catch {
+    /* the document is saved; the Markdown can be generated again later */
+  }
   return data;
 }
 

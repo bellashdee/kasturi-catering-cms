@@ -68,6 +68,8 @@ export async function runExtraction(params: {
   fileType: string;
   kind: string;
   provider: AiProvider;
+  /** The file converted to Markdown by MarkItDown (spreadsheets / Word: tables and text exactly as in the file). */
+  markdown?: string | null;
   /** When the HTTP request started, so the whole request stays inside the platform's time limit. */
   requestStartedAt?: number;
 }): Promise<ExtractionResult> {
@@ -113,6 +115,15 @@ export async function runExtraction(params: {
 
   const prompt = basePromptFor(kind) + wrapperInstructions(describe(inspected));
   const textLayer = textLayerBlock(inspected);
+  const spreadsheetLimit = provider === "gemini" ? 400_000 : 150_000;
+  // MarkItDown's Markdown tables are the preferred text for a spreadsheet; the CSV from inspection is the fallback.
+  const sheetSource = isSpreadsheet
+    ? params.markdown
+      ? { format: "Markdown (converted with MarkItDown)", text: params.markdown.slice(0, spreadsheetLimit) }
+      : inspected.sheetText
+        ? { format: "CSV", text: inspected.sheetText }
+        : null
+    : null;
 
   const startedAt = Date.now();
   let parsed: Record<string, unknown> | null = null;
@@ -125,7 +136,7 @@ export async function runExtraction(params: {
     try {
       if (provider === "gemini") {
         const parts: GeminiPart[] = [];
-        if (inspected.sheetText) parts.push({ text: `The uploaded file is a spreadsheet. Its contents, sheet by sheet, as CSV:\n\n${inspected.sheetText}` });
+        if (sheetSource) parts.push({ text: `The uploaded file is a spreadsheet. Its contents, sheet by sheet, as ${sheetSource.format}:\n\n${sheetSource.text}` });
         else parts.push({ inline_data: { mime_type: inspected.mime, data: Buffer.from(buffer).toString("base64") } });
         if (textLayer) parts.push({ text: textLayer });
         parts.push({ text: prompt });
@@ -137,7 +148,7 @@ export async function runExtraction(params: {
       } else {
         const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
         const blocks: Anthropic.ContentBlockParam[] = [];
-        if (inspected.sheetText) blocks.push({ type: "text", text: `The uploaded file is a spreadsheet. Its contents, sheet by sheet, as CSV:\n\n${inspected.sheetText}` });
+        if (sheetSource) blocks.push({ type: "text", text: `The uploaded file is a spreadsheet. Its contents, sheet by sheet, as ${sheetSource.format}:\n\n${sheetSource.text}` });
         else if (inspected.mime === "application/pdf") blocks.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: Buffer.from(buffer).toString("base64") } });
         else blocks.push({ type: "image", source: { type: "base64", media_type: inspected.mime as "image/jpeg" | "image/png" | "image/webp" | "image/gif", data: Buffer.from(buffer).toString("base64") } });
         if (textLayer) blocks.push({ type: "text", text: textLayer });

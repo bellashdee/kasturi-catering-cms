@@ -48,3 +48,6 @@ next-env.d.ts
 /*.csv
 
 .vercel
+
+# local MarkItDown install (not part of the project)
+/MARKITDOWN GENERATOR/
