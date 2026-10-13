@@ -1,7 +1,8 @@
 "use client";
 
 import { MAX_EVENT_DAYS, MEAL_TYPE_LABEL, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
-import { dayAmount, dayPax, type EventDay } from "@/lib/catering/days";
+import { dayAmount, dayPax, emptySecondChoice, type EventDay } from "@/lib/catering/days";
+import { SecondChoiceEditor } from "@/components/catering/QuotationRequestExtras";
 import { formatPrice } from "@/lib/format";
 
 const inputClass =
@@ -22,7 +23,19 @@ function nextDate(iso: string): string {
 }
 
 /** One block per day of a multi-day event: date, times, meals, service type + pax, menu, price per pax, remarks. */
-export function EventDaysEditor({ days, onChange, secondService = true }: { days: EventDay[]; onChange: (days: EventDay[]) => void; secondService?: boolean }) {
+export function EventDaysEditor({
+  days,
+  onChange,
+  secondService = true,
+  secondChoice = false,
+}: {
+  days: EventDay[];
+  onChange: (days: EventDay[]) => void;
+  /** Show the second service type of each day (the office form). */
+  secondService?: boolean;
+  /** Show an optional second choice (an alternative menu) inside each day (the public quotation request form). */
+  secondChoice?: boolean;
+}) {
   function patch(i: number, change: Partial<EventDay>) {
     onChange(days.map((d, idx) => (idx === i ? { ...d, ...change } : d)));
   }
@@ -163,6 +176,14 @@ export function EventDaysEditor({ days, onChange, secondService = true }: { days
               </div>
             </div>
           </div>
+
+          {secondChoice && (
+            <div className="mt-3">
+              <div className="text-[13px] font-extrabold text-text">Second choice (optional)</div>
+              <p className="mb-2 text-xs text-text-muted">An alternative menu for this day. It is shown to the office and is not added to the total.</p>
+              <SecondChoiceEditor value={day.secondChoice ?? emptySecondChoice()} onChange={(v) => patch(i, { secondChoice: v })} />
+            </div>
+          )}
 
           <div className="mt-3">
             <label className={labelClass}>Remarks for this day</label>

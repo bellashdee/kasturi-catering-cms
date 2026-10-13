@@ -7,7 +7,7 @@ import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { MEAL_TYPE_LABEL, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
 import { dayAmount, dayPax, type EventDay } from "@/lib/catering/days";
-import type { ExtraItem, SecondChoice } from "@/lib/catering/quotationRequest";
+import type { ExtraItem } from "@/lib/catering/quotationRequest";
 import { formatCurrency, formatPrice } from "@/lib/format";
 import { QuotationRequestActions } from "@/components/catering/QuotationRequestActions";
 
@@ -50,7 +50,6 @@ export default async function QuotationRequestsPage({ searchParams }: { searchPa
             {pending.map((r) => {
               const days = r.days as unknown as EventDay[];
               const extras = r.extra_items as unknown as ExtraItem[];
-              const second = r.second_choice as unknown as SecondChoice | null;
               const total = days.reduce((t, d) => t + dayAmount(d), 0) + extras.reduce((t, i) => t + i.quantity * i.unitPrice, 0);
               const isNewCustomer = !knownCustomers.has(`${r.company_id}|${r.customer_name.trim().toLowerCase()}`);
               return (
@@ -74,21 +73,21 @@ export default async function QuotationRequestsPage({ searchParams }: { searchPa
                           {d.secondServiceType ? ` + ${SERVICE_TYPE_LABEL[d.secondServiceType] ?? d.secondServiceType} ${d.secondServicePax}` : ""} pax
                           {d.pricePerPax ? ` · ${dayPax(d)} × ${formatPrice(d.pricePerPax)} = ${formatPrice(dayAmount(d))}` : " · no price"}
                           {d.menuDetails && <div className="whitespace-pre-line text-xs text-text-muted">{d.menuDetails}</div>}
+                          {d.secondChoice && (
+                            <div className="mt-1 rounded-lg border border-border bg-surface-alt px-3 py-2">
+                              <div className="font-semibold text-text">Second choice <span className="text-xs font-normal text-text-muted">(alternative menu; not in the total)</span></div>
+                              <div>
+                                {d.secondChoice.mealTypes.map((m) => MEAL_TYPE_LABEL[m] ?? m).join(", ") || "no meal type"}
+                                {" · "}
+                                {SERVICE_TYPE_LABEL[d.secondChoice.serviceType] ?? d.secondChoice.serviceType} · {d.secondChoice.pax} pax
+                                {d.secondChoice.pricePerMeal !== undefined ? ` · ${formatPrice(d.secondChoice.pricePerMeal)} / meal` : " · no price"}
+                              </div>
+                              <div className="whitespace-pre-line text-xs text-text-muted">{d.secondChoice.menu}</div>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
-                    {second && (
-                      <div className="mt-2 rounded-lg border border-border bg-surface-alt px-3 py-2 text-text-secondary">
-                        <div className="font-semibold text-text">Second choice <span className="text-xs font-normal text-text-muted">(alternative menu; not in the total)</span></div>
-                        <div>
-                          {second.mealTypes.map((m) => MEAL_TYPE_LABEL[m] ?? m).join(", ") || "no meal type"}
-                          {" · "}
-                          {SERVICE_TYPE_LABEL[second.serviceType] ?? second.serviceType} · {second.pax} pax
-                          {second.pricePerMeal !== undefined ? ` · ${formatPrice(second.pricePerMeal)} / meal` : " · no price"}
-                        </div>
-                        <div className="whitespace-pre-line text-xs text-text-muted">{second.menu}</div>
-                      </div>
-                    )}
                     {extras.length > 0 && (
                       <div className="mt-1 text-text-secondary">
                         <span className="font-semibold text-text">Extra:</span> {extras.map((i) => `${i.itemName} (${i.quantity} × ${formatPrice(i.unitPrice)})`).join("; ")}

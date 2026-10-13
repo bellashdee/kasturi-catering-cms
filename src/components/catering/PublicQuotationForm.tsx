@@ -4,9 +4,9 @@ import { useMemo, useState } from "react";
 import { submitQuotationRequest } from "@/lib/catering/quotationRequestActions";
 import { EVENT_TYPE_LABEL, SALES_AGENTS } from "@/lib/catering/constants";
 import { dayAmount, dayPax, type EventDay } from "@/lib/catering/days";
-import { additionalServiceLines, emptySecondChoice, noAdditionalServices, type AdditionalServices, type ExtraItem, type QuotationRequestInput, type SecondChoice } from "@/lib/catering/quotationRequest";
+import { additionalServiceLines, noAdditionalServices, type AdditionalServices, type ExtraItem, type QuotationRequestInput } from "@/lib/catering/quotationRequest";
 import { EventDaysEditor, emptyDay } from "@/components/catering/EventDaysEditor";
-import { AdditionalServicesEditor, SecondChoiceEditor } from "@/components/catering/QuotationRequestExtras";
+import { AdditionalServicesEditor } from "@/components/catering/QuotationRequestExtras";
 import { formatPrice } from "@/lib/format";
 
 const inputClass =
@@ -15,7 +15,7 @@ const areaClass =
   "mt-1.5 h-20 w-full resize-none rounded-lg border border-border-strong px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
 const labelClass = "text-[12.5px] font-semibold text-text-secondary";
 
-type Header = Omit<QuotationRequestInput, "days" | "extraItems" | "secondChoice" | "additional">;
+type Header = Omit<QuotationRequestInput, "days" | "extraItems" | "additional">;
 type ExtraRow = { itemName: string; quantity: string; unitPrice: string };
 
 const emptyHeader: Header = {
@@ -36,7 +36,6 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
   const [form, setForm] = useState<Header>(emptyHeader);
   const [days, setDays] = useState<EventDay[]>([emptyDay()]);
   const [extras, setExtras] = useState<ExtraRow[]>([]);
-  const [secondChoice, setSecondChoice] = useState<SecondChoice>(emptySecondChoice());
   const [additional, setAdditional] = useState<AdditionalServices>(noAdditionalServices());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +60,7 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
     setError(null);
     try {
       const extraItems: ExtraItem[] = extras.map((r) => ({ itemName: r.itemName, quantity: Number(r.quantity) || 0, unitPrice: Number(r.unitPrice) || 0 }));
-      const result = await submitQuotationRequest(companySlug, { ...form, days, extraItems, secondChoice, additional });
+      const result = await submitQuotationRequest(companySlug, { ...form, days, extraItems, additional });
       if (!result.ok) {
         setError(result.error ?? "Something went wrong.");
       } else {
@@ -70,7 +69,6 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
         setForm({ ...emptyHeader, salesAgent: form.salesAgent });
         setDays([emptyDay()]);
         setExtras([]);
-        setSecondChoice(emptySecondChoice());
         setAdditional(noAdditionalServices());
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
@@ -133,15 +131,9 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
       </div>
 
       <div>
-        <div className="text-[14px] font-extrabold text-text">First choice — event days</div>
+        <div className="text-[14px] font-extrabold text-text">Event days</div>
         <p className="mb-2 text-xs text-text-muted">One block for each day of the event (1 day, or 3-5 days for a conference). Use &quot;Add next day&quot; to copy the previous day.</p>
-        <EventDaysEditor days={days} onChange={setDays} secondService={false} />
-      </div>
-
-      <div>
-        <div className="text-[14px] font-extrabold text-text">Second choice (optional)</div>
-        <p className="mb-2 text-xs text-text-muted">An alternative menu for the customer to choose from. It is shown to the office and is not added to the total.</p>
-        <SecondChoiceEditor value={secondChoice} onChange={setSecondChoice} />
+        <EventDaysEditor days={days} onChange={setDays} secondService={false} secondChoice />
       </div>
 
       <div>

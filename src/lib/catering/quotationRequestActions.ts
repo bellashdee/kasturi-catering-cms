@@ -33,7 +33,7 @@ const clean = (s: string | undefined, max = 500) => {
 };
 
 /** Keeps only the known day fields, trimmed and size-limited, so nothing else can be smuggled into the saved request. */
-function sanitizeDay(d: EventDay): EventDay {
+function sanitizeDay(d: EventDay, index: number): EventDay {
   return {
     dayDate: d.dayDate,
     setupTime: d.setupTime || undefined,
@@ -46,6 +46,7 @@ function sanitizeDay(d: EventDay): EventDay {
     menuDetails: clean(d.menuDetails, 3000) ?? undefined,
     pricePerPax: d.pricePerPax,
     remarks: clean(d.remarks, 1000) ?? undefined,
+    secondChoice: sanitizeSecondChoice(d.secondChoice, `Day ${index + 1}: second choice`) ?? undefined,
   };
 }
 
@@ -62,18 +63,18 @@ function sanitizeExtras(items: ExtraItem[]): ExtraItem[] {
     });
 }
 
-/** The optional second choice: ignored when nothing is filled in, otherwise it needs a menu, pax and service type. */
-function sanitizeSecondChoice(c: SecondChoice | undefined): SecondChoice | null {
+/** A day's optional second choice: ignored when nothing is filled in, otherwise it needs a menu, pax and service type. */
+function sanitizeSecondChoice(c: SecondChoice | undefined, label: string): SecondChoice | null {
   if (!c) return null;
   const menu = clean(c.menu, 3000);
   const touched = menu || c.pax !== undefined || (c.mealTypes?.length ?? 0) > 0 || c.serviceType || c.pricePerMeal !== undefined;
   if (!touched) return null;
-  if (!menu) throw new Error("Second choice: enter the menu.");
-  if (c.pax === undefined || !Number.isInteger(c.pax) || c.pax <= 0) throw new Error("Second choice: state the qty pax.");
-  if (!SERVICE_TYPE_LABEL[c.serviceType]) throw new Error("Second choice: select the service type.");
+  if (!menu) throw new Error(`${label}: enter the menu.`);
+  if (c.pax === undefined || !Number.isInteger(c.pax) || c.pax <= 0) throw new Error(`${label}: state the qty pax.`);
+  if (!SERVICE_TYPE_LABEL[c.serviceType]) throw new Error(`${label}: select the service type.`);
   const mealTypes = c.mealTypes ?? [];
-  if (mealTypes.some((m) => !MEAL_TYPE_LABEL[m])) throw new Error("Second choice: select a valid meal type.");
-  if (c.pricePerMeal !== undefined && !(c.pricePerMeal >= 0)) throw new Error("Second choice: the price per meal cannot be negative.");
+  if (mealTypes.some((m) => !MEAL_TYPE_LABEL[m])) throw new Error(`${label}: select a valid meal type.`);
+  if (c.pricePerMeal !== undefined && !(c.pricePerMeal >= 0)) throw new Error(`${label}: the price per meal cannot be negative.`);
   return { menu, pax: c.pax, mealTypes, serviceType: c.serviceType, pricePerMeal: c.pricePerMeal };
 }
 
@@ -126,9 +127,8 @@ async function saveQuotationRequest(companySlug: string, input: QuotationRequest
 
   if (!Array.isArray(input.days) || input.days.length === 0) throw new Error("Add at least one event day.");
   if (input.days.length > MAX_EVENT_DAYS) throw new Error(`At most ${MAX_EVENT_DAYS} days.`);
-  const days = input.days.map(sanitizeDay).sort((a, b) => a.dayDate.localeCompare(b.dayDate));
+  const days = input.days.map((d, i) => sanitizeDay(d, i)).sort((a, b) => a.dayDate.localeCompare(b.dayDate));
   validateDays(days);
-  const secondChoice = sanitizeSecondChoice(input.secondChoice);
   const totalServings = days.reduce((t, d) => t + dayPax(d), 0);
   const extraItems = [...additionalServiceLines(sanitizeAdditional(input.additional), totalServings), ...sanitizeExtras(input.extraItems ?? [])];
   if (extraItems.length > MAX_EXTRA_ITEMS) throw new Error(`At most ${MAX_EXTRA_ITEMS} extra items.`);
@@ -158,7 +158,6 @@ async function saveQuotationRequest(companySlug: string, input: QuotationRequest
     remarks: clean(input.remarks, 2000),
     days: days as unknown as Json,
     extra_items: extraItems as unknown as Json,
-    second_choice: secondChoice as unknown as Json,
   });
   if (error) throw new Error("Could not save. Please try again.");
 
@@ -244,8 +243,15 @@ async function approveRequest(requestId: string): Promise<Result> {
   if (r.status !== "pending") throw new Error("This request has already been reviewed.");
 
   const days = (r.days as unknown as EventDay[]).map((d) => ({ ...d, mealTypes: d.mealTypes ?? [] }));
+  // a day's second choice (an alternative menu) is kept in that day's remarks; it is not part of the quotation
+  const withSecondChoice = (d: EventDay): EventDay => ({
+    ...d,
+    remarks:
+      [d.remarks, d.secondChoice ? describeSecondChoice(d.secondChoice, { meal: MEAL_TYPE_LABEL, service: SERVICE_TYPE_LABEL }) : ""]
+        .filter(Boolean)
+        .join("\n\n") || undefined,
+  });
   const extras = r.extra_items as unknown as ExtraItem[];
-  const secondChoice = (r.second_choice as unknown as SecondChoice | null) ?? null;
   const submittedOn = r.created_at.slice(0, 10);
 
   // 1) the event (skipped when an earlier attempt already created it)
@@ -281,12 +287,7 @@ async function approveRequest(requestId: string): Promise<Result> {
       salesAgent: r.sales_agent,
       kitchenSetup: r.kitchen_setup ?? undefined,
       cateringSetup: r.catering_setup ?? undefined,
-      eventDetails: [
-        `Requested by sales agent ${r.sales_agent} through the quotation form on ${submittedOn}.`,
-        secondChoice ? describeSecondChoice(secondChoice, { meal: MEAL_TYPE_LABEL, service: SERVICE_TYPE_LABEL }) : "",
-      ]
-        .filter(Boolean)
-        .join("\n\n"),
+      eventDetails: `Requested by sales agent ${r.sales_agent} through the quotation form on ${submittedOn}.`,
       status: "enquiry",
     };
     const only = days.length === 1 ? days[0] : null;
@@ -305,9 +306,9 @@ async function approveRequest(requestId: string): Promise<Result> {
             secondServicePax: only.secondServicePax,
             pricePerPax: only.pricePerPax,
             menuDescription: only.menuDetails,
-            remarks: [only.remarks, r.remarks].filter(Boolean).join("\n") || undefined,
+            remarks: [withSecondChoice(only).remarks, r.remarks].filter(Boolean).join("\n\n") || undefined,
           }
-        : { ...common, eventDate: days[0].dayDate, remarks: r.remarks ?? undefined, days },
+        : { ...common, eventDate: days[0].dayDate, remarks: r.remarks ?? undefined, days: days.map(withSecondChoice) },
     );
     eventId = event.id;
     const { error: linkError } = await supabase.from("quotation_requests").update({ catering_event_id: eventId }).eq("id", requestId);

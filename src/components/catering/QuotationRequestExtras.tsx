@@ -1,7 +1,8 @@
 "use client";
 
 import { MEAL_TYPE_LABEL, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
-import type { AdditionalServices, SecondChoice } from "@/lib/catering/quotationRequest";
+import type { SecondChoice } from "@/lib/catering/days";
+import type { AdditionalServices } from "@/lib/catering/quotationRequest";
 import { formatPrice } from "@/lib/format";
 
 const inputClass =
@@ -10,14 +11,14 @@ const areaClass =
   "mt-1.5 h-20 w-full resize-none rounded-lg border border-border-strong px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
 const labelClass = "text-[12.5px] font-semibold text-text-secondary";
 
-/** The optional second choice: an alternative menu for the whole event (menu, qty pax, meal type, service type, price per meal). */
+/** A day's optional second choice: an alternative menu (menu, qty pax, meal type, service type, price per meal). */
 export function SecondChoiceEditor({ value, onChange }: { value: SecondChoice; onChange: (v: SecondChoice) => void }) {
   const patch = (change: Partial<SecondChoice>) => onChange({ ...value, ...change });
   const toggleMeal = (key: string) =>
     patch({ mealTypes: value.mealTypes.includes(key) ? value.mealTypes.filter((m) => m !== key) : [...value.mealTypes, key] });
 
   return (
-    <div className="rounded-xl border border-border bg-surface-alt p-4">
+    <div className="rounded-xl border border-border bg-surface p-4">
       <div>
         <label className={labelClass}>Menu</label>
         <textarea maxLength={3000} value={value.menu} onChange={(e) => patch({ menu: e.target.value })} className={areaClass} placeholder="Menu for the second choice" />

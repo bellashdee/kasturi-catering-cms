@@ -1,5 +1,19 @@
 import { MEAL_TYPE_LABEL, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
 
+/**
+ * An optional alternative menu for one day ("second choice"): menu, pax, meal types, service type and price per meal.
+ * It is shown to the office and kept in the day's remarks on approval; it is not added to the quotation total.
+ */
+export type SecondChoice = {
+  menu: string;
+  pax?: number;
+  mealTypes: string[];
+  serviceType: string;
+  pricePerMeal?: number;
+};
+
+export const emptySecondChoice = (): SecondChoice => ({ menu: "", mealTypes: [], serviceType: "" });
+
 /** One day of a multi-day event, as the form and the database both describe it. */
 export type EventDay = {
   dayDate: string;
@@ -13,6 +27,8 @@ export type EventDay = {
   menuDetails?: string;
   pricePerPax?: number;
   remarks?: string;
+  /** Only filled in by the public quotation request form. */
+  secondChoice?: SecondChoice;
 };
 
 /** Total guests for one day: the first service type's pax plus the second's. */

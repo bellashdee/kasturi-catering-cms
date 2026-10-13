@@ -1,4 +1,6 @@
-import type { EventDay } from "@/lib/catering/days";
+import type { EventDay, SecondChoice } from "@/lib/catering/days";
+
+export type { SecondChoice };
 
 /** A extra line a sales agent adds to the quotation request (transport, equipment hire, service charge, ...). */
 export type ExtraItem = { itemName: string; quantity: number; unitPrice: number };
@@ -17,8 +19,6 @@ export type QuotationRequestInput = {
   /** One block per event day (a single-day event has one). */
   days: EventDay[];
   extraItems: ExtraItem[];
-  /** Optional alternative menu for the whole event. */
-  secondChoice?: SecondChoice;
   /** The ticked additional equipment / services. */
   additional?: AdditionalServices;
   /** Honeypot: real people leave it empty. */
@@ -26,20 +26,6 @@ export type QuotationRequestInput = {
 };
 
 export const MAX_EXTRA_ITEMS = 30;
-
-/**
- * An alternative menu for the whole event ("second choice"): menu, pax, meal types, service type and price per meal.
- * It is shown to the office and kept with the event; it is not added to the quotation total.
- */
-export type SecondChoice = {
-  menu: string;
-  pax?: number;
-  mealTypes: string[];
-  serviceType: string;
-  pricePerMeal?: number;
-};
-
-export const emptySecondChoice = (): SecondChoice => ({ menu: "", mealTypes: [], serviceType: "" });
 
 /** The tick-boxes under "Additional equipment": each ticked one becomes a line of the quotation. */
 export type AdditionalServices = {
@@ -66,7 +52,7 @@ export function additionalServiceLines(a: AdditionalServices | undefined, totalS
   return lines;
 }
 
-/** Plain-text version of the second choice, written into the event details when the request is approved. */
+/** Plain-text version of a day's second choice, written into the event when the request is approved. */
 export function describeSecondChoice(c: SecondChoice, labels: { meal: Record<string, string>; service: Record<string, string> }): string {
   return [
     "Second choice (an alternative menu offered to the customer; not included in the quotation):",
