@@ -22,7 +22,7 @@ function nextDate(iso: string): string {
 }
 
 /** One block per day of a multi-day event: date, times, meals, service type + pax, menu, price per pax, remarks. */
-export function EventDaysEditor({ days, onChange }: { days: EventDay[]; onChange: (days: EventDay[]) => void }) {
+export function EventDaysEditor({ days, onChange, secondService = true }: { days: EventDay[]; onChange: (days: EventDay[]) => void; secondService?: boolean }) {
   function patch(i: number, change: Partial<EventDay>) {
     onChange(days.map((d, idx) => (idx === i ? { ...d, ...change } : d)));
   }
@@ -37,6 +37,22 @@ export function EventDaysEditor({ days, onChange }: { days: EventDay[]; onChange
     const current = days[i].mealTypes;
     patch(i, { mealTypes: current.includes(key) ? current.filter((m) => m !== key) : [...current, key] });
   }
+
+  /** Pax for the (first) service type of a day. */
+  const paxField = (day: EventDay, i: number) => (
+    <>
+      <label className={`${labelClass} ${secondService ? "mt-3 " : ""}block`}>Pax for this service *</label>
+      <input
+        type="number"
+        min="1"
+        required={!!day.serviceType}
+        disabled={!day.serviceType}
+        value={day.servicePax ?? ""}
+        onChange={(e) => patch(i, { servicePax: e.target.value ? Number(e.target.value) : undefined })}
+        className={inputClass}
+      />
+    </>
+  );
 
   const totalAmount = days.reduce((t, d) => t + dayAmount(d), 0);
   const peakPax = days.reduce((m, d) => Math.max(m, dayPax(d)), 0);
@@ -104,17 +120,10 @@ export function EventDaysEditor({ days, onChange }: { days: EventDay[]; onChange
                 <option value="">Select service type</option>
                 {Object.entries(SERVICE_TYPE_LABEL).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
               </select>
-              <label className={`${labelClass} mt-3 block`}>Pax for this service *</label>
-              <input
-                type="number"
-                min="1"
-                required={!!day.serviceType}
-                disabled={!day.serviceType}
-                value={day.servicePax ?? ""}
-                onChange={(e) => patch(i, { servicePax: e.target.value ? Number(e.target.value) : undefined })}
-                className={inputClass}
-              />
+              {secondService && paxField(day, i)}
             </div>
+            {!secondService && <div>{paxField(day, i)}</div>}
+            {secondService && (
             <div>
               <label className={labelClass}>Second service type (optional)</label>
               <select
@@ -137,6 +146,7 @@ export function EventDaysEditor({ days, onChange }: { days: EventDay[]; onChange
                 className={inputClass}
               />
             </div>
+            )}
           </div>
 
           <div className="mt-3 grid grid-cols-[2fr_1fr] gap-4">

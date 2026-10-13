@@ -135,7 +135,7 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
       <div>
         <div className="text-[14px] font-extrabold text-text">First choice — event days</div>
         <p className="mb-2 text-xs text-text-muted">One block for each day of the event (1 day, or 3-5 days for a conference). Use &quot;Add next day&quot; to copy the previous day.</p>
-        <EventDaysEditor days={days} onChange={setDays} />
+        <EventDaysEditor days={days} onChange={setDays} secondService={false} />
       </div>
 
       <div>
