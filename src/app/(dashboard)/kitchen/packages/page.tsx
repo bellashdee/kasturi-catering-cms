@@ -7,7 +7,7 @@ import { listPackageMenus } from "@/lib/kitchen/packages/queries";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { KitchenSubNav } from "@/components/kitchen/KitchenSubNav";
-import { formatCurrency } from "@/lib/format";
+import { packagePriceLabel } from "@/lib/kitchen/packages/format";
 
 export default async function PackageMenusPage({
   searchParams,
@@ -64,7 +64,7 @@ export default async function PackageMenusPage({
                 className="grid grid-cols-[2fr_1fr_1fr_1fr_0.8fr] items-center border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0 hover:bg-surface-alt"
               >
                 <div className="font-semibold text-text">{p.name}</div>
-                <div className="text-text-secondary">{formatCurrency(p.price_per_pax)}</div>
+                <div className="text-text-secondary">{packagePriceLabel(p.price_per_pax)}</div>
                 <div className="text-text-secondary">{p.minimum_pax}</div>
                 <div className="text-text-secondary">{p.companies?.name}</div>
                 <div>

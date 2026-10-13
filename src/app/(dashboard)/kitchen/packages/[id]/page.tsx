@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { getPackageMenu } from "@/lib/kitchen/packages/queries";
 import { PACKAGE_MEAL_TYPE_LABEL } from "@/lib/kitchen/constants";
-import { formatCurrency } from "@/lib/format";
+import { packagePriceLabel } from "@/lib/kitchen/packages/format";
 import { SectionCard } from "@/components/dashboard/SectionCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { PackageActiveToggle } from "@/components/kitchen/PackageActiveToggle";
@@ -58,7 +58,7 @@ export default async function PackageMenuDetailPage({
       <div className="grid grid-cols-2 gap-4">
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
           <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Price per Pax</div>
-          <div className="mt-1 text-xl font-extrabold text-text">{formatCurrency(pkg.price_per_pax)}</div>
+          <div className="mt-1 text-xl font-extrabold text-text">{packagePriceLabel(pkg.price_per_pax)}</div>
         </div>
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
           <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Minimum Pax</div>

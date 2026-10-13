@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createEvent, updateEvent, type EventInput } from "@/lib/catering/actions";
 import { MEAL_TYPE_LABEL, SALES_AGENTS, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
 import type { EventDay } from "@/lib/catering/days";
+import { hasPackagePrice } from "@/lib/kitchen/packages/format";
 import { EventDaysEditor, emptyDay } from "@/components/catering/EventDaysEditor";
 
 type Company = { id: string; name: string };
@@ -81,8 +82,8 @@ export function EventForm({
     set("packageMenuId", packageId || undefined);
     const pkg = packagesForCompany.find((p) => p.id === packageId);
     if (pkg) {
-      set("pricePerPax", pkg.price_per_pax);
-      set("menuDescription", `${pkg.name} (RM${pkg.price_per_pax}/pax, min ${pkg.minimum_pax} pax):\n${packageItemsToText(pkg)}`);
+      if (hasPackagePrice(pkg.price_per_pax)) set("pricePerPax", pkg.price_per_pax);
+      set("menuDescription", `${pkg.name} (${hasPackagePrice(pkg.price_per_pax) ? `RM${pkg.price_per_pax}/pax, ` : ""}min ${pkg.minimum_pax} pax):\n${packageItemsToText(pkg)}`);
     }
   }
 
@@ -338,7 +339,7 @@ export function EventForm({
           <label className={labelClass}>Select Package (optional)</label>
           <select value={form.packageMenuId ?? ""} onChange={(e) => onPackageChange(e.target.value)} className={inputClass}>
             <option value="">No package — type menu manually</option>
-            {packagesForCompany.map((p) => <option key={p.id} value={p.id}>{p.name} (RM{p.price_per_pax}/pax)</option>)}
+            {packagesForCompany.map((p) => <option key={p.id} value={p.id}>{p.name}{hasPackagePrice(p.price_per_pax) ? ` (RM${p.price_per_pax}/pax)` : ""}</option>)}
           </select>
         </div>
       )}
