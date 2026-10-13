@@ -203,14 +203,17 @@ export async function updateEvent(eventId: string, input: EventInput) {
     .eq("id", eventId);
   if (error) throw error;
 
-  // the form always sends the full list of days, so the saved days are replaced by it
-  const { error: clearError } = await supabase.from("catering_event_days").delete().eq("catering_event_id", eventId);
-  if (clearError) throw clearError;
+  // The form always sends the full list of days. Days are matched by date and updated in place (not deleted and
+  // re-inserted) so the production orders and deliveries already made for a day keep their link to it.
   const rows = dayRows(existing.company_id, eventId, input);
   if (rows.length > 0) {
-    const { error: daysError } = await supabase.from("catering_event_days").insert(rows);
+    const { error: daysError } = await supabase.from("catering_event_days").upsert(rows, { onConflict: "catering_event_id,day_date" });
     if (daysError) throw daysError;
   }
+  // Days that are no longer in the list are removed; their production orders / deliveries stay, just without a day link.
+  const removeQuery = supabase.from("catering_event_days").delete().eq("catering_event_id", eventId);
+  const { error: clearError } = rows.length > 0 ? await removeQuery.not("day_date", "in", `(${rows.map((r) => r.day_date).join(",")})`) : await removeQuery;
+  if (clearError) throw clearError;
   revalidatePath("/catering");
   revalidatePath(`/catering/${eventId}`);
 }
@@ -231,48 +234,161 @@ export async function updateEventStatus(eventId: string, status: string) {
     .single();
   if (eventError) throw eventError;
 
+  const creating = status === "confirmed" || status === "in_production";
+  const days = creating ? await listDaysForWork(supabase, eventId) : [];
+
   const { error: updateError } = await supabase.from("catering_events").update({ status: status as EventStatus }).eq("id", eventId);
   if (updateError) throw updateError;
 
-  if (status === "confirmed" || status === "in_production") {
-    const { data: existingProduction } = await supabase
-      .from("production_orders")
-      .select("id")
-      .eq("catering_event_id", eventId)
-      .maybeSingle();
-
-    if (!existingProduction) {
-      await supabase.from("production_orders").insert({
-        company_id: event.company_id,
-        catering_event_id: eventId,
-        planned_date: event.event_date,
-        pax_count: event.pax_count,
-        status: "planned",
-      });
-    }
-
-    const { data: existingDelivery } = await supabase
-      .from("deliveries")
-      .select("id")
-      .eq("catering_event_id", eventId)
-      .maybeSingle();
-
-    if (!existingDelivery) {
-      const scheduledTime = event.event_time
-        ? `${event.event_date}T${event.event_time}`
-        : `${event.event_date}T00:00:00`;
-      await supabase.from("deliveries").insert({
-        company_id: event.company_id,
-        catering_event_id: eventId,
-        scheduled_time: scheduledTime,
-        status: "scheduled",
-      });
-    }
+  if (creating) {
+    if (days.length > 0) await createWorkForDays(supabase, event.company_id, eventId, days);
+    else await createWorkForSingleDay(supabase, event);
   }
 
   revalidatePath("/catering");
   revalidatePath(`/catering/${eventId}`);
+  revalidatePath("/kitchen");
+  revalidatePath("/driver-logistics");
   revalidatePath("/");
+}
+
+type Client = Awaited<ReturnType<typeof requireUser>>["supabase"];
+type WorkDay = {
+  id: string;
+  day_date: string;
+  event_time: string | null;
+  service_pax: number;
+  second_service_type: string | null;
+  second_service_pax: number | null;
+};
+
+async function listDaysForWork(supabase: Client, eventId: string): Promise<WorkDay[]> {
+  const { data, error } = await supabase
+    .from("catering_event_days")
+    .select("id, day_date, event_time, service_pax, second_service_type, second_service_pax")
+    .eq("catering_event_id", eventId)
+    .order("day_date");
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** When a day's food is due: the day's date and its event time (00:00 if none), Malaysia time. */
+function dayScheduledTime(day: Pick<WorkDay, "day_date" | "event_time">) {
+  return `${day.day_date}T${day.event_time ?? "00:00:00"}+08:00`;
+}
+
+const UNIQUE_VIOLATION = "23505";
+
+/** Single-day event (no days): one production order and one delivery for the event, exactly as before. */
+async function createWorkForSingleDay(
+  supabase: Client,
+  event: { id: string; company_id: string; event_date: string; event_time: string | null; pax_count: number | null },
+) {
+  const { data: existingProduction } = await supabase
+    .from("production_orders")
+    .select("id")
+    .eq("catering_event_id", event.id)
+    .limit(1)
+    .maybeSingle();
+
+  if (!existingProduction) {
+    await supabase.from("production_orders").insert({
+      company_id: event.company_id,
+      catering_event_id: event.id,
+      planned_date: event.event_date,
+      pax_count: event.pax_count,
+      status: "planned",
+    });
+  }
+
+  const { data: existingDelivery } = await supabase
+    .from("deliveries")
+    .select("id")
+    .eq("catering_event_id", event.id)
+    .limit(1)
+    .maybeSingle();
+
+  if (!existingDelivery) {
+    const scheduledTime = event.event_time ? `${event.event_date}T${event.event_time}` : `${event.event_date}T00:00:00`;
+    await supabase.from("deliveries").insert({
+      company_id: event.company_id,
+      catering_event_id: event.id,
+      scheduled_time: scheduledTime,
+      status: "scheduled",
+    });
+  }
+}
+
+/** The calendar date of a timestamp, as UTC and as Malaysia time, to recognise rows made before days were linked. */
+function timestampDates(ts: string | null): string[] {
+  if (!ts) return [];
+  const t = new Date(ts).getTime();
+  if (Number.isNaN(t)) return [];
+  return [new Date(t).toISOString().slice(0, 10), new Date(t + 8 * 3600_000).toISOString().slice(0, 10)];
+}
+
+/**
+ * Multi-day event: one production order and one delivery for EACH day (date, time and pax taken from that day).
+ * Safe to run again: a day that already has its rows is skipped, and an older event-level row that matches the
+ * day's date is linked to that day instead of being duplicated. Existing rows are never otherwise changed or deleted.
+ */
+async function createWorkForDays(supabase: Client, companyId: string, eventId: string, days: WorkDay[]) {
+  const [{ data: orders, error: ordersError }, { data: deliveries, error: deliveriesError }] = await Promise.all([
+    supabase.from("production_orders").select("id, planned_date, catering_event_day_id, recipe_id, menu_plan_dish_id").eq("catering_event_id", eventId),
+    supabase.from("deliveries").select("id, scheduled_time, catering_event_day_id").eq("catering_event_id", eventId),
+  ]);
+  if (ordersError) throw ordersError;
+  if (deliveriesError) throw deliveriesError;
+
+  const claimed = new Set<string>();
+  for (const day of days) {
+    const pax = dayPax({
+      servicePax: day.service_pax,
+      secondServiceType: day.second_service_type ?? undefined,
+      secondServicePax: day.second_service_pax ?? undefined,
+    });
+
+    if (!(orders ?? []).some((o) => o.catering_event_day_id === day.id)) {
+      const legacy = (orders ?? []).find(
+        (o) => !o.catering_event_day_id && !claimed.has(o.id) && !o.recipe_id && !o.menu_plan_dish_id && o.planned_date === day.day_date,
+      );
+      if (legacy) {
+        claimed.add(legacy.id);
+        const { error } = await supabase.from("production_orders").update({ catering_event_day_id: day.id }).eq("id", legacy.id);
+        if (error && error.code !== UNIQUE_VIOLATION) throw error;
+      } else {
+        const { error } = await supabase.from("production_orders").insert({
+          company_id: companyId,
+          catering_event_id: eventId,
+          catering_event_day_id: day.id,
+          planned_date: day.day_date,
+          pax_count: pax,
+          status: "planned",
+        });
+        if (error && error.code !== UNIQUE_VIOLATION) throw error;
+      }
+    }
+
+    if (!(deliveries ?? []).some((d) => d.catering_event_day_id === day.id)) {
+      const legacy = (deliveries ?? []).find(
+        (d) => !d.catering_event_day_id && !claimed.has(d.id) && timestampDates(d.scheduled_time).includes(day.day_date),
+      );
+      if (legacy) {
+        claimed.add(legacy.id);
+        const { error } = await supabase.from("deliveries").update({ catering_event_day_id: day.id }).eq("id", legacy.id);
+        if (error && error.code !== UNIQUE_VIOLATION) throw error;
+      } else {
+        const { error } = await supabase.from("deliveries").insert({
+          company_id: companyId,
+          catering_event_id: eventId,
+          catering_event_day_id: day.id,
+          scheduled_time: dayScheduledTime(day),
+          status: "scheduled",
+        });
+        if (error && error.code !== UNIQUE_VIOLATION) throw error;
+      }
+    }
+  }
 }
 
 export type QuotationInput = {
@@ -487,8 +603,13 @@ export async function removeEquipmentAssignment(assignmentId: string, eventId: s
 }
 
 export type DeliveryInput = {
+  /** Not trusted: the company always comes from the event itself. */
   companyId: string;
   eventId: string;
+  /** The delivery being edited (a multi-day event has one per day). */
+  deliveryId?: string;
+  /** The event day this delivery is for, when there is no delivery for it yet. */
+  dayId?: string;
   vehicleId?: string;
   driverId?: string;
   vendorId?: string;
@@ -497,40 +618,64 @@ export type DeliveryInput = {
 
 export async function upsertDelivery(input: DeliveryInput) {
   const { supabase } = await requireUser();
-  await assertValidAssignee(supabase, input.companyId, input.driverId, input.vendorId);
+  const { data: event, error: eventError } = await supabase.from("catering_events").select("id, company_id").eq("id", input.eventId).single();
+  if (eventError) throw eventError;
+  await assertValidAssignee(supabase, event.company_id, input.driverId, input.vendorId);
 
-  const { data: existing } = await supabase
-    .from("deliveries")
-    .select("id")
-    .eq("catering_event_id", input.eventId)
-    .maybeSingle();
+  const fields = {
+    vehicle_id: input.vehicleId || null,
+    driver_id: input.driverId || null,
+    delivery_vendor_id: input.vendorId || null,
+    notes: input.notes || null,
+  };
 
-  if (existing) {
-    const { error } = await supabase
+  let existingId: string | null = null;
+  let day: WorkDay | null = null;
+  if (input.deliveryId) {
+    const { data: found, error } = await supabase.from("deliveries").select("id, catering_event_id").eq("id", input.deliveryId).single();
+    if (error) throw error;
+    if (found.catering_event_id !== input.eventId) throw new Error("This delivery does not belong to this event.");
+    existingId = found.id;
+  } else if (input.dayId) {
+    const { data: found, error } = await supabase
+      .from("catering_event_days")
+      .select("id, day_date, event_time, service_pax, second_service_type, second_service_pax, catering_event_id")
+      .eq("id", input.dayId)
+      .single();
+    if (error) throw error;
+    if (found.catering_event_id !== input.eventId) throw new Error("This day does not belong to this event.");
+    day = found;
+    const { data: byDay } = await supabase.from("deliveries").select("id").eq("catering_event_day_id", input.dayId).limit(1).maybeSingle();
+    existingId = byDay?.id ?? null;
+  } else {
+    // single-day event: its one delivery
+    const { data: first } = await supabase
       .from("deliveries")
-      .update({
-        vehicle_id: input.vehicleId || null,
-        driver_id: input.driverId || null,
-        delivery_vendor_id: input.vendorId || null,
-        notes: input.notes || null,
-      })
-      .eq("id", existing.id);
+      .select("id")
+      .eq("catering_event_id", input.eventId)
+      .order("created_at")
+      .limit(1)
+      .maybeSingle();
+    existingId = first?.id ?? null;
+  }
+
+  if (existingId) {
+    const { error } = await supabase.from("deliveries").update(fields).eq("id", existingId);
     if (error) throw error;
   } else {
     const { error } = await supabase.from("deliveries").insert({
-      company_id: input.companyId,
+      company_id: event.company_id,
       catering_event_id: input.eventId,
-      // Always the server clock, never a value sent by the browser.
-      scheduled_time: new Date().toISOString(),
-      vehicle_id: input.vehicleId || null,
-      driver_id: input.driverId || null,
-      delivery_vendor_id: input.vendorId || null,
-      notes: input.notes || null,
+      catering_event_day_id: day?.id ?? null,
+      // Always worked out on the server (the day's date and time, or the server clock), never a value sent by the browser.
+      scheduled_time: day ? dayScheduledTime(day) : new Date().toISOString(),
+      ...fields,
       status: "scheduled",
     });
     if (error) throw error;
   }
 
   revalidatePath(`/catering/${input.eventId}`);
+  revalidatePath("/driver-logistics");
   revalidatePath("/");
 }

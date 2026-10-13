@@ -10,7 +10,7 @@ import {
   listStaffForEvent,
   listEquipmentForEvent,
   listEquipmentForCompanies,
-  getDeliveryForEvent,
+  listDeliveriesForEvent,
 } from "@/lib/catering/queries";
 import {
   EVENT_STATUS_LABEL,
@@ -33,7 +33,12 @@ import { StaffAssignForm } from "@/components/catering/StaffAssignForm";
 import { EquipmentAssignForm } from "@/components/catering/EquipmentAssignForm";
 import { DeliveryForm } from "@/components/catering/DeliveryForm";
 import { listDeliveryPersons } from "@/lib/driver/queries";
+import { DELIVERY_STATUS_LABEL } from "@/lib/driver/constants";
 import { RemoveAssignmentButton } from "@/components/catering/RemoveAssignmentButton";
+
+function toDeliveryInitial(d: { scheduled_time: string | null; vehicle_id: string | null; driver_id: string | null; delivery_vendor_id: string | null; notes: string | null }) {
+  return { scheduled_time: d.scheduled_time, vehicle_id: d.vehicle_id, driver_id: d.driver_id, delivery_vendor_id: d.delivery_vendor_id, notes: d.notes };
+}
 
 function quotationTone(status: string): "success" | "warning" | "danger" | "neutral" {
   if (status === "accepted") return "success";
@@ -65,14 +70,15 @@ export default async function EventDetailPage({
     notFound();
   }
 
-  const eventDays = toEventDays(await listEventDays(supabase, id));
-  const [quotations, costing, staff, eventEquipment, companyEquipment, delivery, employeesRes, vehiclesRes] = await Promise.all([
+  const dayRowsData = await listEventDays(supabase, id);
+  const eventDays = toEventDays(dayRowsData);
+  const [quotations, costing, staff, eventEquipment, companyEquipment, deliveries, employeesRes, vehiclesRes] = await Promise.all([
     listQuotationsForEvent(supabase, id),
     getCosting(supabase, id),
     listStaffForEvent(supabase, id),
     listEquipmentForEvent(supabase, id),
     listEquipmentForCompanies(supabase, [event.company_id]),
-    getDeliveryForEvent(supabase, id),
+    listDeliveriesForEvent(supabase, id),
     supabase.from("employees").select("id, full_name").eq("company_id", event.company_id).eq("status", "active").order("full_name"),
     supabase.from("vehicles").select("id, plate_number").eq("company_id", event.company_id).order("plate_number"),
   ]);
@@ -310,14 +316,58 @@ export default async function EventDetailPage({
         </div>
       </SectionCard>
 
-      <SectionCard title="Delivery">
-        <DeliveryForm
-          companyId={event.company_id}
-          eventId={id}
-          vehicles={vehicles}
-          deliveryPersons={deliveryPersons}
-          initial={delivery ? { scheduled_time: delivery.scheduled_time, vehicle_id: delivery.vehicle_id, driver_id: delivery.driver_id, delivery_vendor_id: delivery.delivery_vendor_id, notes: delivery.notes } : null}
-        />
+      <SectionCard title={eventDays.length > 0 ? `Delivery (${eventDays.length} days)` : "Delivery"}>
+        {eventDays.length === 0 ? (
+          <DeliveryForm
+            companyId={event.company_id}
+            eventId={id}
+            deliveryId={deliveries[0]?.id}
+            vehicles={vehicles}
+            deliveryPersons={deliveryPersons}
+            initial={deliveries[0] ? toDeliveryInitial(deliveries[0]) : null}
+          />
+        ) : (
+          <div className="flex flex-col gap-5">
+            {dayRowsData.map((day, i) => {
+              const dayDelivery = deliveries.find((d) => d.catering_event_day_id === day.id);
+              return (
+                <div key={day.id} className="border-b border-border pb-5 last:border-b-0 last:pb-0">
+                  <div className="mb-2 flex flex-wrap items-center gap-2 text-[13px]">
+                    <span className="font-bold text-text">Day {i + 1} · {day.day_date}</span>
+                    {dayDelivery ? (
+                      <StatusBadge tone={dayDelivery.status === "delivered" ? "success" : "neutral"}>{DELIVERY_STATUS_LABEL[dayDelivery.status] ?? dayDelivery.status}</StatusBadge>
+                    ) : (
+                      <span className="text-xs text-text-muted">No delivery yet — it is created when the event is confirmed, or when you save below.</span>
+                    )}
+                    {dayDelivery && <Link href={`/driver-logistics/${dayDelivery.id}${query}`} className="ml-auto text-xs font-semibold text-primary">Open delivery</Link>}
+                  </div>
+                  <DeliveryForm
+                    key={dayDelivery?.id ?? day.id}
+                    companyId={event.company_id}
+                    eventId={id}
+                    deliveryId={dayDelivery?.id}
+                    dayId={day.id}
+                    vehicles={vehicles}
+                    deliveryPersons={deliveryPersons}
+                    initial={dayDelivery ? toDeliveryInitial(dayDelivery) : null}
+                  />
+                </div>
+              );
+            })}
+            {deliveries
+              .filter((d) => !dayRowsData.some((day) => day.id === d.catering_event_day_id))
+              .map((d) => (
+                <div key={d.id} className="border-t border-border pt-5">
+                  <div className="mb-2 flex flex-wrap items-center gap-2 text-[13px]">
+                    <span className="font-bold text-text">Other delivery</span>
+                    <span className="text-xs text-text-muted">not linked to a day of this event (made before the days were set, or its day was changed)</span>
+                    <Link href={`/driver-logistics/${d.id}${query}`} className="ml-auto text-xs font-semibold text-primary">Open delivery</Link>
+                  </div>
+                  <DeliveryForm key={d.id} companyId={event.company_id} eventId={id} deliveryId={d.id} vehicles={vehicles} deliveryPersons={deliveryPersons} initial={toDeliveryInitial(d)} />
+                </div>
+              ))}
+          </div>
+        )}
       </SectionCard>
     </div>
   );

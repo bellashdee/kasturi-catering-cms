@@ -123,12 +123,14 @@ export async function listEquipmentForCompanies(supabase: DB, companyIds: string
   return data;
 }
 
-export async function getDeliveryForEvent(supabase: DB, eventId: string) {
+/** Every delivery of an event: one for a single-day event, one per day for a multi-day event. */
+export async function listDeliveriesForEvent(supabase: DB, eventId: string) {
   const { data, error } = await supabase
     .from("deliveries")
     .select("*, vehicles(plate_number), employees(full_name)")
     .eq("catering_event_id", eventId)
-    .maybeSingle();
+    .order("scheduled_time")
+    .order("created_at");
   if (error) throw error;
   return data;
 }

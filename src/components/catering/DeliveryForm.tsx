@@ -15,9 +15,15 @@ export function DeliveryForm({
   vehicles,
   deliveryPersons,
   initial,
+  deliveryId,
+  dayId,
 }: {
   companyId: string;
   eventId: string;
+  /** The delivery being edited (multi-day events have one per day). */
+  deliveryId?: string;
+  /** The event day, when its delivery has not been created yet. */
+  dayId?: string;
   vehicles: Vehicle[];
   deliveryPersons: DeliveryPerson[];
   initial: { scheduled_time: string | null; vehicle_id: string | null; driver_id: string | null; delivery_vendor_id: string | null; notes: string | null } | null;
@@ -37,6 +43,8 @@ export function DeliveryForm({
       await upsertDelivery({
         companyId,
         eventId,
+        deliveryId,
+        dayId,
         vehicleId: vehicleId || undefined,
         ...decodeAssignee(assignee),
         notes: notes || undefined,
@@ -57,7 +65,7 @@ export function DeliveryForm({
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Scheduled Time</label>
           <div className="mt-1 flex h-9 w-full items-center rounded-lg border border-border bg-bg px-2 text-[12.5px] text-text-secondary" aria-readonly="true">
-            {initial?.scheduled_time ? `${formatMalaysiaDateTime(initial.scheduled_time)} (Malaysia time)` : "Recorded automatically on save"}
+            {initial?.scheduled_time ? `${formatMalaysiaDateTime(initial.scheduled_time)} (Malaysia time)` : dayId ? "Set from the day's date and time on save" : "Recorded automatically on save"}
           </div>
         </div>
         <div>

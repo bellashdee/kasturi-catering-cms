@@ -48,6 +48,7 @@ export default async function ProductionOrderDetailPage({
           <div className="text-[13px] text-text-secondary">
             {order.companies?.name} · Planned {order.planned_date}
             {order.catering_events?.event_name && ` · For event: ${order.catering_events.event_name}`}
+            {order.catering_event_days?.day_date && ` (day ${order.catering_event_days.day_date})`}
           </div>
         </div>
         <ProductionOrderStatusSelect orderId={id} status={order.status} />

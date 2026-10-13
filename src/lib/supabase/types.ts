@@ -1035,6 +1035,7 @@ export type Database = {
           admin_override: boolean
           admin_override_by: string | null
           admin_override_reason: string | null
+          catering_event_day_id: string | null
           catering_event_id: string | null
           company_id: string
           completed_at: string | null
@@ -1055,6 +1056,7 @@ export type Database = {
           admin_override?: boolean
           admin_override_by?: string | null
           admin_override_reason?: string | null
+          catering_event_day_id?: string | null
           catering_event_id?: string | null
           company_id: string
           completed_at?: string | null
@@ -1075,6 +1077,7 @@ export type Database = {
           admin_override?: boolean
           admin_override_by?: string | null
           admin_override_reason?: string | null
+          catering_event_day_id?: string | null
           catering_event_id?: string | null
           company_id?: string
           completed_at?: string | null
@@ -1092,6 +1095,13 @@ export type Database = {
           vehicle_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "deliveries_catering_event_day_id_fkey"
+            columns: ["catering_event_day_id"]
+            isOneToOne: false
+            referencedRelation: "catering_event_days"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "deliveries_catering_event_id_fkey"
             columns: ["catering_event_id"]
@@ -3463,6 +3473,7 @@ export type Database = {
       production_orders: {
         Row: {
           assigned_staff: string | null
+          catering_event_day_id: string | null
           catering_event_id: string | null
           company_id: string
           created_at: string
@@ -3477,6 +3488,7 @@ export type Database = {
         }
         Insert: {
           assigned_staff?: string | null
+          catering_event_day_id?: string | null
           catering_event_id?: string | null
           company_id: string
           created_at?: string
@@ -3491,6 +3503,7 @@ export type Database = {
         }
         Update: {
           assigned_staff?: string | null
+          catering_event_day_id?: string | null
           catering_event_id?: string | null
           company_id?: string
           created_at?: string
@@ -3504,6 +3517,13 @@ export type Database = {
           status?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "production_orders_catering_event_day_id_fkey"
+            columns: ["catering_event_day_id"]
+            isOneToOne: false
+            referencedRelation: "catering_event_days"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "production_orders_catering_event_id_fkey"
             columns: ["catering_event_id"]

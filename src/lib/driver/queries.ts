@@ -17,7 +17,7 @@ export async function listDeliveries(supabase: DB, companyIds: string[]) {
 export async function getDelivery(supabase: DB, id: string) {
   const { data, error } = await supabase
     .from("deliveries")
-    .select("*, catering_events(id, event_name, event_date), vehicles(id, plate_number), employees(id, full_name), delivery_vendors(name), companies(name)")
+    .select("*, catering_events(id, event_name, event_date), catering_event_days(day_date), vehicles(id, plate_number), employees(id, full_name), delivery_vendors(name), companies(name)")
     .eq("id", id)
     .single();
   if (error) throw error;

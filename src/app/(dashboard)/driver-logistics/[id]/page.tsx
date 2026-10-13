@@ -56,7 +56,7 @@ export default async function DeliveryDetailPage({
           <Link href={`/driver-logistics${query}`} className="text-[12.5px] font-semibold text-text-secondary">
             ← Back to Deliveries
           </Link>
-          <div className="mt-2 text-[20px] font-extrabold text-text">{delivery.catering_events?.event_name ?? "Delivery"}</div>
+          <div className="mt-2 text-[20px] font-extrabold text-text">{delivery.catering_events?.event_name ?? "Delivery"}{delivery.catering_event_days?.day_date && ` · day ${delivery.catering_event_days.day_date}`}</div>
           <div className="text-[13px] text-text-secondary">
             {delivery.companies?.name}
             {delivery.scheduled_time && ` · ${formatMalaysiaDateTime(delivery.scheduled_time)}`}
