@@ -218,8 +218,17 @@ export type RecipeInput = {
   ingredients: { ingredientId: string; quantityPerYield: number; unit?: string }[];
 };
 
+/** Same dish written differently (spacing, punctuation, BIRYANI / BRIYANI, "3 RASA" / "3RASA") counts as the same recipe. */
+function recipeNameKey(name: string): string {
+  return name.toUpperCase().replace(/BIRYANI/g, "BRIYANI").replace(/[^A-Z0-9]/g, "");
+}
+
 export async function createRecipe(input: RecipeInput) {
   const { supabase } = await requireUser();
+  const { data: existing, error: existingError } = await supabase.from("recipes").select("name").eq("company_id", input.companyId);
+  if (existingError) throw existingError;
+  const clash = existing?.find((r) => recipeNameKey(r.name) === recipeNameKey(input.name));
+  if (clash) throw new Error(`A recipe called "${clash.name}" already exists for this company. Open that recipe instead of creating it again.`);
   const { data: recipe, error: recipeError } = await supabase
     .from("recipes")
     .insert({
