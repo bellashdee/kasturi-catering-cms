@@ -1,3 +1,4 @@
+import { applyInvoiceDateFilter, type InvoiceDateFilter } from "@/lib/finance/dateFilter";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 
@@ -57,12 +58,14 @@ export async function getPurchaseOrder(supabase: DB, id: string) {
   return data;
 }
 
-export async function listSupplierInvoices(supabase: DB, companyIds: string[]) {
-  const { data, error } = await supabase
-    .from("supplier_invoices")
-    .select("*, suppliers(name), companies(name), purchase_orders(po_number), supplier_payments(amount, status, payment_date)")
-    .in("company_id", companyIds)
-    .order("invoice_date", { ascending: false });
+export async function listSupplierInvoices(supabase: DB, companyIds: string[], dateFilter?: InvoiceDateFilter) {
+  const { data, error } = await applyInvoiceDateFilter(
+    supabase
+      .from("supplier_invoices")
+      .select("*, suppliers(name), companies(name), purchase_orders(po_number), supplier_payments(amount, status, payment_date)")
+      .in("company_id", companyIds),
+    dateFilter,
+  ).order("invoice_date", { ascending: false });
   if (error) throw error;
   return data;
 }

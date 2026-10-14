@@ -1,3 +1,4 @@
+import { applyInvoiceDateFilter, type InvoiceDateFilter } from "@/lib/finance/dateFilter";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { resolvePeriod, type DateRange } from "@/lib/finance/constants";
@@ -259,12 +260,14 @@ export async function listBudgets(supabase: DB, companyIds: string[]) {
   return data;
 }
 
-export async function listCustomerInvoices(supabase: DB, companyIds: string[]) {
-  const { data, error } = await supabase
-    .from("customer_invoices")
-    .select("*, customers(name), companies(name), customer_payments(amount, payment_date)")
-    .in("company_id", companyIds)
-    .order("invoice_date", { ascending: false });
+export async function listCustomerInvoices(supabase: DB, companyIds: string[], dateFilter?: InvoiceDateFilter) {
+  const { data, error } = await applyInvoiceDateFilter(
+    supabase
+      .from("customer_invoices")
+      .select("*, customers(name), companies(name), customer_payments(amount, payment_date)")
+      .in("company_id", companyIds),
+    dateFilter,
+  ).order("invoice_date", { ascending: false });
   if (error) throw error;
   return data;
 }
