@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { PurchaseOrderForm } from "@/components/procurement/PurchaseOrderForm";
+import { getItemSuggestions } from "@/lib/procurement/itemSuggestions";
 
 export default async function NewPurchaseOrderPage({
   searchParams,
@@ -23,6 +24,8 @@ export default async function NewPurchaseOrderPage({
 
   const { data: suppliers } = await supabase.from("suppliers").select("id, name, company_id").in("company_id", accessibleIds).order("name");
 
+  const suggestions = await getItemSuggestions(supabase, accessibleIds);
+
   return (
     <div className="mx-auto max-w-2xl">
       <h1 className="text-[22px] font-extrabold text-text">New Purchase Order</h1>
@@ -34,6 +37,7 @@ export default async function NewPurchaseOrderPage({
           procurementRequestId={request}
           defaultItemName={item}
           defaultQuantity={qty}
+          suggestions={suggestions}
         />
       </div>
     </div>

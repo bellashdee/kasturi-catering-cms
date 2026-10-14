@@ -226,6 +226,51 @@ export async function updatePurchaseOrderStatus(poId: string, status: string) {
   revalidatePath(`/supplier-procurement/orders/${poId}`);
 }
 
+/**
+ * Deletes a purchase order that was placed by mistake. It is refused while a supplier invoice is linked to it (the invoice
+ * would lose its order); a procurement request that was turned into this order goes back to "approved" so it can be ordered
+ * again. The deletion is written to the audit log with the order's details. The message is returned, not thrown, so it is
+ * always shown to the person.
+ */
+export async function deletePurchaseOrder(poId: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const { supabase } = await requireUser();
+    const { data: po, error: readError } = await supabase
+      .from("purchase_orders")
+      .select("id, company_id, po_number, status, total_amount, order_date, suppliers(name), purchase_order_items(item_name, quantity, unit_price)")
+      .eq("id", poId)
+      .single();
+    if (readError || !po) return { ok: false, error: "This purchase order was not found (it may already be deleted)." };
+
+    const { data: invoices } = await supabase.from("supplier_invoices").select("invoice_number").eq("purchase_order_id", poId);
+    if (invoices && invoices.length > 0) {
+      return {
+        ok: false,
+        error: `Supplier invoice ${invoices.map((i) => i.invoice_number).join(", ")} is linked to this order, so it cannot be deleted. Set the order to Cancelled instead, or remove the invoice first.`,
+      };
+    }
+
+    const summary = `${po.po_number} · ${po.suppliers?.name ?? "supplier"} · RM ${Number(po.total_amount ?? 0).toFixed(2)} · order date ${po.order_date} · status ${po.status} · ${po.purchase_order_items.length} item(s): ${po.purchase_order_items.map((i) => `${i.item_name} ${i.quantity} x ${i.unit_price}`).join("; ")}`.slice(0, 1500);
+
+    const { data: requests } = await supabase.from("procurement_requests").select("id").eq("purchase_order_id", poId);
+
+    const { error: itemsError } = await supabase.from("purchase_order_items").delete().eq("purchase_order_id", poId);
+    if (itemsError) return { ok: false, error: itemsError.message };
+    const { error: deleteError } = await supabase.from("purchase_orders").delete().eq("id", poId);
+    if (deleteError) return { ok: false, error: deleteError.message };
+
+    for (const r of requests ?? []) await supabase.from("procurement_requests").update({ status: "approved", purchase_order_id: null }).eq("id", r.id);
+
+    await logTaskAudit({ companyId: po.company_id, relatedTable: "purchase_orders", relatedId: poId, action: "deleted", previousValue: summary, newValue: "Deleted (placed by mistake)" });
+
+    revalidatePath("/supplier-procurement/orders");
+    revalidatePath("/supplier-procurement/requests");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Could not delete the purchase order." };
+  }
+}
+
 export type SupplierInvoiceInput = {
   companyId: string;
   supplierId: string;

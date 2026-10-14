@@ -6,6 +6,7 @@ import { getPurchaseOrder } from "@/lib/procurement/queries";
 import { PO_STATUS_LABEL } from "@/lib/procurement/constants";
 import { formatCurrency } from "@/lib/format";
 import { PurchaseOrderStatusSelect } from "@/components/procurement/PurchaseOrderStatusSelect";
+import { DeletePurchaseOrderButton } from "@/components/procurement/DeletePurchaseOrderButton";
 import { SectionCard } from "@/components/dashboard/SectionCard";
 
 export default async function PurchaseOrderDetailPage({
@@ -43,7 +44,10 @@ export default async function PurchaseOrderDetailPage({
             {po.companies?.name} · {po.suppliers?.name} · {po.order_date}
           </div>
         </div>
-        <PurchaseOrderStatusSelect poId={id} status={po.status} />
+        <div className="flex items-start gap-2">
+          <PurchaseOrderStatusSelect poId={id} status={po.status} />
+          <DeletePurchaseOrderButton poId={id} poNumber={po.po_number} listHref={`/supplier-procurement/orders${query}`} />
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">

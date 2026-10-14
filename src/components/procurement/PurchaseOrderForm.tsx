@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPurchaseOrder, type PurchaseOrderInput } from "@/lib/procurement/actions";
+import type { ItemSuggestion } from "@/lib/procurement/itemSuggestions";
+import { ItemNameInput } from "@/components/procurement/ItemNameInput";
 
 type Company = { id: string; name: string };
 type Supplier = { id: string; name: string; company_id: string };
@@ -27,6 +29,7 @@ export function PurchaseOrderForm({
   procurementRequestId,
   defaultItemName,
   defaultQuantity,
+  suggestions = [],
 }: {
   companies: Company[];
   defaultCompanyId?: string;
@@ -34,6 +37,8 @@ export function PurchaseOrderForm({
   procurementRequestId?: string;
   defaultItemName?: string;
   defaultQuantity?: string;
+  /** Names offered while typing an item: items ordered before, stock items, menu ingredients. */
+  suggestions?: ItemSuggestion[];
 }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
@@ -47,12 +52,23 @@ export function PurchaseOrderForm({
   ]);
 
   const suppliersForCompany = suppliers.filter((s) => s.company_id === companyId);
+  const suggestionsForCompany = suggestions.filter((s) => s.companyId === companyId);
   const total = items.reduce((t, i) => t + (Number(i.quantity) || 0) * (Number(i.unitPrice) || 0), 0);
 
   function updateItem(index: number, field: keyof Item, value: string) {
     setItems((prev) => {
       const next = [...prev];
       next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  }
+
+  /** Picking a listed item fills its name and, when the price box is still empty, the last price it was ordered at. */
+  function pickSuggestion(index: number, s: ItemSuggestion) {
+    setItems((prev) => {
+      const next = [...prev];
+      const current = next[index];
+      next[index] = { ...current, itemName: s.name, unitPrice: current.unitPrice === "" && s.lastPrice !== undefined ? String(s.lastPrice) : current.unitPrice };
       return next;
     });
   }
@@ -126,7 +142,7 @@ export function PurchaseOrderForm({
         <div className="flex flex-col gap-2">
           {items.map((item, i) => (
             <div key={i} className="grid grid-cols-[2fr_0.8fr_1fr_1fr_auto] items-center gap-2">
-              <input value={item.itemName} onChange={(e) => updateItem(i, "itemName", e.target.value)} placeholder="Item name" className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
+              <ItemNameInput value={item.itemName} onChange={(v) => updateItem(i, "itemName", v)} onPick={(s) => pickSuggestion(i, s)} suggestions={suggestionsForCompany} supplierId={supplierId} />
               <input type="number" min="0" step="0.01" value={item.quantity} onChange={(e) => updateItem(i, "quantity", e.target.value)} placeholder="Qty" className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
               <input type="number" min="0" step="0.01" value={item.unitPrice} onChange={(e) => updateItem(i, "unitPrice", e.target.value)} placeholder="Unit Price" className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
               <div className="text-[13px] text-text-secondary">RM {((Number(item.quantity) || 0) * (Number(item.unitPrice) || 0)).toFixed(2)}</div>
@@ -141,6 +157,7 @@ export function PurchaseOrderForm({
             </div>
           ))}
         </div>
+        <p className="mt-1 text-xs text-text-muted">Start typing an item (e.g. &quot;bawang&quot;) to see items ordered before, stock items and menu ingredients. You can also type a new item.</p>
         <div className="mt-2 text-right text-[14px] font-bold text-text">Total: RM {total.toFixed(2)}</div>
       </div>
 
