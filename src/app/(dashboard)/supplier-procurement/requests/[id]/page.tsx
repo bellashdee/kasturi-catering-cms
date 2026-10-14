@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { getProcurementRequest } from "@/lib/procurement/queries";
 import { PROCUREMENT_REQUEST_STATUS_LABEL } from "@/lib/procurement/constants";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatMalaysiaDate } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ProcurementRequestActions } from "@/components/procurement/ProcurementRequestActions";
 
@@ -49,7 +49,7 @@ export default async function ProcurementRequestDetailPage({
           <div className="text-[13px] text-text-secondary">
             {request.companies?.name}
             {request.department && ` · ${request.department}`}
-            {request.profiles?.full_name && ` · Requested by ${request.profiles.full_name}`}
+            {` · Requested${request.profiles?.full_name ? ` by ${request.profiles.full_name}` : ""} on ${formatMalaysiaDate(request.created_at)}`}
           </div>
         </div>
         <div className="flex items-center gap-2">

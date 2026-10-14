@@ -1,3 +1,5 @@
+import { todayInMalaysia } from "@/lib/format";
+
 export const SUPPLIER_STATUS_LABEL: Record<string, string> = {
   active: "Active",
   inactive: "Inactive",
@@ -36,5 +38,6 @@ export const PAYMENT_STATUS_LABEL: Record<string, string> = {
 };
 
 export function isOverdue(dueDate: string, status: string): boolean {
-  return status !== "paid" && dueDate < new Date().toISOString().slice(0, 10);
+  return status !== "paid" && dueDate < todayInMalaysia();
 }
+

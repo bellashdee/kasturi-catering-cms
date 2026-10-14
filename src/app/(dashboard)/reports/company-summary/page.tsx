@@ -4,21 +4,20 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { getCompanySummary } from "@/lib/reports/queries";
-import { formatCurrency } from "@/lib/format";
-import { MONTH_LABEL } from "@/lib/finance/constants";
+import { formatCurrency, malaysiaYearMonth } from "@/lib/format";
+import { MONTH_LABEL, parseDateRange } from "@/lib/finance/constants";
 import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { PrintButton } from "@/components/reports/PrintButton";
 import { SectionCard, EmptyRow, StatRow } from "@/components/dashboard/SectionCard";
 
 function currentYearMonth() {
-  const now = new Date();
-  return { year: now.getFullYear(), month: now.getMonth() + 1 };
+  return malaysiaYearMonth();
 }
 
 export default async function CompanySummaryReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; year?: string; month?: string }>;
+  searchParams: Promise<{ company?: string; year?: string; month?: string; from?: string; to?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -27,7 +26,7 @@ export default async function CompanySummaryReportPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, year: yearParam, month: monthParam } = await searchParams;
+  const { company: requestedId, year: yearParam, month: monthParam, from: fromParam, to: toParam } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -38,11 +37,12 @@ export default async function CompanySummaryReportPage({
   const { year: nowYear, month: nowMonth } = currentYearMonth();
   const year = Number(yearParam) || nowYear;
   const month = Number(monthParam) || nowMonth;
+  const range = parseDateRange(fromParam, toParam);
 
   const selectedCompany = companies.find((c) => targetCompanyIds.length === 1 && c.id === targetCompanyIds[0]);
   const viewLabel = selectedCompany ? selectedCompany.name : "All Companies";
 
-  const summary = await getCompanySummary(supabase, targetCompanyIds, year, month);
+  const summary = await getCompanySummary(supabase, targetCompanyIds, year, month, range);
 
   return (
     <div className="flex flex-col gap-5">
@@ -53,7 +53,9 @@ export default async function CompanySummaryReportPage({
       </div>
 
       <div className="flex items-center justify-between print:hidden">
-        <ReportFilterBar requestedCompanyId={requestedId} year={year} month={month} />
+        <ReportFilterBar requestedCompanyId={requestedId} year={year} month={month}
+        from={fromParam}
+        to={toParam} />
         <PrintButton />
       </div>
 

@@ -1,3 +1,5 @@
+import { addDaysToDateIso, todayInMalaysia } from "@/lib/format";
+
 export const EMPLOYMENT_TYPE_LABEL: Record<string, string> = {
   full_time: "Full-time",
   part_time: "Part-time",
@@ -60,10 +62,8 @@ export const PAYROLL_STATUS_LABEL: Record<string, string> = {
 /** Expiry thresholds, in days, used for the badge shown next to each certificate / licence. */
 export function certificateUrgency(expiryDate: string | null): "expired" | "expiring_soon" | "valid" | "no_expiry" {
   if (!expiryDate) return "no_expiry";
-  const today = new Date().toISOString().slice(0, 10);
-  const soon = new Date();
-  soon.setDate(soon.getDate() + 30);
-  const soonIso = soon.toISOString().slice(0, 10);
+  const today = todayInMalaysia();
+  const soonIso = addDaysToDateIso(today, 30);
 
   if (expiryDate < today) return "expired";
   if (expiryDate <= soonIso) return "expiring_soon";
@@ -74,3 +74,4 @@ export function certificateUrgency(expiryDate: string | null): "expired" | "expi
 export function canManageStaffPrivateDetails(role: string): boolean {
   return role === "super_admin" || role === "company_admin";
 }
+

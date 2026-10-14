@@ -8,7 +8,7 @@ import { EmptyRow, SectionCard, StatRow } from "@/components/dashboard/SectionCa
 import { StatusBadge } from "@/components/StatusBadge";
 import { DriverLogisticsSubNav } from "@/components/driver/DriverLogisticsSubNav";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
-import { formatMalaysiaTime } from "@/lib/format";
+import { formatMalaysiaTime, formatMalaysiaLongDate } from "@/lib/format";
 import { todayInMalaysia } from "@/lib/driverAttendance/date";
 
 function formatTime(iso: string | null): string {
@@ -97,7 +97,7 @@ export default async function DriverDashboardPage({
     <div className="flex flex-col gap-5">
       <div>
         <h1 className="text-[22px] font-extrabold text-text">Operation Management</h1>
-        <p className="mt-0.5 text-[13px] text-text-secondary">Driver Dashboard — {new Date().toLocaleDateString("en-MY", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
+        <p className="mt-0.5 text-[13px] text-text-secondary">Driver Dashboard — {formatMalaysiaLongDate()}</p>
       </div>
 
       <DriverLogisticsSubNav />

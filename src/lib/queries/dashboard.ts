@@ -340,7 +340,7 @@ export async function getMarketingSummary(supabase: DB, companyIds: string[]) {
       .from("leads")
       .select("id", { count: "exact", head: true })
       .in("company_id", companyIds)
-      .gte("created_at", monthStart),
+      .gte("created_at", `${monthStart}T00:00:00+08:00`),
     supabase
       .from("marketing_expenses")
       .select("amount")

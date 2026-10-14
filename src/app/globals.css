@@ -1,31 +1,31 @@
 @import "tailwindcss";
 
 :root {
-  --color-bg: #f5f6f8;
+  --color-bg: #f4f5f7;
   --color-surface: #ffffff;
   --color-surface-alt: #fafbfc;
-  --color-border: #e3e6ec;
-  --color-border-strong: #d0d5dd;
+  --color-border: #dde1e8;
+  --color-border-strong: #c3cad5;
 
   --color-navy-900: #0f2438;
   --color-navy-800: #16324f;
   --color-navy-700: #1d4e78;
 
-  --color-primary: #2563a6;
-  --color-primary-hover: #1d4e78;
+  --color-primary: #1f4e79;
+  --color-primary-hover: #163a5c;
   --color-accent: #7a8b4a;
 
   --color-success: #16794b;
   --color-success-bg: #e7f3eb;
-  --color-warning: #b7791f;
+  --color-warning: #8a5a0b;
   --color-warning-bg: #fbf0dd;
   --color-danger: #c0362c;
   --color-danger-bg: #fbeae9;
   --color-info-bg: #eaf1f8;
 
   --color-text: #16212e;
-  --color-text-secondary: #5b6472;
-  --color-text-muted: #98a2b3;
+  --color-text-secondary: #3f4b5b;
+  --color-text-muted: #5d6878;
 
   --color-company-all: #334155;
   --color-company-signature: #2563a6;
@@ -72,3 +72,23 @@ body {
   background: var(--color-bg);
   color: var(--color-text);
 }
+
+/*
+ * Readability layer. Most screens were written with 11-13px text; inside the page area and the header every small size is
+ * lifted so nothing is smaller than 12.5px and body text is 14px or more. (Unlayered rules win over Tailwind utilities.)
+ */
+:is(main, header) :is(.text-\[9px\], .text-\[10px\], .text-\[10\.5px\], .text-\[11px\], .text-\[11\.5px\]) { font-size: 12.5px; }
+:is(main, header) .text-\[12px\] { font-size: 13px; }
+:is(main, header) .text-xs { font-size: 13px; line-height: 1.4; }
+:is(main, header) .text-\[12\.5px\] { font-size: 13.5px; }
+:is(main, header) .text-\[13px\] { font-size: 14px; }
+:is(main, header) .text-\[13\.5px\] { font-size: 14.5px; }
+
+/* Calm, consistent interaction feedback */
+a, button, select, input, textarea, summary { transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease; }
+:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* Tables: never let a long name or amount push the page wider than the screen */
+main table { max-width: 100%; }
+main td, main th { overflow-wrap: anywhere; }

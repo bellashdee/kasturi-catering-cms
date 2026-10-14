@@ -6,8 +6,8 @@ import { resolveCompanyScope } from "@/lib/companyScope";
 import { getMarketingReportRows } from "@/lib/reports/queries";
 import { CAMPAIGN_STATUS_LABEL, CAMPAIGN_CHANNEL_LABEL } from "@/lib/marketing/constants";
 import { listExpensesForCompanies } from "@/lib/marketing/queries";
-import { monthDateRange } from "@/lib/finance/constants";
-import { formatCurrency } from "@/lib/format";
+import { parseDateRange, resolvePeriod } from "@/lib/finance/constants";
+import { formatCurrency, malaysiaYearMonth } from "@/lib/format";
 import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { ReportTable } from "@/components/reports/ReportTable";
 import { buildReportRows } from "@/lib/reports/buildRows";
@@ -15,14 +15,13 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 
 function currentYearMonth() {
-  const now = new Date();
-  return { year: now.getFullYear(), month: now.getMonth() + 1 };
+  return malaysiaYearMonth();
 }
 
 export default async function MarketingReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; year?: string; month?: string; category?: string; status?: string }>;
+  searchParams: Promise<{ company?: string; year?: string; month?: string; from?: string; to?: string; category?: string; status?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -31,7 +30,7 @@ export default async function MarketingReportPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, year: yearParam, month: monthParam, category: categoryParam, status: statusParam } = await searchParams;
+  const { company: requestedId, year: yearParam, month: monthParam, from: fromParam, to: toParam, category: categoryParam, status: statusParam } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -42,10 +41,11 @@ export default async function MarketingReportPage({
   const { year: nowYear, month: nowMonth } = currentYearMonth();
   const year = Number(yearParam) || nowYear;
   const month = Number(monthParam) || nowMonth;
-  const { start, end } = monthDateRange(year, month);
+  const range = parseDateRange(fromParam, toParam);
+  const { start, end } = resolvePeriod(year, month, range);
 
   const [allCampaigns, allExpenses] = await Promise.all([
-    getMarketingReportRows(supabase, targetCompanyIds, year, month),
+    getMarketingReportRows(supabase, targetCompanyIds, year, month, range),
     listExpensesForCompanies(supabase, targetCompanyIds),
   ]);
 
@@ -88,6 +88,8 @@ export default async function MarketingReportPage({
         requestedCompanyId={requestedId}
         year={year}
         month={month}
+        from={fromParam}
+        to={toParam}
         category={categoryParam}
         categoryOptions={Object.entries(CAMPAIGN_CHANNEL_LABEL).map(([value, label]) => ({ value, label }))}
         categoryLabel="Channel"

@@ -4,7 +4,7 @@ import { listSupplierInvoices } from "@/lib/procurement/queries";
 import { isOverdue } from "@/lib/procurement/constants";
 import { listCustomerInvoices } from "@/lib/finance/queries";
 import { getCateringEvents } from "@/lib/queries/dashboard";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, todayInMalaysia, addDaysToDateIso } from "@/lib/format";
 
 type DB = SupabaseClient<Database>;
 
@@ -23,7 +23,7 @@ export type LiveDataIntent = {
 };
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10);
+  return todayInMalaysia();
 }
 
 /**
@@ -85,14 +85,13 @@ export const LIVE_DATA_INTENTS: LiveDataIntent[] = [
     id: "expiring-certificates",
     test: (q) => /(certificate|cert)/i.test(q) && /expir/i.test(q),
     run: async ({ supabase, targetCompanyIds, companyLabel }) => {
-      const in30 = new Date();
-      in30.setDate(in30.getDate() + 30);
+      const in30 = addDaysToDateIso(todayInMalaysia(), 30);
       const { data, error } = await supabase
         .from("employee_certificates")
         .select("cert_name, expiry_date, employees(full_name)")
         .in("company_id", targetCompanyIds)
         .not("expiry_date", "is", null)
-        .lte("expiry_date", in30.toISOString().slice(0, 10))
+        .lte("expiry_date", in30)
         .order("expiry_date", { ascending: true });
       if (error) throw error;
       const rows = data ?? [];

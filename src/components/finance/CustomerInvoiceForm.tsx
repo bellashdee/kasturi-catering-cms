@@ -1,5 +1,7 @@
 "use client";
 
+import { todayInMalaysia } from "@/lib/format";
+import { dueDateFromTerms } from "@/lib/finance/terms";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createCustomerInvoice, type CustomerInvoiceInput } from "@/lib/finance/actions";
@@ -10,7 +12,7 @@ import { ExtractionReportPanel } from "@/components/shared/import/ExtractionRepo
 import { requestExtraction } from "@/lib/importFlow/extractClient";
 
 type Company = { id: string; name: string };
-type Customer = { id: string; name: string; company_id: string };
+type Customer = { id: string; name: string; company_id: string; credit_term?: string | null };
 
 type Extracted = {
   invoice_number?: string | null;
@@ -22,7 +24,7 @@ type Extracted = {
 };
 
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayInMalaysia();
 }
 
 export function CustomerInvoiceForm({ companies, defaultCompanyId, customers }: { companies: Company[]; defaultCompanyId?: string; customers: Customer[] }) {
@@ -32,6 +34,8 @@ export function CustomerInvoiceForm({ companies, defaultCompanyId, customers }: 
   const [invoiceNumber, setInvoiceNumber] = useState(() => `INV-${Date.now().toString().slice(-8)}`);
   const [invoiceDate, setInvoiceDate] = useState(todayIso());
   const [dueDate, setDueDate] = useState("");
+  // the due date follows the customer's payment term until someone types a date themselves
+  const [dueTouched, setDueTouched] = useState(false);
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [taxAmount, setTaxAmount] = useState("0");
@@ -45,6 +49,12 @@ export function CustomerInvoiceForm({ companies, defaultCompanyId, customers }: 
   const [duplicatePending, setDuplicatePending] = useState(false);
 
   const customersForCompany = customers.filter((c) => c.company_id === companyId);
+
+  function applyTerms(nextCustomerId: string, nextInvoiceDate: string) {
+    if (dueTouched || !nextInvoiceDate) return;
+    const customer = customers.find((c) => c.id === nextCustomerId);
+    if (customer) setDueDate(dueDateFromTerms(nextInvoiceDate, customer.credit_term));
+  }
   const total = (Number(amount) || 0) + (Number(taxAmount) || 0);
 
   async function handleExtract() {
@@ -166,7 +176,10 @@ export function CustomerInvoiceForm({ companies, defaultCompanyId, customers }: 
         </div>
         <div>
           <label className="text-[12.5px] font-semibold text-text-secondary">Customer *</label>
-          <select required value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none">
+          <select required value={customerId} onChange={(e) => {
+              setCustomerId(e.target.value);
+              applyTerms(e.target.value, invoiceDate);
+            }} className="mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none">
             <option value="">Select customer</option>
             {customersForCompany.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
@@ -183,11 +196,17 @@ export function CustomerInvoiceForm({ companies, defaultCompanyId, customers }: 
         </div>
         <div>
           <label className="text-[12.5px] font-semibold text-text-secondary">Invoice Date *</label>
-          <input type="date" required value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} className="mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none" />
+          <input type="date" required value={invoiceDate} onChange={(e) => {
+            setInvoiceDate(e.target.value);
+            applyTerms(customerId, e.target.value);
+          }} className="mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none" />
         </div>
         <div>
           <label className="text-[12.5px] font-semibold text-text-secondary">Due Date *</label>
-          <input type="date" required value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none" />
+          <input type="date" required value={dueDate} onChange={(e) => {
+              setDueDate(e.target.value);
+              setDueTouched(true);
+            }} className="mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none" />
         </div>
       </div>
 

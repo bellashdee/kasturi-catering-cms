@@ -16,6 +16,8 @@ export function ReportFilterBar({
   month,
   showMonth = true,
   showYear = true,
+  from,
+  to,
   department,
   departmentOptions,
   category,
@@ -29,6 +31,9 @@ export function ReportFilterBar({
   month?: number;
   showMonth?: boolean;
   showYear?: boolean;
+  /** A custom date range (YYYY-MM-DD). When both are filled in it is used instead of the month and year. */
+  from?: string;
+  to?: string;
   department?: string;
   departmentOptions?: Option[];
   category?: string;
@@ -53,6 +58,18 @@ export function ReportFilterBar({
             {MONTH_LABEL.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
           </select>
         </div>
+      )}
+      {showMonth && showYear && (
+        <>
+          <div>
+            <label className="text-[12px] font-semibold text-text-secondary">From date</label>
+            <input type="date" name="from" defaultValue={from ?? ""} className="mt-1 h-9 w-40 rounded-lg border border-border-strong px-2 text-[13px]" />
+          </div>
+          <div>
+            <label className="text-[12px] font-semibold text-text-secondary">To date</label>
+            <input type="date" name="to" defaultValue={to ?? ""} className="mt-1 h-9 w-40 rounded-lg border border-border-strong px-2 text-[13px]" />
+          </div>
+        </>
       )}
       {departmentOptions && (
         <div>
@@ -82,6 +99,7 @@ export function ReportFilterBar({
         </div>
       )}
       <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply Filters</button>
+      {showMonth && showYear && <p className="basis-full text-[12.5px] text-text-secondary">Fill in both From and To to see an exact date range; otherwise the month and year above are used.</p>}
     </form>
   );
 }

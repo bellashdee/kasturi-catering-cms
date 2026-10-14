@@ -1,5 +1,6 @@
 "use client";
 
+import { todayInMalaysia } from "@/lib/format";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -20,7 +21,7 @@ import { ExtractionReportPanel } from "@/components/shared/import/ExtractionRepo
 
 const input = "mt-1 h-10 w-full rounded-lg border border-border-strong px-3 text-[13px] outline-none focus:border-primary";
 const label = "text-[12px] font-semibold text-text-secondary";
-const todayIso = () => new Date().toISOString().slice(0, 10);
+const todayIso = () => todayInMalaysia();
 const num = (v: string): number | undefined => (v.trim() === "" ? undefined : Number(v));
 
 export function PrintButton() {

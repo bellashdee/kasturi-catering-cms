@@ -1,3 +1,5 @@
+import { todayInMalaysia } from "@/lib/format";
+
 export const DELIVERY_STATUS_LABEL: Record<string, string> = {
   scheduled: "Scheduled",
   in_transit: "In Transit",
@@ -74,8 +76,8 @@ type AttendanceRow = {
 export function computeAttendanceStatus(row: AttendanceRow, expectedClockInTime: string): AttendanceStatus {
   if (row.is_off_day) return "off_day";
 
-  const isToday = row.attendance_date === new Date().toISOString().slice(0, 10);
-  const isPastDay = row.attendance_date < new Date().toISOString().slice(0, 10);
+  const isToday = row.attendance_date === todayInMalaysia();
+  const isPastDay = row.attendance_date < todayInMalaysia();
 
   if (!row.clock_in_time && !row.clock_out_time) {
     return isPastDay ? "missing_clock_in" : "not_clocked_in";
@@ -92,3 +94,4 @@ export function computeAttendanceStatus(row: AttendanceRow, expectedClockInTime:
   expected.setHours(expH, expM + LATE_GRACE_MINUTES, 0, 0);
   return clockInDate > expected ? "late" : "present";
 }
+

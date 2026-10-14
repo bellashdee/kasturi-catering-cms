@@ -1,5 +1,6 @@
 "use client";
 
+import { todayInMalaysia } from "@/lib/format";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/documents/upload";
@@ -8,7 +9,7 @@ import { createPettyCashTransaction } from "@/lib/finance/actions";
 type Company = { id: string; name: string };
 
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayInMalaysia();
 }
 
 export function PettyCashForm({ companies, defaultCompanyId }: { companies: Company[]; defaultCompanyId?: string }) {

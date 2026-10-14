@@ -4,11 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { getDashboardData } from "@/lib/queries/dashboard";
-import { formatCurrency, formatMalaysiaDate } from "@/lib/format";
+import { formatCurrency, formatMalaysiaDate, monthToDateLabel } from "@/lib/format";
+import { LiveClock } from "@/components/layout/LiveClock";
+import { alertsForModules } from "@/lib/notifications/reminders";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { SectionCard, EmptyRow, StatRow } from "@/components/dashboard/SectionCard";
 import { AlertsPanel } from "@/components/dashboard/AlertsPanel";
-import { MODULES } from "@/lib/constants";
 import { canAccessModule } from "@/lib/modules";
 import { getPendingSubmissions } from "@/lib/catering/pending";
 import { SalesAgentSubmissionsAlert } from "@/components/dashboard/SalesAgentSubmissionsAlert";
@@ -50,10 +51,7 @@ export default async function DashboardPage({
   const can = (key: Parameters<typeof canAccessModule>[1]) => canAccessModule(session.allowedModules, key);
   const pendingSubmissions = can("catering") ? await getPendingSubmissions(supabase, targetCompanyIds) : null;
   const companyQuery = requestedId ? `?company=${requestedId}` : "";
-  const alerts = data.alerts.filter((a) => {
-    const owner = MODULES.find((m) => a.meta.startsWith(m.label));
-    return !owner || can(owner.key);
-  });
+  const alerts = alertsForModules(data.alerts, session.allowedModules);
 
   return (
     <div className="flex flex-col gap-6">
@@ -65,16 +63,11 @@ export default async function DashboardPage({
       )}
 
       <div>
-        <h1 className="text-[22px] font-extrabold text-text">
-          {new Date().toLocaleDateString("en-MY", {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}
+        <h1 className="text-[24px] font-extrabold text-text">
+          <LiveClock variant="date" />
         </h1>
-        <p className="mt-0.5 text-[13px] text-text-secondary">
-          Showing figures for <b>{viewLabel}</b>
+        <p className="mt-1 text-[14px] text-text-secondary">
+          Showing figures for <b className="text-text">{viewLabel}</b> · month-to-date figures cover <b className="text-text">{monthToDateLabel()}</b>
         </p>
       </div>
 
@@ -87,11 +80,12 @@ export default async function DashboardPage({
         />
       )}
 
-      <div className="grid grid-cols-4 gap-4">
-        {can("finance-admin") && <KpiCard label="Revenue (MTD)" value={formatCurrency(data.financial.revenue)} hint="From confirmed customer payments" />}
-        {can("finance-admin") && <KpiCard label="Expenses" value={formatCurrency(data.financial.expenses)} tone="warning" iconTone="warning" hint="Supplier payments + other expenses" />}
-        {can("finance-admin") && <KpiCard label="Monthly Costing" value={formatCurrency(data.financial.monthlyCosting)} hint="This calendar month" />}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {can("finance-admin") && <KpiCard icon="sales" label="Revenue (MTD)" value={formatCurrency(data.financial.revenue)} hint="From confirmed customer payments" />}
+        {can("finance-admin") && <KpiCard icon="expenses" label="Expenses" value={formatCurrency(data.financial.expenses)} tone="warning" iconTone="warning" hint="Supplier payments + other expenses" />}
+        {can("finance-admin") && <KpiCard icon="costing" label="Monthly Costing" value={formatCurrency(data.financial.monthlyCosting)} hint="This calendar month" />}
         {can("supplier-procurement") && <KpiCard
+          icon="supplier"
           label="Supplier Outstanding"
           value={formatCurrency(data.supplierPayments.outstanding)}
           tone={data.supplierPayments.overdueCount > 0 ? "danger" : "neutral"}
@@ -99,19 +93,22 @@ export default async function DashboardPage({
           hint={`${data.supplierPayments.overdueCount} overdue`}
         />}
         {can("finance-admin") && <KpiCard
+          icon="invoice"
           label="Customer Outstanding"
           value={formatCurrency(data.customerOutstanding.outstanding)}
           tone={data.customerOutstanding.overdueCount > 0 ? "danger" : "neutral"}
           iconTone="warning"
           hint={`${data.customerOutstanding.overdueCount} overdue`}
         />}
-        {can("catering") && <KpiCard label="Upcoming Events" value={String(data.cateringEvents.upcomingCount)} hint="Next 14 days" />}
+        {can("catering") && <KpiCard icon="calendar" label="Upcoming Events" value={String(data.cateringEvents.upcomingCount)} hint="Next 14 days" />}
         {(can("finance-admin") || can("supplier-procurement")) && <KpiCard
+          icon="payments"
           label="Pending Payments"
           value={String(data.supplierPayments.openCount + data.customerOutstanding.openCount)}
           hint="Supplier + customer invoices"
         />}
         {(can("hr") || can("overtime") || can("finance-admin") || can("supplier-procurement")) && <KpiCard
+          icon="approvals"
           label="Pending Approvals"
           value={String(data.approvals.pendingCount)}
           tone={data.approvals.pendingCount > 0 ? "warning" : "neutral"}
@@ -120,7 +117,7 @@ export default async function DashboardPage({
         />}
       </div>
 
-      <div className="grid grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         {can("finance-admin") && <SectionCard title="Financial Overview">
           <StatRow label="Revenue (MTD)" value={formatCurrency(data.financial.revenue)} />
           <StatRow label="Expenses (MTD)" value={formatCurrency(data.financial.expenses)} />

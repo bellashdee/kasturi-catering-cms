@@ -1,3 +1,5 @@
+import { todayInMalaysia } from "@/lib/format";
+
 export const PETTY_CASH_TYPE_LABEL: Record<string, string> = {
   top_up: "Top-Up",
   expense: "Expense",
@@ -12,9 +14,9 @@ export const PETTY_CASH_PAYMENT_STATUS_LABEL: Record<string, string> = {
 export const PETTY_CASH_OVERDUE_DAYS = 7;
 
 export function pettyCashDaysPending(claimDate: string): number {
-  const claimed = new Date(`${claimDate}T00:00:00`);
-  const now = new Date();
-  return Math.max(0, Math.floor((now.getTime() - claimed.getTime()) / 86_400_000));
+  const claimed = Date.parse(`${claimDate}T00:00:00Z`);
+  const now = Date.parse(`${todayInMalaysia()}T00:00:00Z`);
+  return Math.max(0, Math.round((now - claimed) / 86_400_000));
 }
 
 export function isPettyCashOverdue(claimDate: string, paymentStatus: string): boolean {
@@ -47,7 +49,7 @@ export const MONTH_LABEL = [
 ];
 
 export function isOverdue(dueDate: string, status: string): boolean {
-  return status !== "paid" && dueDate < new Date().toISOString().slice(0, 10);
+  return status !== "paid" && dueDate < todayInMalaysia();
 }
 
 export function monthDateRange(year: number, month: number): { start: string; end: string } {
@@ -55,4 +57,18 @@ export function monthDateRange(year: number, month: number): { start: string; en
   const endDate = new Date(year, month, 0).getDate();
   const end = `${year}-${String(month).padStart(2, "0")}-${String(endDate).padStart(2, "0")}`;
   return { start, end };
+}
+
+export type DateRange = { start: string; end: string };
+
+/** A custom "from - to" period typed in a report filter: both dates must be real, and "from" cannot be after "to". */
+export function parseDateRange(from: string | undefined, to: string | undefined): DateRange | undefined {
+  const valid = (d: string | undefined): d is string => !!d && /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(Date.parse(`${d}T00:00:00Z`));
+  if (!valid(from) || !valid(to) || from > to) return undefined;
+  return { start: from, end: to };
+}
+
+/** The period a report covers: the custom date range when one is given, otherwise the whole chosen month. */
+export function resolvePeriod(year: number, month: number, range?: DateRange): DateRange {
+  return range ?? monthDateRange(year, month);
 }

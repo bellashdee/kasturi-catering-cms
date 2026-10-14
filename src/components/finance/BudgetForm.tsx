@@ -1,5 +1,6 @@
 "use client";
 
+import { malaysiaYearMonth } from "@/lib/format";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBudget } from "@/lib/finance/actions";
@@ -9,8 +10,7 @@ type Company = { id: string; name: string };
 type CostCategory = { id: string; name: string };
 
 function currentYearMonth() {
-  const now = new Date();
-  return { year: now.getFullYear(), month: now.getMonth() + 1 };
+  return malaysiaYearMonth();
 }
 
 export function BudgetForm({ companies, defaultCompanyId, categories }: { companies: Company[]; defaultCompanyId?: string; categories: CostCategory[] }) {

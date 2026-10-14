@@ -5,7 +5,7 @@ import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listProcurementRequests } from "@/lib/procurement/queries";
 import { PROCUREMENT_REQUEST_STATUS_LABEL } from "@/lib/procurement/constants";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatMalaysiaDate } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SupplierProcurementSubNav } from "@/components/procurement/SupplierProcurementSubNav";
@@ -59,8 +59,9 @@ export default async function ProcurementRequestsPage({
           <EmptyRow text="No purchase requests yet." />
         ) : (
           <div>
-            <div className="grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr_1.2fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
+            <div className="grid grid-cols-[1.6fr_0.9fr_0.9fr_0.9fr_0.9fr_1fr_1.2fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
               <div>Item</div>
+              <div>Request date</div>
               <div>Requester</div>
               <div>Department</div>
               <div>Est. Cost</div>
@@ -68,10 +69,11 @@ export default async function ProcurementRequestsPage({
               <div></div>
             </div>
             {requests.map((r) => (
-              <div key={r.id} className="grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr_1.2fr] items-center border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0">
+              <div key={r.id} className="grid grid-cols-[1.6fr_0.9fr_0.9fr_0.9fr_0.9fr_1fr_1.2fr] items-center border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0">
                 <Link href={`/supplier-procurement/requests/${r.id}${query}`} className="font-semibold text-text hover:underline">
                   {r.item_name} <span className="font-normal text-text-muted">× {r.quantity}</span>
                 </Link>
+                <div className="text-text-secondary">{formatMalaysiaDate(r.created_at)}</div>
                 <div className="text-text-secondary">{r.profiles?.full_name ?? "—"}</div>
                 <div className="text-text-secondary">{r.department ?? "—"}</div>
                 <div className="text-text-secondary">{r.estimated_cost != null ? formatCurrency(Number(r.estimated_cost)) : "—"}</div>

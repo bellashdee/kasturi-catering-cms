@@ -4,13 +4,13 @@ import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { getDailyKitchenReport } from "@/lib/kitchen/queries";
 import { PRODUCTION_STATUS_LABEL, PURCHASE_REQUEST_STATUS_LABEL } from "@/lib/kitchen/constants";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, todayInMalaysia } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 import { KitchenSubNav } from "@/components/kitchen/KitchenSubNav";
 
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayInMalaysia();
 }
 
 export default async function KitchenReportsPage({

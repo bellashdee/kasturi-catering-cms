@@ -1,12 +1,13 @@
 "use client";
 
+import { todayInMalaysia } from "@/lib/format";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { markCustomerInvoicePaid } from "@/lib/finance/actions";
 import { markSupplierInvoicePaid } from "@/lib/procurement/actions";
 
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayInMalaysia();
 }
 
 export function MarkInvoicePaidAction({ kind, invoiceId }: { kind: "customer" | "supplier"; invoiceId: string }) {

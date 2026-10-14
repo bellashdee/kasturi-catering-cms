@@ -1,3 +1,4 @@
+import { todayInMalaysia } from "@/lib/format";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 
@@ -59,8 +60,7 @@ export async function saveMessage(
  * without needing to filter by user id explicitly.
  */
 export async function countTodayUserMessages(supabase: DB) {
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
+  const startOfDay = new Date(`${todayInMalaysia()}T00:00:00+08:00`);
   const { count, error } = await supabase
     .from("ai_messages")
     .select("id", { count: "exact", head: true })

@@ -21,7 +21,7 @@ export default async function NewCustomerInvoicePage({
   const selectable = companies.filter((c) => accessibleIds.includes(c.id));
   const defaultCompanyId = requestedId && accessibleIds.includes(requestedId) ? requestedId : selectable[0]?.id;
 
-  const { data: customers } = await supabase.from("customers").select("id, name, company_id").in("company_id", accessibleIds).order("name");
+  const { data: customers } = await supabase.from("customers").select("id, name, company_id, credit_term").in("company_id", accessibleIds).order("name");
 
   return (
     <div className="mx-auto max-w-2xl">

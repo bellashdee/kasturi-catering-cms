@@ -1,11 +1,12 @@
 "use client";
 
+import { todayInMalaysia } from "@/lib/format";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { markPettyCashPaid } from "@/lib/finance/actions";
 
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayInMalaysia();
 }
 
 export function PettyCashPaymentAction({ transactionId, paymentStatus }: { transactionId: string; paymentStatus: string }) {

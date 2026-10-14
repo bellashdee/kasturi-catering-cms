@@ -97,6 +97,7 @@ export type Database = {
           related_table: string
           requested_by: string | null
           status: string
+          updated_at: string
         }
         Insert: {
           company_id?: string | null
@@ -107,6 +108,7 @@ export type Database = {
           related_table: string
           requested_by?: string | null
           status?: string
+          updated_at?: string
         }
         Update: {
           company_id?: string | null
@@ -117,6 +119,7 @@ export type Database = {
           related_table?: string
           requested_by?: string | null
           status?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -466,6 +469,7 @@ export type Database = {
           special_requirements: string | null
           status: Database["public"]["Enums"]["event_status"]
           total_amount: number | null
+          updated_at: string
         }
         Insert: {
           catering_setup?: string | null
@@ -499,6 +503,7 @@ export type Database = {
           special_requirements?: string | null
           status?: Database["public"]["Enums"]["event_status"]
           total_amount?: number | null
+          updated_at?: string
         }
         Update: {
           catering_setup?: string | null
@@ -532,6 +537,7 @@ export type Database = {
           special_requirements?: string | null
           status?: Database["public"]["Enums"]["event_status"]
           total_amount?: number | null
+          updated_at?: string
         }
         Relationships: [
           {
@@ -839,6 +845,7 @@ export type Database = {
           quotation_id: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           tax_amount: number
+          updated_at: string
         }
         Insert: {
           amount: number
@@ -855,6 +862,7 @@ export type Database = {
           quotation_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           tax_amount?: number
+          updated_at?: string
         }
         Update: {
           amount?: number
@@ -871,6 +879,7 @@ export type Database = {
           quotation_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           tax_amount?: number
+          updated_at?: string
         }
         Relationships: [
           {
@@ -921,6 +930,7 @@ export type Database = {
           payment_reference: string | null
           payment_remarks: string | null
           recorded_by: string | null
+          updated_at: string
         }
         Insert: {
           amount: number
@@ -932,6 +942,7 @@ export type Database = {
           payment_reference?: string | null
           payment_remarks?: string | null
           recorded_by?: string | null
+          updated_at?: string
         }
         Update: {
           amount?: number
@@ -943,6 +954,7 @@ export type Database = {
           payment_reference?: string | null
           payment_remarks?: string | null
           recorded_by?: string | null
+          updated_at?: string
         }
         Relationships: [
           {
@@ -985,6 +997,7 @@ export type Database = {
           notes: string | null
           phone: string | null
           registration_no: string | null
+          updated_at: string
         }
         Insert: {
           account_code?: string | null
@@ -1002,6 +1015,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           registration_no?: string | null
+          updated_at?: string
         }
         Update: {
           account_code?: string | null
@@ -1019,6 +1033,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           registration_no?: string | null
+          updated_at?: string
         }
         Relationships: [
           {
@@ -1050,6 +1065,7 @@ export type Database = {
           proof_status: string
           scheduled_time: string | null
           status: string
+          updated_at: string
           vehicle_id: string | null
         }
         Insert: {
@@ -1071,6 +1087,7 @@ export type Database = {
           proof_status?: string
           scheduled_time?: string | null
           status?: string
+          updated_at?: string
           vehicle_id?: string | null
         }
         Update: {
@@ -1092,6 +1109,7 @@ export type Database = {
           proof_status?: string
           scheduled_time?: string | null
           status?: string
+          updated_at?: string
           vehicle_id?: string | null
         }
         Relationships: [
@@ -1377,6 +1395,7 @@ export type Database = {
           expense_date: string
           id: string
           notes: string | null
+          updated_at: string
           vehicle_id: string | null
         }
         Insert: {
@@ -1392,6 +1411,7 @@ export type Database = {
           expense_date: string
           id?: string
           notes?: string | null
+          updated_at?: string
           vehicle_id?: string | null
         }
         Update: {
@@ -1407,6 +1427,7 @@ export type Database = {
           expense_date?: string
           id?: string
           notes?: string | null
+          updated_at?: string
           vehicle_id?: string | null
         }
         Relationships: [
@@ -2165,6 +2186,7 @@ export type Database = {
           expense_date: string
           id: string
           notes: string | null
+          updated_at: string
         }
         Insert: {
           amount: number
@@ -2177,6 +2199,7 @@ export type Database = {
           expense_date: string
           id?: string
           notes?: string | null
+          updated_at?: string
         }
         Update: {
           amount?: number
@@ -2189,6 +2212,7 @@ export type Database = {
           expense_date?: string
           id?: string
           notes?: string | null
+          updated_at?: string
         }
         Relationships: [
           {
@@ -2375,6 +2399,7 @@ export type Database = {
           reorder_level: number
           unit_cost: number
           unit_of_measure: string | null
+          updated_at: string
         }
         Insert: {
           category?: string | null
@@ -2387,6 +2412,7 @@ export type Database = {
           reorder_level?: number
           unit_cost?: number
           unit_of_measure?: string | null
+          updated_at?: string
         }
         Update: {
           category?: string | null
@@ -2399,6 +2425,7 @@ export type Database = {
           reorder_level?: number
           unit_cost?: number
           unit_of_measure?: string | null
+          updated_at?: string
         }
         Relationships: [
           {
@@ -2506,6 +2533,7 @@ export type Database = {
           reason: string | null
           start_date: string
           status: string
+          updated_at: string
         }
         Insert: {
           approval_id?: string | null
@@ -2521,6 +2549,7 @@ export type Database = {
           reason?: string | null
           start_date: string
           status?: string
+          updated_at?: string
         }
         Update: {
           approval_id?: string | null
@@ -2536,6 +2565,7 @@ export type Database = {
           reason?: string | null
           start_date?: string
           status?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -3324,6 +3354,7 @@ export type Database = {
           payment_status: string
           transaction_date: string
           type: string
+          updated_at: string
         }
         Insert: {
           amount: number
@@ -3344,6 +3375,7 @@ export type Database = {
           payment_status?: string
           transaction_date: string
           type: string
+          updated_at?: string
         }
         Update: {
           amount?: number
@@ -3364,6 +3396,7 @@ export type Database = {
           payment_status?: string
           transaction_date?: string
           type?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -3410,6 +3443,7 @@ export type Database = {
           reason: string | null
           requester_id: string | null
           status: string
+          updated_at: string
         }
         Insert: {
           approval_id?: string | null
@@ -3424,6 +3458,7 @@ export type Database = {
           reason?: string | null
           requester_id?: string | null
           status?: string
+          updated_at?: string
         }
         Update: {
           approval_id?: string | null
@@ -3438,6 +3473,7 @@ export type Database = {
           reason?: string | null
           requester_id?: string | null
           status?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -3485,6 +3521,7 @@ export type Database = {
           prep_time_minutes: number | null
           recipe_id: string | null
           status: string
+          updated_at: string
         }
         Insert: {
           assigned_staff?: string | null
@@ -3500,6 +3537,7 @@ export type Database = {
           prep_time_minutes?: number | null
           recipe_id?: string | null
           status?: string
+          updated_at?: string
         }
         Update: {
           assigned_staff?: string | null
@@ -3515,6 +3553,7 @@ export type Database = {
           prep_time_minutes?: number | null
           recipe_id?: string | null
           status?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -3883,6 +3922,7 @@ export type Database = {
           status: string
           supplier_id: string
           total_amount: number
+          updated_at: string
         }
         Insert: {
           company_id: string
@@ -3894,6 +3934,7 @@ export type Database = {
           status?: string
           supplier_id: string
           total_amount?: number
+          updated_at?: string
         }
         Update: {
           company_id?: string
@@ -3905,6 +3946,7 @@ export type Database = {
           status?: string
           supplier_id?: string
           total_amount?: number
+          updated_at?: string
         }
         Relationships: [
           {
@@ -3945,6 +3987,7 @@ export type Database = {
           status: string
           supplier_id: string | null
           unit: string | null
+          updated_at: string
         }
         Insert: {
           company_id: string
@@ -3960,6 +4003,7 @@ export type Database = {
           status?: string
           supplier_id?: string | null
           unit?: string | null
+          updated_at?: string
         }
         Update: {
           company_id?: string
@@ -3975,6 +4019,7 @@ export type Database = {
           status?: string
           supplier_id?: string | null
           unit?: string | null
+          updated_at?: string
         }
         Relationships: [
           {
@@ -4173,6 +4218,7 @@ export type Database = {
           quotation_number: string
           status: string
           total_amount: number
+          updated_at: string
         }
         Insert: {
           catering_event_id: string
@@ -4183,6 +4229,7 @@ export type Database = {
           quotation_number: string
           status?: string
           total_amount?: number
+          updated_at?: string
         }
         Update: {
           catering_event_id?: string
@@ -4193,6 +4240,7 @@ export type Database = {
           quotation_number?: string
           status?: string
           total_amount?: number
+          updated_at?: string
         }
         Relationships: [
           {
@@ -4258,6 +4306,7 @@ export type Database = {
           instructions: string | null
           menu_item_id: string | null
           name: string
+          updated_at: string
           yield_pax: number
         }
         Insert: {
@@ -4267,6 +4316,7 @@ export type Database = {
           instructions?: string | null
           menu_item_id?: string | null
           name: string
+          updated_at?: string
           yield_pax?: number
         }
         Update: {
@@ -4276,6 +4326,7 @@ export type Database = {
           instructions?: string | null
           menu_item_id?: string | null
           name?: string
+          updated_at?: string
           yield_pax?: number
         }
         Relationships: [
@@ -4415,6 +4466,7 @@ export type Database = {
           purchase_order_id: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           supplier_id: string
+          updated_at: string
         }
         Insert: {
           amount: number
@@ -4429,6 +4481,7 @@ export type Database = {
           purchase_order_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           supplier_id: string
+          updated_at?: string
         }
         Update: {
           amount?: number
@@ -4443,6 +4496,7 @@ export type Database = {
           purchase_order_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           supplier_id?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -4489,6 +4543,7 @@ export type Database = {
           requested_by: string | null
           status: string
           supplier_invoice_id: string
+          updated_at: string
         }
         Insert: {
           amount: number
@@ -4503,6 +4558,7 @@ export type Database = {
           requested_by?: string | null
           status?: string
           supplier_invoice_id: string
+          updated_at?: string
         }
         Update: {
           amount?: number
@@ -4517,6 +4573,7 @@ export type Database = {
           requested_by?: string | null
           status?: string
           supplier_invoice_id?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -4575,6 +4632,7 @@ export type Database = {
           phone: string | null
           registration_no: string | null
           status: string
+          updated_at: string
         }
         Insert: {
           account_code?: string | null
@@ -4594,6 +4652,7 @@ export type Database = {
           phone?: string | null
           registration_no?: string | null
           status?: string
+          updated_at?: string
         }
         Update: {
           account_code?: string | null
@@ -4613,6 +4672,7 @@ export type Database = {
           phone?: string | null
           registration_no?: string | null
           status?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -4842,6 +4902,7 @@ export type Database = {
           plate_number: string
           road_tax_expiry: string | null
           status: string
+          updated_at: string
           vehicle_type: string | null
         }
         Insert: {
@@ -4853,6 +4914,7 @@ export type Database = {
           plate_number: string
           road_tax_expiry?: string | null
           status?: string
+          updated_at?: string
           vehicle_type?: string | null
         }
         Update: {
@@ -4864,6 +4926,7 @@ export type Database = {
           plate_number?: string
           road_tax_expiry?: string | null
           status?: string
+          updated_at?: string
           vehicle_type?: string | null
         }
         Relationships: [

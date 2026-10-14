@@ -124,8 +124,8 @@ export type IngredientRequirement = {
 };
 
 export async function getDailyKitchenReport(supabase: DB, companyIds: string[], date: string) {
-  const dayStart = `${date}T00:00:00`;
-  const dayEnd = `${date}T23:59:59.999`;
+  const dayStart = `${date}T00:00:00+08:00`;
+  const dayEnd = `${date}T23:59:59.999+08:00`;
 
   const [ordersRes, movementsRes, purchaseRequestsRes] = await Promise.all([
     supabase

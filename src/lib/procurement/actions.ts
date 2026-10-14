@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { logTaskAudit } from "@/lib/taskProofs/actions";
+import { recordAudit } from "@/lib/audit";
+import { confirmedPaymentDate, todayInMalaysia } from "@/lib/format";
 import type { Database } from "@/lib/supabase/types";
 
 type InvoiceStatus = Database["public"]["Enums"]["invoice_status"];
@@ -184,7 +186,8 @@ export async function createPurchaseOrder(input: PurchaseOrderInput) {
       company_id: input.companyId,
       po_number: input.poNumber,
       supplier_id: input.supplierId,
-      order_date: input.orderDate,
+      // the order date: today (Malaysia) unless another date is given
+      order_date: input.orderDate || todayInMalaysia(),
       total_amount: Math.round(totalAmount * 100) / 100,
       status: "draft",
       created_by: userId,
@@ -213,6 +216,13 @@ export async function createPurchaseOrder(input: PurchaseOrderInput) {
       .eq("id", input.procurementRequestId);
   }
 
+  await recordAudit({
+    companyId: input.companyId,
+    relatedTable: "purchase_orders",
+    relatedId: po.id,
+    action: "created",
+    newValue: `${input.poNumber} · RM ${totalAmount.toFixed(2)} · ${items.length} item(s)`,
+  });
   revalidatePath("/supplier-procurement/orders");
   revalidatePath("/supplier-procurement/requests");
   return po;
@@ -220,8 +230,10 @@ export async function createPurchaseOrder(input: PurchaseOrderInput) {
 
 export async function updatePurchaseOrderStatus(poId: string, status: string) {
   const { supabase } = await requireUser();
+  const { data: before } = await supabase.from("purchase_orders").select("company_id, status").eq("id", poId).single();
   const { error } = await supabase.from("purchase_orders").update({ status }).eq("id", poId);
   if (error) throw error;
+  if (before) await recordAudit({ companyId: before.company_id, relatedTable: "purchase_orders", relatedId: poId, action: "status_changed", previousValue: before.status, newValue: status });
   revalidatePath("/supplier-procurement/orders");
   revalidatePath(`/supplier-procurement/orders/${poId}`);
 }
@@ -421,17 +433,26 @@ export async function recordPaymentExecution(paymentId: string, input: PaymentEx
     .single();
   if (fetchError) throw fetchError;
 
+  // the payment date is the day the payment is confirmed (today unless the real, earlier payment day is given)
+  const paymentDate = confirmedPaymentDate(input.paymentDate);
   const { error: updateError } = await supabase
     .from("supplier_payments")
     .update({
       status: "paid",
-      payment_date: input.paymentDate,
+      payment_date: paymentDate,
       payment_method: input.paymentMethod,
       reference_number: input.referenceNumber || null,
       receipt_document_id: input.receiptDocumentId || null,
     })
     .eq("id", paymentId);
   if (updateError) throw updateError;
+  await recordAudit({
+    companyId: payment.company_id,
+    relatedTable: "supplier_payments",
+    relatedId: paymentId,
+    action: "payment_executed",
+    newValue: `RM ${Number(payment.amount).toFixed(2)} on ${paymentDate} · ${input.paymentMethod}`,
+  });
 
   if (input.receiptDocumentId) {
     await supabase
@@ -469,6 +490,7 @@ export async function markSupplierInvoicePaid(input: {
   paymentRemarks?: string;
 }) {
   const { supabase } = await requireUser();
+  const paymentDate = confirmedPaymentDate(input.paymentDate);
 
   const { data: invoice, error: fetchError } = await supabase
     .from("supplier_invoices")
@@ -488,7 +510,7 @@ export async function markSupplierInvoicePaid(input: {
     relatedTable: "supplier_invoices",
     relatedId: invoice.id,
     action: "marked_paid",
-    newValue: input.paymentDate,
+    newValue: paymentDate,
     reason: [input.paymentReference, input.paymentRemarks].filter(Boolean).join(" — ") || undefined,
   });
 

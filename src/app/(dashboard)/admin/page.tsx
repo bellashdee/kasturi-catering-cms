@@ -4,14 +4,13 @@ import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { getMonthlyCostBreakdown, getMonthlySales, listCostCategories } from "@/lib/finance/queries";
 import { MONTH_LABEL } from "@/lib/finance/constants";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, malaysiaYearMonth } from "@/lib/format";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { MonthlySalesForm } from "@/components/finance/MonthlySalesForm";
 
 function currentYearMonth() {
-  const now = new Date();
-  return { year: now.getFullYear(), month: now.getMonth() + 1 };
+  return malaysiaYearMonth();
 }
 
 export default async function AdminPage({

@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { logTaskAudit } from "@/lib/taskProofs/actions";
+import { recordAudit } from "@/lib/audit";
+import { confirmedPaymentDate, todayInMalaysia } from "@/lib/format";
 import { DUPLICATE_INVOICE_MESSAGE } from "@/lib/finance/constants";
 import type { Database } from "@/lib/supabase/types";
 
@@ -74,7 +76,7 @@ export type PettyCashInput = {
 
 export async function createPettyCashTransaction(input: PettyCashInput) {
   const { supabase, userId } = await requireUser();
-  const { error } = await supabase.from("petty_cash_transactions").insert({
+  const { data: created, error } = await supabase.from("petty_cash_transactions").insert({
     company_id: input.companyId,
     type: input.type,
     claimant_name: input.type === "expense" ? input.claimantName || null : null,
@@ -83,11 +85,19 @@ export async function createPettyCashTransaction(input: PettyCashInput) {
     category: input.category || null,
     description: input.description || null,
     amount: input.amount,
-    transaction_date: input.transactionDate,
+    // the claim date: today (Malaysia) unless a date is given; the payment date is recorded separately when it is paid
+    transaction_date: input.transactionDate || todayInMalaysia(),
     document_id: input.documentId || null,
     created_by: userId,
-  });
+  }).select("id").single();
   if (error) throw error;
+  await recordAudit({
+    companyId: input.companyId,
+    relatedTable: "petty_cash_transactions",
+    relatedId: created.id,
+    action: input.type === "expense" ? "claim_submitted" : "top_up_recorded",
+    newValue: `RM ${Number(input.amount).toFixed(2)}${input.claimantName ? ` · ${input.claimantName}` : ""}`,
+  });
   revalidatePath("/finance/petty-cash");
   revalidatePath("/admin");
   revalidatePath("/");
@@ -102,17 +112,29 @@ export type MarkPettyCashPaidInput = {
 
 export async function markPettyCashPaid(input: MarkPettyCashPaidInput) {
   const { supabase, userId } = await requireUser();
+  const paymentDate = confirmedPaymentDate(input.paymentDate);
+  const { data: before } = await supabase.from("petty_cash_transactions").select("company_id, amount, payment_status").eq("id", input.transactionId).single();
   const { error } = await supabase
     .from("petty_cash_transactions")
     .update({
       payment_status: "paid",
-      payment_date: input.paymentDate,
+      payment_date: paymentDate,
       payment_reference: input.paymentReference || null,
       payment_remarks: input.paymentRemarks || null,
       paid_by: userId,
     })
     .eq("id", input.transactionId);
   if (error) throw error;
+  if (before) {
+    await recordAudit({
+      companyId: before.company_id,
+      relatedTable: "petty_cash_transactions",
+      relatedId: input.transactionId,
+      action: "marked_paid",
+      previousValue: before.payment_status,
+      newValue: `Paid ${paymentDate} · RM ${Number(before.amount).toFixed(2)}`,
+    });
+  }
   revalidatePath("/finance/petty-cash");
   revalidatePath("/admin");
   revalidatePath("/");
@@ -187,6 +209,7 @@ export async function createCustomerInvoice(input: CustomerInvoiceInput) {
     .select("id")
     .single();
   if (error) throw error;
+  await recordAudit({ companyId: input.companyId, relatedTable: "customer_invoices", relatedId: data.id, action: "created", newValue: `${input.invoiceNumber} · due ${input.dueDate}` });
   revalidatePath("/finance/invoices");
   return data;
 }
@@ -207,17 +230,25 @@ export type CustomerPaymentInput = {
  */
 export async function recordCustomerPayment(input: CustomerPaymentInput) {
   const { supabase, userId } = await requireUser();
+  const paymentDate = confirmedPaymentDate(input.paymentDate);
 
   const { error: paymentError } = await supabase.from("customer_payments").insert({
     company_id: input.companyId,
     customer_invoice_id: input.customerInvoiceId,
     amount: input.amount,
-    payment_date: input.paymentDate,
+    payment_date: paymentDate,
     payment_reference: input.paymentReference || null,
     payment_remarks: input.paymentRemarks || null,
     recorded_by: userId,
   });
   if (paymentError) throw paymentError;
+  await recordAudit({
+    companyId: input.companyId,
+    relatedTable: "customer_invoices",
+    relatedId: input.customerInvoiceId,
+    action: "payment_recorded",
+    newValue: `RM ${Number(input.amount).toFixed(2)} on ${paymentDate}`,
+  });
 
   const [{ data: invoice }, { data: payments }] = await Promise.all([
     supabase.from("customer_invoices").select("id, amount, tax_amount").eq("id", input.customerInvoiceId).single(),
@@ -250,6 +281,7 @@ export async function markCustomerInvoicePaid(input: {
   paymentRemarks?: string;
 }) {
   const { supabase, userId } = await requireUser();
+  const paymentDate = confirmedPaymentDate(input.paymentDate);
 
   const { data: invoice, error: fetchError } = await supabase
     .from("customer_invoices")
@@ -271,7 +303,7 @@ export async function markCustomerInvoicePaid(input: {
       company_id: invoice.company_id,
       customer_invoice_id: invoice.id,
       amount: remaining,
-      payment_date: input.paymentDate,
+      payment_date: paymentDate,
       payment_reference: input.paymentReference || null,
       payment_remarks: input.paymentRemarks || null,
       recorded_by: userId,
@@ -286,7 +318,7 @@ export async function markCustomerInvoicePaid(input: {
     relatedTable: "customer_invoices",
     relatedId: invoice.id,
     action: "marked_paid",
-    newValue: input.paymentDate,
+    newValue: paymentDate,
   });
 
   revalidatePath("/finance/invoices");

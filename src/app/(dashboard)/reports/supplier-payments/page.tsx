@@ -1,3 +1,4 @@
+import { parseDateRange } from "@/lib/finance/constants";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -5,7 +6,7 @@ import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { getSupplierPaymentReportRows } from "@/lib/reports/queries";
 import { PAYMENT_STATUS_LABEL } from "@/lib/procurement/constants";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, malaysiaYearMonth } from "@/lib/format";
 import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { ReportTable } from "@/components/reports/ReportTable";
 import { buildReportRows } from "@/lib/reports/buildRows";
@@ -13,14 +14,13 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 
 function currentYearMonth() {
-  const now = new Date();
-  return { year: now.getFullYear(), month: now.getMonth() + 1 };
+  return malaysiaYearMonth();
 }
 
 export default async function SupplierPaymentReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; year?: string; month?: string; department?: string; status?: string }>;
+  searchParams: Promise<{ company?: string; year?: string; month?: string; from?: string; to?: string; department?: string; status?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -29,7 +29,7 @@ export default async function SupplierPaymentReportPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, year: yearParam, month: monthParam, department: departmentParam, status: statusParam } = await searchParams;
+  const { company: requestedId, year: yearParam, month: monthParam, from: fromParam, to: toParam, department: departmentParam, status: statusParam } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -40,8 +40,9 @@ export default async function SupplierPaymentReportPage({
   const { year: nowYear, month: nowMonth } = currentYearMonth();
   const year = Number(yearParam) || nowYear;
   const month = Number(monthParam) || nowMonth;
+  const range = parseDateRange(fromParam, toParam);
 
-  const allRows = await getSupplierPaymentReportRows(supabase, targetCompanyIds, year, month);
+  const allRows = await getSupplierPaymentReportRows(supabase, targetCompanyIds, year, month, range);
   const departments = Array.from(new Set(allRows.map((r) => r.supplier_invoices?.department).filter((d): d is string => !!d))).sort();
   const rows = allRows.filter((r) => {
     if (departmentParam && r.supplier_invoices?.department !== departmentParam) return false;
@@ -80,6 +81,8 @@ export default async function SupplierPaymentReportPage({
         requestedCompanyId={requestedId}
         year={year}
         month={month}
+        from={fromParam}
+        to={toParam}
         department={departmentParam}
         departmentOptions={departments.map((d) => ({ value: d, label: d }))}
         status={statusParam}

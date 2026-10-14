@@ -1,12 +1,13 @@
 "use client";
 
+import { todayInMalaysia } from "@/lib/format";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/documents/upload";
 import { recordPaymentExecution } from "@/lib/procurement/actions";
 
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayInMalaysia();
 }
 
 export function PaymentExecutionForm({ paymentId, companyId }: { paymentId: string; companyId: string }) {

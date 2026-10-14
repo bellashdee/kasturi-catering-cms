@@ -6,8 +6,8 @@ import { resolveCompanyScope } from "@/lib/companyScope";
 import { listProductionOrders } from "@/lib/kitchen/queries";
 import { getMonthlyCostBreakdown } from "@/lib/finance/queries";
 import { PRODUCTION_STATUS_LABEL } from "@/lib/kitchen/constants";
-import { monthDateRange } from "@/lib/finance/constants";
-import { formatCurrency } from "@/lib/format";
+import { parseDateRange, resolvePeriod } from "@/lib/finance/constants";
+import { formatCurrency, malaysiaYearMonth } from "@/lib/format";
 import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { ReportTable } from "@/components/reports/ReportTable";
 import { buildReportRows } from "@/lib/reports/buildRows";
@@ -15,14 +15,13 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 
 function currentYearMonth() {
-  const now = new Date();
-  return { year: now.getFullYear(), month: now.getMonth() + 1 };
+  return malaysiaYearMonth();
 }
 
 export default async function KitchenReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; year?: string; month?: string; status?: string }>;
+  searchParams: Promise<{ company?: string; year?: string; month?: string; from?: string; to?: string; status?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -31,7 +30,7 @@ export default async function KitchenReportPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, year: yearParam, month: monthParam, status: statusParam } = await searchParams;
+  const { company: requestedId, year: yearParam, month: monthParam, from: fromParam, to: toParam, status: statusParam } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -42,11 +41,12 @@ export default async function KitchenReportPage({
   const { year: nowYear, month: nowMonth } = currentYearMonth();
   const year = Number(yearParam) || nowYear;
   const month = Number(monthParam) || nowMonth;
-  const { start, end } = monthDateRange(year, month);
+  const range = parseDateRange(fromParam, toParam);
+  const { start, end } = resolvePeriod(year, month, range);
 
   const [allOrders, costRows] = await Promise.all([
     listProductionOrders(supabase, targetCompanyIds),
-    getMonthlyCostBreakdown(supabase, targetCompanyIds, year, month),
+    getMonthlyCostBreakdown(supabase, targetCompanyIds, year, month, range),
   ]);
 
   const monthOrders = allOrders.filter((o) => !!o.planned_date && o.planned_date >= start && o.planned_date <= end);
@@ -86,6 +86,8 @@ export default async function KitchenReportPage({
         requestedCompanyId={requestedId}
         year={year}
         month={month}
+        from={fromParam}
+        to={toParam}
         status={statusParam}
         statusOptions={Object.entries(PRODUCTION_STATUS_LABEL).map(([value, label]) => ({ value, label }))}
       />

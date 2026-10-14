@@ -6,6 +6,9 @@ import { assertValidAssignee } from "@/lib/driver/assignee";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/types";
 import { SALES_AGENTS } from "@/lib/catering/constants";
+import { todayInMalaysia } from "@/lib/format";
+import { recordAudit } from "@/lib/audit";
+import { dueDateFromTerms } from "@/lib/finance/terms";
 import { dayPax, type EventDay } from "@/lib/catering/days";
 import { validateDays, validateServiceDetails } from "@/lib/catering/validation";
 
@@ -176,6 +179,7 @@ export async function createEvent(input: EventInput) {
       throw daysError;
     }
   }
+  await recordAudit({ companyId: input.companyId, relatedTable: "catering_events", relatedId: data.id, action: "created", newValue: input.eventName });
   revalidatePath("/catering");
   return data;
 }
@@ -229,7 +233,7 @@ export async function updateEventStatus(eventId: string, status: string) {
 
   const { data: event, error: eventError } = await supabase
     .from("catering_events")
-    .select("id, company_id, event_date, event_time, pax_count")
+    .select("id, company_id, event_date, event_time, pax_count, status")
     .eq("id", eventId)
     .single();
   if (eventError) throw eventError;
@@ -239,6 +243,9 @@ export async function updateEventStatus(eventId: string, status: string) {
 
   const { error: updateError } = await supabase.from("catering_events").update({ status: status as EventStatus }).eq("id", eventId);
   if (updateError) throw updateError;
+  if (event.status !== status) {
+    await recordAudit({ companyId: event.company_id, relatedTable: "catering_events", relatedId: eventId, action: "status_changed", previousValue: event.status, newValue: status });
+  }
 
   if (creating) {
     if (days.length > 0) await createWorkForDays(supabase, event.company_id, eventId, days);
@@ -309,7 +316,7 @@ async function createWorkForSingleDay(
     .maybeSingle();
 
   if (!existingDelivery) {
-    const scheduledTime = event.event_time ? `${event.event_date}T${event.event_time}` : `${event.event_date}T00:00:00`;
+    const scheduledTime = event.event_time ? `${event.event_date}T${event.event_time}+08:00` : `${event.event_date}T00:00:00+08:00`;
     await supabase.from("deliveries").insert({
       company_id: event.company_id,
       catering_event_id: event.id,
@@ -434,6 +441,7 @@ export async function createQuotation(input: QuotationInput) {
 
   await supabase.from("catering_events").update({ total_amount: totalAmount }).eq("id", input.eventId);
 
+  await recordAudit({ companyId: input.companyId, relatedTable: "quotations", relatedId: quotation.id, action: "created", newValue: `${input.quotationNumber} · RM ${totalAmount.toFixed(2)}` });
   revalidatePath(`/catering/${input.eventId}`);
   return quotation;
 }
@@ -448,13 +456,16 @@ export async function updateQuotationStatus(quotationId: string, status: string)
 
   const { data: quotation, error: fetchError } = await supabase
     .from("quotations")
-    .select("id, company_id, catering_event_id, quotation_number, total_amount, catering_events(customer_id)")
+    .select("id, company_id, catering_event_id, quotation_number, total_amount, status, catering_events(customer_id)")
     .eq("id", quotationId)
     .single();
   if (fetchError) throw fetchError;
 
   const { error: updateError } = await supabase.from("quotations").update({ status }).eq("id", quotationId);
   if (updateError) throw updateError;
+  if (quotation.status !== status) {
+    await recordAudit({ companyId: quotation.company_id, relatedTable: "quotations", relatedId: quotationId, action: "status_changed", previousValue: quotation.status, newValue: status });
+  }
 
   if (status === "accepted") {
     // Reuse updateEventStatus so accepting a quotation also creates the
@@ -475,9 +486,9 @@ export async function updateQuotationStatus(quotationId: string, status: string)
         .maybeSingle();
 
       if (!existingInvoice) {
-        const today = new Date();
-        const dueDate = new Date(today);
-        dueDate.setDate(dueDate.getDate() + 14);
+        // the invoice date is today (Malaysia); the due date follows the customer's payment term (14 days when there is none)
+        const invoiceDate = todayInMalaysia();
+        const { data: customer } = await finance.from("customers").select("credit_term").eq("id", customerId).maybeSingle();
 
         await finance.from("customer_invoices").insert({
           company_id: quotation.company_id,
@@ -485,8 +496,8 @@ export async function updateQuotationStatus(quotationId: string, status: string)
           catering_event_id: quotation.catering_event_id,
           quotation_id: quotationId,
           invoice_number: quotation.quotation_number,
-          invoice_date: today.toISOString().slice(0, 10),
-          due_date: dueDate.toISOString().slice(0, 10),
+          invoice_date: invoiceDate,
+          due_date: dueDateFromTerms(invoiceDate, customer?.credit_term),
           amount: quotation.total_amount,
           status: "pending_review",
         });

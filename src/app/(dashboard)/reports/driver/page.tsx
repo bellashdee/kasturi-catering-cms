@@ -5,8 +5,8 @@ import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listDeliveries, listDriverExpenses } from "@/lib/driver/queries";
 import { DELIVERY_STATUS_LABEL, EXPENSE_CATEGORY_LABEL } from "@/lib/driver/constants";
-import { monthDateRange } from "@/lib/finance/constants";
-import { formatCurrency, formatMalaysiaDateTime, malaysiaDateOf } from "@/lib/format";
+import { parseDateRange, resolvePeriod } from "@/lib/finance/constants";
+import { formatCurrency, formatMalaysiaDateTime, malaysiaDateOf, malaysiaYearMonth } from "@/lib/format";
 import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { ReportTable } from "@/components/reports/ReportTable";
 import { buildReportRows } from "@/lib/reports/buildRows";
@@ -14,14 +14,13 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 
 function currentYearMonth() {
-  const now = new Date();
-  return { year: now.getFullYear(), month: now.getMonth() + 1 };
+  return malaysiaYearMonth();
 }
 
 export default async function DriverReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; year?: string; month?: string; category?: string; status?: string }>;
+  searchParams: Promise<{ company?: string; year?: string; month?: string; from?: string; to?: string; category?: string; status?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -30,7 +29,7 @@ export default async function DriverReportPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, year: yearParam, month: monthParam, category: categoryParam, status: statusParam } = await searchParams;
+  const { company: requestedId, year: yearParam, month: monthParam, from: fromParam, to: toParam, category: categoryParam, status: statusParam } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -41,7 +40,8 @@ export default async function DriverReportPage({
   const { year: nowYear, month: nowMonth } = currentYearMonth();
   const year = Number(yearParam) || nowYear;
   const month = Number(monthParam) || nowMonth;
-  const { start, end } = monthDateRange(year, month);
+  const range = parseDateRange(fromParam, toParam);
+  const { start, end } = resolvePeriod(year, month, range);
 
   const [allDeliveries, allExpenses] = await Promise.all([
     listDeliveries(supabase, targetCompanyIds),
@@ -85,6 +85,8 @@ export default async function DriverReportPage({
         requestedCompanyId={requestedId}
         year={year}
         month={month}
+        from={fromParam}
+        to={toParam}
         category={categoryParam}
         categoryOptions={Object.entries(EXPENSE_CATEGORY_LABEL).map(([value, label]) => ({ value, label }))}
         categoryLabel="Expense Category"

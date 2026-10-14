@@ -1,5 +1,6 @@
 "use client";
 
+import { todayInMalaysia } from "@/lib/format";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPurchaseOrder, type PurchaseOrderInput } from "@/lib/procurement/actions";
@@ -19,7 +20,7 @@ function emptyItem(): Item {
 }
 
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayInMalaysia();
 }
 
 export function PurchaseOrderForm({

@@ -6,22 +6,18 @@ import { resolveCompanyScope } from "@/lib/companyScope";
 import { listCustomerInvoices } from "@/lib/finance/queries";
 import { listSupplierInvoices } from "@/lib/procurement/queries";
 import { INVOICE_STATUS_LABEL, isOverdue } from "@/lib/finance/constants";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, todayInMalaysia, addDaysToDateIso, mondayOfWeekIso } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow, SectionCard, StatRow } from "@/components/dashboard/SectionCard";
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { MarkInvoicePaidAction } from "@/components/finance/MarkInvoicePaidAction";
 
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayInMalaysia();
 }
 
 function startOfWeekIso(): string {
-  const now = new Date();
-  const day = now.getDay();
-  const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(now.setDate(diff));
-  return monday.toISOString().slice(0, 10);
+  return mondayOfWeekIso(todayInMalaysia());
 }
 
 function monthKey(dateStr: string): string {
@@ -66,9 +62,7 @@ export default async function OutstandingPaymentPage({
   const view: "customer" | "supplier" = viewParam === "supplier" ? "supplier" : "customer";
 
   const today = todayIso();
-  const weekEnd = new Date();
-  weekEnd.setDate(weekEnd.getDate() + 7);
-  const weekEndIso = weekEnd.toISOString().slice(0, 10);
+  const weekEndIso = addDaysToDateIso(today, 7);
   const weekStartIso = startOfWeekIso();
 
   let rows: Row[] = [];

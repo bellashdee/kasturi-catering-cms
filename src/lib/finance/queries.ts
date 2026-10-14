@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
-import { monthDateRange } from "@/lib/finance/constants";
+import { resolvePeriod, type DateRange } from "@/lib/finance/constants";
 
 type DB = SupabaseClient<Database>;
 
@@ -19,10 +19,10 @@ export type CostRow = {
  * Monthly Costing page can filter/group in memory instead of needing a
  * different query per filter combination.
  */
-export async function getMonthlyCostBreakdown(supabase: DB, companyIds: string[], year: number, month: number): Promise<CostRow[]> {
-  const { start, end } = monthDateRange(year, month);
-  const startTs = `${start}T00:00:00`;
-  const endTs = `${end}T23:59:59.999`;
+export async function getMonthlyCostBreakdown(supabase: DB, companyIds: string[], year: number, month: number, range?: DateRange): Promise<CostRow[]> {
+  const { start, end } = resolvePeriod(year, month, range);
+  const startTs = `${start}T00:00:00+08:00`;
+  const endTs = `${end}T23:59:59.999+08:00`;
 
   const [
     kitchenMovements,
@@ -190,8 +190,8 @@ export async function getMonthlyCostBreakdown(supabase: DB, companyIds: string[]
   return rows;
 }
 
-export async function getMonthlyRevenue(supabase: DB, companyIds: string[], year: number, month: number) {
-  const { start, end } = monthDateRange(year, month);
+export async function getMonthlyRevenue(supabase: DB, companyIds: string[], year: number, month: number, range?: DateRange) {
+  const { start, end } = resolvePeriod(year, month, range);
   const { data } = await supabase
     .from("customer_payments")
     .select("amount")
@@ -283,7 +283,7 @@ export async function getCustomerInvoice(supabase: DB, id: string) {
  * Total sales for the month. Uses the monthly sales figures recorded for the selected companies;
  * when none is recorded, falls back to customer payments received that month.
  */
-export async function getMonthlySales(supabase: DB, companyIds: string[], year: number, month: number) {
+export async function getMonthlySales(supabase: DB, companyIds: string[], year: number, month: number, range?: DateRange) {
   const { data } = await supabase
     .from("monthly_sales")
     .select("company_id, sales_amount")
@@ -294,5 +294,5 @@ export async function getMonthlySales(supabase: DB, companyIds: string[], year: 
   if (recorded.length > 0) {
     return { amount: recorded.reduce((t, r) => t + Number(r.sales_amount), 0), recorded: true };
   }
-  return { amount: await getMonthlyRevenue(supabase, companyIds, year, month), recorded: false };
+  return { amount: await getMonthlyRevenue(supabase, companyIds, year, month, range), recorded: false };
 }

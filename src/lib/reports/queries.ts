@@ -1,12 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
-import { monthDateRange } from "@/lib/finance/constants";
+import { resolvePeriod, type DateRange } from "@/lib/finance/constants";
 import { getMonthlyCostBreakdown, getMonthlyRevenue } from "@/lib/finance/queries";
 
 type DB = SupabaseClient<Database>;
 
-export async function getRevenueReportRows(supabase: DB, companyIds: string[], year: number, month: number) {
-  const { start, end } = monthDateRange(year, month);
+export async function getRevenueReportRows(supabase: DB, companyIds: string[], year: number, month: number, range?: DateRange) {
+  const { start, end } = resolvePeriod(year, month, range);
   const { data, error } = await supabase
     .from("customer_payments")
     .select("id, amount, payment_date, company_id, companies(name), customer_invoices(invoice_number, status, customers(name))")
@@ -18,8 +18,8 @@ export async function getRevenueReportRows(supabase: DB, companyIds: string[], y
   return data;
 }
 
-export async function getCateringReportRows(supabase: DB, companyIds: string[], year: number, month: number) {
-  const { start, end } = monthDateRange(year, month);
+export async function getCateringReportRows(supabase: DB, companyIds: string[], year: number, month: number, range?: DateRange) {
+  const { start, end } = resolvePeriod(year, month, range);
   const { data: events, error } = await supabase
     .from("catering_events")
     .select("id, event_name, event_date, pax_count, event_type, status, total_amount, company_id, companies(name), customers(name)")
@@ -47,10 +47,10 @@ export async function getCateringReportRows(supabase: DB, companyIds: string[], 
   });
 }
 
-export async function getSupplierPaymentReportRows(supabase: DB, companyIds: string[], year: number, month: number) {
-  const { start, end } = monthDateRange(year, month);
-  const startTs = `${start}T00:00:00`;
-  const endTs = `${end}T23:59:59.999`;
+export async function getSupplierPaymentReportRows(supabase: DB, companyIds: string[], year: number, month: number, range?: DateRange) {
+  const { start, end } = resolvePeriod(year, month, range);
+  const startTs = `${start}T00:00:00+08:00`;
+  const endTs = `${end}T23:59:59.999+08:00`;
   const { data, error } = await supabase
     .from("supplier_payments")
     .select("id, amount, status, payment_date, payment_method, created_at, company_id, companies(name), supplier_invoices(invoice_number, department, suppliers(name))")
@@ -62,8 +62,8 @@ export async function getSupplierPaymentReportRows(supabase: DB, companyIds: str
   return data;
 }
 
-export async function getHRReportRows(supabase: DB, companyIds: string[], year: number, month: number) {
-  const { start, end } = monthDateRange(year, month);
+export async function getHRReportRows(supabase: DB, companyIds: string[], year: number, month: number, range?: DateRange) {
+  const { start, end } = resolvePeriod(year, month, range);
   const { data, error } = await supabase
     .from("payroll_records")
     .select("id, gross_pay, net_pay, deductions, status, pay_period_start, pay_period_end, company_id, companies(name), employees(full_name, department)")
@@ -75,8 +75,8 @@ export async function getHRReportRows(supabase: DB, companyIds: string[], year: 
   return data;
 }
 
-export async function getMarketingReportRows(supabase: DB, companyIds: string[], year: number, month: number) {
-  const { start, end } = monthDateRange(year, month);
+export async function getMarketingReportRows(supabase: DB, companyIds: string[], year: number, month: number, range?: DateRange) {
+  const { start, end } = resolvePeriod(year, month, range);
   const { data, error } = await supabase
     .from("campaigns")
     .select("id, name, channel, status, start_date, end_date, budget, company_id, companies(name)")
@@ -93,12 +93,12 @@ export async function getMarketingReportRows(supabase: DB, companyIds: string[],
  * Main Dashboard shows "for now", but for any past month/year the user picks.
  * Reuses Finance's own aggregation rather than re-deriving totals a second way.
  */
-export async function getCompanySummary(supabase: DB, companyIds: string[], year: number, month: number) {
-  const { start, end } = monthDateRange(year, month);
+export async function getCompanySummary(supabase: DB, companyIds: string[], year: number, month: number, range?: DateRange) {
+  const { start, end } = resolvePeriod(year, month, range);
 
   const [revenue, costBreakdown, headcountRes, campaignsRes, productionRes, deliveriesRes, supplierOutstandingRes, customerOutstandingRes] = await Promise.all([
-    getMonthlyRevenue(supabase, companyIds, year, month),
-    getMonthlyCostBreakdown(supabase, companyIds, year, month),
+    getMonthlyRevenue(supabase, companyIds, year, month, range),
+    getMonthlyCostBreakdown(supabase, companyIds, year, month, range),
     supabase.from("employees").select("id", { count: "exact", head: true }).in("company_id", companyIds).eq("status", "active"),
     supabase.from("campaigns").select("id", { count: "exact", head: true }).in("company_id", companyIds).eq("status", "active"),
     supabase.from("production_orders").select("id", { count: "exact", head: true }).in("company_id", companyIds).gte("planned_date", start).lte("planned_date", end),
