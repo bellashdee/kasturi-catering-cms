@@ -2174,6 +2174,173 @@ export type Database = {
           },
         ]
       }
+      event_attendance: {
+        Row: {
+          attendance_date: string
+          clock_in_check: string | null
+          clock_in_distance_m: number | null
+          clock_in_latitude: number | null
+          clock_in_longitude: number | null
+          clock_in_time: string | null
+          clock_out_check: string | null
+          clock_out_distance_m: number | null
+          clock_out_latitude: number | null
+          clock_out_longitude: number | null
+          clock_out_time: string | null
+          company_id: string
+          created_at: string
+          driver_profile_id: string | null
+          event_id: string | null
+          event_key: string
+          event_location: string
+          event_name: string
+          ic_number: string | null
+          id: string
+          person_name: string
+          site_id: string | null
+          staff_key: string
+          staff_type: string
+          updated_at: string
+        }
+        Insert: {
+          attendance_date: string
+          clock_in_check?: string | null
+          clock_in_distance_m?: number | null
+          clock_in_latitude?: number | null
+          clock_in_longitude?: number | null
+          clock_in_time?: string | null
+          clock_out_check?: string | null
+          clock_out_distance_m?: number | null
+          clock_out_latitude?: number | null
+          clock_out_longitude?: number | null
+          clock_out_time?: string | null
+          company_id: string
+          created_at?: string
+          driver_profile_id?: string | null
+          event_id?: string | null
+          event_key: string
+          event_location: string
+          event_name: string
+          ic_number?: string | null
+          id?: string
+          person_name: string
+          site_id?: string | null
+          staff_key: string
+          staff_type: string
+          updated_at?: string
+        }
+        Update: {
+          attendance_date?: string
+          clock_in_check?: string | null
+          clock_in_distance_m?: number | null
+          clock_in_latitude?: number | null
+          clock_in_longitude?: number | null
+          clock_in_time?: string | null
+          clock_out_check?: string | null
+          clock_out_distance_m?: number | null
+          clock_out_latitude?: number | null
+          clock_out_longitude?: number | null
+          clock_out_time?: string | null
+          company_id?: string
+          created_at?: string
+          driver_profile_id?: string | null
+          event_id?: string | null
+          event_key?: string
+          event_location?: string
+          event_name?: string
+          ic_number?: string | null
+          id?: string
+          person_name?: string
+          site_id?: string | null
+          staff_key?: string
+          staff_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_attendance_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_attendance_driver_profile_id_fkey"
+            columns: ["driver_profile_id"]
+            isOneToOne: false
+            referencedRelation: "driver_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_attendance_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "catering_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_attendance_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "event_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_sites: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          latitude: number
+          location_key: string
+          location_text: string
+          longitude: number
+          source: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          latitude: number
+          location_key: string
+          location_text: string
+          longitude: number
+          source?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          latitude?: number
+          location_key?: string
+          location_text?: string
+          longitude?: number
+          source?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_sites_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_sites_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expenses: {
         Row: {
           amount: number
