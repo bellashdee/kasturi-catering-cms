@@ -8,6 +8,7 @@ type Company = { id: string; name: string; legal_name: string };
 function pageTitle(pathname: string): string {
   if (pathname === "/") return "Main Dashboard";
   if (pathname.startsWith("/settings")) return "Settings";
+  if (pathname.startsWith("/priority-centre")) return "Priority Centre";
   const found = MODULES.find((m) => [m.href, ...(m.matchPrefixes ?? [])].some((p) => pathname === p || pathname.startsWith(`${p}/`)));
   return found?.label ?? "Central Management System";
 }

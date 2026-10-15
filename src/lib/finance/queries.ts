@@ -54,6 +54,7 @@ export async function getMonthlyCostBreakdown(supabase: DB, companyIds: string[]
       .select("company_id, amount, supplier_invoices(department)")
       .in("company_id", companyIds)
       .eq("status", "paid")
+      .not("supplier_invoice_id", "is", null) // Finance supplier payments are counted from finance_payments
       .gte("payment_date", start)
       .lte("payment_date", end),
     supabase

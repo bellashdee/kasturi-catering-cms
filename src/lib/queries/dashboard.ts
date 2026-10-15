@@ -53,6 +53,7 @@ export async function getFinancialOverview(supabase: DB, companyIds: string[]) {
       .select("amount")
       .in("company_id", companyIds)
       .eq("status", "paid")
+      .not("supplier_invoice_id", "is", null) // Finance supplier payments are counted in the Finance payments summary
       .gte("payment_date", monthStart),
     supabase
       .from("expenses")

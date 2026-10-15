@@ -13,6 +13,12 @@ const ICONS: Record<string, React.ReactNode> = {
       <rect x="11" y="11" width="6" height="6" rx="1.2" />
     </>
   ),
+  priority: (
+    <>
+      <path d="M5 3h10v14H5z" />
+      <path d="M8 7l1.2 1.2L12 5.5M8 12l1.2 1.2L12 10.5" />
+    </>
+  ),
   hr: (
     <>
       <circle cx="10" cy="7" r="3" />
@@ -122,6 +128,10 @@ function NavItem({ href, icon, label, matchPrefixes, badge }: { href: string; ic
 
 export function MainDashboardLink() {
   return <NavItem href="/" icon="dashboard" label="Main Dashboard" />;
+}
+
+export function PriorityCentreLink() {
+  return <NavItem href="/priority-centre" icon="priority" label="Priority Centre" />;
 }
 
 export function ModuleLinks({ allowedModules, badges = {} }: { allowedModules: string[] | null; badges?: Record<string, number> }) {

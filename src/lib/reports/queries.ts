@@ -55,6 +55,7 @@ export async function getSupplierPaymentReportRows(supabase: DB, companyIds: str
     .from("supplier_payments")
     .select("id, amount, status, payment_date, payment_method, created_at, company_id, companies(name), supplier_invoices(invoice_number, department, suppliers(name))")
     .in("company_id", companyIds)
+    .not("supplier_invoice_id", "is", null) // Finance supplier payments are reported from finance_payments
     .gte("created_at", startTs)
     .lte("created_at", endTs)
     .order("created_at", { ascending: false });

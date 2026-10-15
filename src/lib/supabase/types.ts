@@ -3681,6 +3681,194 @@ export type Database = {
           },
         ]
       }
+      priority_notifications: {
+        Row: {
+          body: string | null
+          company_id: string | null
+          created_at: string
+          href: string | null
+          id: string
+          item_id: string
+          item_type: string
+          period_key: string
+          read_at: string | null
+          severity: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          company_id?: string | null
+          created_at?: string
+          href?: string | null
+          id?: string
+          item_id: string
+          item_type: string
+          period_key: string
+          read_at?: string | null
+          severity?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          company_id?: string | null
+          created_at?: string
+          href?: string | null
+          id?: string
+          item_id?: string
+          item_type?: string
+          period_key?: string
+          read_at?: string | null
+          severity?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "priority_notifications_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "priority_notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      priority_reminder_settings: {
+        Row: {
+          days_before: number[]
+          last_synced_at: string | null
+          remind_after_deadline: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          days_before?: number[]
+          last_synced_at?: string | null
+          remind_after_deadline?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          days_before?: number[]
+          last_synced_at?: string | null
+          remind_after_deadline?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "priority_reminder_settings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      priority_tasks: {
+        Row: {
+          company_id: string
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          created_by: string | null
+          department: string | null
+          description: string | null
+          document_id: string | null
+          due_at: string | null
+          id: string
+          priority: string
+          reminder_at: string | null
+          responsible_id: string | null
+          start_date: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          description?: string | null
+          document_id?: string | null
+          due_at?: string | null
+          id?: string
+          priority?: string
+          reminder_at?: string | null
+          responsible_id?: string | null
+          start_date?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          description?: string | null
+          document_id?: string | null
+          due_at?: string | null
+          id?: string
+          priority?: string
+          reminder_at?: string | null
+          responsible_id?: string | null
+          start_date?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "priority_tasks_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "priority_tasks_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "priority_tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "priority_tasks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "priority_tasks_responsible_id_fkey"
+            columns: ["responsible_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -4646,8 +4834,17 @@ export type Database = {
           reference_number: string | null
           requested_by: string | null
           status: string
-          supplier_invoice_id: string
+          supplier_invoice_id: string | null
           updated_at: string
+          confirmed_at: string | null
+          confirmed_by: string | null
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          finance_payment_id: string | null
+          notes: string | null
+          processing_at: string | null
+          processing_by: string | null
         }
         Insert: {
           amount: number
@@ -4661,8 +4858,17 @@ export type Database = {
           reference_number?: string | null
           requested_by?: string | null
           status?: string
-          supplier_invoice_id: string
+          supplier_invoice_id?: string | null
           updated_at?: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          finance_payment_id?: string | null
+          notes?: string | null
+          processing_at?: string | null
+          processing_by?: string | null
         }
         Update: {
           amount?: number
@@ -4676,8 +4882,17 @@ export type Database = {
           reference_number?: string | null
           requested_by?: string | null
           status?: string
-          supplier_invoice_id?: string
+          supplier_invoice_id?: string | null
           updated_at?: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          finance_payment_id?: string | null
+          notes?: string | null
+          processing_at?: string | null
+          processing_by?: string | null
         }
         Relationships: [
           {
@@ -4709,10 +4924,141 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "supplier_payments_finance_payment_id_fkey"
+            columns: ["finance_payment_id"]
+            isOneToOne: false
+            referencedRelation: "finance_payments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "supplier_payments_supplier_invoice_id_fkey"
             columns: ["supplier_invoice_id"]
             isOneToOne: false
             referencedRelation: "supplier_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_payment_controls: {
+        Row: {
+          company_id: string
+          hold_at: string | null
+          hold_by: string | null
+          hold_reason: string | null
+          hold_status: string | null
+          id: string
+          is_urgent: boolean
+          notes: string | null
+          ops_alert_at: string | null
+          ops_alert_by: string | null
+          ops_alert_event_id: string | null
+          ops_alert_note: string | null
+          ops_alert_type: string | null
+          override_at: string | null
+          override_by: string | null
+          override_reason: string | null
+          payable_id: string
+          payable_type: string
+          priority_override: string | null
+          updated_at: string
+          urgent_reason: string | null
+          verified_amount: number | null
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          company_id: string
+          hold_at?: string | null
+          hold_by?: string | null
+          hold_reason?: string | null
+          hold_status?: string | null
+          id?: string
+          is_urgent?: boolean
+          notes?: string | null
+          ops_alert_at?: string | null
+          ops_alert_by?: string | null
+          ops_alert_event_id?: string | null
+          ops_alert_note?: string | null
+          ops_alert_type?: string | null
+          override_at?: string | null
+          override_by?: string | null
+          override_reason?: string | null
+          payable_id: string
+          payable_type: string
+          priority_override?: string | null
+          updated_at?: string
+          urgent_reason?: string | null
+          verified_amount?: number | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          hold_at?: string | null
+          hold_by?: string | null
+          hold_reason?: string | null
+          hold_status?: string | null
+          id?: string
+          is_urgent?: boolean
+          notes?: string | null
+          ops_alert_at?: string | null
+          ops_alert_by?: string | null
+          ops_alert_event_id?: string | null
+          ops_alert_note?: string | null
+          ops_alert_type?: string | null
+          override_at?: string | null
+          override_by?: string | null
+          override_reason?: string | null
+          payable_id?: string
+          payable_type?: string
+          priority_override?: string | null
+          updated_at?: string
+          urgent_reason?: string | null
+          verified_amount?: number | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_payment_controls_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_payment_controls_hold_by_fkey"
+            columns: ["hold_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_payment_controls_ops_alert_by_fkey"
+            columns: ["ops_alert_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_payment_controls_ops_alert_event_id_fkey"
+            columns: ["ops_alert_event_id"]
+            isOneToOne: false
+            referencedRelation: "catering_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_payment_controls_override_by_fkey"
+            columns: ["override_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_payment_controls_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

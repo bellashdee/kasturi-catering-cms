@@ -433,6 +433,8 @@ export async function recordPaymentExecution(paymentId: string, input: PaymentEx
     .eq("id", paymentId)
     .single();
   if (fetchError) throw fetchError;
+  const supplierInvoiceId = payment.supplier_invoice_id;
+  if (!supplierInvoiceId) throw new Error("This payment belongs to a Finance supplier payment. Confirm it in Madam Penny's Priority Centre.");
 
   // the payment date is the day the payment is confirmed (today unless the real, earlier payment day is given)
   const paymentDate = confirmedPaymentDate(input.paymentDate);
@@ -463,8 +465,8 @@ export async function recordPaymentExecution(paymentId: string, input: PaymentEx
   }
 
   const [{ data: invoice }, { data: paidPayments }] = await Promise.all([
-    supabase.from("supplier_invoices").select("id, amount").eq("id", payment.supplier_invoice_id).single(),
-    supabase.from("supplier_payments").select("amount").eq("supplier_invoice_id", payment.supplier_invoice_id).eq("status", "paid"),
+    supabase.from("supplier_invoices").select("id, amount").eq("id", supplierInvoiceId).single(),
+    supabase.from("supplier_payments").select("amount").eq("supplier_invoice_id", supplierInvoiceId).eq("status", "paid"),
   ]);
 
   const totalPaid = (paidPayments ?? []).reduce((t, p) => t + Number(p.amount), 0);

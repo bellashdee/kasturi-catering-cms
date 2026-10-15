@@ -9,6 +9,13 @@ import type { Reminder } from "@/lib/notifications/reminders";
 const DOT: Record<Reminder["severity"], string> = { danger: "bg-danger", warning: "bg-warning", info: "bg-primary" };
 const REFRESH_MS = 5 * 60 * 1000;
 
+/** Adds ?company=... to a link before any #section, and only when the link has no query of its own. */
+function withCompany(href: string, query: string): string {
+  if (!query || href.includes("?")) return href;
+  const [path, hash] = href.split("#");
+  return `${path}${query}${hash ? `#${hash}` : ""}`;
+}
+
 /** The bell: a count of reminders that need attention and a list of them, built from the real records (see lib/notifications). */
 export function NotificationBell() {
   const company = useSearchParams().get("company");
@@ -106,7 +113,7 @@ export function NotificationBell() {
                 );
                 const cls = "flex items-start gap-3 border-b border-border px-4 py-3 last:border-b-0";
                 return r.href ? (
-                  <Link key={r.title} href={r.href + query} onClick={() => setOpen(false)} className={`${cls} hover:bg-bg`}>
+                  <Link key={r.title} href={withCompany(r.href, query)} onClick={() => setOpen(false)} className={`${cls} hover:bg-bg`}>
                     {body}
                   </Link>
                 ) : (

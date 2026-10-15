@@ -114,6 +114,7 @@ export async function listSupplierPayments(supabase: DB, companyIds: string[]) {
     .from("supplier_payments")
     .select("*, supplier_invoices(invoice_number, supplier_id, suppliers(name)), companies(name)")
     .in("company_id", companyIds)
+    .not("supplier_invoice_id", "is", null) // payments of Finance supplier payments are handled in the Priority Centre
     .order("created_at", { ascending: false });
   if (error) throw error;
   return data;
