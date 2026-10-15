@@ -138,7 +138,7 @@ export function ModuleLinks({ allowedModules, badges = {} }: { allowedModules: s
   const show = (key: string) => !allowedModules || allowedModules.includes(key);
   return (
     <>
-      {MODULES.filter((m) => m.key !== "reports" && m.key !== "ai-assistant" && show(m.key)).map((m) => (
+      {MODULES.filter((m) => m.key !== "reports" && m.key !== "ai-assistant" && m.key !== "marketing" && show(m.key)).map((m) => (
         <NavItem key={m.key} href={m.href} icon={m.key} label={m.label} matchPrefixes={m.matchPrefixes} badge={badges[m.key]} />
       ))}
       {!show("hr") && show("overtime") && <NavItem href="/hr/overtime" icon="hr" label="Overtime (OT)" />}
