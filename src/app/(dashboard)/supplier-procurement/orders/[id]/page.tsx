@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { getPurchaseOrder } from "@/lib/procurement/queries";
 import { PO_STATUS_LABEL } from "@/lib/procurement/constants";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatPrice } from "@/lib/format";
 import { PurchaseOrderStatusSelect } from "@/components/procurement/PurchaseOrderStatusSelect";
 import { DeletePurchaseOrderButton } from "@/components/procurement/DeletePurchaseOrderButton";
 import { SectionCard } from "@/components/dashboard/SectionCard";
@@ -66,13 +66,35 @@ export default async function PurchaseOrderDetailPage({
       </div>
 
       <SectionCard title="Items" action={<Link href={`/supplier-procurement/invoices/new?po=${id}${query.replace("?", "&")}`} className="text-[12.5px] font-semibold text-primary">+ Record Invoice for this PO</Link>}>
-        <div className="-mx-5 -mb-5 divide-y divide-border">
-          {po.purchase_order_items.map((item) => (
-            <div key={item.id} className="flex items-center justify-between px-5 py-3 text-[13px]">
-              <span className="font-semibold text-text">{item.item_name}</span>
-              <span className="text-text-secondary">{item.quantity} × {formatCurrency(Number(item.unit_price))} = {formatCurrency(Number(item.line_total))}</span>
-            </div>
-          ))}
+        <div className="-mx-5 -mb-5 overflow-x-auto">
+          <table className="w-full min-w-[560px] text-[14px]">
+            <thead>
+              <tr className="border-b border-border bg-surface-alt text-left text-[12.5px] font-bold uppercase tracking-wide text-text-secondary">
+                <th className="px-5 py-3">Item</th>
+                <th className="px-3 py-3 text-right">Qty</th>
+                <th className="px-3 py-3">Unit</th>
+                <th className="px-3 py-3 text-right">Unit price (RM)</th>
+                <th className="px-5 py-3 text-right">Total price (RM)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {po.purchase_order_items.map((item) => (
+                <tr key={item.id}>
+                  <td className="px-5 py-3 font-semibold text-text">{item.item_name}</td>
+                  <td className="px-3 py-3 text-right tabular-nums text-text">{Number(item.quantity)}</td>
+                  <td className="px-3 py-3 text-text-secondary">{item.unit ?? "—"}</td>
+                  <td className="px-3 py-3 text-right tabular-nums text-text-secondary">{Number(item.unit_price).toFixed(2)}</td>
+                  <td className="px-5 py-3 text-right font-bold tabular-nums text-text">{Number(item.line_total).toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t border-border bg-surface-alt">
+                <td colSpan={4} className="px-5 py-3 text-right font-bold text-text">Total</td>
+                <td className="px-5 py-3 text-right text-[15px] font-extrabold tabular-nums text-text">{formatPrice(Number(po.total_amount ?? 0))}</td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
       </SectionCard>
     </div>

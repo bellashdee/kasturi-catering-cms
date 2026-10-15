@@ -99,6 +99,7 @@ export function NotificationBell() {
                     <span className={`mt-2 h-2.5 w-2.5 shrink-0 rounded-full ${DOT[r.severity]}`} />
                     <span className="min-w-0">
                       <span className="block text-[14px] font-semibold leading-snug text-text">{r.title}</span>
+                      {r.more ? <span className="block text-[12.5px] font-semibold text-primary">{`+${r.more} more`}</span> : null}
                       <span className="block text-[12.5px] text-text-secondary">{r.meta}</span>
                     </span>
                   </>

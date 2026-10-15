@@ -1,3 +1,4 @@
+import { PieChart, sumBy } from "@/components/reports/PieChart";
 import { parseDateRange } from "@/lib/finance/constants";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -97,6 +98,11 @@ export default async function CateringReportPage({
         status={statusParam}
         statusOptions={Object.entries(EVENT_STATUS_LABEL).map(([value, label]) => ({ value, label }))}
       />
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <PieChart title="Revenue by event type" slices={sumBy(rows, (r) => EVENT_TYPE_LABEL[r.event_type] ?? r.event_type, (r) => r.revenue)} />
+        <PieChart title="Cost by event type" slices={sumBy(rows, (r) => EVENT_TYPE_LABEL[r.event_type] ?? r.event_type, (r) => r.cost)} />
+      </div>
 
       <ReportTable
         filenameBase={`catering-${year}-${month}`}

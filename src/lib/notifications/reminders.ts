@@ -3,9 +3,30 @@ import { canAccessModule } from "@/lib/modules";
 import { formatMalaysiaTime, malaysiaDateOf } from "@/lib/format";
 import type { Alert, getDashboardData } from "@/lib/queries/dashboard";
 
-export type Reminder = Alert & { href?: string };
+export type Reminder = Alert & { href?: string; /** How many more reminders of the same kind were folded into this one (e.g. 85 more low-stock items). */ more?: number };
 
 type DashboardData = Awaited<ReturnType<typeof getDashboardData>>;
+
+const SEVERITY_ORDER: Record<Alert["severity"], number> = { danger: 0, warning: 1, info: 2 };
+
+/**
+ * One line per kind of reminder: "Low stock: Garlic" + "85 more" instead of 86 separate lines, so the bell's number stays
+ * meaningful (how many kinds of things need attention) and the most urgent line of each kind is the one shown.
+ */
+function groupSameKind(list: Reminder[]): Reminder[] {
+  const groups = new Map<string, Reminder[]>();
+  for (const r of list) {
+    const kind = `${r.meta.split(" · ")[0]}|${r.title.includes(": ") ? r.title.split(": ")[0].replace(/ (EXPIRED|expiring)$/i, "") : r.title}`;
+    groups.set(kind, [...(groups.get(kind) ?? []), r]);
+  }
+  const lines: Reminder[] = [];
+  for (const members of groups.values()) {
+    const sorted = [...members].sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
+    lines.push(members.length > 1 && sorted[0].title.includes(": ") ? { ...sorted[0], more: members.length - 1 } : sorted[0]);
+    if (members.length > 1 && !sorted[0].title.includes(": ")) lines.push(...sorted.slice(1));
+  }
+  return lines.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
+}
 
 /** Alerts only for the modules the person may open (an alert's `meta` starts with the label of the module it belongs to). */
 export function alertsForModules(alerts: Alert[], allowedModules: string[] | null): Alert[] {
@@ -45,5 +66,5 @@ export function buildReminders(data: DashboardData, allowedModules: string[] | n
   out.push(...alertsForModules(data.alerts, allowedModules));
 
   const seen = new Set<string>();
-  return out.filter((r) => (seen.has(r.title) ? false : (seen.add(r.title), true)));
+  return groupSameKind(out.filter((r) => (seen.has(r.title) ? false : (seen.add(r.title), true))));
 }

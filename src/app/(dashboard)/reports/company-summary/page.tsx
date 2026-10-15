@@ -1,3 +1,4 @@
+import { PieChart } from "@/components/reports/PieChart";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -73,6 +74,8 @@ export default async function CompanySummaryReportPage({
           <div className={`mt-1 text-xl font-extrabold ${summary.net >= 0 ? "text-success" : "text-danger"}`}>{formatCurrency(summary.net)}</div>
         </div>
       </div>
+
+      <PieChart title="Cost by module" slices={summary.bySource.map((x) => ({ label: x.source, value: x.amount }))} />
 
       <SectionCard title="Cost by Module">
         {summary.bySource.length === 0 ? (

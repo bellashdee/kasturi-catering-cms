@@ -33,7 +33,7 @@ export async function getItemSuggestions(supabase: DB, companyIds: string[]): Pr
   // 1) previous orders (newest first, so the first time a name + supplier is seen is its latest price)
   const { data: previous } = await supabase
     .from("purchase_order_items")
-    .select("item_name, unit_price, purchase_orders!inner(company_id, supplier_id, order_date, suppliers(name))")
+    .select("item_name, unit, unit_price, purchase_orders!inner(company_id, supplier_id, order_date, suppliers(name))")
     .in("purchase_orders.company_id", companyIds)
     .order("purchase_orders(order_date)", { ascending: false })
     .limit(3000);
@@ -48,6 +48,7 @@ export async function getItemSuggestions(supabase: DB, companyIds: string[]): Pr
       name: row.item_name.trim(),
       companyId: po.company_id,
       source: "previous",
+      unit: row.unit,
       lastPrice: Number(row.unit_price),
       supplierId: po.supplier_id,
       supplierName: po.suppliers?.name,

@@ -27,7 +27,7 @@ export default async function NewPurchaseOrderPage({
   const suggestions = await getItemSuggestions(supabase, accessibleIds);
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-4xl">
       <h1 className="text-[22px] font-extrabold text-text">New Purchase Order</h1>
       <div className="mt-5 rounded-xl border border-border bg-surface p-6 shadow-sm">
         <PurchaseOrderForm

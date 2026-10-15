@@ -1,3 +1,4 @@
+import { PieChart, sumBy } from "@/components/reports/PieChart";
 import { parseDateRange } from "@/lib/finance/constants";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -88,6 +89,11 @@ export default async function SupplierPaymentReportPage({
         status={statusParam}
         statusOptions={Object.entries(PAYMENT_STATUS_LABEL).map(([value, label]) => ({ value, label }))}
       />
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <PieChart title="Payments by supplier" slices={sumBy(rows, (r) => r.supplier_invoices?.suppliers?.name ?? "—", (r) => Number(r.amount))} />
+        <PieChart title="Payments by department" slices={sumBy(rows, (r) => r.supplier_invoices?.department ?? "—", (r) => Number(r.amount))} />
+      </div>
 
       <ReportTable
         filenameBase={`supplier-payments-${year}-${month}`}

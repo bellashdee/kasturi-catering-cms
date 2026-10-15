@@ -9,14 +9,17 @@ import { ItemNameInput } from "@/components/procurement/ItemNameInput";
 
 type Company = { id: string; name: string };
 type Supplier = { id: string; name: string; company_id: string };
-type Item = { itemName: string; quantity: string; unitPrice: string };
+type Item = { itemName: string; quantity: string; unit: string; unitPrice: string };
+
+/** Units offered in the Unit box (any other unit can still be typed). */
+const COMMON_UNITS = ["kg", "g", "pcs", "pack", "box", "carton", "bag", "bottle", "can", "litre", "ml", "tray", "bunch", "dozen", "tin", "roll", "set", "head"];
 
 const inputClass =
   "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
 const labelClass = "text-[12.5px] font-semibold text-text-secondary";
 
 function emptyItem(): Item {
-  return { itemName: "", quantity: "1", unitPrice: "" };
+  return { itemName: "", quantity: "1", unit: "", unitPrice: "" };
 }
 
 function todayIso(): string {
@@ -49,7 +52,7 @@ export function PurchaseOrderForm({
   const [poNumber, setPoNumber] = useState(() => `PO-${Date.now().toString().slice(-8)}`);
   const [orderDate, setOrderDate] = useState(todayIso());
   const [items, setItems] = useState<Item[]>([
-    defaultItemName ? { itemName: defaultItemName, quantity: defaultQuantity ?? "1", unitPrice: "" } : emptyItem(),
+    defaultItemName ? { itemName: defaultItemName, quantity: defaultQuantity ?? "1", unit: "", unitPrice: "" } : emptyItem(),
   ]);
 
   const suppliersForCompany = suppliers.filter((s) => s.company_id === companyId);
@@ -64,12 +67,17 @@ export function PurchaseOrderForm({
     });
   }
 
-  /** Picking a listed item fills its name and, when the price box is still empty, the last price it was ordered at. */
+  /** Picking a listed item fills its name and, when the boxes are still empty, its unit and the last price it was ordered at. */
   function pickSuggestion(index: number, s: ItemSuggestion) {
     setItems((prev) => {
       const next = [...prev];
       const current = next[index];
-      next[index] = { ...current, itemName: s.name, unitPrice: current.unitPrice === "" && s.lastPrice !== undefined ? String(s.lastPrice) : current.unitPrice };
+      next[index] = {
+        ...current,
+        itemName: s.name,
+        unit: current.unit === "" && s.unit ? s.unit : current.unit,
+        unitPrice: current.unitPrice === "" && s.lastPrice !== undefined ? String(s.lastPrice) : current.unitPrice,
+      };
       return next;
     });
   }
@@ -90,7 +98,7 @@ export function PurchaseOrderForm({
       procurementRequestId,
       items: items
         .filter((i) => i.itemName.trim())
-        .map((i) => ({ itemName: i.itemName.trim(), quantity: Number(i.quantity) || 1, unitPrice: Number(i.unitPrice) || 0 })),
+        .map((i) => ({ itemName: i.itemName.trim(), quantity: Number(i.quantity) || 1, unit: i.unit.trim() || undefined, unitPrice: Number(i.unitPrice) || 0 })),
     };
     try {
       const created = await createPurchaseOrder(payload);
@@ -140,23 +148,37 @@ export function PurchaseOrderForm({
             + Add Item
           </button>
         </div>
-        <div className="flex flex-col gap-2">
-          {items.map((item, i) => (
-            <div key={i} className="grid grid-cols-[2fr_0.8fr_1fr_1fr_auto] items-center gap-2">
-              <ItemNameInput value={item.itemName} onChange={(v) => updateItem(i, "itemName", v)} onPick={(s) => pickSuggestion(i, s)} suggestions={suggestionsForCompany} supplierId={supplierId} />
-              <input type="number" min="0" step="0.01" value={item.quantity} onChange={(e) => updateItem(i, "quantity", e.target.value)} placeholder="Qty" className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
-              <input type="number" min="0" step="0.01" value={item.unitPrice} onChange={(e) => updateItem(i, "unitPrice", e.target.value)} placeholder="Unit Price" className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
-              <div className="text-[13px] text-text-secondary">RM {((Number(item.quantity) || 0) * (Number(item.unitPrice) || 0)).toFixed(2)}</div>
-              <button
-                type="button"
-                onClick={() => setItems((prev) => prev.filter((_, idx) => idx !== i))}
-                disabled={items.length === 1}
-                className="text-xs font-semibold text-danger disabled:opacity-40"
-              >
-                Remove
-              </button>
+        <div className="overflow-x-auto pb-1">
+          <div className="flex min-w-[720px] flex-col gap-2">
+            <div className="grid grid-cols-[minmax(0,2.4fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,1.1fr)_4.5rem] gap-2 text-[12.5px] font-bold text-text-secondary">
+              <div>Item</div>
+              <div>Qty</div>
+              <div>Unit</div>
+              <div>Unit price (RM)</div>
+              <div className="text-right">Total price (RM)</div>
+              <div />
             </div>
-          ))}
+            {items.map((item, i) => (
+              <div key={i} className="grid grid-cols-[minmax(0,2.4fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,1.1fr)_4.5rem] items-center gap-2">
+                <ItemNameInput value={item.itemName} onChange={(v) => updateItem(i, "itemName", v)} onPick={(s) => pickSuggestion(i, s)} suggestions={suggestionsForCompany} supplierId={supplierId} />
+                <input type="number" min="0" step="0.001" value={item.quantity} onChange={(e) => updateItem(i, "quantity", e.target.value)} placeholder="Qty" aria-label="Qty" className="h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]" />
+                <input list="po-units" maxLength={20} value={item.unit} onChange={(e) => updateItem(i, "unit", e.target.value)} placeholder="kg, pcs..." aria-label="Unit" className="h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]" />
+                <input type="number" min="0" step="0.01" value={item.unitPrice} onChange={(e) => updateItem(i, "unitPrice", e.target.value)} placeholder="0.00" aria-label="Unit price (RM)" className="h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]" />
+                <div className="text-right text-[14px] font-bold tabular-nums text-text">{((Number(item.quantity) || 0) * (Number(item.unitPrice) || 0)).toFixed(2)}</div>
+                <button
+                  type="button"
+                  onClick={() => setItems((prev) => prev.filter((_, idx) => idx !== i))}
+                  disabled={items.length === 1}
+                  className="text-right text-xs font-semibold text-danger disabled:opacity-40"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <datalist id="po-units">
+              {COMMON_UNITS.map((u) => <option key={u} value={u} />)}
+            </datalist>
+          </div>
         </div>
         <p className="mt-1 text-xs text-text-muted">Start typing an item (e.g. &quot;bawang&quot;) to see items ordered before, stock items and menu ingredients. You can also type a new item.</p>
         <div className="mt-2 text-right text-[14px] font-bold text-text">Total: RM {total.toFixed(2)}</div>

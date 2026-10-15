@@ -8,6 +8,8 @@ import { sessionLabel } from "@/lib/purchaseList/sessions";
 import { formatQty } from "@/lib/purchaseList/calc";
 import { KitchenSubNav } from "@/components/kitchen/KitchenSubNav";
 import { PurchaseListItemsTable, PurchaseListToolbar, type ItemRow } from "@/components/kitchen/PurchaseListItemsTable";
+import { PurchaseListOrderPanel, type SupplierGroup } from "@/components/kitchen/PurchaseListOrderPanel";
+import { supplierKey } from "@/lib/purchaseList/suppliers";
 
 export default async function PurchaseListDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ company?: string }> }) {
   const session = await getSessionContext();
@@ -41,6 +43,23 @@ export default async function PurchaseListDetailPage({ params, searchParams }: {
       flags: i.flags ?? [],
       breakdown: (i.breakdown as unknown as ItemRow["breakdown"]) ?? [],
     }));
+  // the lines grouped by supplier, and which purchase order each line already has
+  const [{ data: companySuppliers }, { data: linkedOrders }] = await Promise.all([
+    supabase.from("suppliers").select("name").eq("company_id", list.company_id),
+    supabase.from("purchase_orders").select("id, po_number").in("id", list.purchase_list_items.map((i) => i.purchase_order_id).filter((x): x is string => !!x)),
+  ]);
+  const knownSuppliers = new Set((companySuppliers ?? []).map((s) => supplierKey(s.name)));
+  const poById = new Map((linkedOrders ?? []).map((o) => [o.id, o.po_number]));
+  const groupMap = new Map<string, SupplierGroup>();
+  for (const i of [...list.purchase_list_items].sort((a, b) => a.sort_order - b.sort_order)) {
+    const name = i.supplier?.trim() ?? "";
+    const key = supplierKey(name);
+    const g = groupMap.get(key) ?? { supplier: name, known: !!name && knownSuppliers.has(key), lines: [] };
+    g.lines.push({ id: i.id, name: i.ingredient_name, quantity: i.final_quantity === null ? null : Number(i.final_quantity), unit: i.unit, poId: i.purchase_order_id, poNumber: i.purchase_order_id ? poById.get(i.purchase_order_id) ?? null : null });
+    groupMap.set(key, g);
+  }
+  const supplierGroups = [...groupMap.values()].sort((a, b) => (a.supplier === "" ? 1 : b.supplier === "" ? -1 : a.supplier.localeCompare(b.supplier)));
+
   const menus = [...list.purchase_list_menus].sort((a, b) => a.sort_order - b.sort_order);
   // the same breakdown grouped by dish (rebuilt from the stored per-ingredient breakdown)
   const dishMap = new Map<string, { dish: string; lines: { ingredient: string; baseQuantity: number | null; basePax: number; quantity: number | null; unit: string | null; remark: string | null }[] }>();
@@ -92,6 +111,8 @@ export default async function PurchaseListDetailPage({ params, searchParams }: {
       <div className="text-[13px] text-text-secondary print:hidden">
         {items.length} ingredient(s) — {PURCHASE_ITEM_STATUSES.map((s) => `${counts[s]} ${PURCHASE_ITEM_STATUS_LABEL[s].toLowerCase()}`).join(" · ")}
       </div>
+
+      <PurchaseListOrderPanel listId={id} groups={supplierGroups} canOrder={items.length > 0} query={query} />
 
       <PurchaseListItemsTable items={items} />
 

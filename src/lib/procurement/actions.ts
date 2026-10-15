@@ -171,7 +171,7 @@ export type PurchaseOrderInput = {
   supplierId: string;
   orderDate: string;
   procurementRequestId?: string;
-  items: { itemName: string; quantity: number; unitPrice: number }[];
+  items: { itemName: string; quantity: number; unit?: string; unitPrice: number }[];
 };
 
 export async function createPurchaseOrder(input: PurchaseOrderInput) {
@@ -202,6 +202,7 @@ export async function createPurchaseOrder(input: PurchaseOrderInput) {
         purchase_order_id: po.id,
         item_name: i.itemName,
         quantity: i.quantity,
+        unit: i.unit?.trim() || null,
         unit_price: i.unitPrice,
         line_total: Math.round(i.quantity * i.unitPrice * 100) / 100,
       })),

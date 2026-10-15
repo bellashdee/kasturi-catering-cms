@@ -3270,6 +3270,94 @@ export type Database = {
           },
         ]
       }
+      payment_proof_submissions: {
+        Row: {
+          amount: number | null
+          company_id: string
+          created_at: string
+          customer_invoice_id: string | null
+          id: string
+          invoice_number: string
+          payment_date: string
+          payment_method: string
+          proof_filename: string | null
+          proof_mime: string | null
+          proof_path: string
+          reference: string | null
+          remarks: string | null
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          sales_agent: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number | null
+          company_id: string
+          created_at?: string
+          customer_invoice_id?: string | null
+          id?: string
+          invoice_number: string
+          payment_date: string
+          payment_method: string
+          proof_filename?: string | null
+          proof_mime?: string | null
+          proof_path: string
+          reference?: string | null
+          remarks?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sales_agent: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number | null
+          company_id?: string
+          created_at?: string
+          customer_invoice_id?: string | null
+          id?: string
+          invoice_number?: string
+          payment_date?: string
+          payment_method?: string
+          proof_filename?: string | null
+          proof_mime?: string | null
+          proof_path?: string
+          reference?: string | null
+          remarks?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sales_agent?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_proof_submissions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_proof_submissions_customer_invoice_id_fkey"
+            columns: ["customer_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "customer_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_proof_submissions_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payroll_records: {
         Row: {
           company_id: string
@@ -3690,6 +3778,7 @@ export type Database = {
           id: string
           ingredient_name: string
           purchase_list_id: string
+          purchase_order_id: string | null
           remark: string | null
           rounding_note: string | null
           sort_order: number
@@ -3709,6 +3798,7 @@ export type Database = {
           id?: string
           ingredient_name: string
           purchase_list_id: string
+          purchase_order_id?: string | null
           remark?: string | null
           rounding_note?: string | null
           sort_order?: number
@@ -3728,6 +3818,7 @@ export type Database = {
           id?: string
           ingredient_name?: string
           purchase_list_id?: string
+          purchase_order_id?: string | null
           remark?: string | null
           rounding_note?: string | null
           sort_order?: number
@@ -3751,6 +3842,13 @@ export type Database = {
             columns: ["purchase_list_id"]
             isOneToOne: false
             referencedRelation: "purchase_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_list_items_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
             referencedColumns: ["id"]
           },
         ]
@@ -3886,6 +3984,7 @@ export type Database = {
           line_total: number
           purchase_order_id: string
           quantity: number
+          unit: string | null
           unit_price: number
         }
         Insert: {
@@ -3894,6 +3993,7 @@ export type Database = {
           line_total: number
           purchase_order_id: string
           quantity?: number
+          unit?: string | null
           unit_price: number
         }
         Update: {
@@ -3902,6 +4002,7 @@ export type Database = {
           line_total?: number
           purchase_order_id?: string
           quantity?: number
+          unit?: string | null
           unit_price?: number
         }
         Relationships: [

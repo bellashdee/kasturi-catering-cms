@@ -1,3 +1,4 @@
+import { PieChart, sumBy } from "@/components/reports/PieChart";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -87,6 +88,10 @@ export default async function RevenueReportPage({
         status={statusParam}
         statusOptions={Object.entries(INVOICE_STATUS_LABEL).map(([value, label]) => ({ value, label }))}
       />
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-1">
+        <PieChart title="Revenue by customer" slices={sumBy(rows, (r) => r.customer_invoices?.customers?.name ?? "—", (r) => Number(r.amount))} />
+      </div>
 
       <ReportTable
         filenameBase={`revenue-${year}-${month}`}

@@ -23,11 +23,29 @@ export const runtime = "nodejs";
 
 const DAILY_MESSAGE_LIMIT = 60;
 
+/**
+ * The answer from the knowledge base alone (used when no AI service answers): ONE entry, cut down to its title, at most 6
+ * numbered steps and one tip, so it stays short and easy to follow.
+ */
+function condenseEntry(content: string, maxSteps = 6): string {
+  const lines = content.split("\n").map((l) => l.trim()).filter(Boolean);
+  const title = lines.find((l) => l.startsWith("📌"));
+  const steps = lines.filter((l) => /^\d+[.)]\s/.test(l));
+  const tip = lines.find((l) => l.startsWith("💡"));
+  if (steps.length === 0) {
+    const sentences = content.replace(/\s+/g, " ").match(/[^.!?]+[.!?]+/g) ?? [content];
+    return sentences.slice(0, 2).join(" ").trim().slice(0, 320);
+  }
+  const shown = steps.slice(0, maxSteps);
+  const out = [title, ...shown, steps.length > maxSteps ? "…" : null, tip ? tip.slice(0, 160) : null].filter(Boolean);
+  return out.join("\n");
+}
+
 function kbOnlyReply(kbEntries: ReturnType<typeof searchKnowledgeBase>) {
   if (kbEntries.length === 0) {
     return "I'm not sure about that one yet. Try browsing the relevant module in the sidebar, or check with your admin — I don't have a knowledge base entry that covers this question.";
   }
-  return kbEntries.map((e) => e.content).join("\n\n---\n\n");
+  return condenseEntry(kbEntries[0].content);
 }
 
 export async function GET(request: Request) {
@@ -127,7 +145,7 @@ export async function POST(request: Request) {
             ...history.map((m) => ({ role: m.role === "assistant" ? ("model" as const) : ("user" as const), parts: [{ text: m.content }] })),
             { role: "user", parts: [{ text: message }] },
           ],
-          maxOutputTokens: 1500,
+          maxOutputTokens: 700,
         });
         reply = text.trim() || kbOnlyReply(kbEntries);
       } else {

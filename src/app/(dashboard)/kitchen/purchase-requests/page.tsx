@@ -48,12 +48,21 @@ export default async function PurchaseRequestsPage({
           <h1 className="text-[22px] font-extrabold text-text">Kitchen</h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">{requests.length} purchase request{requests.length === 1 ? "" : "s"}</p>
         </div>
-        <Link href={`/kitchen/purchase-requests/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
-          + New Purchase Request
-        </Link>
+        <div className="flex flex-wrap gap-2.5">
+          <Link href={`/kitchen/purchase-lists/new${query}`} className="rounded-lg border border-primary bg-surface px-4 py-2.5 text-[13px] font-semibold text-primary">
+            Build from menus
+          </Link>
+          <Link href={`/kitchen/purchase-requests/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
+            + New Purchase Request
+          </Link>
+        </div>
       </div>
 
       <KitchenSubNav />
+
+      <div className="rounded-xl border border-border bg-surface px-4 py-3 text-[14px] text-text-secondary shadow-sm">
+        <b className="text-text">Build from menus:</b> 1. Choose the menu (add more menus if needed) · 2. Enter how many pax to cook · 3. The ingredient list is worked out · 4. Items and quantities are grouped by supplier, ready to order.
+      </div>
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {requests.length === 0 ? (

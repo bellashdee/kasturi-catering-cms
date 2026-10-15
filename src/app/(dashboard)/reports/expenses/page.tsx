@@ -1,3 +1,4 @@
+import { PieChart, sumBy } from "@/components/reports/PieChart";
 import { parseDateRange } from "@/lib/finance/constants";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -87,6 +88,11 @@ export default async function ExpenseReportPage({
         category={categoryParam}
         categoryOptions={categories.map((c) => ({ value: c.name, label: c.name }))}
       />
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <PieChart title="Expenses by category" slices={sumBy(rows, (r) => r.category, (r) => r.amount)} />
+        <PieChart title="Expenses by module" slices={sumBy(rows, (r) => r.source, (r) => r.amount)} />
+      </div>
 
       <ReportTable
         filenameBase={`expenses-${year}-${month}`}
