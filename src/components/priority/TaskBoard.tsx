@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createTask, deleteTask, setTaskStatus, updateTask, type TaskInput } from "@/lib/priority/taskActions";
 import { getHistory } from "@/lib/priority/historyActions";
 import { fileTypeFromMime, uploadDocument } from "@/lib/documents/upload";
-import { TASK_PRIORITIES, TASK_PRIORITY_LABEL, TASK_PRIORITY_TONE, TASK_STATUSES, TASK_STATUS_LABEL, type TaskPriority, type TaskStatus } from "@/lib/priority/tasks";
+import { TASK_PRIORITIES, TASK_PRIORITY_LABEL, TASK_PRIORITY_TONE, TASK_STATUS_LABEL, type TaskPriority, type TaskStatus } from "@/lib/priority/tasks";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 import { AREA, BTN, BTN_GHOST, BTN_SM_GHOST, Dialog, ErrorLine, FIELD, LABEL, Pill } from "@/components/priority/ui";
 
@@ -300,19 +300,6 @@ function TaskRow({ t, onEdit, onHistory }: { t: TaskCard; onEdit: () => void; on
           {error && <div className="mt-2"><ErrorLine message={error} /></div>}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5">
-          {t.perm.status && !closed && (
-            <select
-              aria-label={`Status of ${t.title}`}
-              value={t.status}
-              disabled={busy}
-              onChange={(e) => void run(() => setTaskStatus(t.id, e.target.value as TaskStatus))}
-              className="h-8 rounded-md border border-border-strong bg-surface px-1.5 text-[12.5px] text-text"
-            >
-              {TASK_STATUSES.map((s) => (
-                <option key={s} value={s}>{TASK_STATUS_LABEL[s]}</option>
-              ))}
-            </select>
-          )}
           <div className="flex flex-wrap justify-end gap-1.5">
             {t.perm.edit && !done && <button type="button" className={BTN_SM_GHOST} onClick={onEdit}>Edit</button>}
             <button type="button" className={BTN_SM_GHOST} onClick={onHistory}>History</button>
