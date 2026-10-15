@@ -90,7 +90,7 @@ export function EventDaysEditor({
               <input type="date" required value={day.dayDate} onChange={(e) => patch(i, { dayDate: e.target.value })} className={inputClass} />
             </div>
             <div>
-              <label className={labelClass}>Set-up time</label>
+              <label className={labelClass}>Set-up time (kitchen side)</label>
               <input type="time" value={day.setupTime ?? ""} onChange={(e) => patch(i, { setupTime: e.target.value })} className={inputClass} />
             </div>
             <div>

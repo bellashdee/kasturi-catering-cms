@@ -16,7 +16,7 @@ export async function listProductionOrders(supabase: DB, companyIds: string[]) {
 export async function getProductionOrder(supabase: DB, id: string) {
   const { data, error } = await supabase
     .from("production_orders")
-    .select("*, catering_events(event_name, pax_count, event_date), catering_event_days(day_date), recipes(id, name, yield_pax), companies(name)")
+    .select("*, catering_events(event_name, pax_count, event_date, setup_time, event_time), catering_event_days(day_date, setup_time, event_time), recipes(id, name, yield_pax), companies(name)")
     .eq("id", id)
     .single();
   if (error) throw error;

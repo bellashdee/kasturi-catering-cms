@@ -129,7 +129,7 @@ export default async function EventDetailPage({
         </div>
       </div>
 
-      {(event.pic_name || event.pic_phone || event.sales_agent || event.setup_time || event.price_per_pax !== null) && (
+      {(event.pic_name || event.pic_phone || event.sales_agent || event.setup_time || event.event_time || event.price_per_pax !== null) && (
         <div className="grid grid-cols-4 gap-4">
           {(event.pic_name || event.pic_phone) && (
             <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
@@ -146,8 +146,14 @@ export default async function EventDetailPage({
           )}
           {event.setup_time && (
             <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
-              <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Set-up time</div>
+              <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Set-up time (kitchen side)</div>
               <div className="mt-1 text-[14px] font-bold text-text">{event.setup_time.slice(0, 5)}</div>
+            </div>
+          )}
+          {event.event_time && (
+            <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
+              <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Event time</div>
+              <div className="mt-1 text-[14px] font-bold text-text">{event.event_time.slice(0, 5)}</div>
             </div>
           )}
           {event.price_per_pax !== null && (
@@ -167,7 +173,7 @@ export default async function EventDetailPage({
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-bold text-text">Day {i + 1} · {d.dayDate}</span>
                   <span className="text-text-muted">
-                    {d.setupTime ? `Set-up ${d.setupTime}` : ""}{d.setupTime && d.eventTime ? " · " : ""}{d.eventTime ? `Event ${d.eventTime}` : ""}
+                    {d.setupTime ? `Set-up (kitchen) ${d.setupTime}` : ""}{d.setupTime && d.eventTime ? " · " : ""}{d.eventTime ? `Event ${d.eventTime}` : ""}
                   </span>
                   {d.mealTypes.map((m) => <StatusBadge key={m} tone="info">{MEAL_TYPE_LABEL[m] ?? m}</StatusBadge>)}
                   <StatusBadge tone="success">{SERVICE_TYPE_LABEL[d.serviceType] ?? d.serviceType} · {d.servicePax} pax</StatusBadge>

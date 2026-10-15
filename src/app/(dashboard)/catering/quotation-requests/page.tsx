@@ -66,6 +66,7 @@ export default async function QuotationRequestsPage({ searchParams }: { searchPa
                       {days.map((d, i) => (
                         <div key={d.dayDate} className="text-text-secondary">
                           <span className="font-semibold text-text">Day {i + 1} · {d.dayDate}</span>
+                          {(d.setupTime || d.eventTime) && <span className="text-text-muted">{` (${[d.setupTime ? `Set-up (kitchen) ${d.setupTime}` : "", d.eventTime ? `Event ${d.eventTime}` : ""].filter(Boolean).join(" · ")})`}</span>}
                           {" — "}
                           {d.mealTypes.map((m) => MEAL_TYPE_LABEL[m] ?? m).join(", ") || "no meal type"}
                           {" · "}

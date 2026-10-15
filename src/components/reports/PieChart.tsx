@@ -15,6 +15,15 @@ function arc(cx: number, cy: number, r: number, from: number, to: number) {
   return `M ${cx} ${cy} L ${x1.toFixed(3)} ${y1.toFixed(3)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(3)} ${y2.toFixed(3)} Z`;
 }
 
+/** The percentage written on a slice: white with a soft dark outline, so it reads on every slice colour. */
+function PercentLabel({ x, y, percent }: { x: number; y: number; percent: number }) {
+  return (
+    <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fontSize="8.5" fontWeight="800" fill="#ffffff" stroke="#0f2438" strokeOpacity="0.55" strokeWidth="2.2" paintOrder="stroke" style={{ fontVariantNumeric: "tabular-nums" }}>
+      {percent.toFixed(percent >= 10 ? 0 : 1)}%
+    </text>
+  );
+}
+
 /**
  * A pie chart of how a total is shared (e.g. cost by category): the biggest slices are shown, the rest are combined as
  * "Others". Drawn as plain SVG with a full legend (name, amount and percentage), so it also reads without colour.
@@ -33,16 +42,27 @@ export function PieChart({ title, slices, format = formatCurrency }: { title: st
         <div className="py-8 text-center text-[14px] text-text-secondary">No figures to show for this period.</div>
       ) : (
         <div className="mt-3 flex flex-col items-center gap-4">
-          <svg viewBox="0 0 120 120" width="150" height="150" role="img" aria-label={`${title}: ${shown.map((s) => `${s.label} ${((s.value / total) * 100).toFixed(0)}%`).join(", ")}`} className="shrink-0">
+          <svg viewBox="0 0 120 120" width="220" height="220" role="img" aria-label={`${title}: ${shown.map((s) => `${s.label} ${((s.value / total) * 100).toFixed(0)}%`).join(", ")}`} className="max-w-full shrink-0">
             {shown.length === 1 ? (
-              <circle cx="60" cy="60" r="56" fill={COLOURS[0]} />
+              <>
+                <circle cx="60" cy="60" r="56" fill={COLOURS[0]} />
+                <PercentLabel x={60} y={60} percent={100} />
+              </>
             ) : (
               (() => {
                 let angle = 0;
                 return shown.map((s, i) => {
                   const start = angle;
-                  angle += (s.value / total) * Math.PI * 2;
-                  return <path key={s.label} d={arc(60, 60, 56, start, angle)} fill={COLOURS[i % COLOURS.length]} stroke="#ffffff" strokeWidth="1.5" />;
+                  const sweep = (s.value / total) * Math.PI * 2;
+                  angle += sweep;
+                  const mid = start + sweep / 2;
+                  const percent = (s.value / total) * 100;
+                  return (
+                    <g key={s.label}>
+                      <path d={arc(60, 60, 56, start, angle)} fill={COLOURS[i % COLOURS.length]} stroke="#ffffff" strokeWidth="1.5" />
+                      {percent >= 7 && <PercentLabel x={60 + 36 * Math.sin(mid)} y={60 - 36 * Math.cos(mid)} percent={percent} />}
+                    </g>
+                  );
                 });
               })()
             )}

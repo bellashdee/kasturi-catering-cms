@@ -36,6 +36,9 @@ export default async function ProductionOrderDetailPage({
   const recipe = order.recipe_id ? await getRecipe(supabase, order.recipe_id) : null;
   const menuPlanDish = order.menu_plan_dish_id ? await getMenuPlanDishWithIngredients(supabase, order.menu_plan_dish_id) : null;
   const targetPax = order.pax_count ?? order.catering_events?.pax_count ?? recipe?.yield_pax ?? 0;
+  // the kitchen's times: those of the event day this order is for, or of the event itself (single-day event)
+  const setupTime = (order.catering_event_days?.setup_time ?? order.catering_events?.setup_time)?.slice(0, 5) ?? null;
+  const eventTime = (order.catering_event_days?.event_time ?? order.catering_events?.event_time)?.slice(0, 5) ?? null;
 
   return (
     <div className="flex flex-col gap-5">
@@ -53,6 +56,19 @@ export default async function ProductionOrderDetailPage({
         </div>
         <ProductionOrderStatusSelect orderId={id} status={order.status} />
       </div>
+
+      {order.catering_event_id && (
+        <div className="grid grid-cols-2 gap-4">
+          <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
+            <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Set-up time (kitchen side)</div>
+            <div className="mt-1 text-xl font-extrabold text-text">{setupTime ?? "—"}</div>
+          </div>
+          <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
+            <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Event time</div>
+            <div className="mt-1 text-xl font-extrabold text-text">{eventTime ?? "—"}</div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">

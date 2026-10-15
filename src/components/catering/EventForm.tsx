@@ -187,7 +187,7 @@ export function EventForm({
             <input type="date" required value={form.eventDate} onChange={(e) => set("eventDate", e.target.value)} className={inputClass} />
           </div>
           <div>
-            <label className={labelClass}>Set-up time</label>
+            <label className={labelClass}>Set-up time (kitchen side)</label>
             <input type="time" value={form.setupTime} onChange={(e) => set("setupTime", e.target.value)} className={inputClass} />
           </div>
           <div>
