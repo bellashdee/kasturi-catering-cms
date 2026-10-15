@@ -197,12 +197,6 @@ export default async function DashboardPage({
           <StatRow label="Staff documents expired / expiring (30 days)" value={data.hr.expiringCertificates.length} />
           <StatRow label="Licences & agreements expired / expiring (30 days)" value={data.hr.expiringCompanyDocs.length} />
         </SectionCard>}
-
-        {can("marketing") && <SectionCard title="Marketing">
-          <StatRow label="Active campaigns" value={data.marketing.activeCampaigns} />
-          <StatRow label="New leads (this month)" value={data.marketing.newLeadsCount} />
-          <StatRow label="Marketing spend (MTD)" value={formatCurrency(data.marketing.monthlySpend)} />
-        </SectionCard>}
       </div>
 
       <AlertsPanel alerts={alerts} />
