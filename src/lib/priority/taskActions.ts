@@ -155,11 +155,11 @@ export async function setTaskStatus(id: string, status: TaskStatus) {
   refresh();
 }
 
-/** Admins only; a completed task is never deleted (it stays in the history). The page asks for confirmation first. */
+/** Admins (any open task of their company) or the person who created the task; a completed task is never deleted (it stays in the history). The page asks for confirmation first. */
 export async function deleteTask(id: string) {
-  const { supabase } = await requireUser();
+  const { supabase, userId } = await requireUser();
   const task = await loadTask(supabase, id);
-  if (!(await isAdmin(supabase, task.company_id))) throw new Error("Only an admin can delete a task.");
+  if (task.created_by !== userId && !(await isAdmin(supabase, task.company_id))) throw new Error("Only the person who created this task or an admin can delete it.");
   if (task.status === "completed") throw new Error("A completed task is kept in the history and cannot be deleted. Cancel it instead if it was a mistake.");
   const { data: removed, error } = await supabase.from("priority_tasks").delete().eq("id", id).select("id");
   if (error) throw error;

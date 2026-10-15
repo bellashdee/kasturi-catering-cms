@@ -8,7 +8,7 @@ import { useMobileNav } from "./MobileNavContext";
 
 type Company = { id: string; name: string; legal_name: string };
 
-export function Sidebar({ companies, allowedModules, badges }: { companies: Company[]; allowedModules: string[] | null; badges?: Record<string, number> }) {
+export function Sidebar({ companies, allowedModules, badges, taskLinkLabel }: { companies: Company[]; allowedModules: string[] | null; badges?: Record<string, number>; taskLinkLabel?: string }) {
   const { open, setOpen } = useMobileNav();
   const pathname = usePathname();
 
@@ -43,7 +43,7 @@ export function Sidebar({ companies, allowedModules, badges }: { companies: Comp
 
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-3">
           <MainDashboardLink />
-          <PriorityCentreLink />
+          <PriorityCentreLink label={taskLinkLabel} />
           <CompanyQuickLinks companies={companies} />
           <div className="my-2 h-px bg-white/8" />
           <ModuleLinks allowedModules={allowedModules} badges={badges} />

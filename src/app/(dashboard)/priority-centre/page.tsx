@@ -139,7 +139,7 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
       completedByName: t.completed_by ? (names.get(t.completed_by) ?? "—") : null,
       completedAt: t.completed_at,
       bucket: dueBucket(t, now, today),
-      perm: { edit: admin || t.created_by === session.userId, status: admin || mine, remove: admin && t.status !== "completed" },
+      perm: { edit: admin || t.created_by === session.userId, status: admin || mine, remove: (admin || t.created_by === session.userId) && t.status !== "completed" },
     };
   };
 
@@ -219,20 +219,20 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
     <div className="mx-auto flex max-w-[1500px] flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[26px] font-extrabold tracking-tight text-text">Madam Penny&apos;s Priority Centre</h1>
+          <h1 className="text-[26px] font-extrabold tracking-tight text-text">{access.canSeePayments ? "Madam Penny's Priority Centre" : "My Tasks"}</h1>
           <p className="mt-1 text-[14px] text-text-secondary">{formatMalaysiaLongDate(now)} · Malaysia time (UTC+8)</p>
         </div>
         <nav aria-label="Sections" className="flex flex-wrap gap-2 text-[13.5px] font-semibold">
-          <a href="#tasks" className={BTN_GHOST}>To-Do Checklist</a>
+          <a href="#tasks" className={BTN_GHOST}>{access.canSeePayments ? "To-Do Checklist" : "My Tasks"}</a>
           {access.canSeePayments && <a href="#payments" className={BTN_GHOST}>Urgent Supplier Payments</a>}
-          <a href="#approvals" className={BTN_GHOST}>Reminders &amp; Pending Approvals</a>
+          <a href="#approvals" className={BTN_GHOST}>{access.canSeePayments ? "Reminders & Pending Approvals" : "My Reminders"}</a>
         </nav>
       </div>
 
       {/* ───────── daily briefing ───────── */}
       <section aria-labelledby="briefing" className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
         <div className="bg-navy-900 px-5 py-4 text-white">
-          <h2 id="briefing" className="text-[18px] font-extrabold">Madam Penny&apos;s Daily Briefing</h2>
+          <h2 id="briefing" className="text-[18px] font-extrabold">{access.canSeePayments ? "Madam Penny's Daily Briefing" : "My Day"}</h2>
           <p className="mt-0.5 text-[13.5px] text-white/75">Today&apos;s priorities, taken from the records in the system.</p>
         </div>
         <div className="grid gap-5 p-4 sm:p-5 lg:grid-cols-2">
@@ -364,7 +364,7 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
       </div>
 
       {/* ───────── to-do checklist ───────── */}
-      <SectionBox id="tasks" title="To-Do Checklist" subtitle={access.adminCompanyIds.length > 0 ? "Every task of the companies you manage, and the tasks assigned to you." : "The tasks assigned to you or created by you."}>
+      <SectionBox id="tasks" title={access.canSeePayments ? "To-Do Checklist" : "My To-Do List"} subtitle={access.adminCompanyIds.length > 0 ? "Every task of the companies you manage, and the tasks assigned to you." : "The tasks assigned to you or created by you."}>
         <form method="get" className="mb-4 grid grid-cols-2 items-end gap-3 md:grid-cols-3 xl:grid-cols-7 print:hidden">
           <Hidden params={carry} keys={PAY_KEYS} />
           <div>
@@ -510,7 +510,7 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
       )}
 
       {/* ───────── reminders and approvals ───────── */}
-      <SectionBox id="approvals" title="Reminders & Pending Approvals">
+      <SectionBox id="approvals" title={access.canSeePayments ? "Reminders & Pending Approvals" : "My Reminders"}>
         <div className="grid gap-6 xl:grid-cols-2">
           <div className="flex flex-col gap-6">
             {access.canSeePayments && (

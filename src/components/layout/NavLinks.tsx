@@ -130,8 +130,8 @@ export function MainDashboardLink() {
   return <NavItem href="/" icon="dashboard" label="Main Dashboard" />;
 }
 
-export function PriorityCentreLink() {
-  return <NavItem href="/priority-centre" icon="priority" label="Priority Centre" />;
+export function PriorityCentreLink({ label = "Priority Centre" }: { label?: string }) {
+  return <NavItem href="/priority-centre" icon="priority" label={label} />;
 }
 
 export function ModuleLinks({ allowedModules, badges = {} }: { allowedModules: string[] | null; badges?: Record<string, number> }) {

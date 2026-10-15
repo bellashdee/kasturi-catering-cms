@@ -5,16 +5,16 @@ import { ALL_COMPANIES_OPTION, COMPANY_STYLE, MODULES } from "@/lib/constants";
 
 type Company = { id: string; name: string; legal_name: string };
 
-function pageTitle(pathname: string): string {
+function pageTitle(pathname: string, priorityTitle: string): string {
   if (pathname === "/") return "Main Dashboard";
   if (pathname.startsWith("/settings")) return "Settings";
-  if (pathname.startsWith("/priority-centre")) return "Priority Centre";
+  if (pathname.startsWith("/priority-centre")) return priorityTitle;
   const found = MODULES.find((m) => [m.href, ...(m.matchPrefixes ?? [])].some((p) => pathname === p || pathname.startsWith(`${p}/`)));
   return found?.label ?? "Central Management System";
 }
 
 /** The company being viewed (a coloured badge with its initials plus its name) and the current module's title. */
-export function HeaderTitle({ companies }: { companies: Company[] }) {
+export function HeaderTitle({ companies, priorityTitle = "Priority Centre" }: { companies: Company[]; priorityTitle?: string }) {
   const pathname = usePathname();
   const selectedId = useSearchParams().get("company");
   const company = companies.find((c) => c.id === selectedId);
@@ -30,7 +30,7 @@ export function HeaderTitle({ companies }: { companies: Company[] }) {
       </span>
       <div className="min-w-0 leading-tight">
         <div className="truncate text-[12.5px] font-semibold uppercase tracking-wide text-text-secondary">{name}</div>
-        <div className="truncate text-[17px] font-extrabold text-text sm:text-[19px]">{pageTitle(pathname)}</div>
+        <div className="truncate text-[17px] font-extrabold text-text sm:text-[19px]">{pageTitle(pathname, priorityTitle)}</div>
       </div>
     </div>
   );
