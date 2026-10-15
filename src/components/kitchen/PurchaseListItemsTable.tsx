@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/components/i18n/I18nProvider";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { deletePurchaseList, setAllItemsStatus, updatePurchaseListItem } from "@/lib/purchaseList/actions";
@@ -128,6 +129,7 @@ export function PurchaseListItemsTable({ items }: { items: ItemRow[] }) {
 
 export function PurchaseListToolbar({ listId, exportHref }: { listId: string; exportHref: string }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -142,7 +144,7 @@ export function PurchaseListToolbar({ listId, exportHref }: { listId: string; ex
   }
 
   async function remove() {
-    if (!window.confirm("Delete this purchase list? This cannot be undone.")) return;
+    if (!window.confirm(t("Delete this purchase list? This cannot be undone."))) return;
     setBusy(true);
     const r = await deletePurchaseList(listId);
     if (!r.ok) {

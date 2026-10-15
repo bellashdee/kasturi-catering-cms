@@ -216,7 +216,7 @@ export default async function PaymentChecklistPage({ searchParams }: { searchPar
                   const inPeriod = byPriority(rows.filter((p) => p.period_month.startsWith(period)));
                   return (
                     <div key={period}>
-                      {subHeading(`${monthTitle(period)} · ${inPeriod.length} item${inPeriod.length === 1 ? "" : "s"} · ${formatRM(inPeriod.reduce((t, p) => t + Number(p.amount), 0))}`)}
+                      {subHeading(`${monthTitle(period)} · ${inPeriod.length} item(s) · ${formatRM(inPeriod.reduce((t, p) => t + Number(p.amount), 0))}`)}
                       <div className="divide-y divide-border">{inPeriod.map(renderRow)}</div>
                     </div>
                   );
@@ -229,13 +229,13 @@ export default async function PaymentChecklistPage({ searchParams }: { searchPar
         periods.map((period) => {
           const inPeriod = visible.filter((p) => p.period_month.startsWith(period));
           return (
-            <SectionCard key={period} title={`${monthTitle(period)} — ${inPeriod.length} item${inPeriod.length === 1 ? "" : "s"} · still to pay ${formatRM(sumUnpaid(inPeriod))}`}>
+            <SectionCard key={period} title={`${monthTitle(period)} — ${inPeriod.length} item(s) · still to pay ${formatRM(sumUnpaid(inPeriod))}`}>
               <div className="-mx-5 -mb-5 flex flex-col">
                 {Array.from(new Set(inPeriod.map(companyOf))).sort().map((companyName) => {
                   const rows = byPriority(inPeriod.filter((p) => companyOf(p) === companyName));
                   return (
                     <div key={companyName}>
-                      {subHeading(`${companyLabel(companyName)} · ${rows.length} item${rows.length === 1 ? "" : "s"} · ${formatRM(rows.reduce((t, p) => t + Number(p.amount), 0))}`)}
+                      {subHeading(`${companyLabel(companyName)} · ${rows.length} item(s) · ${formatRM(rows.reduce((t, p) => t + Number(p.amount), 0))}`)}
                       <div className="divide-y divide-border">{rows.map(renderRow)}</div>
                     </div>
                   );

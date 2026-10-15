@@ -7,6 +7,7 @@ import { AssistantWidget } from "@/components/assistant/AssistantWidget";
 import { MobileNavProvider } from "@/components/layout/MobileNavContext";
 import { canAccessModule } from "@/lib/modules";
 import { countPendingSubmissions } from "@/lib/catering/pending";
+import { LanguageBootstrap } from "@/components/i18n/LanguageBootstrap";
 
 export default async function DashboardLayout({
   children,
@@ -22,11 +23,14 @@ export default async function DashboardLayout({
     .select("id, name, legal_name")
     .order("legal_name", { ascending: true });
 
+  const { data: profile } = await supabase.from("profiles").select("language").eq("id", session.userId).maybeSingle();
+
   // sales-agent forms waiting for review show as a number on the Catering menu item, on every page
   const pendingCatering = canAccessModule(session.allowedModules, "catering") ? await countPendingSubmissions(supabase) : 0;
 
   return (
     <MobileNavProvider>
+      <LanguageBootstrap profileLanguage={profile?.language ?? null} />
       <div className="flex h-screen overflow-hidden bg-bg print:block print:h-auto print:overflow-visible">
         <Sidebar companies={companies ?? []} allowedModules={session.allowedModules} badges={{ catering: pendingCatering }} />
         <div className="flex min-w-0 flex-1 flex-col print:block">

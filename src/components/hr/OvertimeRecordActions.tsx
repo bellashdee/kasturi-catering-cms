@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/components/i18n/I18nProvider";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -8,6 +9,7 @@ import { cancelOvertime, submitOvertime } from "@/lib/hr/overtimeActions";
 /** Staff-side actions: submit a draft, edit a draft, or cancel an OT that has not been decided yet. */
 export function OvertimeRecordActions({ overtimeId, status }: { overtimeId: string; status: string }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,7 +44,7 @@ export function OvertimeRecordActions({ overtimeId, status }: { overtimeId: stri
           <button
             type="button"
             disabled={busy !== null}
-            onClick={() => { if (window.confirm("Cancel this OT? It stays in the history as Cancelled.")) void run("cancel", () => cancelOvertime(overtimeId)); }}
+            onClick={() => { if (window.confirm(t("Cancel this OT? It stays in the history as Cancelled."))) void run("cancel", () => cancelOvertime(overtimeId)); }}
             className="rounded-lg border border-danger/40 px-3.5 py-2 text-[13px] font-semibold text-danger disabled:opacity-60"
           >
             {busy === "cancel" ? "Cancelling..." : "Cancel OT"}

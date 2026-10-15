@@ -155,7 +155,7 @@ export function ImportIngredientsFlow({ companies, defaultCompanyId }: { compani
           Cancel
         </button>
         <button onClick={handleConfirm} disabled={flow.saving || flow.validRowCount === 0} className="rounded-lg bg-primary px-5 py-2.5 text-[13.5px] font-semibold text-white disabled:opacity-60">
-          {flow.saving ? "Importing..." : `Confirm & Import ${flow.validRowCount} Ingredient${flow.validRowCount === 1 ? "" : "s"}`}
+          {flow.saving ? "Importing..." : `Confirm & Import ${flow.validRowCount} Ingredient(s)`}
         </button>
       </div>
     </div>

@@ -127,7 +127,7 @@ export default async function DriverAttendancePage({
         <div className="flex items-center gap-3 rounded-xl border border-danger/30 bg-danger-bg px-4 py-3">
           <span className="text-lg">🔴</span>
           <div className="text-[13px] font-semibold text-danger">
-            {missingToday.length} driver{missingToday.length === 1 ? " has" : "s have"} a missing clock-in or clock-out today.
+            {`Drivers with a missing clock-in or clock-out today: ${missingToday.length}`}
           </div>
         </div>
       )}

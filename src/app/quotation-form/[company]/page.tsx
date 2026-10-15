@@ -1,3 +1,4 @@
+import { GuestLanguageBar } from "@/components/i18n/GuestLanguageBar";
 import { notFound } from "next/navigation";
 import { INTAKE_COMPANIES } from "@/lib/catering/intake";
 import { PublicQuotationForm } from "@/components/catering/PublicQuotationForm";
@@ -11,6 +12,7 @@ export default async function QuotationFormPage({ params }: { params: Promise<{ 
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
+      <GuestLanguageBar />
       <div className="text-[12px] font-bold uppercase tracking-wide text-text-muted">{company.name}</div>
       <h1 className="mt-1 text-[22px] font-extrabold text-text">Quotation Request Form</h1>
       <p className="mt-1 text-[13px] text-text-secondary">

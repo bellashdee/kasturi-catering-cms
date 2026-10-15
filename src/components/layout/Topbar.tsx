@@ -3,6 +3,7 @@ import { MobileMenuButton } from "./MobileMenuButton";
 import { HeaderTitle } from "./HeaderTitle";
 import { LiveClock } from "./LiveClock";
 import { NotificationBell } from "./NotificationBell";
+import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { ProfileMenu } from "./ProfileMenu";
 
 type Company = { id: string; name: string; legal_name: string };
@@ -18,6 +19,7 @@ export function Topbar({ session, companies }: { session: SessionContext; compan
 
       <LiveClock />
       <div className="hidden h-8 w-px bg-border sm:block" />
+      <LanguageSwitcher />
       <NotificationBell />
       <ProfileMenu fullName={session.fullName} email={session.email} roleLabel={ROLE_LABEL[session.role]} />
     </header>

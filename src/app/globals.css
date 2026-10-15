@@ -34,7 +34,8 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-manrope);
+  /* Manrope covers Latin; the rest of the list covers Chinese, Myanmar and Bangla on Windows, macOS, iOS and Android */
+  --font-sans: var(--font-manrope), "Noto Sans Myanmar", "Myanmar Text", "Padauk", "Noto Sans Bengali", "Nirmala UI", "Vrinda", "Kohinoor Bangla", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Heiti SC", system-ui, sans-serif;
 
   --color-bg: var(--color-bg);
   --color-surface: var(--color-surface);
@@ -68,6 +69,15 @@
   --color-company-o2life: var(--color-company-o2life);
 }
 
+/* Burmese and Bangla letters have tall marks above and below the line: give them room so nothing is clipped */
+html[lang="my"] body { line-height: 1.75; }
+html[lang="bn"] body { line-height: 1.6; }
+html[lang="zh"] body { line-height: 1.55; }
+
+/* The page is written in English and translated in the browser. Until the translation is applied it stays hidden so the English never flashes; the animation always shows it after 1.8 seconds, even if the translation cannot load. */
+html[data-i18n="pending"] body { visibility: hidden; animation: i18n-release 0s linear 1.8s forwards; }
+@keyframes i18n-release { to { visibility: visible; } }
+
 body {
   background: var(--color-bg);
   color: var(--color-text);
@@ -87,7 +97,7 @@ body {
 /* Calm, consistent interaction feedback */
 a, button, select, input, textarea, summary { transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease; }
 :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { *:not(body) { transition: none !important; animation: none !important; } }
 
 /* Tables: never let a long name or amount push the page wider than the screen */
 main table { max-width: 100%; }

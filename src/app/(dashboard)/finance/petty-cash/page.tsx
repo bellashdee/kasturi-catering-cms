@@ -63,8 +63,7 @@ export default async function PettyCashPage({
         <div className="flex items-center gap-3 rounded-xl border border-danger/30 bg-danger-bg px-4 py-3">
           <span className="text-lg">🔴</span>
           <div className="text-[13px] font-semibold text-danger">
-            {overdueClaims.length} petty cash claim{overdueClaims.length === 1 ? " is" : "s are"} overdue for payment (pending more than{" "}
-            {PETTY_CASH_OVERDUE_DAYS} days) — please review and pay.
+            {`Petty cash claims overdue for payment: ${overdueClaims.length} (pending more than ${PETTY_CASH_OVERDUE_DAYS} days) — please review and pay.`}
           </div>
         </div>
       )}

@@ -59,20 +59,54 @@ function clockParts(now: Date | number, options: Intl.DateTimeFormatOptions) {
   return Object.fromEntries(parts.map((p) => [p.type, p.value])) as Record<string, string>;
 }
 
+const BURMESE_WEEKDAYS = ["တနင်္ဂနွေနေ့", "တနင်္လာနေ့", "အင်္ဂါနေ့", "ဗုဒ္ဓဟူးနေ့", "ကြာသပတေးနေ့", "သောကြာနေ့", "စနေနေ့"];
+const BURMESE_MONTHS = ["ဇန်နဝါရီ", "ဖေဖော်ဝါရီ", "မတ်", "ဧပြီ", "မေ", "ဇွန်", "ဇူလိုင်", "ဩဂုတ်", "စက်တင်ဘာ", "အောက်တိုဘာ", "နိုဝင်ဘာ", "ဒီဇင်ဘာ"];
+
+/**
+ * Some browsers have no date names for Burmese and would silently show English. For those the day and month names are written
+ * here, so the date and clock still follow the chosen language (digits stay 0-9).
+ */
+function burmeseFallback(locale: string | undefined): boolean {
+  return !!locale && locale.startsWith("my") && Intl.DateTimeFormat.supportedLocalesOf([locale.split("-u-")[0]]).length === 0;
+}
+
+function numericParts(now: Date | number) {
+  const p = new Intl.DateTimeFormat("en-US", { timeZone: MALAYSIA_TIMEZONE, year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit", second: "2-digit", hourCycle: "h23", weekday: "short" }).formatToParts(now);
+  const v = Object.fromEntries(p.map((x) => [x.type, x.value])) as Record<string, string>;
+  const weekday = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(v.weekday);
+  return { year: v.year, month: Number(v.month), day: v.day, weekday, hour: Number(v.hour) % 24, minute: v.minute, second: v.second };
+}
+
 /** e.g. "Thursday, 15 October 2026" (Malaysia time). */
-export function formatMalaysiaLongDate(now: Date | number = Date.now()): string {
+export function formatMalaysiaLongDate(now: Date | number = Date.now(), locale?: string): string {
+  if (burmeseFallback(locale)) {
+    const n = numericParts(now);
+    return `${n.year} ခုနှစ်၊ ${BURMESE_MONTHS[n.month - 1]}လ ${n.day} ရက်၊ ${BURMESE_WEEKDAYS[n.weekday]}`;
+  }
+  if (locale && !locale.startsWith("en")) return new Intl.DateTimeFormat(locale, { timeZone: MALAYSIA_TIMEZONE, dateStyle: "full" }).format(now);
   const p = clockParts(now, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   return `${p.weekday}, ${p.day} ${p.month} ${p.year}`;
 }
 
 /** e.g. "Thu, 15 Oct" (Malaysia time), for narrow screens. */
-export function formatMalaysiaShortDate(now: Date | number = Date.now()): string {
+export function formatMalaysiaShortDate(now: Date | number = Date.now(), locale?: string): string {
+  if (burmeseFallback(locale)) {
+    const n = numericParts(now);
+    return `${BURMESE_WEEKDAYS[n.weekday].replace("နေ့", "")}၊ ${n.day} ${BURMESE_MONTHS[n.month - 1]}`;
+  }
+  if (locale && !locale.startsWith("en")) return new Intl.DateTimeFormat(locale, { timeZone: MALAYSIA_TIMEZONE, weekday: "short", day: "numeric", month: "short" }).format(now);
   const p = clockParts(now, { weekday: "short", day: "numeric", month: "short" });
   return `${p.weekday}, ${p.day} ${p.month}`;
 }
 
 /** e.g. "11:30:45 AM" (12-hour clock with seconds, Malaysia time). */
-export function formatMalaysiaClock(now: Date | number = Date.now()): string {
+export function formatMalaysiaClock(now: Date | number = Date.now(), locale?: string): string {
+  if (burmeseFallback(locale)) {
+    const n = numericParts(now);
+    const period = n.hour < 12 ? "နံနက်" : n.hour < 17 ? "နေ့လည်" : n.hour < 20 ? "ညနေ" : "ည";
+    return `${period} ${n.hour % 12 === 0 ? 12 : n.hour % 12}:${n.minute}:${n.second}`;
+  }
+  if (locale && !locale.startsWith("en")) return new Intl.DateTimeFormat(locale, { timeZone: MALAYSIA_TIMEZONE, hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true }).format(now);
   const p = clockParts(now, { hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true });
   return `${p.hour}:${p.minute}:${p.second} ${p.dayPeriod}`;
 }

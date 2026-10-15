@@ -1,5 +1,6 @@
 "use client";
 
+import { GuestLanguageBar } from "@/components/i18n/GuestLanguageBar";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -80,6 +81,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen bg-surface">
+      <GuestLanguageBar />
       <div className="hidden w-[480px] shrink-0 flex-col justify-between bg-gradient-to-br from-navy-900 via-[#12314A] to-navy-700 p-14 text-white lg:flex">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent text-sm font-extrabold">

@@ -3600,6 +3600,7 @@ export type Database = {
           full_name: string
           id: string
           is_active: boolean
+          language: string | null
           username: string | null
         }
         Insert: {
@@ -3608,6 +3609,7 @@ export type Database = {
           full_name: string
           id: string
           is_active?: boolean
+          language?: string | null
           username?: string | null
         }
         Update: {
@@ -3616,6 +3618,7 @@ export type Database = {
           full_name?: string
           id?: string
           is_active?: boolean
+          language?: string | null
           username?: string | null
         }
         Relationships: []

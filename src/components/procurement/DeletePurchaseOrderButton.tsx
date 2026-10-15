@@ -3,15 +3,19 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { deletePurchaseOrder } from "@/lib/procurement/actions";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 /** Deletes an order placed by mistake, after a confirmation that names the order. Safety rules are enforced on the server. */
 export function DeletePurchaseOrderButton({ poId, poNumber, listHref }: { poId: string; poNumber: string; listHref: string }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function remove() {
-    if (!window.confirm(`Delete purchase order ${poNumber}?\n\nUse this only for an order placed by mistake. This cannot be undone (the deletion is recorded in the audit log).`)) return;
+    const question = t("Delete purchase order {po}?", { po: poNumber });
+    const warning = t("Use this only for an order placed by mistake. This cannot be undone (the deletion is recorded in the audit log).");
+    if (!window.confirm(`${question}\n\n${warning}`)) return;
     setBusy(true);
     setError(null);
     const result = await deletePurchaseOrder(poId);

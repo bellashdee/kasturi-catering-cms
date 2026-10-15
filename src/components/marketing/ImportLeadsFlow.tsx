@@ -168,7 +168,7 @@ export function ImportLeadsFlow({ companies, defaultCompanyId }: { companies: Co
           Cancel
         </button>
         <button onClick={handleConfirm} disabled={saving || rows.length === 0} className="rounded-lg bg-primary px-5 py-2.5 text-[13.5px] font-semibold text-white disabled:opacity-60">
-          {saving ? "Importing..." : `Confirm & Import ${rows.length} Lead${rows.length === 1 ? "" : "s"}`}
+          {saving ? "Importing..." : `Confirm & Import ${rows.length} Lead(s)`}
         </button>
       </div>
     </div>
