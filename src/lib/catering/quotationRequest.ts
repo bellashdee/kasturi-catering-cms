@@ -19,7 +19,7 @@ export type QuotationRequestInput = {
   /** One block per event day (a single-day event has one). */
   days: EventDay[];
   extraItems: ExtraItem[];
-  /** The ticked additional equipment / services. */
+  /** The answered additional requirement (equipment handling, staff serving, transportation). */
   additional?: AdditionalServices;
   /** Honeypot: real people leave it empty. */
   website?: string;
@@ -27,20 +27,24 @@ export type QuotationRequestInput = {
 
 export const MAX_EXTRA_ITEMS = 30;
 
-/** The tick-boxes under "Additional equipment": each ticked one becomes a line of the quotation. */
+/** The tick-boxes under "Additional requirement": each one answered Yes becomes a line of the quotation. */
 export type AdditionalServices = {
-  equipmentHandling: boolean;
+  /** true = yes, false = no, null = not answered yet (the public form requires an answer for each). */
+  equipmentHandling: boolean | null;
   /** Optional: the office can price it later. */
   equipmentHandlingPrice?: number;
-  staffServing: boolean;
+  staffServing: boolean | null;
   /** RM per pax, charged for every serving of the event (all days). */
   staffServingPricePerPax?: number;
-  transportation: boolean;
+  transportation: boolean | null;
   /** RM for the whole event. */
   transportationPrice?: number;
 };
 
 export const noAdditionalServices = (): AdditionalServices => ({ equipmentHandling: false, staffServing: false, transportation: false });
+
+/** The form starts with nothing answered: each of the three must be answered Yes or No before the request can be sent. */
+export const unansweredAdditionalServices = (): AdditionalServices => ({ equipmentHandling: null, staffServing: null, transportation: null });
 
 /** The quotation lines for the ticked additional services. `totalServings` is the pax of all days added together. */
 export function additionalServiceLines(a: AdditionalServices | undefined, totalServings: number): ExtraItem[] {

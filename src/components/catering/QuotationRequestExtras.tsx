@@ -61,7 +61,25 @@ export function SecondChoiceEditor({ value, onChange }: { value: SecondChoice; o
   );
 }
 
-/** "Additional equipment (tick whichever applies)": equipment handling, staff serving (RM per pax) and transportation (RM). */
+/** A Yes / No pair of radio buttons; the browser itself refuses to send the form until one is chosen. */
+function YesNo({ name, label, answer, onAnswer }: { name: string; label: string; answer: boolean | null; onAnswer: (v: boolean) => void }) {
+  return (
+    <fieldset className="flex min-w-60 flex-wrap items-center gap-x-4 gap-y-1">
+      <legend className="sr-only">{label}</legend>
+      <span className="min-w-44 text-[13px] font-semibold text-text" aria-hidden="true">{label}</span>
+      <label className="flex cursor-pointer items-center gap-1.5 text-[13px] font-semibold text-text">
+        <input type="radio" name={name} required checked={answer === true} onChange={() => onAnswer(true)} className="accent-[var(--color-primary)]" />
+        Yes
+      </label>
+      <label className="flex cursor-pointer items-center gap-1.5 text-[13px] font-semibold text-text">
+        <input type="radio" name={name} required checked={answer === false} onChange={() => onAnswer(false)} className="accent-[var(--color-primary)]" />
+        No
+      </label>
+    </fieldset>
+  );
+}
+
+/** "Additional requirement": each of equipment handling, staff serving (RM per pax) and transportation (RM) must be answered Yes or No. */
 export function AdditionalServicesEditor({
   value,
   onChange,
@@ -80,30 +98,21 @@ export function AdditionalServicesEditor({
   return (
     <div className="flex flex-col gap-2">
       <div className={row}>
-        <label className="flex min-w-48 cursor-pointer items-center gap-2 text-[13px] font-semibold text-text">
-          <input type="checkbox" checked={value.equipmentHandling} onChange={(e) => patch({ equipmentHandling: e.target.checked })} className="accent-[var(--color-primary)]" />
-          Equipment handling
-        </label>
-        <input type="number" min="0" step="0.01" disabled={!value.equipmentHandling} value={value.equipmentHandlingPrice ?? ""} onChange={(e) => patch({ equipmentHandlingPrice: num(e.target.value) })} className={small} placeholder="RM (optional)" />
+        <YesNo name="equipment-handling" label="Equipment handling" answer={value.equipmentHandling} onAnswer={(v) => patch({ equipmentHandling: v })} />
+        <input type="number" min="0" step="0.01" disabled={value.equipmentHandling !== true} value={value.equipmentHandlingPrice ?? ""} onChange={(e) => patch({ equipmentHandlingPrice: num(e.target.value) })} className={small} placeholder="RM (optional)" />
       </div>
 
       <div className={row}>
-        <label className="flex min-w-48 cursor-pointer items-center gap-2 text-[13px] font-semibold text-text">
-          <input type="checkbox" checked={value.staffServing} onChange={(e) => patch({ staffServing: e.target.checked })} className="accent-[var(--color-primary)]" />
-          Staff serving (RM / pax)
-        </label>
-        <input type="number" min="0" step="0.01" disabled={!value.staffServing} required={value.staffServing} value={value.staffServingPricePerPax ?? ""} onChange={(e) => patch({ staffServingPricePerPax: num(e.target.value) })} className={small} placeholder="RM per pax *" />
-        {value.staffServing && value.staffServingPricePerPax !== undefined && totalServings > 0 && (
+        <YesNo name="staff-serving" label="Staff serving (RM / pax)" answer={value.staffServing} onAnswer={(v) => patch({ staffServing: v })} />
+        <input type="number" min="0" step="0.01" disabled={value.staffServing !== true} required={value.staffServing === true} value={value.staffServingPricePerPax ?? ""} onChange={(e) => patch({ staffServingPricePerPax: num(e.target.value) })} className={small} placeholder="RM per pax *" />
+        {value.staffServing === true && value.staffServingPricePerPax !== undefined && totalServings > 0 && (
           <span className="text-xs text-text-muted">{totalServings} pax × {formatPrice(value.staffServingPricePerPax)} = {formatPrice(totalServings * value.staffServingPricePerPax)}</span>
         )}
       </div>
 
       <div className={row}>
-        <label className="flex min-w-48 cursor-pointer items-center gap-2 text-[13px] font-semibold text-text">
-          <input type="checkbox" checked={value.transportation} onChange={(e) => patch({ transportation: e.target.checked })} className="accent-[var(--color-primary)]" />
-          Transportation (RM)
-        </label>
-        <input type="number" min="0" step="0.01" disabled={!value.transportation} required={value.transportation} value={value.transportationPrice ?? ""} onChange={(e) => patch({ transportationPrice: num(e.target.value) })} className={small} placeholder="RM *" />
+        <YesNo name="transportation" label="Transportation (RM)" answer={value.transportation} onAnswer={(v) => patch({ transportation: v })} />
+        <input type="number" min="0" step="0.01" disabled={value.transportation !== true} required={value.transportation === true} value={value.transportationPrice ?? ""} onChange={(e) => patch({ transportationPrice: num(e.target.value) })} className={small} placeholder="RM *" />
       </div>
     </div>
   );

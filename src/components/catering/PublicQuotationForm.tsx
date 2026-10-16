@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { submitQuotationRequest } from "@/lib/catering/quotationRequestActions";
 import { EVENT_TYPE_LABEL, SALES_AGENTS } from "@/lib/catering/constants";
 import { dayAmount, dayPax, type EventDay } from "@/lib/catering/days";
-import { additionalServiceLines, noAdditionalServices, type AdditionalServices, type ExtraItem, type QuotationRequestInput } from "@/lib/catering/quotationRequest";
+import { additionalServiceLines, unansweredAdditionalServices, type AdditionalServices, type ExtraItem, type QuotationRequestInput } from "@/lib/catering/quotationRequest";
 import { EventDaysEditor, emptyDay } from "@/components/catering/EventDaysEditor";
 import { AdditionalServicesEditor } from "@/components/catering/QuotationRequestExtras";
 import { formatPrice } from "@/lib/format";
@@ -36,7 +36,7 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
   const [form, setForm] = useState<Header>(emptyHeader);
   const [days, setDays] = useState<EventDay[]>([emptyDay()]);
   const [extras, setExtras] = useState<ExtraRow[]>([]);
-  const [additional, setAdditional] = useState<AdditionalServices>(noAdditionalServices());
+  const [additional, setAdditional] = useState<AdditionalServices>(unansweredAdditionalServices());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sentName, setSentName] = useState<string | null>(null);
@@ -69,7 +69,7 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
         setForm({ ...emptyHeader, salesAgent: form.salesAgent });
         setDays([emptyDay()]);
         setExtras([]);
-        setAdditional(noAdditionalServices());
+        setAdditional(unansweredAdditionalServices());
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     } catch (err) {
@@ -137,8 +137,8 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
       </div>
 
       <div>
-        <div className="text-[14px] font-extrabold text-text">Additional equipment (tick whichever applies)</div>
-        <p className="mb-2 text-xs text-text-muted">Each ticked one is added to the quotation.</p>
+        <div className="text-[14px] font-extrabold text-text">Additional requirement (answer each one) *</div>
+        <p className="mb-2 text-xs text-text-muted">Choose Yes or No for each. Each Yes is added to the quotation.</p>
         <AdditionalServicesEditor value={additional} onChange={setAdditional} totalServings={totalServings} />
       </div>
 
@@ -176,7 +176,7 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
 
       <div className="rounded-lg border border-border bg-surface-alt px-4 py-3 text-[13px] text-text-secondary">
         Estimated total: <span className="text-[15px] font-extrabold text-text">{formatPrice(daysTotal + extrasTotal + additionalTotal)}</span>
-        <span className="ml-2 text-xs text-text-muted">(first choice for all days + additional equipment + extra items; the office confirms the final quotation)</span>
+        <span className="ml-2 text-xs text-text-muted">(first choice for all days + additional requirement + extra items; the office confirms the final quotation)</span>
       </div>
 
       {/* hidden honeypot field: people never see or fill it */}

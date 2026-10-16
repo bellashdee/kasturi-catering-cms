@@ -79,8 +79,11 @@ function sanitizeSecondChoice(c: SecondChoice | undefined, label: string): Secon
 }
 
 /** The ticked additional services; a ticked staff serving or transportation needs its price. */
-function sanitizeAdditional(a: AdditionalServices | undefined): AdditionalServices | undefined {
-  if (!a) return undefined;
+function sanitizeAdditional(a: AdditionalServices | undefined): AdditionalServices {
+  // compulsory: every additional requirement must be answered Yes or No (not left out)
+  if (!a || typeof a.equipmentHandling !== "boolean") throw new Error("Additional requirement: answer Yes or No for Equipment handling.");
+  if (typeof a.staffServing !== "boolean") throw new Error("Additional requirement: answer Yes or No for Staff serving.");
+  if (typeof a.transportation !== "boolean") throw new Error("Additional requirement: answer Yes or No for Transportation.");
   const price = (v: number | undefined, label: string, required: boolean) => {
     if (v === undefined) {
       if (required) throw new Error(`${label}: enter the price (RM).`);
