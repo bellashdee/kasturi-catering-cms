@@ -11,7 +11,7 @@ const areaClass =
   "mt-1.5 h-20 w-full resize-none rounded-lg border border-border-strong px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
 const labelClass = "text-[12.5px] font-semibold text-text-secondary";
 
-/** A day's optional second choice: an alternative menu (menu, qty pax, meal type, service type, price per meal). */
+/** One of a day's optional second menus: an alternative menu (menu, qty pax, meal type, service type, price per meal). */
 export function SecondChoiceEditor({ value, onChange }: { value: SecondChoice; onChange: (v: SecondChoice) => void }) {
   const patch = (change: Partial<SecondChoice>) => onChange({ ...value, ...change });
   const toggleMeal = (key: string) =>
@@ -21,7 +21,7 @@ export function SecondChoiceEditor({ value, onChange }: { value: SecondChoice; o
     <div className="rounded-xl border border-border bg-surface p-4">
       <div>
         <label className={labelClass}>Menu</label>
-        <textarea maxLength={3000} value={value.menu} onChange={(e) => patch({ menu: e.target.value })} className={areaClass} placeholder="Menu for the second choice" />
+        <textarea maxLength={3000} value={value.menu} onChange={(e) => patch({ menu: e.target.value })} className={areaClass} placeholder="Menu for the second menu" />
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-4">

@@ -17,6 +17,7 @@ import {
   type SecondChoice,
 } from "@/lib/catering/quotationRequest";
 import { validateDays } from "@/lib/catering/validation";
+import { MAX_SECOND_MENUS, secondMenusOf } from "@/lib/catering/days";
 import { createEvent, createQuotation } from "@/lib/catering/actions";
 import { QUOTATION_NOTIFY_EMAIL, SITE_URL } from "@/lib/catering/intake";
 import { escapeHtml, sendNotificationEmail } from "@/lib/notify/email";
@@ -46,7 +47,7 @@ function sanitizeDay(d: EventDay, index: number): EventDay {
     menuDetails: clean(d.menuDetails, 3000) ?? undefined,
     pricePerPax: d.pricePerPax,
     remarks: clean(d.remarks, 1000) ?? undefined,
-    secondChoice: sanitizeSecondChoice(d.secondChoice, `Day ${index + 1}: second choice`) ?? undefined,
+    secondMenus: sanitizeSecondMenus(d, index),
   };
 }
 
@@ -63,7 +64,15 @@ function sanitizeExtras(items: ExtraItem[]): ExtraItem[] {
     });
 }
 
-/** A day's optional second choice: ignored when nothing is filled in, otherwise it needs a menu, pax and service type. */
+/** A day's optional second menus (at most 5): an empty one is ignored, a started one needs a menu, pax and service type. */
+function sanitizeSecondMenus(d: EventDay, index: number): SecondChoice[] | undefined {
+  const given = secondMenusOf(d);
+  if (given.length > MAX_SECOND_MENUS) throw new Error(`Day ${index + 1}: at most ${MAX_SECOND_MENUS} second menus a day.`);
+  const kept = given.map((c, n) => sanitizeSecondChoice(c, `Day ${index + 1}: second menu ${n + 1}`)).filter((c): c is SecondChoice => c !== null);
+  return kept.length > 0 ? kept : undefined;
+}
+
+/** One second menu: ignored when nothing is filled in, otherwise it needs a menu, pax and service type. */
 function sanitizeSecondChoice(c: SecondChoice | undefined, label: string): SecondChoice | null {
   if (!c) return null;
   const menu = clean(c.menu, 3000);
@@ -259,14 +268,17 @@ async function approveRequest(requestId: string): Promise<Result> {
   if (r.status !== "pending") throw new Error("This request has already been reviewed.");
 
   const days = (r.days as unknown as EventDay[]).map((d) => ({ ...d, mealTypes: d.mealTypes ?? [] }));
-  // a day's second choice (an alternative menu) is kept in that day's remarks; it is not part of the quotation
-  const withSecondChoice = (d: EventDay): EventDay => ({
-    ...d,
-    remarks:
-      [d.remarks, d.secondChoice ? describeSecondChoice(d.secondChoice, { meal: MEAL_TYPE_LABEL, service: SERVICE_TYPE_LABEL }) : ""]
-        .filter(Boolean)
-        .join("\n\n") || undefined,
-  });
+  // a day's second menus (alternative menus) are kept in that day's remarks; they are not part of the quotation
+  const withSecondChoice = (d: EventDay): EventDay => {
+    const menus = secondMenusOf(d);
+    return {
+      ...d,
+      remarks:
+        [d.remarks, ...menus.map((m, n) => describeSecondChoice(m, { meal: MEAL_TYPE_LABEL, service: SERVICE_TYPE_LABEL }, menus.length > 1 ? n + 1 : undefined))]
+          .filter(Boolean)
+          .join("\n\n") || undefined,
+    };
+  };
   const extras = r.extra_items as unknown as ExtraItem[];
   const submittedOn = r.created_at.slice(0, 10);
 

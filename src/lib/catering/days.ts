@@ -1,7 +1,7 @@
 import { MEAL_TYPE_LABEL, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
 
 /**
- * An optional alternative menu for one day ("second choice"): menu, pax, meal types, service type and price per meal.
+ * An optional alternative menu for one day ("second menu"): menu, pax, meal types, service type and price per meal.
  * It is shown to the office and kept in the day's remarks on approval; it is not added to the quotation total.
  */
 export type SecondChoice = {
@@ -13,6 +13,14 @@ export type SecondChoice = {
 };
 
 export const emptySecondChoice = (): SecondChoice => ({ menu: "", mealTypes: [], serviceType: "" });
+
+/** A day can have up to this many second menus (one for each meal type: breakfast, lunch, hi-tea, dinner, wedding). */
+export const MAX_SECOND_MENUS = 5;
+
+/** The second menus of a day. Requests saved earlier kept a single "second choice", which counts as the first second menu. */
+export function secondMenusOf(day: { secondMenus?: SecondChoice[]; secondChoice?: SecondChoice }): SecondChoice[] {
+  return day.secondMenus ?? (day.secondChoice ? [day.secondChoice] : []);
+}
 
 /** One day of a multi-day event, as the form and the database both describe it. */
 export type EventDay = {
@@ -27,7 +35,9 @@ export type EventDay = {
   menuDetails?: string;
   pricePerPax?: number;
   remarks?: string;
-  /** Only filled in by the public quotation request form. */
+  /** Only filled in by the public quotation request form: up to 5 optional alternative menus for the day. */
+  secondMenus?: SecondChoice[];
+  /** Older requests: the single second choice (read through secondMenusOf; new requests use secondMenus). */
   secondChoice?: SecondChoice;
 };
 

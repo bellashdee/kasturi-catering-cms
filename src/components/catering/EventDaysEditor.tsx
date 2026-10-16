@@ -1,7 +1,7 @@
 "use client";
 
 import { MAX_EVENT_DAYS, MEAL_TYPE_LABEL, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
-import { dayAmount, dayPax, emptySecondChoice, type EventDay } from "@/lib/catering/days";
+import { MAX_SECOND_MENUS, dayAmount, dayPax, emptySecondChoice, secondMenusOf, type EventDay } from "@/lib/catering/days";
 import { SecondChoiceEditor } from "@/components/catering/QuotationRequestExtras";
 import { formatPrice } from "@/lib/format";
 
@@ -34,7 +34,7 @@ export function EventDaysEditor({
   onChange: (days: EventDay[]) => void;
   /** Show the second service type of each day (the office form). */
   secondService?: boolean;
-  /** Show an optional second choice (an alternative menu) inside each day (the public quotation request form). */
+  /** Show the optional second menus (up to 5 alternative menus) inside each day (the public quotation request form). */
   secondChoice?: boolean;
   /** At least one meal type must be ticked on every day (the public quotation request form). */
   mealRequired?: boolean;
@@ -182,9 +182,28 @@ export function EventDaysEditor({
 
           {secondChoice && (
             <div className="mt-3">
-              <div className="text-[13px] font-extrabold text-text">Second choice (optional)</div>
-              <p className="mb-2 text-xs text-text-muted">An alternative menu for this day. It is shown to the office and is not added to the total.</p>
-              <SecondChoiceEditor value={day.secondChoice ?? emptySecondChoice()} onChange={(v) => patch(i, { secondChoice: v })} />
+              <div className="text-[13px] font-extrabold text-text">Second menu (optional)</div>
+              <p className="mb-2 text-xs text-text-muted">Alternative menus for this day, up to 5 a day (for example one for each meal type). They are shown to the office and are not added to the total.</p>
+              <div className="flex flex-col gap-3">
+                {secondMenusOf(day).map((menu, n) => (
+                  <div key={n}>
+                    <div className="mb-1 flex items-center justify-between">
+                      <div className="text-[12.5px] font-bold text-text">Second menu {n + 1}</div>
+                      <button type="button" onClick={() => patch(i, { secondChoice: undefined, secondMenus: secondMenusOf(day).filter((_, idx) => idx !== n) })} className="text-xs font-semibold text-danger">
+                        Remove second menu
+                      </button>
+                    </div>
+                    <SecondChoiceEditor value={menu} onChange={(v) => patch(i, { secondChoice: undefined, secondMenus: secondMenusOf(day).map((m, idx) => (idx === n ? v : m)) })} />
+                  </div>
+                ))}
+              </div>
+              {secondMenusOf(day).length < MAX_SECOND_MENUS ? (
+                <button type="button" onClick={() => patch(i, { secondChoice: undefined, secondMenus: [...secondMenusOf(day), emptySecondChoice()] })} className="mt-2 text-[12.5px] font-semibold text-primary">
+                  + Add second menu
+                </button>
+              ) : (
+                <p className="mt-2 text-xs text-text-muted">The most is 5 second menus a day.</p>
+              )}
             </div>
           )}
 

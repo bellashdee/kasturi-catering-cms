@@ -6,6 +6,7 @@ import { resolveCompanyScope } from "@/lib/companyScope";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { MEAL_TYPE_LABEL, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
+import { secondMenusOf } from "@/lib/catering/days";
 import { dayAmount, dayPax, type EventDay } from "@/lib/catering/days";
 import type { ExtraItem } from "@/lib/catering/quotationRequest";
 import { formatCurrency, formatPrice } from "@/lib/format";
@@ -74,18 +75,18 @@ export default async function QuotationRequestsPage({ searchParams }: { searchPa
                           {d.secondServiceType ? ` + ${SERVICE_TYPE_LABEL[d.secondServiceType] ?? d.secondServiceType} ${d.secondServicePax}` : ""} pax
                           {d.pricePerPax ? ` · ${dayPax(d)} × ${formatPrice(d.pricePerPax)} = ${formatPrice(dayAmount(d))}` : " · no price"}
                           {d.menuDetails && <div className="whitespace-pre-line text-xs text-text-muted">{d.menuDetails}</div>}
-                          {d.secondChoice && (
-                            <div className="mt-1 rounded-lg border border-border bg-surface-alt px-3 py-2">
-                              <div className="font-semibold text-text">Second choice <span className="text-xs font-normal text-text-muted">(alternative menu; not in the total)</span></div>
+                          {secondMenusOf(d).map((m, n) => (
+                            <div key={n} className="mt-1 rounded-lg border border-border bg-surface-alt px-3 py-2">
+                              <div className="font-semibold text-text">Second menu {n + 1} <span className="text-xs font-normal text-text-muted">(alternative menu; not in the total)</span></div>
                               <div>
-                                {d.secondChoice.mealTypes.map((m) => MEAL_TYPE_LABEL[m] ?? m).join(", ") || "no meal type"}
+                                {m.mealTypes.map((t) => MEAL_TYPE_LABEL[t] ?? t).join(", ") || "no meal type"}
                                 {" · "}
-                                {SERVICE_TYPE_LABEL[d.secondChoice.serviceType] ?? d.secondChoice.serviceType} · {d.secondChoice.pax} pax
-                                {d.secondChoice.pricePerMeal !== undefined ? ` · ${formatPrice(d.secondChoice.pricePerMeal)} / meal` : " · no price"}
+                                {SERVICE_TYPE_LABEL[m.serviceType] ?? m.serviceType} · {m.pax} pax
+                                {m.pricePerMeal !== undefined ? ` · ${formatPrice(m.pricePerMeal)} / meal` : " · no price"}
                               </div>
-                              <div className="whitespace-pre-line text-xs text-text-muted">{d.secondChoice.menu}</div>
+                              <div className="whitespace-pre-line text-xs text-text-muted">{m.menu}</div>
                             </div>
-                          )}
+                          ))}
                         </div>
                       ))}
                     </div>

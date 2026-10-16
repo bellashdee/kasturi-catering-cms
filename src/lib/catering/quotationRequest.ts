@@ -60,10 +60,10 @@ export function additionalServiceLines(a: AdditionalServices | undefined, totalS
   return lines;
 }
 
-/** Plain-text version of a day's second choice, written into the event when the request is approved. */
-export function describeSecondChoice(c: SecondChoice, labels: { meal: Record<string, string>; service: Record<string, string> }): string {
+/** Plain-text version of one second menu of a day, written into the event when the request is approved. */
+export function describeSecondChoice(c: SecondChoice, labels: { meal: Record<string, string>; service: Record<string, string> }, number?: number): string {
   return [
-    "Second choice (an alternative menu offered to the customer; not included in the quotation):",
+    `Second menu${number ? ` ${number}` : ""} (an alternative menu offered to the customer; not included in the quotation):`,
     `Menu: ${c.menu}`,
     `Qty pax: ${c.pax ?? "-"}`,
     `Meal type: ${c.mealTypes.map((m) => labels.meal[m] ?? m).join(", ") || "-"}`,
