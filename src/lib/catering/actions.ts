@@ -10,7 +10,7 @@ import { todayInMalaysia } from "@/lib/format";
 import { recordAudit } from "@/lib/audit";
 import { dueDateFromTerms } from "@/lib/finance/terms";
 import { dayPax, type EventDay } from "@/lib/catering/days";
-import { validateDays, validateServiceDetails } from "@/lib/catering/validation";
+import { validateDays, validateServiceDetails, validateTimes } from "@/lib/catering/validation";
 
 type EventStatus = Database["public"]["Enums"]["event_status"];
 
@@ -145,7 +145,10 @@ function dayRows(companyId: string, eventId: string, input: EventInput) {
 function validateEvent(input: EventInput) {
   validateContact(input);
   if ((input.days?.length ?? 0) > 0) validateDays(input.days ?? []);
-  else validateServiceDetails(input, true);
+  else {
+    validateTimes(input);
+    validateServiceDetails(input, true);
+  }
 }
 
 export async function createEvent(input: EventInput) {

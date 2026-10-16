@@ -9,6 +9,8 @@ import { formatCurrency } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SearchBox } from "@/components/SearchBox";
+import { CopyLink } from "@/components/driver/CopyLink";
+import { INTAKE_COMPANIES } from "@/lib/catering/intake";
 
 function statusTone(status: string): "success" | "warning" | "danger" | "info" | "neutral" {
   if (status === "completed" || status === "confirmed") return "success";
@@ -65,6 +67,20 @@ export default async function CateringPage({
           <Link href={`/catering/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
             + New Event
           </Link>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-surface p-4 shadow-sm">
+        <div>
+          <div className="text-[14px] font-bold text-text">Request Quotation form: link for sales agents</div>
+          <p className="mt-0.5 text-[12.5px] text-text-secondary">Copy the link of the company and send it to the sales agent. They fill in the event and menu without logging in, and it appears under Quotation Requests.</p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {Object.entries(INTAKE_COMPANIES)
+            .filter(([, c]) => targetCompanyIds.includes(c.id))
+            .map(([slug, c]) => (
+              <CopyLink key={slug} path={`/quotation-form/${slug}`} label={c.name} />
+            ))}
         </div>
       </div>
 

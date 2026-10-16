@@ -187,12 +187,12 @@ export function EventForm({
             <input type="date" required value={form.eventDate} onChange={(e) => set("eventDate", e.target.value)} className={inputClass} />
           </div>
           <div>
-            <label className={labelClass}>Set-up time (kitchen side)</label>
-            <input type="time" value={form.setupTime} onChange={(e) => set("setupTime", e.target.value)} className={inputClass} />
+            <label className={labelClass}>Set-up time (kitchen side) *</label>
+            <input type="time" required value={form.setupTime} onChange={(e) => set("setupTime", e.target.value)} className={inputClass} />
           </div>
           <div>
-            <label className={labelClass}>Event time</label>
-            <input type="time" value={form.eventTime} onChange={(e) => set("eventTime", e.target.value)} className={inputClass} />
+            <label className={labelClass}>Event time *</label>
+            <input type="time" required value={form.eventTime} onChange={(e) => set("eventTime", e.target.value)} className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>Total pax</label>
