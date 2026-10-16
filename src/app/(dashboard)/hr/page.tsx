@@ -36,7 +36,18 @@ export default async function HRPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const employees = await listEmployees(supabase, targetCompanyIds, q);
+  const records = await listEmployees(supabase, targetCompanyIds, q);
+
+  // The same person who works for several companies has one record per company (leave, payroll and OT stay separate per company).
+  // The list shows each person once, with a link to the record of every company.
+  type Employee = (typeof records)[number];
+  const byName = new Map<string, Employee[]>();
+  for (const e of records) {
+    const key = e.full_name.toUpperCase().replace(/\s+/g, " ").trim();
+    byName.set(key, [...(byName.get(key) ?? []), e]);
+  }
+  const employees = Array.from(byName.values());
+  const joined = (values: (string | null | undefined)[]) => Array.from(new Set(values.filter((v): v is string => !!v))).join(" / ") || "—";
 
   return (
     <div className="flex flex-col gap-5">
@@ -45,6 +56,7 @@ export default async function HRPage({
           <h1 className="text-[22px] font-extrabold text-text">Employee Database</h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">
             {employees.length} employee{employees.length === 1 ? "" : "s"}
+            {records.length !== employees.length ? ` (${records.length} company records)` : ""}
           </p>
         </div>
         <div className="flex gap-2.5">
@@ -96,31 +108,42 @@ export default async function HRPage({
               <div>Join Date</div>
               <div>Status</div>
             </div>
-            {employees.map((e) => (
-              <Link
-                key={e.id}
-                href={`/hr/${e.id}${query}`}
-                className="grid grid-cols-[2fr_1.2fr_1.2fr_1fr_1fr_1fr] border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0 hover:bg-surface-alt"
-              >
-                <div className="font-semibold text-text">
-                  {e.full_name}
-                  {companies.length > 1 && (
-                    <span className="ml-2 text-[11px] font-normal text-text-muted">
-                      {e.companies?.name}
-                    </span>
-                  )}
+            {employees.map((group) => {
+              const first = group[0];
+              const statuses = Array.from(new Set(group.map((g) => g.status)));
+              return (
+                <div
+                  key={first.id}
+                  className="grid grid-cols-[2fr_1.2fr_1.2fr_1fr_1fr_1fr] items-start border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0 hover:bg-surface-alt"
+                >
+                  <div>
+                    <Link href={`/hr/${first.id}${query}`} className="font-semibold text-text hover:underline">
+                      {first.full_name}
+                    </Link>
+                    {companies.length > 1 && (
+                      <span className="ml-2 inline-flex flex-wrap gap-x-2 text-[11px] font-normal text-text-muted">
+                        {group.map((g) => (
+                          <Link key={g.id} href={`/hr/${g.id}${query}`} className="hover:text-primary hover:underline">
+                            {g.companies?.name}
+                          </Link>
+                        ))}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-text-secondary">{joined(group.map((g) => g.department))}</div>
+                  <div className="text-text-secondary">{joined(group.map((g) => g.position))}</div>
+                  <div className="text-text-secondary">{joined(group.map((g) => EMPLOYMENT_TYPE_LABEL[g.employment_type] ?? g.employment_type))}</div>
+                  <div className="text-text-secondary">{joined(group.map((g) => g.join_date))}</div>
+                  <div className="flex flex-wrap gap-1">
+                    {statuses.map((st) => (
+                      <StatusBadge key={st} tone={statusTone(st)}>
+                        {EMPLOYEE_STATUS_LABEL[st] ?? st}
+                      </StatusBadge>
+                    ))}
+                  </div>
                 </div>
-                <div className="text-text-secondary">{e.department || "—"}</div>
-                <div className="text-text-secondary">{e.position || "—"}</div>
-                <div className="text-text-secondary">{EMPLOYMENT_TYPE_LABEL[e.employment_type] ?? e.employment_type}</div>
-                <div className="text-text-secondary">{e.join_date || "—"}</div>
-                <div>
-                  <StatusBadge tone={statusTone(e.status)}>
-                    {EMPLOYEE_STATUS_LABEL[e.status] ?? e.status}
-                  </StatusBadge>
-                </div>
-              </Link>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

@@ -61,6 +61,7 @@ const dictionary: Record<string, string> = {
  "\"Calculated\" is fixed by the menu recipes for": "\"တွက်ချက်ထားသည့်\" ပမာဏကို မီနူးချက်ပြုတ်နည်းများက သတ်မှတ်ထားသည် —",
  "\"PO\" means the price is the latest purchase order price of that item (the item has no unit cost of its own).": "“PO” ဆိုသည်မှာ ဈေးနှုန်းသည် ထိုပစ္စည်း၏ နောက်ဆုံးဝယ်ယူမှုအမှာစာဈေးဖြစ်သည်ဟု ဆိုလိုသည် (ပစ္စည်းတွင် ကိုယ်ပိုင်ယူနစ်ကုန်ကျစရိတ် မရှိပါ)။",
  "\"Total required\" comes from the recipes and cannot be edited. Change \"Purchase qty\" if you must buy a different amount. Whole items (eggs, pieces) are rounded up and shown separately. Stock is not assumed: it shows Not Checked unless stock has really been recorded. Changing the pax or the menu clears edited purchase quantities.": "\"လိုအပ်သည့် စုစုပေါင်း\" သည် ချက်ပြုတ်နည်းများမှ ရလာသဖြင့် ပြင်၍မရပါ။ အခြားပမာဏ ဝယ်ရန်လိုပါက \"ဝယ်ယူမည့်အရေအတွက်\" ကို ပြောင်းပါ။ ကိန်းပြည့်ပစ္စည်းများ (ကြက်ဥ၊ ခုရေ) ကို အပေါ်သို့ ဖြည့်ပြီး သီးခြားပြသပါသည်။ လက်ကျန်ကို မခန့်မှန်းပါ — လက်ကျန်ကို တကယ်မှတ်သားထားမှသာ ပြပြီး မဟုတ်ပါက \"မစစ်ဆေးရသေး\" ဟု ပြပါမည်။ pax သို့မဟုတ် မီနူး ပြောင်းလျှင် ပြင်ထားသည့် ဝယ်ယူအရေအတွက်များ ရှင်းလင်းသွားပါမည်။",
+ "({0} company records)": "(ကုမ္ပဏီမှတ်တမ်း {0} ခု)",
  "({0} list(s) were already saved.)": "(စာရင်း {0} ခုကို ယခင်က သိမ်းဆည်းပြီးဖြစ်သည်။)",
  "(add to stock)": "(လက်ကျန်သို့ ပေါင်းထည့်)",
  "(alternative menu; not in the total)": "(အစားထိုးမီနူး၊ စုစုပေါင်းတွင် မပါ)",

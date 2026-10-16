@@ -62,6 +62,7 @@ const dictionary: Record<string, string> = {
  "\"Calculated\" is fixed by the menu recipes for": "“হিসাবকৃত” মান মেনুর রেসিপি দ্বারা নির্ধারিত, নিম্নের জন্য:",
  "\"PO\" means the price is the latest purchase order price of that item (the item has no unit cost of its own).": "“PO” মানে হলো মূল্যটি ওই আইটেমের সর্বশেষ ক্রয় আদেশের মূল্য (আইটেমটির নিজস্ব ইউনিট খরচ নেই)।",
  "\"Total required\" comes from the recipes and cannot be edited. Change \"Purchase qty\" if you must buy a different amount. Whole items (eggs, pieces) are rounded up and shown separately. Stock is not assumed: it shows Not Checked unless stock has really been recorded. Changing the pax or the menu clears edited purchase quantities.": "“মোট প্রয়োজন” রেসিপি থেকে আসে এবং পরিবর্তন করা যায় না। আলাদা পরিমাণ কিনতে হলে “ক্রয়ের পরিমাণ” পরিবর্তন করুন। পুরো আইটেম (ডিম, পিস) উপরের দিকে পূর্ণসংখ্যায় ধরা হয় এবং আলাদাভাবে দেখানো হয়। স্টক ধরে নেওয়া হয় না: স্টক সত্যিই রেকর্ড না হলে এটি “যাচাই করা হয়নি” দেখায়। pax বা মেনু পরিবর্তন করলে সম্পাদিত ক্রয়ের পরিমাণ মুছে যায়।",
+ "({0} company records)": "({0}টি কোম্পানির রেকর্ড)",
  "({0} list(s) were already saved.)": "({0}টি তালিকা আগেই সংরক্ষিত হয়েছে।)",
  "(add to stock)": "(স্টকে যোগ করুন)",
  "(alternative menu; not in the total)": "(বিকল্প মেনু; মোটের মধ্যে ধরা হয়নি)",

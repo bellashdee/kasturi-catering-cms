@@ -60,6 +60,7 @@ const dictionary: Record<string, string> = {
  "\"Calculated\" is fixed by the menu recipes for": "\"Dikira\" ditetapkan oleh resipi menu untuk",
  "\"PO\" means the price is the latest purchase order price of that item (the item has no unit cost of its own).": "\"PO\" bermaksud harga ialah harga pesanan pembelian terkini bagi item itu (item tiada kos seunit sendiri).",
  "\"Total required\" comes from the recipes and cannot be edited. Change \"Purchase qty\" if you must buy a different amount. Whole items (eggs, pieces) are rounded up and shown separately. Stock is not assumed: it shows Not Checked unless stock has really been recorded. Changing the pax or the menu clears edited purchase quantities.": "\"Jumlah diperlukan\" datang daripada resipi dan tidak boleh disunting. Ubah \"Kuantiti pembelian\" jika anda perlu membeli jumlah yang berbeza. Item bulat (telur, biji) dibundarkan ke atas dan dipaparkan secara berasingan. Stok tidak diandaikan: ia menunjukkan Belum Disemak melainkan stok benar-benar telah direkodkan. Menukar pax atau menu akan mengosongkan kuantiti pembelian yang telah disunting.",
+ "({0} company records)": "({0} rekod syarikat)",
  "({0} list(s) were already saved.)": "({0} senarai telah pun disimpan.)",
  "(add to stock)": "(tambah ke stok)",
  "(alternative menu; not in the total)": "(menu alternatif; tidak termasuk dalam jumlah)",

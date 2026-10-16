@@ -62,6 +62,7 @@ const dictionary: Record<string, string> = {
  "\"Calculated\" is fixed by the menu recipes for": "\"计算数量\"由菜单食谱决定，适用于",
  "\"PO\" means the price is the latest purchase order price of that item (the item has no unit cost of its own).": "“PO”表示该价格是此物品最近一次采购订单的价格（该物品本身没有单位成本）。",
  "\"Total required\" comes from the recipes and cannot be edited. Change \"Purchase qty\" if you must buy a different amount. Whole items (eggs, pieces) are rounded up and shown separately. Stock is not assumed: it shows Not Checked unless stock has really been recorded. Changing the pax or the menu clears edited purchase quantities.": "\"所需总量\"来自食谱，无法修改。如需购买不同的数量，请修改\"采购数量\"。整件物品 (如鸡蛋、件数) 会向上取整并另行显示。系统不会假定库存：除非确实已记录库存，否则显示为未核对。更改人数或菜单会清除已修改的采购数量。",
+ "({0} company records)": "（{0} 条公司记录）",
  "({0} list(s) were already saved.)": "(已保存 {0} 份清单。)",
  "(add to stock)": "(加入库存)",
  "(alternative menu; not in the total)": "(备选菜单；不计入总额)",
