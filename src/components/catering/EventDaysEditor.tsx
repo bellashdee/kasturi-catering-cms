@@ -28,6 +28,7 @@ export function EventDaysEditor({
   onChange,
   secondService = true,
   secondChoice = false,
+  mealRequired = false,
 }: {
   days: EventDay[];
   onChange: (days: EventDay[]) => void;
@@ -35,6 +36,8 @@ export function EventDaysEditor({
   secondService?: boolean;
   /** Show an optional second choice (an alternative menu) inside each day (the public quotation request form). */
   secondChoice?: boolean;
+  /** At least one meal type must be ticked on every day (the public quotation request form). */
+  mealRequired?: boolean;
 }) {
   function patch(i: number, change: Partial<EventDay>) {
     onChange(days.map((d, idx) => (idx === i ? { ...d, ...change } : d)));
@@ -100,7 +103,7 @@ export function EventDaysEditor({
           </div>
 
           <div className="mt-3">
-            <label className={labelClass}>Meal type</label>
+            <label className={labelClass}>{mealRequired ? "Meal type *" : "Meal type"}</label>
             <div className="mt-1.5 flex flex-wrap gap-2">
               {Object.entries(MEAL_TYPE_LABEL).map(([key, label]) => {
                 const on = day.mealTypes.includes(key);

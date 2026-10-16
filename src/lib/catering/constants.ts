@@ -48,6 +48,7 @@ export const MEAL_TYPE_LABEL: Record<string, string> = {
   lunch: "Lunch",
   hi_tea: "Hi-Tea",
   dinner: "Dinner",
+  wedding: "Wedding",
 };
 
 export const SALES_AGENTS = ["Ms. Fadilah", "Ms. Hannah", "Ms. Zainab", "Mr. Ismaizal", "Mr. Hao", "Mr. Faidz", "Mr. Mard"];

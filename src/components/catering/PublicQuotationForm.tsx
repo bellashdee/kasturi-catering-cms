@@ -56,6 +56,11 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const noMeal = days.findIndex((d) => d.mealTypes.length === 0);
+    if (noMeal >= 0) {
+      setError(`Day ${noMeal + 1}: select at least one meal type.`);
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -107,33 +112,33 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
           <input required maxLength={200} value={form.eventName} onChange={(e) => set("eventName", e.target.value)} className={inputClass} placeholder="e.g. Annual Conference 2026" />
         </div>
         <div>
-          <label className={labelClass}>Event type</label>
-          <select value={form.eventType} onChange={(e) => set("eventType", e.target.value)} className={inputClass}>
+          <label className={labelClass}>Event type *</label>
+          <select required value={form.eventType} onChange={(e) => set("eventType", e.target.value)} className={inputClass}>
             {Object.entries(EVENT_TYPE_LABEL).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
           </select>
         </div>
       </div>
 
       <div>
-        <label className={labelClass}>Event location</label>
-        <input maxLength={300} value={form.location} onChange={(e) => set("location", e.target.value)} className={inputClass} placeholder="Venue / address" />
+        <label className={labelClass}>Event location *</label>
+        <input required maxLength={300} value={form.location} onChange={(e) => set("location", e.target.value)} className={inputClass} placeholder="Venue / address" />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className={labelClass}>PIC</label>
-          <input maxLength={200} value={form.picName} onChange={(e) => set("picName", e.target.value)} className={inputClass} placeholder="Person in charge" />
+          <label className={labelClass}>PIC *</label>
+          <input required maxLength={200} value={form.picName} onChange={(e) => set("picName", e.target.value)} className={inputClass} placeholder="Person in charge" />
         </div>
         <div>
-          <label className={labelClass}>PIC contact no.</label>
-          <input maxLength={50} value={form.picPhone} onChange={(e) => set("picPhone", e.target.value)} className={inputClass} placeholder="e.g. 012-3456789" />
+          <label className={labelClass}>PIC contact no. *</label>
+          <input required type="tel" inputMode="tel" maxLength={50} value={form.picPhone} onChange={(e) => set("picPhone", e.target.value)} className={inputClass} placeholder="e.g. 012-3456789" />
         </div>
       </div>
 
       <div>
         <div className="text-[14px] font-extrabold text-text">Event days</div>
         <p className="mb-2 text-xs text-text-muted">One block for each day of the event (1 day, or 3-5 days for a conference). Use &quot;Add next day&quot; to copy the previous day.</p>
-        <EventDaysEditor days={days} onChange={setDays} secondService={false} secondChoice />
+        <EventDaysEditor days={days} onChange={setDays} secondService={false} secondChoice mealRequired />
       </div>
 
       <div>

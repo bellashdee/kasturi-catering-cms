@@ -114,6 +114,11 @@ export function AdditionalServicesEditor({
         <YesNo name="transportation" label="Transportation (RM)" answer={value.transportation} onAnswer={(v) => patch({ transportation: v })} />
         <input type="number" min="0" step="0.01" disabled={value.transportation !== true} required={value.transportation === true} value={value.transportationPrice ?? ""} onChange={(e) => patch({ transportationPrice: num(e.target.value) })} className={small} placeholder="RM *" />
       </div>
+
+      <div className={row}>
+        <YesNo name="dome-set" label="Dome set" answer={value.domeSet} onAnswer={(v) => patch({ domeSet: v })} />
+        <input type="number" min="0" step="0.01" disabled={value.domeSet !== true} value={value.domeSetPrice ?? ""} onChange={(e) => patch({ domeSetPrice: num(e.target.value) })} className={small} placeholder="RM (optional)" />
+      </div>
     </div>
   );
 }

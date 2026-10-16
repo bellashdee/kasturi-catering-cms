@@ -84,6 +84,7 @@ function sanitizeAdditional(a: AdditionalServices | undefined): AdditionalServic
   if (!a || typeof a.equipmentHandling !== "boolean") throw new Error("Additional requirement: answer Yes or No for Equipment handling.");
   if (typeof a.staffServing !== "boolean") throw new Error("Additional requirement: answer Yes or No for Staff serving.");
   if (typeof a.transportation !== "boolean") throw new Error("Additional requirement: answer Yes or No for Transportation.");
+  if (typeof a.domeSet !== "boolean") throw new Error("Additional requirement: answer Yes or No for Dome set.");
   const price = (v: number | undefined, label: string, required: boolean) => {
     if (v === undefined) {
       if (required) throw new Error(`${label}: enter the price (RM).`);
@@ -99,6 +100,8 @@ function sanitizeAdditional(a: AdditionalServices | undefined): AdditionalServic
     staffServingPricePerPax: a.staffServing ? price(a.staffServingPricePerPax, "Staff serving", true) : undefined,
     transportation: !!a.transportation,
     transportationPrice: a.transportation ? price(a.transportationPrice, "Transportation", true) : undefined,
+    domeSet: a.domeSet,
+    domeSetPrice: a.domeSet ? price(a.domeSetPrice, "Dome set", false) : undefined,
   };
 }
 
@@ -127,11 +130,21 @@ async function saveQuotationRequest(companySlug: string, input: QuotationRequest
   const eventName = clean(input.eventName, 200);
   if (!eventName) throw new Error("Enter the event name.");
   if (!EVENT_TYPE_LABEL[input.eventType]) throw new Error("Select the event type.");
+  // the location and the person in charge (name and contact number) are compulsory on this form
+  if (!clean(input.location, 300)) throw new Error("Enter the event location.");
+  if (!clean(input.picName, 200)) throw new Error("Enter the PIC (person in charge).");
+  const picPhone = clean(input.picPhone, 50);
+  if (!picPhone) throw new Error("Enter the PIC contact number.");
+  const phoneDigits = picPhone.replace(/\D/g, "").length;
+  if (phoneDigits < 7 || phoneDigits > 15 || !/^[+\d][\d\s()+-]*$/.test(picPhone)) throw new Error("The PIC contact number is not valid.");
 
   if (!Array.isArray(input.days) || input.days.length === 0) throw new Error("Add at least one event day.");
   if (input.days.length > MAX_EVENT_DAYS) throw new Error(`At most ${MAX_EVENT_DAYS} days.`);
   const days = input.days.map((d, i) => sanitizeDay(d, i)).sort((a, b) => a.dayDate.localeCompare(b.dayDate));
   validateDays(days);
+  days.forEach((d, i) => {
+    if (d.mealTypes.length === 0) throw new Error(`Day ${i + 1}: select at least one meal type.`);
+  });
   const totalServings = days.reduce((t, d) => t + dayPax(d), 0);
   const extraItems = [...additionalServiceLines(sanitizeAdditional(input.additional), totalServings), ...sanitizeExtras(input.extraItems ?? [])];
   if (extraItems.length > MAX_EXTRA_ITEMS) throw new Error(`At most ${MAX_EXTRA_ITEMS} extra items.`);

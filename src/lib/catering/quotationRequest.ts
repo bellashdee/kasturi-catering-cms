@@ -39,12 +39,15 @@ export type AdditionalServices = {
   transportation: boolean | null;
   /** RM for the whole event. */
   transportationPrice?: number;
+  domeSet: boolean | null;
+  /** Optional: the office can price it later. */
+  domeSetPrice?: number;
 };
 
-export const noAdditionalServices = (): AdditionalServices => ({ equipmentHandling: false, staffServing: false, transportation: false });
+export const noAdditionalServices = (): AdditionalServices => ({ equipmentHandling: false, staffServing: false, transportation: false, domeSet: false });
 
 /** The form starts with nothing answered: each of the three must be answered Yes or No before the request can be sent. */
-export const unansweredAdditionalServices = (): AdditionalServices => ({ equipmentHandling: null, staffServing: null, transportation: null });
+export const unansweredAdditionalServices = (): AdditionalServices => ({ equipmentHandling: null, staffServing: null, transportation: null, domeSet: null });
 
 /** The quotation lines for the ticked additional services. `totalServings` is the pax of all days added together. */
 export function additionalServiceLines(a: AdditionalServices | undefined, totalServings: number): ExtraItem[] {
@@ -53,6 +56,7 @@ export function additionalServiceLines(a: AdditionalServices | undefined, totalS
   if (a.equipmentHandling) lines.push({ itemName: "Equipment handling", quantity: 1, unitPrice: a.equipmentHandlingPrice ?? 0 });
   if (a.staffServing) lines.push({ itemName: "Staff serving (per pax)", quantity: totalServings, unitPrice: a.staffServingPricePerPax ?? 0 });
   if (a.transportation) lines.push({ itemName: "Transportation", quantity: 1, unitPrice: a.transportationPrice ?? 0 });
+  if (a.domeSet) lines.push({ itemName: "Dome set", quantity: 1, unitPrice: a.domeSetPrice ?? 0 });
   return lines;
 }
 
