@@ -50,7 +50,7 @@ export const MEAL_TYPE_LABEL: Record<string, string> = {
   dinner: "Dinner",
 };
 
-export const SALES_AGENTS = ["Ms. Fadilah", "Ms. Hannah", "Ms. Zainab", "Mr. Ismaizal"];
+export const SALES_AGENTS = ["Ms. Fadilah", "Ms. Hannah", "Ms. Zainab", "Mr. Ismaizal", "Mr. Hao", "Mr. Faidz", "Mr. Mard"];
 
 /** A multi-day event (e.g. a 3-5 day conference) is one booking with one row per day. */
 export const MAX_EVENT_DAYS = 14;
