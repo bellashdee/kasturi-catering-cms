@@ -1,6 +1,6 @@
 "use client";
 
-import { MAX_EVENT_DAYS, MEAL_TYPE_LABEL, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
+import { MAX_EVENT_DAYS, SERVICE_TYPE_LABEL, mealTypeOptions } from "@/lib/catering/constants";
 import { MAX_SECOND_MENUS, dayAmount, dayPax, emptySecondChoice, secondMenusOf, type EventDay } from "@/lib/catering/days";
 import { SecondChoiceEditor } from "@/components/catering/QuotationRequestExtras";
 import { formatPrice } from "@/lib/format";
@@ -105,7 +105,7 @@ export function EventDaysEditor({
           <div className="mt-3">
             <label className={labelClass}>{mealRequired ? "Meal type *" : "Meal type"}</label>
             <div className="mt-1.5 flex flex-wrap gap-2">
-              {Object.entries(MEAL_TYPE_LABEL).map(([key, label]) => {
+              {mealTypeOptions(day.mealTypes).map(([key, label]) => {
                 const on = day.mealTypes.includes(key);
                 return (
                   <label key={key} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-[13px] font-semibold ${on ? "border-primary bg-info-bg text-primary" : "border-border-strong bg-surface text-text-secondary"}`}>

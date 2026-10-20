@@ -14,7 +14,7 @@ export type SecondChoice = {
 
 export const emptySecondChoice = (): SecondChoice => ({ menu: "", mealTypes: [], serviceType: "" });
 
-/** A day can have up to this many second menus (one for each meal type: breakfast, lunch, hi-tea, dinner, wedding). */
+/** A day can have up to this many second menus (for example one for each meal type). */
 export const MAX_SECOND_MENUS = 5;
 
 /** The second menus of a day. Requests saved earlier kept a single "second choice", which counts as the first second menu. */

@@ -15,6 +15,8 @@ import { getPendingSubmissions } from "@/lib/catering/pending";
 import { SalesAgentSubmissionsAlert } from "@/components/dashboard/SalesAgentSubmissionsAlert";
 import { AutoRefresh } from "@/components/dashboard/AutoRefresh";
 import { BirthdayCard } from "@/components/dashboard/BirthdayCard";
+import { BulletinCard } from "@/components/dashboard/BulletinCard";
+import { listBulletinPosts } from "@/lib/bulletin/queries";
 import { loadBirthdayRows, upcomingBirthdays } from "@/lib/hr/birthdays";
 import { todayInMalaysia } from "@/lib/format";
 
@@ -60,6 +62,9 @@ export default async function DashboardPage({
     .then((rows) => upcomingBirthdays(rows, todayInMalaysia(), 7, { userId: session.userId, email: session.email }))
     .catch(() => []);
 
+  // the latest announcements of the bulletin board: a failure here must never take the dashboard down either
+  const bulletin = await listBulletinPosts(supabase, targetCompanyIds, { includeExpired: false, limit: 3 }).catch(() => []);
+
   return (
     <div className="flex flex-col gap-6">
       <AutoRefresh />
@@ -77,6 +82,8 @@ export default async function DashboardPage({
           Showing figures for <b className="text-text">{viewLabel}</b> · month-to-date figures cover <b className="text-text">{monthToDateLabel()}</b>
         </p>
       </div>
+
+      <BulletinCard posts={bulletin} companyQuery={companyQuery} />
 
       <BirthdayCard birthdays={birthdays} companyQuery={companyQuery} />
 

@@ -3549,6 +3549,56 @@ export type Database = {
           },
         ]
       }
+      bulletin_posts: {
+        Row: {
+          body: string
+          category: string
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          created_by_name: string | null
+          expires_on: string | null
+          id: string
+          pinned: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          category?: string
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          expires_on?: string | null
+          id?: string
+          pinned?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          category?: string
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          expires_on?: string | null
+          id?: string
+          pinned?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bulletin_posts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payroll_records: {
         Row: {
           company_id: string

@@ -19,6 +19,13 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M8 7l1.2 1.2L12 5.5M8 12l1.2 1.2L12 10.5" />
     </>
   ),
+  bulletin: (
+    <>
+      <path d="M3 8v4l9 3V5L3 8z" />
+      <path d="M12 7.5a2.5 2.5 0 0 1 0 5" />
+      <path d="M5 12.5l1 4h2l-1-3.5" />
+    </>
+  ),
   payroll: (
     <>
       <rect x="3" y="5" width="14" height="10" rx="2" />
@@ -139,6 +146,10 @@ export function MainDashboardLink() {
 
 export function PriorityCentreLink({ label = "Priority Centre" }: { label?: string }) {
   return <NavItem href="/priority-centre" icon="priority" label={label} />;
+}
+
+export function BulletinLink() {
+  return <NavItem href="/bulletin" icon="bulletin" label="Bulletin Board" />;
 }
 
 export function PayrollCentreLink() {
