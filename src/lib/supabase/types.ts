@@ -1668,6 +1668,7 @@ export type Database = {
           nationality: string | null
           race: string | null
           religion: string | null
+          short_name: string | null
         }
         Insert: {
           company_id: string
@@ -1691,6 +1692,7 @@ export type Database = {
           nationality?: string | null
           race?: string | null
           religion?: string | null
+          short_name?: string | null
         }
         Update: {
           company_id?: string
@@ -1714,6 +1716,7 @@ export type Database = {
           nationality?: string | null
           race?: string | null
           religion?: string | null
+          short_name?: string | null
         }
         Relationships: [
           {

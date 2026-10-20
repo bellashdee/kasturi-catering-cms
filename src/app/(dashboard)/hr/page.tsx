@@ -61,6 +61,12 @@ export default async function HRPage({
         </div>
         <div className="flex gap-2.5">
           <Link
+            href={`/birthdays${query}`}
+            className="flex items-center gap-2 rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text"
+          >
+            🎂 Birthday Calendar
+          </Link>
+          <Link
             href={`/hr/leave${query}`}
             className="flex items-center gap-2 rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text"
           >

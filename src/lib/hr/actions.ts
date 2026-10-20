@@ -34,6 +34,7 @@ export type EmployeeInput = {
   religion?: string;
   maritalStatus?: string;
   branch?: string;
+  shortName?: string;
   /** Login account of this person (admin only); lets them submit and see their own OT. null clears the link. */
   userId?: string | null;
 };
@@ -62,7 +63,7 @@ function personalColumns(input: Partial<EmployeeInput>) {
   if (gender && gender !== "Male" && gender !== "Female") throw new Error("Select Male or Female.");
   const dob = text(input.dateOfBirth) ?? dobFromIc(input.icPassportNo);
   if (dob && !/^\d{4}-\d{2}-\d{2}$/.test(dob)) throw new Error("Enter a valid date of birth.");
-  return { date_of_birth: dob, nationality: text(input.nationality), gender, race: text(input.race), religion: text(input.religion), marital_status: text(input.maritalStatus), branch: text(input.branch) };
+  return { date_of_birth: dob, nationality: text(input.nationality), gender, race: text(input.race), religion: text(input.religion), marital_status: text(input.maritalStatus), branch: text(input.branch), short_name: text(input.shortName)?.toUpperCase() ?? null };
 }
 
 export async function createEmployee(input: EmployeeInput) {
@@ -146,6 +147,7 @@ export async function attachEmployeeToCompanies(employeeId: string, companyIds: 
         religion: source.religion,
         marital_status: source.marital_status,
         branch: source.branch,
+        short_name: source.short_name,
       })
       .select("id")
       .single();

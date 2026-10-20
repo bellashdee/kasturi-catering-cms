@@ -59,6 +59,7 @@ export function EmployeeForm({
     religion: initial?.religion ?? "",
     maritalStatus: initial?.maritalStatus ?? "",
     branch: initial?.branch ?? "",
+    shortName: initial?.shortName ?? "",
   });
 
   function set<K extends keyof EmployeeInput>(key: K, value: EmployeeInput[K]) {
@@ -232,9 +233,15 @@ export function EmployeeForm({
         </div>
       </div>
 
-      <div>
-        <label className={labelClass}>Branch</label>
-        <input value={form.branch} onChange={(e) => set("branch", e.target.value)} className={inputClass} placeholder="e.g. Johor Bahru" />
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelClass}>Branch</label>
+          <input value={form.branch} onChange={(e) => set("branch", e.target.value)} className={inputClass} placeholder="e.g. Johor Bahru" />
+        </div>
+        <div>
+          <label className={labelClass}>Short Name (label on the birthday calendar)</label>
+          <input value={form.shortName} onChange={(e) => set("shortName", e.target.value.toUpperCase())} className={`${inputClass} uppercase`} placeholder="e.g. SYAMIE" />
+        </div>
       </div>
 
       {accounts && employeeId && (

@@ -14,6 +14,9 @@ import { canAccessModule } from "@/lib/modules";
 import { getPendingSubmissions } from "@/lib/catering/pending";
 import { SalesAgentSubmissionsAlert } from "@/components/dashboard/SalesAgentSubmissionsAlert";
 import { AutoRefresh } from "@/components/dashboard/AutoRefresh";
+import { BirthdayCard } from "@/components/dashboard/BirthdayCard";
+import { loadBirthdayRows, upcomingBirthdays } from "@/lib/hr/birthdays";
+import { todayInMalaysia } from "@/lib/format";
 
 export default async function DashboardPage({
   searchParams,
@@ -52,6 +55,10 @@ export default async function DashboardPage({
   const pendingSubmissions = can("catering") ? await getPendingSubmissions(supabase, targetCompanyIds) : null;
   const companyQuery = requestedId ? `?company=${requestedId}` : "";
   const alerts = alertsForModules(data.alerts, session.allowedModules);
+  // birthdays of the staff (today, and the coming week): a failure here must never take the dashboard down
+  const birthdays = await loadBirthdayRows(supabase, targetCompanyIds)
+    .then((rows) => upcomingBirthdays(rows, todayInMalaysia(), 7, { userId: session.userId, email: session.email }))
+    .catch(() => []);
 
   return (
     <div className="flex flex-col gap-6">
@@ -70,6 +77,8 @@ export default async function DashboardPage({
           Showing figures for <b className="text-text">{viewLabel}</b> · month-to-date figures cover <b className="text-text">{monthToDateLabel()}</b>
         </p>
       </div>
+
+      <BirthdayCard birthdays={birthdays} companyQuery={companyQuery} />
 
       {pendingSubmissions && (
         <SalesAgentSubmissionsAlert

@@ -23,6 +23,7 @@ import {
 } from "@/lib/hr/constants";
 import { formatCurrency } from "@/lib/format";
 import { dobFromIc } from "@/lib/hr/ic";
+import { shortNameOf } from "@/lib/hr/shortName";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SectionCard, EmptyRow, StatRow } from "@/components/dashboard/SectionCard";
 
@@ -120,6 +121,7 @@ export default async function EmployeeProfilePage({
           <StatRow label="Religion" value={employee.religion || "—"} />
           <StatRow label="Marital Status" value={employee.marital_status || "—"} />
           <StatRow label="Branch" value={employee.branch || "—"} />
+          <StatRow label="Short Name" value={shortNameOf(employee.full_name, employee.short_name)} />
           <StatRow label="Mobile No." value={employee.phone || "—"} />
           <StatRow label="Email" value={employee.email || "—"} />
           <StatRow label="Start Date" value={employee.join_date || "—"} />

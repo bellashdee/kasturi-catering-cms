@@ -68,6 +68,7 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
             religion: employee.religion ?? "",
             maritalStatus: employee.marital_status ?? "",
             branch: employee.branch ?? "",
+            shortName: employee.short_name ?? "",
           }}
         />
       </div>
