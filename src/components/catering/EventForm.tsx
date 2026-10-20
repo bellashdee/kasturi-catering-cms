@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createEvent, updateEvent, type EventInput } from "@/lib/catering/actions";
-import { SALES_AGENTS, SERVICE_TYPE_LABEL, mealTypeOptions } from "@/lib/catering/constants";
+import { SALES_AGENTS, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
+import { MealTypeSelect } from "@/components/catering/MealTypeSelect";
 import type { EventDay } from "@/lib/catering/days";
 import { hasPackagePrice } from "@/lib/kitchen/packages/format";
 import { EventDaysEditor, emptyDay } from "@/components/catering/EventDaysEditor";
@@ -242,18 +243,8 @@ export function EventForm({
       <>
       <div>
         <label className={labelClass}>Meal type</label>
-        <div className="mt-1.5 flex flex-wrap gap-2">
-          {mealTypeOptions(form.mealTypes ?? []).map(([key, label]) => {
-            const on = (form.mealTypes ?? []).includes(key);
-            return (
-              <label key={key} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-[13px] font-semibold ${on ? "border-primary bg-info-bg text-primary" : "border-border-strong text-text-secondary"}`}>
-                <input type="checkbox" checked={on} onChange={() => toggleMeal(key)} className="accent-[var(--color-primary)]" />
-                {label}
-              </label>
-            );
-          })}
-        </div>
-        <p className="mt-1 text-xs text-text-muted">Tick every meal this event serves.</p>
+        <MealTypeSelect value={form.mealTypes ?? []} onToggle={toggleMeal} />
+        <p className="mt-1 text-xs text-text-muted">Select every meal this event serves.</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">

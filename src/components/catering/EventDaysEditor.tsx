@@ -1,6 +1,7 @@
 "use client";
 
-import { MAX_EVENT_DAYS, SERVICE_TYPE_LABEL, mealTypeOptions } from "@/lib/catering/constants";
+import { MAX_EVENT_DAYS, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
+import { MealTypeSelect } from "@/components/catering/MealTypeSelect";
 import { MAX_SECOND_MENUS, dayAmount, dayPax, emptySecondChoice, secondMenusOf, type EventDay } from "@/lib/catering/days";
 import { SecondChoiceEditor } from "@/components/catering/QuotationRequestExtras";
 import { formatPrice } from "@/lib/format";
@@ -104,17 +105,7 @@ export function EventDaysEditor({
 
           <div className="mt-3">
             <label className={labelClass}>{mealRequired ? "Meal type *" : "Meal type"}</label>
-            <div className="mt-1.5 flex flex-wrap gap-2">
-              {mealTypeOptions(day.mealTypes).map(([key, label]) => {
-                const on = day.mealTypes.includes(key);
-                return (
-                  <label key={key} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-[13px] font-semibold ${on ? "border-primary bg-info-bg text-primary" : "border-border-strong bg-surface text-text-secondary"}`}>
-                    <input type="checkbox" checked={on} onChange={() => toggleMeal(i, key)} className="accent-[var(--color-primary)]" />
-                    {label}
-                  </label>
-                );
-              })}
-            </div>
+            <MealTypeSelect value={day.mealTypes} onToggle={(key) => toggleMeal(i, key)} />
           </div>
 
           <div className="mt-3 grid grid-cols-2 gap-4">

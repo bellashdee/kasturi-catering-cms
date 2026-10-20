@@ -1,6 +1,7 @@
 "use client";
 
-import { SERVICE_TYPE_LABEL, mealTypeOptions } from "@/lib/catering/constants";
+import { SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
+import { MealTypeSelect } from "@/components/catering/MealTypeSelect";
 import type { SecondChoice } from "@/lib/catering/days";
 import type { AdditionalServices } from "@/lib/catering/quotationRequest";
 import { formatPrice } from "@/lib/format";
@@ -37,17 +38,7 @@ export function SecondChoiceEditor({ value, onChange }: { value: SecondChoice; o
 
       <div className="mt-3">
         <label className={labelClass}>Meal type</label>
-        <div className="mt-1.5 flex flex-wrap gap-2">
-          {mealTypeOptions(value.mealTypes).map(([key, label]) => {
-            const on = value.mealTypes.includes(key);
-            return (
-              <label key={key} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-[13px] font-semibold ${on ? "border-primary bg-info-bg text-primary" : "border-border-strong bg-surface text-text-secondary"}`}>
-                <input type="checkbox" checked={on} onChange={() => toggleMeal(key)} className="accent-[var(--color-primary)]" />
-                {label}
-              </label>
-            );
-          })}
-        </div>
+        <MealTypeSelect value={value.mealTypes} onToggle={toggleMeal} />
       </div>
 
       <div className="mt-3">
