@@ -56,7 +56,7 @@ export async function createEmployee(input: EmployeeInput) {
       company_id: input.companyId,
       full_name: input.fullName,
       department: input.department || null,
-      position: input.position || null,
+      position: input.position?.trim().toUpperCase() || null,
       employment_type: input.employmentType,
       status: input.status,
       join_date: input.joinDate || null,
@@ -77,6 +77,63 @@ export async function createEmployee(input: EmployeeInput) {
   return data;
 }
 
+/**
+ * One staff name, several companies: creates the staff record in each chosen company (every company keeps its own record for
+ * leave, payroll, OT and attendance, so the companies stay separate). The list shows the person once.
+ */
+export async function createEmployeeInCompanies(input: Omit<EmployeeInput, "companyId">, companyIds: string[]) {
+  const ids = Array.from(new Set(companyIds));
+  if (ids.length === 0) throw new Error("Select at least one company where this person works.");
+  let first: { id: string } | null = null;
+  for (const companyId of ids) {
+    const created = await createEmployee({ ...input, companyId });
+    first ??= created;
+  }
+  return first as { id: string };
+}
+
+/**
+ * Attaches an existing staff member to more companies: a record with the same personal details (and bank / KWSP when allowed)
+ * is created in each of them. A company where a person with the same name already exists is left as it is.
+ */
+export async function attachEmployeeToCompanies(employeeId: string, companyIds: string[]) {
+  const { supabase } = await requireUser();
+  const { data: source, error } = await supabase.from("employees").select("*").eq("id", employeeId).single();
+  if (error) throw error;
+  const { data: sourcePrivate } = await supabase.from("employee_private_details").select("*").eq("employee_id", employeeId).maybeSingle();
+  const created: string[] = [];
+  for (const companyId of Array.from(new Set(companyIds))) {
+    if (companyId === source.company_id) continue;
+    const { data: sameCompany } = await supabase.from("employees").select("id, full_name").eq("company_id", companyId);
+    const key = (s: string) => s.toUpperCase().replace(/\s+/g, " ").trim();
+    if ((sameCompany ?? []).some((e) => key(e.full_name) === key(source.full_name))) continue;
+    const { data: copy, error: insertError } = await supabase
+      .from("employees")
+      .insert({
+        company_id: companyId,
+        full_name: source.full_name,
+        department: source.department,
+        position: source.position,
+        employment_type: source.employment_type,
+        status: source.status,
+        join_date: source.join_date,
+        ic_passport_no: source.ic_passport_no,
+        phone: source.phone,
+        email: source.email,
+      })
+      .select("id")
+      .single();
+    if (insertError) throw new Error("You cannot add staff to one of the selected companies.");
+    created.push(copy.id);
+    if (sourcePrivate) {
+      // only an admin can write these; for anybody else the copy simply has none
+      await supabase.from("employee_private_details").upsert({ employee_id: copy.id, company_id: companyId, bank_name: sourcePrivate.bank_name, bank_account_no: sourcePrivate.bank_account_no, epf_no: sourcePrivate.epf_no, updated_at: new Date().toISOString() });
+    }
+  }
+  revalidatePath("/hr");
+  return { created: created.length };
+}
+
 export async function updateEmployee(employeeId: string, input: Partial<EmployeeInput>) {
   const { supabase } = await requireUser();
 
@@ -92,7 +149,7 @@ export async function updateEmployee(employeeId: string, input: Partial<Employee
     .update({
       full_name: input.fullName,
       department: input.department || null,
-      position: input.position || null,
+      position: input.position?.trim().toUpperCase() || null,
       employment_type: input.employmentType,
       status: input.status,
       join_date: input.joinDate || null,
@@ -141,7 +198,7 @@ export async function bulkImportEmployees(companyId: string, rows: BulkEmployeeR
       company_id: companyId,
       full_name: r.fullName.trim(),
       department: r.department || null,
-      position: r.position || null,
+      position: r.position?.trim().toUpperCase() || null,
       employment_type: r.employmentType || "full_time",
       status: r.status || "active",
       join_date: r.joinDate || null,

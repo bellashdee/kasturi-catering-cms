@@ -229,7 +229,7 @@ export function ImportEmployeesFlow({
                 <td className="px-3 py-1.5"><input className={cellClass} value={row.phone ?? ""} onChange={(e) => updateCell(i, "phone", e.target.value)} /></td>
                 <td className="px-3 py-1.5"><input className={cellClass} value={row.email ?? ""} onChange={(e) => updateCell(i, "email", e.target.value)} /></td>
                 <td className="px-3 py-1.5"><input className={cellClass} value={row.joinDate ?? ""} onChange={(e) => updateCell(i, "joinDate", e.target.value)} placeholder="YYYY-MM-DD" /></td>
-                <td className="px-3 py-1.5"><input className={cellClass} value={row.position ?? ""} onChange={(e) => updateCell(i, "position", e.target.value)} /></td>
+                <td className="px-3 py-1.5"><input className={cellClass} value={row.position ?? ""} onChange={(e) => updateCell(i, "position", e.target.value.toUpperCase())} /></td>
                 <td className="px-3 py-1.5"><input className={cellClass} value={row.department ?? ""} onChange={(e) => updateCell(i, "department", e.target.value)} /></td>
                 {canImportPrivate && <td className="px-3 py-1.5"><input className={cellClass} value={row.bankName ?? ""} onChange={(e) => updateCell(i, "bankName", e.target.value)} /></td>}
                 {canImportPrivate && <td className="px-3 py-1.5"><input className={cellClass} value={row.bankAccountNo ?? ""} onChange={(e) => updateCell(i, "bankAccountNo", e.target.value)} /></td>}

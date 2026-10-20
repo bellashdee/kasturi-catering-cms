@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createEmployee, updateEmployee, type EmployeeInput } from "@/lib/hr/actions";
+import { attachEmployeeToCompanies, createEmployeeInCompanies, updateEmployee, type EmployeeInput } from "@/lib/hr/actions";
 
 type Company = { id: string; name: string };
 
@@ -18,6 +18,7 @@ export function EmployeeForm({
   canEditPrivate = false,
   accounts,
   initialUserId,
+  attachedCompanyIds = [],
 }: {
   companies: Company[];
   defaultCompanyId?: string;
@@ -28,8 +29,11 @@ export function EmployeeForm({
   /** Admins only: login accounts that can be linked to this staff record (own OT submission). */
   accounts?: { id: string; label: string }[];
   initialUserId?: string | null;
+  /** Editing: the companies where this person already has a staff record (shown ticked and locked). */
+  attachedCompanyIds?: string[];
 }) {
   const router = useRouter();
+  const [workCompanyIds, setWorkCompanyIds] = useState<string[]>(() => (employeeId ? [] : defaultCompanyId ? [defaultCompanyId] : companies[0] ? [companies[0].id] : []));
   const [linkedUserId, setLinkedUserId] = useState(initialUserId ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +59,10 @@ export function EmployeeForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!employeeId && workCompanyIds.length === 0) {
+      setError("Tick at least one company where this person works.");
+      return;
+    }
     setSaving(true);
     setError(null);
     // Non-admins never send the bank / KWSP fields at all, so they can't blank them out by accident.
@@ -63,9 +71,12 @@ export function EmployeeForm({
     try {
       if (employeeId) {
         await updateEmployee(employeeId, payload);
+        if (workCompanyIds.length > 0) await attachEmployeeToCompanies(employeeId, workCompanyIds);
         router.push(`/hr/${employeeId}`);
       } else {
-        const created = await createEmployee(payload);
+        const { companyId: ignored, ...rest } = payload;
+        void ignored;
+        const created = await createEmployeeInCompanies(rest, workCompanyIds);
         router.push(`/hr/${created.id}`);
       }
       router.refresh();
@@ -81,27 +92,38 @@ export function EmployeeForm({
         <div className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">{error}</div>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className={labelClass}>Company *</label>
-          <select
-            required
-            value={form.companyId}
-            onChange={(e) => set("companyId", e.target.value)}
-            className={inputClass}
-          >
-            {companies.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className={labelClass}>Full Name *</label>
-          <input required value={form.fullName} onChange={(e) => set("fullName", e.target.value)} className={inputClass} placeholder="e.g. Aina Ismail" />
-        </div>
+      <div>
+        <label className={labelClass}>Full Name *</label>
+        <input required value={form.fullName} onChange={(e) => set("fullName", e.target.value)} className={inputClass} placeholder="e.g. Aina Ismail" />
       </div>
+
+      <fieldset>
+        <legend className={labelClass}>{employeeId ? "Works in these companies" : "Works in (tick every company) *"}</legend>
+        <div className="mt-1.5 flex flex-wrap gap-2">
+          {companies.map((c) => {
+            const locked = employeeId ? c.id === form.companyId || attachedCompanyIds.includes(c.id) : false;
+            const on = locked || workCompanyIds.includes(c.id);
+            return (
+              <label key={c.id} className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-[13px] font-semibold ${locked ? "cursor-default border-success/40 bg-success-bg text-success" : on ? "cursor-pointer border-primary bg-info-bg text-primary" : "cursor-pointer border-border-strong bg-surface text-text-secondary"}`}>
+                <input
+                  type="checkbox"
+                  checked={on}
+                  disabled={locked}
+                  onChange={() => setWorkCompanyIds((ids) => (ids.includes(c.id) ? ids.filter((x) => x !== c.id) : [...ids, c.id]))}
+                  className="accent-[var(--color-primary)]"
+                />
+                {c.name}
+                {locked && <span className="text-[11px] font-normal">already attached</span>}
+              </label>
+            );
+          })}
+        </div>
+        <p className="mt-1 text-[11.5px] text-text-muted">
+          {employeeId
+            ? "Tick another company to attach this person to it: a staff record with the same details is created there (leave, payroll and OT stay separate for each company)."
+            : "One name can work in several companies: a staff record is created in each ticked company, and the list shows the person once."}
+        </p>
+      </fieldset>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -110,7 +132,7 @@ export function EmployeeForm({
         </div>
         <div>
           <label className={labelClass}>Position</label>
-          <input value={form.position} onChange={(e) => set("position", e.target.value)} className={inputClass} placeholder="e.g. Head Chef" />
+          <input value={form.position} onChange={(e) => set("position", e.target.value.toUpperCase())} className={`${inputClass} uppercase`} placeholder="e.g. HEAD CHEF" />
         </div>
       </div>
 

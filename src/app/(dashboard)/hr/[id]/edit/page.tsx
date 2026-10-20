@@ -21,6 +21,10 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
   }
 
   const { data: allCompanies } = await supabase.from("companies").select("id, name").order("name");
+  // the companies where this person (same name) already has a staff record
+  const { data: sameName } = await supabase.from("employees").select("company_id, full_name");
+  const nameKey = (s: string) => s.toUpperCase().replace(/\s+/g, " ").trim();
+  const attachedCompanyIds = (sameName ?? []).filter((e) => nameKey(e.full_name) === nameKey(employee.full_name)).map((e) => e.company_id);
   const canEditPrivate = canManageStaffPrivateDetails(session.role);
   const privateDetails = canEditPrivate ? await getEmployeePrivateDetails(supabase, id) : null;
 
@@ -41,6 +45,7 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
           canEditPrivate={canEditPrivate}
           accounts={accounts}
           initialUserId={employee.user_id}
+          attachedCompanyIds={attachedCompanyIds}
           companies={allCompanies ?? []}
           initial={{
             companyId: employee.company_id,
