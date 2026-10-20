@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { GENDER_OPTIONS, MARITAL_STATUS_OPTIONS, dobFromIc } from "@/lib/hr/ic";
+import { GENDER_OPTIONS, MARITAL_STATUS_OPTIONS, RACE_OPTIONS, RELIGION_OPTIONS, dobFromIc, withCurrent } from "@/lib/hr/ic";
 import { attachEmployeeToCompanies, createEmployeeInCompanies, updateEmployee, type EmployeeInput } from "@/lib/hr/actions";
 
 type Company = { id: string; name: string };
@@ -216,11 +216,21 @@ export function EmployeeForm({
       <div className="grid grid-cols-3 gap-4">
         <div>
           <label className={labelClass}>Race</label>
-          <input value={form.race} onChange={(e) => set("race", e.target.value)} className={inputClass} placeholder="e.g. Malay" />
+          <select value={form.race} onChange={(e) => set("race", e.target.value)} className={inputClass}>
+            <option value="">Select</option>
+            {withCurrent(RACE_OPTIONS, form.race ?? "").map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
         </div>
         <div>
           <label className={labelClass}>Religion</label>
-          <input value={form.religion} onChange={(e) => set("religion", e.target.value)} className={inputClass} placeholder="e.g. Muslim" />
+          <select value={form.religion} onChange={(e) => set("religion", e.target.value)} className={inputClass}>
+            <option value="">Select</option>
+            {withCurrent(RELIGION_OPTIONS, form.religion ?? "").map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
         </div>
         <div>
           <label className={labelClass}>Marital Status</label>

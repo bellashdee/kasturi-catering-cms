@@ -15,4 +15,13 @@ export function dobFromIc(ic: string | null | undefined, today: Date = new Date(
 }
 
 export const GENDER_OPTIONS = ["Male", "Female"] as const;
+/** The choices for Race and Religion on the staff record, in alphabetical order. A value already on a record that is not listed stays selectable. */
+export const RACE_OPTIONS = ["Bangladeshi", "Bumiputera Sabah", "Bumiputera Sarawak", "Burmese", "Chinese", "Indian", "Indonesian", "Malay", "Nepali", "Orang Asli", "Other"] as const;
+export const RELIGION_OPTIONS = ["Buddhist", "Christian", "Hindu", "Muslim", "No Religion", "Other", "Sikh", "Taoist"] as const;
+
+/** The options of a choice list, plus the value the record already has when it is not one of them. */
+export function withCurrent(options: readonly string[], current: string): string[] {
+  return current && !options.includes(current) ? [...options, current] : [...options];
+}
+
 export const MARITAL_STATUS_OPTIONS = ["Single", "Married", "Divorced", "Widowed"] as const;
