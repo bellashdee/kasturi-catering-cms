@@ -209,7 +209,7 @@ export function ImportEmployeesFlow({
           <thead className="sticky top-0 bg-surface-alt">
             <tr className="text-[11px] font-bold uppercase tracking-wide text-text-muted">
               <th className="px-3 py-2">Name</th>
-              <th className="px-3 py-2">IC No.</th>
+              <th className="px-3 py-2">IC Number / Passport No.</th>
               <th className="px-3 py-2">Mobile No.</th>
               <th className="px-3 py-2">Email</th>
               <th className="px-3 py-2">Start Date</th>

@@ -109,7 +109,7 @@ export default async function EmployeeProfilePage({
       <div className="grid grid-cols-2 gap-5">
         <SectionCard title="Staff Information">
           <StatRow label="Name" value={employee.full_name} />
-          <StatRow label="IC No." value={employee.ic_passport_no || "—"} />
+          <StatRow label="IC Number / Passport No." value={employee.ic_passport_no || "—"} />
           <StatRow label="Mobile No." value={employee.phone || "—"} />
           <StatRow label="Email" value={employee.email || "—"} />
           <StatRow label="Start Date" value={employee.join_date || "—"} />

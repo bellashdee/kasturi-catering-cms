@@ -139,7 +139,7 @@ export function EmployeeForm({
 
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <label className={labelClass}>IC No. / Passport</label>
+          <label className={labelClass}>IC Number / Passport No.</label>
           <input value={form.icPassportNo} onChange={(e) => set("icPassportNo", e.target.value)} className={inputClass} />
         </div>
         <div>
