@@ -112,7 +112,10 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
   const isAdminOf = (companyId: string) => access.adminCompanyIds.includes(companyId);
 
   // ───────── figures (all from the records above) ─────────
-  const taskSummary = summariseTasks(tasks, now, today);
+  // the briefing and the figures are about the person's OWN tasks (given to them, or created by them and not given to anybody);
+  // the checklist below still lists every task of the companies they manage
+  const myTasks = tasks.filter((t) => t.responsible_id === session.userId || (!t.responsible_id && t.created_by === session.userId));
+  const taskSummary = summariseTasks(myTasks, now, today);
   const paySummary = summarisePayables(payables);
 
   const toCard = (t: PriorityTask): TaskCard => {
@@ -197,7 +200,7 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
 
   const opsAlerts = payables.filter((p) => p.outstanding > 0 && p.control?.opsAlertType);
   const urgentPayments = payables.filter((p) => p.outstanding > 0 && (p.priority === "urgent" || p.priority === "high") && p.statusKey !== "on_hold").slice(0, 5);
-  const overdueTasks = tasks.filter((t) => dueBucket(t, now, today) === "overdue").slice(0, 5).map(toCard);
+  const overdueTasks = myTasks.filter((t) => dueBucket(t, now, today) === "overdue").slice(0, 5).map(toCard);
   const events = eventsAll.filter((e) => inScope.has(e.company_id));
   const otherApprovals = otherApprovalsAll.filter((a) => !a.company_id || inScope.has(a.company_id));
   const eventOptions: EventOption[] = events.map((e) => ({ id: e.id, name: e.event_name, date: e.event_date }));
@@ -265,7 +268,7 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
           )}
 
           <div>
-            <h3 className="mb-2 text-[14px] font-bold text-text">Overdue tasks requiring action</h3>
+            <h3 className="mb-2 text-[14px] font-bold text-text">My overdue tasks requiring action</h3>
             {overdueTasks.length === 0 ? (
               <p className="text-[14px] text-text-secondary">No overdue task.</p>
             ) : (
@@ -341,8 +344,8 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
 
       {/* ───────── summary ───────── */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
-        <StatCard label="Tasks due today" value={taskSummary.dueToday} tone={taskSummary.dueToday > 0 ? "warning" : undefined} />
-        <StatCard label="Overdue tasks" value={taskSummary.overdue} tone={taskSummary.overdue > 0 ? "danger" : undefined} />
+        <StatCard label="My tasks due today" value={taskSummary.dueToday} tone={taskSummary.dueToday > 0 ? "warning" : undefined} />
+        <StatCard label="My overdue tasks" value={taskSummary.overdue} tone={taskSummary.overdue > 0 ? "danger" : undefined} />
         {access.canSeePayments && (
           <>
             <StatCard label="Urgent supplier payments" value={paySummary.urgentCount} tone={paySummary.urgentCount > 0 ? "danger" : undefined} />
@@ -360,7 +363,7 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
             <StatCard label="Payments awaiting Madam Penny" value={paySummary.awaitingApprovalCount} sub={paySummary.awaitingApprovalCount > 0 ? formatPrice(paySummary.awaitingApprovalAmount) : undefined} tone={paySummary.awaitingApprovalCount > 0 ? "warning" : undefined} />
           </>
         )}
-        <StatCard label="Tasks completed this week" value={taskSummary.completedThisWeek} tone="success" />
+        <StatCard label="My tasks completed this week" value={taskSummary.completedThisWeek} tone="success" />
       </div>
 
       {/* ───────── to-do checklist ───────── */}

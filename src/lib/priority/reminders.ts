@@ -124,8 +124,9 @@ export function buildCandidates(input: ReminderInput): { candidates: Candidate[]
 
   for (const t of input.tasks) {
     if (!isOpenStatus(t.status as TaskStatus)) continue;
-    const mine = t.responsible_id === input.userId || t.created_by === input.userId;
-    if (!mine && !input.isApprover) continue;
+    // reminders are about the person's own tasks: given to them, or created by them and not given to anybody
+    const mine = t.responsible_id === input.userId || (!t.responsible_id && t.created_by === input.userId);
+    if (!mine) continue;
     active.add(`task|${t.id}`);
     if (t.due_at) {
       const daysLeft = daysBetween(today, malaysiaDateOf(t.due_at));
