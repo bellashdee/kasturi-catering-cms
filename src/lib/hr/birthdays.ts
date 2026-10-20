@@ -10,6 +10,7 @@ export type BirthdayRow = {
   short_name: string | null;
   date_of_birth: string | null;
   ic_passport_no: string | null;
+  nationality: string | null;
   email: string | null;
   user_id: string | null;
   company_name: string;
@@ -26,6 +27,17 @@ export type Birthday = {
   /** The signed-in person (their staff record is linked to their login, or has their e-mail address). */
   isMe: boolean;
 };
+
+/**
+ * Foreign staff are not part of the birthday wishes and the calendar: the nationality on the record says so, and when it is not
+ * written, a document number that is not a Malaysian IC number (a passport) does.
+ */
+export function isForeigner(r: Pick<BirthdayRow, "nationality" | "ic_passport_no">): boolean {
+  const nationality = r.nationality?.trim().toUpperCase();
+  if (nationality) return nationality !== "MALAYSIAN" && nationality !== "MALAYSIA" && nationality !== "WARGANEGARA";
+  const id = r.ic_passport_no?.trim();
+  return !!id && !/^\d{6}-?\d{2}-?\d{4}$/.test(id);
+}
 
 const nameKey = (s: string) => s.toUpperCase().replace(/\s+/g, " ").trim();
 
@@ -54,6 +66,7 @@ function nextOccurrence(monthDay: string, today: string): { iso: string; daysAwa
 export function upcomingBirthdays(rows: BirthdayRow[], today: string, withinDays: number, me: { userId: string; email: string }): Birthday[] {
   const people = new Map<string, Birthday>();
   for (const r of rows) {
+    if (isForeigner(r)) continue;
     const dob = r.date_of_birth ?? dobFromIc(r.ic_passport_no);
     if (!dob) continue;
     const monthDay = dob.slice(5);
@@ -76,11 +89,11 @@ export async function loadBirthdayRows(supabase: DB, companyIds: string[]): Prom
   if (companyIds.length === 0) return [];
   const { data, error } = await supabase
     .from("employees")
-    .select("full_name, short_name, date_of_birth, ic_passport_no, email, user_id, companies(name)")
+    .select("full_name, short_name, date_of_birth, ic_passport_no, nationality, email, user_id, companies(name)")
     .in("company_id", companyIds)
     .eq("status", "active");
   if (error) throw error;
-  return (data ?? []).map((e) => ({ full_name: e.full_name, short_name: e.short_name, date_of_birth: e.date_of_birth, ic_passport_no: e.ic_passport_no, email: e.email, user_id: e.user_id, company_name: e.companies?.name ?? "" }));
+  return (data ?? []).map((e) => ({ full_name: e.full_name, short_name: e.short_name, date_of_birth: e.date_of_birth, ic_passport_no: e.ic_passport_no, nationality: e.nationality, email: e.email, user_id: e.user_id, company_name: e.companies?.name ?? "" }));
 }
 
 export type CalendarBirthday = { day: number; name: string; shortName: string; companies: string[] };
@@ -94,6 +107,7 @@ export function birthdaysByMonth(rows: BirthdayRow[], year: number): { months: C
   const seen = new Map<string, CalendarBirthday & { m: number }>();
   const unknownNames = new Set<string>();
   for (const r of rows) {
+    if (isForeigner(r)) continue;
     const key = nameKey(r.full_name);
     const dob = r.date_of_birth ?? dobFromIc(r.ic_passport_no);
     if (!dob) {
