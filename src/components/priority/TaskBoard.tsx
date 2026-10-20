@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createTask, deleteTask, setTaskStatus, updateTask, type TaskInput } from "@/lib/priority/taskActions";
 import { getHistory } from "@/lib/priority/historyActions";
 import { fileTypeFromMime, uploadDocument } from "@/lib/documents/upload";
-import { TASK_PRIORITIES, TASK_PRIORITY_LABEL, TASK_PRIORITY_TONE, TASK_STATUS_LABEL, type TaskPriority, type TaskStatus } from "@/lib/priority/tasks";
+import { formatDue, TASK_PRIORITIES, TASK_PRIORITY_LABEL, TASK_PRIORITY_TONE, TASK_STATUS_LABEL, type TaskPriority, type TaskStatus } from "@/lib/priority/tasks";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 import { AREA, BTN, BTN_GHOST, BTN_SM_GHOST, Dialog, ErrorLine, FIELD, LABEL, Pill } from "@/components/priority/ui";
 
@@ -42,10 +42,6 @@ function toMalaysiaLocal(iso: string | null): string {
   return iso ? new Date(Date.parse(iso) + 8 * 3_600_000).toISOString().slice(0, 16) : "";
 }
 
-export function formatDue(iso: string | null): string {
-  if (!iso) return "No due date";
-  return new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kuala_Lumpur", day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, numberingSystem: "latn" }).format(new Date(iso));
-}
 
 const BUCKET: Record<TaskCard["bucket"], { label: string; tone: "danger" | "warning" | "info" | "neutral" } | null> = {
   overdue: { label: "Overdue", tone: "danger" },

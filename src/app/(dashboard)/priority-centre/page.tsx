@@ -17,10 +17,10 @@ import {
   summarisePayables,
   type PayableView,
 } from "@/lib/priority/payables";
-import { TASK_PRIORITIES, TASK_PRIORITY_LABEL, TASK_STATUSES, TASK_STATUS_LABEL, dueBucket, isOpenStatus, nowMs, sortTasks, summariseTasks, type TaskPriority, type TaskStatus } from "@/lib/priority/tasks";
+import { formatDue, TASK_PRIORITIES, TASK_PRIORITY_LABEL, TASK_STATUSES, TASK_STATUS_LABEL, dueBucket, isOpenStatus, nowMs, sortTasks, summariseTasks, type TaskPriority, type TaskStatus } from "@/lib/priority/tasks";
 import { loadReminderSettings } from "@/lib/priority/reminders";
 import { syncWithData } from "@/lib/priority/sync";
-import { TaskBoard, formatDue, type TaskCard } from "@/components/priority/TaskBoard";
+import { TaskBoard, type TaskCard } from "@/components/priority/TaskBoard";
 import { PayablesTable } from "@/components/priority/PayablesTable";
 import { ApprovalList, BriefingTaskCheck, NotificationList, ReminderSettingsForm, type ApprovalItem } from "@/components/priority/ReminderPanels";
 import { Pill, FIELD, LABEL, BTN, BTN_GHOST } from "@/components/priority/ui";

@@ -78,3 +78,9 @@ export function sortTasks<T extends { status: string; priority: string; due_at: 
     return b.created_at.localeCompare(a.created_at);
   });
 }
+
+/** A date and time in Malaysia time for display (a plain function, so server pages and client components can both use it). */
+export function formatDue(iso: string | null): string {
+  if (!iso) return "No due date";
+  return new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kuala_Lumpur", day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, numberingSystem: "latn" }).format(new Date(iso));
+}
