@@ -61,6 +61,13 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
             bankName: privateDetails?.bank_name ?? "",
             bankAccountNo: privateDetails?.bank_account_no ?? "",
             epfNo: privateDetails?.epf_no ?? "",
+            dateOfBirth: employee.date_of_birth ?? "",
+            nationality: employee.nationality ?? "",
+            gender: employee.gender ?? "",
+            race: employee.race ?? "",
+            religion: employee.religion ?? "",
+            maritalStatus: employee.marital_status ?? "",
+            branch: employee.branch ?? "",
           }}
         />
       </div>

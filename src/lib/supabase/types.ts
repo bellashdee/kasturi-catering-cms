@@ -1661,6 +1661,13 @@ export type Database = {
           resign_date: string | null
           status: string
           user_id: string | null
+          branch: string | null
+          date_of_birth: string | null
+          gender: string | null
+          marital_status: string | null
+          nationality: string | null
+          race: string | null
+          religion: string | null
         }
         Insert: {
           company_id: string
@@ -1677,6 +1684,13 @@ export type Database = {
           resign_date?: string | null
           status?: string
           user_id?: string | null
+          branch?: string | null
+          date_of_birth?: string | null
+          gender?: string | null
+          marital_status?: string | null
+          nationality?: string | null
+          race?: string | null
+          religion?: string | null
         }
         Update: {
           company_id?: string
@@ -1693,6 +1707,13 @@ export type Database = {
           resign_date?: string | null
           status?: string
           user_id?: string | null
+          branch?: string | null
+          date_of_birth?: string | null
+          gender?: string | null
+          marital_status?: string | null
+          nationality?: string | null
+          race?: string | null
+          religion?: string | null
         }
         Relationships: [
           {

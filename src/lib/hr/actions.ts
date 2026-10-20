@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { dobFromIc } from "@/lib/hr/ic";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -26,6 +27,13 @@ export type EmployeeInput = {
   bankName?: string;
   bankAccountNo?: string;
   epfNo?: string;
+  dateOfBirth?: string;
+  nationality?: string;
+  gender?: string;
+  race?: string;
+  religion?: string;
+  maritalStatus?: string;
+  branch?: string;
   /** Login account of this person (admin only); lets them submit and see their own OT. null clears the link. */
   userId?: string | null;
 };
@@ -47,6 +55,16 @@ async function savePrivateDetails(
   if (error) throw new Error("Only a Super Admin or Company Admin can save bank and KWSP details.");
 }
 
+/** Date of birth, nationality, gender, race, religion, marital status and branch; the date of birth comes from the IC number when it is not typed. */
+function personalColumns(input: Partial<EmployeeInput>) {
+  const text = (v: string | undefined) => v?.trim() || null;
+  const gender = text(input.gender);
+  if (gender && gender !== "Male" && gender !== "Female") throw new Error("Select Male or Female.");
+  const dob = text(input.dateOfBirth) ?? dobFromIc(input.icPassportNo);
+  if (dob && !/^\d{4}-\d{2}-\d{2}$/.test(dob)) throw new Error("Enter a valid date of birth.");
+  return { date_of_birth: dob, nationality: text(input.nationality), gender, race: text(input.race), religion: text(input.religion), marital_status: text(input.maritalStatus), branch: text(input.branch) };
+}
+
 export async function createEmployee(input: EmployeeInput) {
   const { supabase } = await requireUser();
 
@@ -63,6 +81,7 @@ export async function createEmployee(input: EmployeeInput) {
       ic_passport_no: input.icPassportNo || null,
       phone: input.phone || null,
       email: input.email || null,
+      ...personalColumns(input),
     })
     .select("id")
     .single();
@@ -120,6 +139,13 @@ export async function attachEmployeeToCompanies(employeeId: string, companyIds: 
         ic_passport_no: source.ic_passport_no,
         phone: source.phone,
         email: source.email,
+        date_of_birth: source.date_of_birth,
+        nationality: source.nationality,
+        gender: source.gender,
+        race: source.race,
+        religion: source.religion,
+        marital_status: source.marital_status,
+        branch: source.branch,
       })
       .select("id")
       .single();
@@ -156,6 +182,7 @@ export async function updateEmployee(employeeId: string, input: Partial<Employee
       ic_passport_no: input.icPassportNo || null,
       phone: input.phone || null,
       email: input.email || null,
+      ...personalColumns(input),
       ...(input.userId !== undefined ? { user_id: input.userId } : {}),
     })
     .eq("id", employeeId);

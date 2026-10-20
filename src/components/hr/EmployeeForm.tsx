@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { GENDER_OPTIONS, MARITAL_STATUS_OPTIONS, dobFromIc } from "@/lib/hr/ic";
 import { attachEmployeeToCompanies, createEmployeeInCompanies, updateEmployee, type EmployeeInput } from "@/lib/hr/actions";
 
 type Company = { id: string; name: string };
@@ -51,6 +52,13 @@ export function EmployeeForm({
     bankName: initial?.bankName ?? "",
     bankAccountNo: initial?.bankAccountNo ?? "",
     epfNo: initial?.epfNo ?? "",
+    dateOfBirth: initial?.dateOfBirth ?? "",
+    nationality: initial?.nationality ?? "",
+    gender: initial?.gender ?? "",
+    race: initial?.race ?? "",
+    religion: initial?.religion ?? "",
+    maritalStatus: initial?.maritalStatus ?? "",
+    branch: initial?.branch ?? "",
   });
 
   function set<K extends keyof EmployeeInput>(key: K, value: EmployeeInput[K]) {
@@ -162,7 +170,17 @@ export function EmployeeForm({
       <div className="grid grid-cols-3 gap-4">
         <div>
           <label className={labelClass}>IC Number / Passport No.</label>
-          <input value={form.icPassportNo} onChange={(e) => set("icPassportNo", e.target.value)} className={inputClass} />
+          <input
+            value={form.icPassportNo}
+            onChange={(e) => {
+              const value = e.target.value;
+              // the date of birth follows the IC number until somebody types a different one
+              const before = dobFromIc(form.icPassportNo);
+              const keepTyped = form.dateOfBirth && form.dateOfBirth !== before;
+              setForm((f) => ({ ...f, icPassportNo: value, dateOfBirth: keepTyped ? f.dateOfBirth : (dobFromIc(value) ?? (f.dateOfBirth === before ? "" : f.dateOfBirth)) }));
+            }}
+            className={inputClass}
+          />
         </div>
         <div>
           <label className={labelClass}>Mobile No.</label>
@@ -172,6 +190,51 @@ export function EmployeeForm({
           <label className={labelClass}>Email</label>
           <input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} className={inputClass} />
         </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className={labelClass}>Date of Birth (from IC number)</label>
+          <input type="date" value={form.dateOfBirth} onChange={(e) => set("dateOfBirth", e.target.value)} className={inputClass} />
+        </div>
+        <div>
+          <label className={labelClass}>Nationality</label>
+          <input value={form.nationality} onChange={(e) => set("nationality", e.target.value)} className={inputClass} placeholder="e.g. Malaysian" />
+        </div>
+        <div>
+          <label className={labelClass}>Gender</label>
+          <select value={form.gender} onChange={(e) => set("gender", e.target.value)} className={inputClass}>
+            <option value="">Select</option>
+            {GENDER_OPTIONS.map((g) => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className={labelClass}>Race</label>
+          <input value={form.race} onChange={(e) => set("race", e.target.value)} className={inputClass} placeholder="e.g. Malay" />
+        </div>
+        <div>
+          <label className={labelClass}>Religion</label>
+          <input value={form.religion} onChange={(e) => set("religion", e.target.value)} className={inputClass} placeholder="e.g. Muslim" />
+        </div>
+        <div>
+          <label className={labelClass}>Marital Status</label>
+          <select value={form.maritalStatus} onChange={(e) => set("maritalStatus", e.target.value)} className={inputClass}>
+            <option value="">Select</option>
+            {MARITAL_STATUS_OPTIONS.map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label className={labelClass}>Branch</label>
+        <input value={form.branch} onChange={(e) => set("branch", e.target.value)} className={inputClass} placeholder="e.g. Johor Bahru" />
       </div>
 
       {accounts && employeeId && (

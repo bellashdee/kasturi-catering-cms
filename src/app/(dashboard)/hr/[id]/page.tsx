@@ -22,6 +22,7 @@ import {
   canManageStaffPrivateDetails,
 } from "@/lib/hr/constants";
 import { formatCurrency } from "@/lib/format";
+import { dobFromIc } from "@/lib/hr/ic";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SectionCard, EmptyRow, StatRow } from "@/components/dashboard/SectionCard";
 
@@ -75,6 +76,8 @@ export default async function EmployeeProfilePage({
   const bankValue = !canSeePrivate
     ? restricted
     : [privateDetails?.bank_name, privateDetails?.bank_account_no].filter(Boolean).join(" · ") || "—";
+  // the date of birth written on the staff record; for a Malaysian IC number it is also known from the number itself
+  const dobText = employee.date_of_birth || dobFromIc(employee.ic_passport_no) || "—";
   const kwspValue = !canSeePrivate ? restricted : privateDetails?.epf_no || "—";
 
   return (
@@ -110,6 +113,13 @@ export default async function EmployeeProfilePage({
         <SectionCard title="Staff Information">
           <StatRow label="Name" value={employee.full_name} />
           <StatRow label="IC Number / Passport No." value={employee.ic_passport_no || "—"} />
+          <StatRow label="Date of Birth (from IC number)" value={dobText} />
+          <StatRow label="Nationality" value={employee.nationality || "—"} />
+          <StatRow label="Gender" value={employee.gender || "—"} />
+          <StatRow label="Race" value={employee.race || "—"} />
+          <StatRow label="Religion" value={employee.religion || "—"} />
+          <StatRow label="Marital Status" value={employee.marital_status || "—"} />
+          <StatRow label="Branch" value={employee.branch || "—"} />
           <StatRow label="Mobile No." value={employee.phone || "—"} />
           <StatRow label="Email" value={employee.email || "—"} />
           <StatRow label="Start Date" value={employee.join_date || "—"} />
