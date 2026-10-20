@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { dobFromIc } from "@/lib/hr/ic";
+import { requirePayrollAccess } from "@/lib/hr/payrollAccess";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -409,6 +410,7 @@ export type PayrollInput = {
 
 export async function createPayrollRecord(input: PayrollInput) {
   const { supabase } = await requireUser();
+  await requirePayrollAccess(supabase);
 
   const { error } = await supabase.from("payroll_records").insert({
     company_id: input.companyId,
@@ -427,6 +429,7 @@ export async function createPayrollRecord(input: PayrollInput) {
 
 export async function markPayrollPaid(payrollId: string) {
   const { supabase } = await requireUser();
+  await requirePayrollAccess(supabase);
   const { error } = await supabase.from("payroll_records").update({ status: "paid" }).eq("id", payrollId);
   if (error) throw error;
   revalidatePath("/hr/payroll");

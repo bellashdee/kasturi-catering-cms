@@ -1,9 +1,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
+import { isForeigner } from "@/lib/hr/birthdays";
 
 type DB = SupabaseClient<Database>;
 
-export const PAYMENT_METHODS = ["Bank transfer", "Cash", "Cheque", "Other"] as const;
+export const PAYMENT_METHODS = ["Bank transfer", "Cash"] as const;
+
+/** Foreign staff are paid by cash only; local staff are paid by bank transfer. */
+export function paymentMethodFor(foreign: boolean): (typeof PAYMENT_METHODS)[number] {
+  return foreign ? "Cash" : "Bank transfer";
+}
 
 export type PayrollLine = {
   employeeId: string;
@@ -11,6 +17,8 @@ export type PayrollLine = {
   companyName: string;
   fullName: string;
   position: string | null;
+  /** Foreign staff are paid by cash, so they have no bank transfer. */
+  foreign: boolean;
   bankName: string | null;
   bankAccountNo: string | null;
   epfNo: string | null;
@@ -51,7 +59,7 @@ export async function loadPayrollLines(supabase: DB, companyIds: string[], month
   if (companyIds.length === 0) return [];
   const { start } = monthRange(month);
   const [{ data: employees, error: e1 }, { data: records, error: e2 }, { data: priv, error: e3 }] = await Promise.all([
-    supabase.from("employees").select("id, company_id, full_name, position, status, companies(name)").in("company_id", companyIds).order("full_name"),
+    supabase.from("employees").select("id, company_id, full_name, position, status, nationality, ic_passport_no, companies(name)").in("company_id", companyIds).order("full_name"),
     supabase.from("payroll_records").select("*").in("company_id", companyIds).eq("pay_period_start", start),
     supabase.from("employee_private_details").select("employee_id, bank_name, bank_account_no, epf_no").in("company_id", companyIds),
   ]);
@@ -72,6 +80,7 @@ export async function loadPayrollLines(supabase: DB, companyIds: string[], month
       companyName: e.companies?.name ?? "",
       fullName: e.full_name,
       position: e.position,
+      foreign: isForeigner({ nationality: e.nationality, ic_passport_no: e.ic_passport_no }),
       bankName: p?.bank_name ?? null,
       bankAccountNo: p?.bank_account_no ?? null,
       epfNo: p?.epf_no ?? null,
@@ -104,7 +113,7 @@ export type PayrollSummary = {
 export function summarisePayroll(lines: PayrollLine[]): PayrollSummary {
   const s: PayrollSummary = { staff: lines.length, notEntered: 0, drafts: 0, paidCount: 0, totalNet: 0, paidNet: 0, outstandingNet: 0, missingBank: 0 };
   for (const l of lines) {
-    if (!l.bankName || !l.bankAccountNo) s.missingBank++;
+    if (!l.foreign && (!l.bankName || !l.bankAccountNo)) s.missingBank++;
     if (l.status === "none") {
       s.notEntered++;
       continue;

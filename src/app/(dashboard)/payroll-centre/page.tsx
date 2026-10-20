@@ -5,6 +5,7 @@ import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { adminCompanyIds } from "@/lib/finance/paymentQueries";
 import { formatPrice, todayInMalaysia } from "@/lib/format";
+import { canUsePayrollCentre } from "@/lib/hr/payrollAccess";
 import { isValidMonth, loadPayrollLines, shiftMonth, summarisePayroll } from "@/lib/hr/payrollCentre";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { PayrollCentreTable } from "@/components/hr/PayrollCentreTable";
@@ -28,6 +29,8 @@ export default async function PayrollCentrePage({ searchParams }: { searchParams
   if (!session) redirect("/login");
 
   const supabase = await createClient();
+  // payroll is private: only the Director of Finance and her personal assistant
+  if (!(await canUsePayrollCentre(supabase))) return <EmptyRow text="Payroll is private. Only the Director of Finance and her personal assistant can open the Payroll Centre." />;
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
   const { company: requestedId, month: requestedMonth } = await searchParams;

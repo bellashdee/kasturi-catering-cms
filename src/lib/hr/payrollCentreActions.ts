@@ -3,8 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireCompanyAdmin } from "@/lib/priority/access";
+import { isForeigner } from "@/lib/hr/birthdays";
+import { requirePayrollAccess } from "@/lib/hr/payrollAccess";
 import { todayInMalaysia } from "@/lib/format";
-import { PAYMENT_METHODS, isValidMonth, monthRange } from "@/lib/hr/payrollCentre";
+import { PAYMENT_METHODS, isValidMonth, monthRange, paymentMethodFor } from "@/lib/hr/payrollCentre";
 
 async function signedIn() {
   const supabase = await createClient();
@@ -32,6 +34,7 @@ export type PayrollEntryInput = {
 /** Finance enters (or corrects) the month's figures for one staff record. A salary that is already paid cannot be changed. */
 export async function savePayrollEntry(input: PayrollEntryInput) {
   const { supabase } = await signedIn();
+  await requirePayrollAccess(supabase);
   await requireCompanyAdmin(supabase, input.companyId);
   if (!isValidMonth(input.month)) throw new Error("Choose a valid month.");
   const gross = money(input.grossPay, "Basic / gross salary");
@@ -59,7 +62,8 @@ export type PayrollPaidInput = { payrollId: string; paidOn: string; method: stri
 /** The Director of Finance confirms the salary has been paid: the date, how it was paid and the bank reference are written down. */
 export async function markPayrollEntryPaid(input: PayrollPaidInput) {
   const { supabase, userId } = await signedIn();
-  const { data: record } = await supabase.from("payroll_records").select("id, company_id, status, net_pay").eq("id", input.payrollId).single();
+  await requirePayrollAccess(supabase);
+  const { data: record } = await supabase.from("payroll_records").select("id, company_id, employee_id, status, net_pay").eq("id", input.payrollId).single();
   if (!record) throw new Error("Payroll record not found.");
   await requireCompanyAdmin(supabase, record.company_id);
   if (record.status === "paid") throw new Error("This salary is already marked as paid.");
@@ -67,6 +71,9 @@ export async function markPayrollEntryPaid(input: PayrollPaidInput) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.paidOn)) throw new Error("Choose the date the salary was paid.");
   if (input.paidOn > todayInMalaysia()) throw new Error("The payment date cannot be in the future.");
   if (!(PAYMENT_METHODS as readonly string[]).includes(input.method)) throw new Error("Choose how the salary was paid.");
+  const { data: staff } = await supabase.from("employees").select("nationality, ic_passport_no").eq("id", record.employee_id).single();
+  const expected = paymentMethodFor(!!staff && isForeigner(staff));
+  if (input.method !== expected) throw new Error(expected === "Cash" ? "Foreign staff are paid by cash only." : "Local staff are paid by bank transfer.");
 
   const { error } = await supabase
     .from("payroll_records")
@@ -79,6 +86,7 @@ export async function markPayrollEntryPaid(input: PayrollPaidInput) {
 /** Undo a payment marked by mistake (the salary goes back to waiting for payment). */
 export async function undoPayrollEntryPaid(payrollId: string) {
   const { supabase } = await signedIn();
+  await requirePayrollAccess(supabase);
   const { data: record } = await supabase.from("payroll_records").select("id, company_id").eq("id", payrollId).single();
   if (!record) throw new Error("Payroll record not found.");
   await requireCompanyAdmin(supabase, record.company_id);

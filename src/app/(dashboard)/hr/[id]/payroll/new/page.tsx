@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { getEmployee } from "@/lib/hr/queries";
+import { canUsePayrollCentre } from "@/lib/hr/payrollAccess";
 import { PayrollForm } from "@/components/hr/PayrollForm";
 
 export default async function NewPayrollPage({ params }: { params: Promise<{ id: string }> }) {
@@ -11,6 +12,7 @@ export default async function NewPayrollPage({ params }: { params: Promise<{ id:
 
   const { id } = await params;
   const supabase = await createClient();
+  if (!(await canUsePayrollCentre(supabase))) redirect(`/hr/${id}`);
 
   let employee;
   try {

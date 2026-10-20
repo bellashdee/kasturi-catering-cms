@@ -24,6 +24,7 @@ import {
 import { formatCurrency } from "@/lib/format";
 import { dobFromIc } from "@/lib/hr/ic";
 import { shortNameOf } from "@/lib/hr/shortName";
+import { canUsePayrollCentre } from "@/lib/hr/payrollAccess";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SectionCard, EmptyRow, StatRow } from "@/components/dashboard/SectionCard";
 
@@ -65,11 +66,12 @@ export default async function EmployeeProfilePage({
   }
 
   const canSeePrivate = canManageStaffPrivateDetails(session.role);
+  const canSeePayroll = await canUsePayrollCentre(supabase);
   const [certificates, leave, overtime, payroll, privateDetails] = await Promise.all([
     listCertificates(supabase, id),
     listLeaveForEmployee(supabase, id),
     listOvertimeForEmployee(supabase, id),
-    listPayrollForEmployee(supabase, id),
+    canSeePayroll ? listPayrollForEmployee(supabase, id) : Promise.resolve([]),
     canSeePrivate ? getEmployeePrivateDetails(supabase, id) : Promise.resolve(null),
   ]);
 
@@ -194,6 +196,7 @@ export default async function EmployeeProfilePage({
           )}
         </SectionCard>
 
+        {canSeePayroll && (
         <SectionCard title="Payroll" action={<Link href={`/hr/${id}/payroll/new${query}`} className="text-[12.5px] font-semibold text-primary">+ Add Record</Link>}>
           {payroll.length === 0 ? (
             <EmptyRow text="No payroll records yet." />
@@ -213,6 +216,7 @@ export default async function EmployeeProfilePage({
             </div>
           )}
         </SectionCard>
+        )}
       </div>
     </div>
   );

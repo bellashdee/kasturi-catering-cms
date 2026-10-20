@@ -8,6 +8,7 @@ import { PAYROLL_STATUS_LABEL } from "@/lib/hr/constants";
 import { formatCurrency } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
+import { canUsePayrollCentre } from "@/lib/hr/payrollAccess";
 import { MarkPaidButton } from "@/components/hr/MarkPaidButton";
 
 export default async function PayrollPage({
@@ -19,6 +20,7 @@ export default async function PayrollPage({
   if (!session) redirect("/login");
 
   const supabase = await createClient();
+  if (!(await canUsePayrollCentre(supabase))) return <EmptyRow text="Payroll is private. Only the Director of Finance and her personal assistant can open it." />;
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 

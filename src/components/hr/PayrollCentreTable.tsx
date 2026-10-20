@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { formatPrice, formatMalaysiaDate } from "@/lib/format";
-import { PAYMENT_METHODS, type PayrollLine } from "@/lib/hr/payrollCentre";
+import { paymentMethodFor, type PayrollLine } from "@/lib/hr/payrollCentre";
 import { markPayrollEntryPaid, savePayrollEntry, undoPayrollEntryPaid } from "@/lib/hr/payrollCentreActions";
 import { AREA, BTN, BTN_GHOST, BTN_SM, BTN_SM_GHOST, Dialog, FIELD, LABEL, Pill } from "@/components/priority/ui";
 
@@ -14,11 +14,11 @@ function csvCell(value: string | number | null) {
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
-/** A bank-transfer list of the salaries still waiting for payment: name, bank, account number and the net amount. */
+/** The salaries still waiting for payment: local staff by bank transfer (bank, account number), foreign staff in cash. */
 function downloadBankList(lines: PayrollLine[], month: string) {
   const rows = lines.filter((l) => l.status === "draft" && (l.netPay ?? 0) > 0);
-  const header = ["Company", "Name", "Position", "Bank", "Account No.", "Net Salary (RM)"];
-  const body = rows.map((l) => [l.companyName, l.fullName, l.position, l.bankName, l.bankAccountNo, (l.netPay ?? 0).toFixed(2)]);
+  const header = ["Company", "Name", "Position", "Paid by", "Bank", "Account No.", "Net Salary (RM)"];
+  const body = rows.map((l) => [l.companyName, l.fullName, l.position, paymentMethodFor(l.foreign), l.foreign ? null : l.bankName, l.foreign ? null : l.bankAccountNo, (l.netPay ?? 0).toFixed(2)]);
   const csv = [header, ...body].map((r) => r.map(csvCell).join(",")).join("\r\n");
   const url = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
   const a = document.createElement("a");
@@ -37,7 +37,6 @@ export function PayrollCentreTable({ lines, month, today }: { lines: PayrollLine
   const [deductions, setDeductions] = useState("0");
   const [remarks, setRemarks] = useState("");
   const [paidOn, setPaidOn] = useState(today);
-  const [method, setMethod] = useState<string>(PAYMENT_METHODS[0]);
   const [reference, setReference] = useState("");
 
   const companies = Array.from(new Set(lines.map((l) => l.companyName)));
@@ -49,7 +48,6 @@ export function PayrollCentreTable({ lines, month, today }: { lines: PayrollLine
     setDeductions(line.deductions !== null ? String(line.deductions) : "0");
     setRemarks(line.remarks ?? "");
     setPaidOn(today);
-    setMethod(PAYMENT_METHODS[0]);
     setReference("");
     setMode({ kind, line });
   }
@@ -81,7 +79,7 @@ export function PayrollCentreTable({ lines, month, today }: { lines: PayrollLine
           🖨 Print
         </button>
         <button type="button" className={BTN_GHOST} disabled={waiting === 0} onClick={() => downloadBankList(lines, month)}>
-          ⬇ Download bank payment list (CSV)
+          ⬇ Download payment list (CSV)
         </button>
         {error && !mode && <span className="self-center text-[13px] font-semibold text-danger">{error}</span>}
       </div>
@@ -120,7 +118,9 @@ export function PayrollCentreTable({ lines, month, today }: { lines: PayrollLine
                         <div className="text-[12px] text-text-muted">{l.position ?? "—"}</div>
                       </td>
                       <td className="px-3 py-3 text-[12.5px]">
-                        {l.bankName && l.bankAccountNo ? (
+                        {l.foreign ? (
+                          <Pill tone="neutral">Paid in cash</Pill>
+                        ) : l.bankName && l.bankAccountNo ? (
                           <>
                             <div className="font-semibold text-text">{l.bankName}</div>
                             <div className="tabular-nums text-text-secondary">{l.bankAccountNo}</div>
@@ -128,7 +128,7 @@ export function PayrollCentreTable({ lines, month, today }: { lines: PayrollLine
                         ) : (
                           <Pill tone="warning">Bank details missing</Pill>
                         )}
-                        {l.epfNo && <div className="text-text-muted">EPF {l.epfNo}</div>}
+                        {l.epfNo && <div className="text-text-muted">{`EPF ${l.epfNo}`}</div>}
                       </td>
                       {l.status === "none" ? (
                         <td colSpan={3} className="px-3 py-3 text-center text-[12.5px] text-text-muted">
@@ -237,11 +237,11 @@ export function PayrollCentreTable({ lines, month, today }: { lines: PayrollLine
               const line = mode.line;
               if (!line.recordId) return;
               const id = line.recordId;
-              run(() => markPayrollEntryPaid({ payrollId: id, paidOn, method, reference }));
+              run(() => markPayrollEntryPaid({ payrollId: id, paidOn, method: paymentMethodFor(line.foreign), reference }));
             }}
           >
             <p className="text-[13px] text-text-secondary">
-              {`Net salary ${formatPrice(mode.line.netPay ?? 0)} · ${mode.line.bankName ?? "No bank"} ${mode.line.bankAccountNo ?? ""}. Only confirm after the money has really been paid.`}
+              {`Net salary ${formatPrice(mode.line.netPay ?? 0)} · ${mode.line.foreign ? "Paid in cash" : `${mode.line.bankName ?? "No bank"} ${mode.line.bankAccountNo ?? ""}`}. Only confirm after the money has really been paid.`}
             </p>
             {error && <div className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-[13px] text-danger">{error}</div>}
             <div className="grid grid-cols-2 gap-4">
@@ -251,17 +251,11 @@ export function PayrollCentreTable({ lines, month, today }: { lines: PayrollLine
               </div>
               <div>
                 <label className={LABEL}>How paid *</label>
-                <select className={FIELD} value={method} onChange={(e) => setMethod(e.target.value)}>
-                  {PAYMENT_METHODS.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex h-10 items-center rounded-lg border border-border-strong bg-bg px-3 text-[14px] font-semibold text-text">{paymentMethodFor(mode.line.foreign)}</div>
               </div>
             </div>
             <div>
-              <label className={LABEL}>Bank reference / cheque no.</label>
+              <label className={LABEL}>Bank reference / receipt no.</label>
               <input className={FIELD} value={reference} onChange={(e) => setReference(e.target.value)} />
             </div>
             <div className="flex justify-end gap-2.5">

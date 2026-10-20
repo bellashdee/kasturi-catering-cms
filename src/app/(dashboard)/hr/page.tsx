@@ -101,6 +101,28 @@ export default async function HRPage({
 
       <SearchBox placeholder="Search employees by name..." />
 
+      {companies.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[12.5px] font-semibold text-text-secondary">Company</span>
+          {[{ id: "", name: "All companies" }, ...companies].map((c) => {
+            const active = (requestedId ?? "") === c.id;
+            const params = new URLSearchParams();
+            if (c.id) params.set("company", c.id);
+            if (q) params.set("q", q);
+            const qs = params.toString();
+            return (
+              <Link
+                key={c.id || "all"}
+                href={`/hr${qs ? `?${qs}` : ""}`}
+                className={`rounded-full border px-3.5 py-1.5 text-[13px] font-semibold ${active ? "border-primary bg-primary text-white" : "border-border-strong bg-surface text-text hover:bg-surface-alt"}`}
+              >
+                {c.name}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {employees.length === 0 ? (
           <EmptyRow text="No employees yet. Add one manually or import an Excel/CSV list." />
