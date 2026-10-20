@@ -9,6 +9,7 @@ function pageTitle(pathname: string, priorityTitle: string): string {
   if (pathname === "/") return "Main Dashboard";
   if (pathname.startsWith("/settings")) return "Settings";
   if (pathname.startsWith("/priority-centre")) return priorityTitle;
+  if (pathname.startsWith("/payroll-centre")) return "Payroll Centre";
   const found = MODULES.find((m) => [m.href, ...(m.matchPrefixes ?? [])].some((p) => pathname === p || pathname.startsWith(`${p}/`)));
   return found?.label ?? "Central Management System";
 }

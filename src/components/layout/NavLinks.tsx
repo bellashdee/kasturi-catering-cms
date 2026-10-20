@@ -19,6 +19,13 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M8 7l1.2 1.2L12 5.5M8 12l1.2 1.2L12 10.5" />
     </>
   ),
+  payroll: (
+    <>
+      <rect x="3" y="5" width="14" height="10" rx="2" />
+      <path d="M3 9h14" />
+      <path d="M6 12.5h3" />
+    </>
+  ),
   hr: (
     <>
       <circle cx="10" cy="7" r="3" />
@@ -132,6 +139,10 @@ export function MainDashboardLink() {
 
 export function PriorityCentreLink({ label = "Priority Centre" }: { label?: string }) {
   return <NavItem href="/priority-centre" icon="priority" label={label} />;
+}
+
+export function PayrollCentreLink() {
+  return <NavItem href="/payroll-centre" icon="payroll" label="Payroll Centre" />;
 }
 
 export function ModuleLinks({ allowedModules, badges = {} }: { allowedModules: string[] | null; badges?: Record<string, number> }) {

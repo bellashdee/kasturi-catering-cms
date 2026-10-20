@@ -3562,6 +3562,12 @@ export type Database = {
           pay_period_start: string
           payslip_document_id: string | null
           status: string
+          paid_on: string | null
+          payment_method: string | null
+          payment_reference: string | null
+          paid_by: string | null
+          remarks: string | null
+          updated_at: string
         }
         Insert: {
           company_id: string
@@ -3575,6 +3581,12 @@ export type Database = {
           pay_period_start: string
           payslip_document_id?: string | null
           status?: string
+          paid_on?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          paid_by?: string | null
+          remarks?: string | null
+          updated_at?: string
         }
         Update: {
           company_id?: string
@@ -3588,6 +3600,12 @@ export type Database = {
           pay_period_start?: string
           payslip_document_id?: string | null
           status?: string
+          paid_on?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          paid_by?: string | null
+          remarks?: string | null
+          updated_at?: string
         }
         Relationships: [
           {
