@@ -1,5 +1,6 @@
 "use client";
 
+import { vehicleLabel } from "@/lib/driver/constants";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { uploadDocument, fileTypeFromMime, DOCUMENT_FILE_ACCEPT } from "@/lib/documents/upload";
@@ -8,7 +9,7 @@ import { requestExtraction } from "@/lib/importFlow/extractClient";
 
 type Tab = "manual" | "pdf" | "photo";
 type Company = { id: string; name: string };
-type Vehicle = { id: string; plate_number: string; company_id: string };
+type Vehicle = { id: string; plate_number: string; vehicle_type?: string | null; company_id: string };
 
 type ExtractedService = {
   service_date?: string;
@@ -155,7 +156,7 @@ export function MaintenanceUploadReview({
               className={`${inputClass} disabled:bg-surface-alt disabled:text-text-muted`}
             >
               <option value="">Select vehicle</option>
-              {vehiclesForCompany.map((v) => <option key={v.id} value={v.id}>{v.plate_number}</option>)}
+              {vehiclesForCompany.map((v) => <option key={v.id} value={v.id}>{vehicleLabel(v)}</option>)}
             </select>
           </div>
         </div>

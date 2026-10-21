@@ -22,7 +22,7 @@ export default async function NewMaintenancePage({
   const defaultCompanyId = requestedId && accessibleIds.includes(requestedId) ? requestedId : selectable[0]?.id;
   const query = requestedId ? `?company=${requestedId}` : "";
 
-  const { data: vehicles } = await supabase.from("vehicles").select("id, plate_number, company_id").in("company_id", accessibleIds).order("plate_number");
+  const { data: vehicles } = await supabase.from("vehicles").select("id, plate_number, vehicle_type, company_id").in("company_id", accessibleIds).order("plate_number");
 
   return (
     <div className="mx-auto max-w-3xl">

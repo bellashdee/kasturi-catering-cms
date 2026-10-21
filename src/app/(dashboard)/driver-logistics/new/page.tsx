@@ -24,7 +24,7 @@ export default async function NewDeliveryPage({
 
   const [{ data: events }, { data: vehicles }, deliveryPersons] = await Promise.all([
     supabase.from("catering_events").select("id, event_name, company_id").in("company_id", accessibleIds).order("event_date", { ascending: false }),
-    supabase.from("vehicles").select("id, plate_number, company_id").in("company_id", accessibleIds).order("plate_number"),
+    supabase.from("vehicles").select("id, plate_number, vehicle_type, company_id").in("company_id", accessibleIds).order("plate_number"),
     listDeliveryPersons(supabase, accessibleIds),
   ]);
 

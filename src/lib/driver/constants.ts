@@ -95,3 +95,8 @@ export function computeAttendanceStatus(row: AttendanceRow, expectedClockInTime:
   return clockInDate > expected ? "late" : "present";
 }
 
+
+/** How a vehicle is named in the choice lists: the plate number and its type, e.g. "VKH814 (VAN PANJANG)". */
+export function vehicleLabel(v: { plate_number: string; vehicle_type?: string | null }): string {
+  return v.vehicle_type ? `${v.plate_number} (${v.vehicle_type})` : v.plate_number;
+}

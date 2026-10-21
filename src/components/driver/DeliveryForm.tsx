@@ -1,5 +1,6 @@
 "use client";
 
+import { vehicleLabel } from "@/lib/driver/constants";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createDelivery, updateDeliveryDetails, type DeliveryInput } from "@/lib/driver/actions";
@@ -9,7 +10,7 @@ import { formatMalaysiaDateTime } from "@/lib/format";
 
 type Company = { id: string; name: string };
 type Event = { id: string; event_name: string; company_id: string };
-type Vehicle = { id: string; plate_number: string; company_id: string };
+type Vehicle = { id: string; plate_number: string; vehicle_type?: string | null; company_id: string };
 
 const inputClass =
   "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
@@ -122,7 +123,7 @@ export function DeliveryForm({
           <label className={labelClass}>Vehicle</label>
           <select value={form.vehicleId} onChange={(e) => set("vehicleId", e.target.value)} className={inputClass}>
             <option value="">Not assigned yet</option>
-            {vehiclesForCompany.map((v) => <option key={v.id} value={v.id}>{v.plate_number}</option>)}
+            {vehiclesForCompany.map((v) => <option key={v.id} value={v.id}>{vehicleLabel(v)}</option>)}
           </select>
         </div>
         <DeliveryPersonSelect

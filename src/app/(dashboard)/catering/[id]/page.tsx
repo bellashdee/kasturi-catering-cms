@@ -85,7 +85,7 @@ export default async function EventDetailPage({
     listEquipmentForCompanies(supabase, [event.company_id]),
     listDeliveriesForEvent(supabase, id),
     supabase.from("employees").select("id, full_name").eq("company_id", event.company_id).eq("status", "active").order("full_name"),
-    supabase.from("vehicles").select("id, plate_number").eq("company_id", event.company_id).order("plate_number"),
+    supabase.from("vehicles").select("id, plate_number, vehicle_type").eq("company_id", event.company_id).order("plate_number"),
   ]);
 
   const employees = employeesRes.data ?? [];

@@ -23,7 +23,7 @@ export default async function NewDriverExpensePage({
   const query = requestedId ? `?company=${requestedId}` : "";
 
   const [{ data: vehicles }, { data: employees }] = await Promise.all([
-    supabase.from("vehicles").select("id, plate_number, company_id").in("company_id", accessibleIds).order("plate_number"),
+    supabase.from("vehicles").select("id, plate_number, vehicle_type, company_id").in("company_id", accessibleIds).order("plate_number"),
     supabase.from("employees").select("id, full_name, company_id").in("company_id", accessibleIds).eq("status", "active").order("full_name"),
   ]);
 

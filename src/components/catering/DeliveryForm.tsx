@@ -1,5 +1,6 @@
 "use client";
 
+import { vehicleLabel } from "@/lib/driver/constants";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { upsertDelivery } from "@/lib/catering/actions";
@@ -7,7 +8,7 @@ import { decodeAssignee, encodeAssignee, type DeliveryPerson } from "@/lib/drive
 import { DeliveryPersonSelect } from "@/components/driver/DeliveryPersonSelect";
 import { formatMalaysiaDateTime } from "@/lib/format";
 
-type Vehicle = { id: string; plate_number: string };
+type Vehicle = { id: string; plate_number: string; vehicle_type?: string | null };
 
 export function DeliveryForm({
   companyId,
@@ -72,7 +73,7 @@ export function DeliveryForm({
           <label className="text-[12px] font-semibold text-text-secondary">Vehicle Required</label>
           <select value={vehicleId} onChange={(e) => setVehicleId(e.target.value)} className="mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]">
             <option value="">Not assigned yet</option>
-            {vehicles.map((v) => <option key={v.id} value={v.id}>{v.plate_number}</option>)}
+            {vehicles.map((v) => <option key={v.id} value={v.id}>{vehicleLabel(v)}</option>)}
           </select>
         </div>
         <DeliveryPersonSelect
