@@ -36,14 +36,28 @@ export default async function SupplierProcurementPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const suppliers = await listSuppliers(supabase, targetCompanyIds, q);
+  const records = await listSuppliers(supabase, targetCompanyIds, q);
+
+  // The same supplier kept by several companies has one record per company (invoices and payments stay separate per company).
+  // The list shows each supplier once, with every company that buys from it.
+  type SupplierRecord = (typeof records)[number];
+  const byName = new Map<string, SupplierRecord[]>();
+  for (const r of records) {
+    const key = r.name.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    byName.set(key, [...(byName.get(key) ?? []), r]);
+  }
+  const suppliers = Array.from(byName.values());
+  const joined = (values: (string | null | undefined)[]) => Array.from(new Set(values.filter((v): v is string => !!v))).join(" / ") || "—";
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[22px] font-extrabold text-text">Supplier & Procurement</h1>
-          <p className="mt-0.5 text-[13px] text-text-secondary">{suppliers.length} supplier{suppliers.length === 1 ? "" : "s"}</p>
+          <p className="mt-0.5 text-[13px] text-text-secondary">
+            {suppliers.length} supplier{suppliers.length === 1 ? "" : "s"}
+            {records.length !== suppliers.length ? ` (${records.length} company records)` : ""}
+          </p>
         </div>
         <div className="flex gap-2.5">
           <Link href={`/supplier-procurement/import${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text">
@@ -71,22 +85,28 @@ export default async function SupplierProcurementPage({
               <div>Company</div>
               <div>Status</div>
             </div>
-            {suppliers.map((s) => (
-              <Link
-                key={s.id}
-                href={`/supplier-procurement/${s.id}${query}`}
-                className="grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr_1fr] border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0 hover:bg-surface-alt"
-              >
-                <div className="font-semibold text-text">{s.name}</div>
-                <div className="text-text-secondary">{s.category ?? "—"}</div>
-                <div className="text-text-secondary">{s.contact_person ?? s.phone ?? "—"}</div>
-                <div className="text-text-secondary">{s.payment_terms ?? "—"}</div>
-                <div className="text-text-secondary">{s.companies?.name}</div>
-                <div>
-                  <StatusBadge tone={statusTone(s.status)}>{SUPPLIER_STATUS_LABEL[s.status] ?? s.status}</StatusBadge>
-                </div>
-              </Link>
-            ))}
+            {suppliers.map((group) => {
+              const s = group[0];
+              const statuses = Array.from(new Set(group.map((g) => g.status)));
+              return (
+                <Link
+                  key={s.id}
+                  href={`/supplier-procurement/${s.id}${query}`}
+                  className="grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr_1fr] border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0 hover:bg-surface-alt"
+                >
+                  <div className="font-semibold text-text">{s.name}</div>
+                  <div className="text-text-secondary">{joined(group.map((g) => g.category))}</div>
+                  <div className="text-text-secondary">{joined(group.map((g) => g.contact_person ?? g.phone))}</div>
+                  <div className="text-text-secondary">{joined(group.map((g) => g.payment_terms))}</div>
+                  <div className="text-text-secondary">{joined(group.map((g) => g.companies?.name))}</div>
+                  <div className="flex flex-wrap gap-1">
+                    {statuses.map((st) => (
+                      <StatusBadge key={st} tone={statusTone(st)}>{SUPPLIER_STATUS_LABEL[st] ?? st}</StatusBadge>
+                    ))}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>
