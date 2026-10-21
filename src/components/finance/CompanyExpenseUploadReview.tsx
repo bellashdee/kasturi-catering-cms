@@ -9,6 +9,10 @@ import { createCompanyExpense } from "@/lib/finance/actions";
 
 type Company = { id: string; name: string };
 type CostCategory = { id: string; name: string };
+type UtilityAccount = { id: string; companyId: string; name: string; provider: string | null; accountNo: string | null };
+
+/** The supplier name written in the Department of a utilities expense. */
+const PROVIDER_DEPARTMENT: Record<string, string> = { SAJ: "RANHILL SAJ SDN BHD" };
 
 type ExtractedExpense = {
   category?: string;
@@ -25,11 +29,13 @@ export function CompanyExpenseUploadReview({
   companies,
   defaultCompanyId,
   categories,
+  utilityAccounts = [],
   redirectTo,
 }: {
   companies: Company[];
   defaultCompanyId?: string;
   categories: CostCategory[];
+  utilityAccounts?: UtilityAccount[];
   redirectTo: string;
 }) {
   const router = useRouter();
@@ -37,7 +43,22 @@ export function CompanyExpenseUploadReview({
 
   const [companyId, setCompanyId] = useState(defaultCompanyId ?? companies[0]?.id ?? "");
   const [department, setDepartment] = useState("");
+  const [accountId, setAccountId] = useState("");
   const [form, setForm] = useState({ category: categories[0]?.name ?? "Other", description: "", amount: "", expenseDate: "" });
+
+  const isUtilities = /utilit/i.test(form.category);
+  const accountsOfCompany = utilityAccounts.filter((a) => a.companyId === companyId);
+  const accountLabel = (a: UtilityAccount) => [a.provider, a.name, a.accountNo].filter(Boolean).join(" · ");
+
+  /** Picking a utility account writes its branch and account number into the description (and the supplier into the department). */
+  function pickAccount(id: string) {
+    setAccountId(id);
+    const a = accountsOfCompany.find((x) => x.id === id);
+    if (!a) return;
+    const tag = `${a.name.toUpperCase()}${a.accountNo ? ` · ACC NO: ${a.accountNo}` : ""}`;
+    setForm((f) => ({ ...f, description: tag }));
+    if (a.provider && !department.trim()) setDepartment(`UTILITIES - ${PROVIDER_DEPARTMENT[a.provider] ?? a.provider.toUpperCase()}`);
+  }
 
   async function handleUploadAndExtract() {
     const extracted = (await flow.uploadAndExtract({ companyId, module: "finance", extractionKind: "company_expense" })) as ExtractedExpense | null;
@@ -88,7 +109,7 @@ export function CompanyExpenseUploadReview({
               required
               disabled={flow.documentId !== null}
               value={companyId}
-              onChange={(e) => setCompanyId(e.target.value)}
+              onChange={(e) => { setCompanyId(e.target.value); setAccountId(""); }}
               className={`${inputClass} disabled:bg-surface-alt disabled:text-text-muted`}
             >
               {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -132,6 +153,16 @@ export function CompanyExpenseUploadReview({
                 <input type="date" value={form.expenseDate} onChange={(e) => setForm((f) => ({ ...f, expenseDate: e.target.value }))} className={inputClass} />
               </div>
             </div>
+
+            {isUtilities && (
+              <div>
+                <label className={labelClass}>Utility account (branch and account no.)</label>
+                <select value={accountId} onChange={(e) => pickAccount(e.target.value)} className={inputClass}>
+                  <option value="">Select the account (optional)</option>
+                  {accountsOfCompany.map((a) => <option key={a.id} value={a.id}>{accountLabel(a)}</option>)}
+                </select>
+              </div>
+            )}
 
             <div>
               <label className={labelClass}>Description *</label>
