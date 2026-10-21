@@ -2540,7 +2540,7 @@ const dictionary: Record<string, string> = {
  "RM {0} on {1} · {2}": "{1} তারিখে RM {0} · {2}",
  "RM {0} on {1} · {2} · ref {3}": "RM {0}, {1} তারিখে · {2} · রেফ {3}",
  "RM {0} on {1} · ref {2}": "RM {0}, {1} তারিখে · রেফ {2}",
- "RM per pax *": "প্রতি pax RM *",
+ "RM per pax (optional)": "প্রতি pax RM (ঐচ্ছিক)",
  "Road Tax": "রোড ট্যাক্স",
  "Road Tax Expiry": "রোড ট্যাক্সের মেয়াদ শেষ",
  "Role": "ভূমিকা",

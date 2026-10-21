@@ -87,7 +87,7 @@ function sanitizeSecondChoice(c: SecondChoice | undefined, label: string): Secon
   return { menu, pax: c.pax, mealTypes, serviceType: c.serviceType, pricePerMeal: c.pricePerMeal };
 }
 
-/** The ticked additional services; a ticked staff serving or transportation needs its price. */
+/** The ticked additional services; a ticked transportation needs its price (the price of equipment handling, staff serving and dome set is optional). */
 function sanitizeAdditional(a: AdditionalServices | undefined): AdditionalServices {
   // compulsory: every additional requirement must be answered Yes or No (not left out)
   if (!a || typeof a.equipmentHandling !== "boolean") throw new Error("Additional requirement: answer Yes or No for Equipment handling.");
@@ -106,7 +106,7 @@ function sanitizeAdditional(a: AdditionalServices | undefined): AdditionalServic
     equipmentHandling: !!a.equipmentHandling,
     equipmentHandlingPrice: a.equipmentHandling ? price(a.equipmentHandlingPrice, "Equipment handling", false) : undefined,
     staffServing: !!a.staffServing,
-    staffServingPricePerPax: a.staffServing ? price(a.staffServingPricePerPax, "Staff serving", true) : undefined,
+    staffServingPricePerPax: a.staffServing ? price(a.staffServingPricePerPax, "Staff serving", false) : undefined,
     transportation: !!a.transportation,
     transportationPrice: a.transportation ? price(a.transportationPrice, "Transportation", true) : undefined,
     domeSet: a.domeSet,

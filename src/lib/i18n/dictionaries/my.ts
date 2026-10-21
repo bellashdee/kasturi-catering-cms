@@ -2534,7 +2534,7 @@ const dictionary: Record<string, string> = {
  "RM {0} on {1} · {2}": "{1} တွင် RM {0} · {2}",
  "RM {0} on {1} · {2} · ref {3}": "RM {0} ({1} တွင်) · {2} · ကိုးကားနံပါတ် {3}",
  "RM {0} on {1} · ref {2}": "RM {0} ({1} တွင်) · ကိုးကားနံပါတ် {2}",
- "RM per pax *": "pax တစ်ဦးလျှင် RM *",
+ "RM per pax (optional)": "pax တစ်ဦးလျှင် RM (ရွေးချယ်စရာ)",
  "Road Tax": "လမ်းအခွန်",
  "Road Tax Expiry": "လမ်းအခွန်သက်တမ်းကုန်ဆုံးရက်",
  "Role": "အခန်းကဏ္ဍ",

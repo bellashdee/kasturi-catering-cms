@@ -2497,7 +2497,7 @@ const dictionary: Record<string, string> = {
  "RM {0} on {1} · {2}": "RM {0} pada {1} · {2}",
  "RM {0} on {1} · {2} · ref {3}": "RM {0} pada {1} · {2} · rujukan {3}",
  "RM {0} on {1} · ref {2}": "RM {0} pada {1} · rujukan {2}",
- "RM per pax *": "RM setiap pax *",
+ "RM per pax (optional)": "RM setiap pax (pilihan)",
  "Road Tax": "Cukai Jalan",
  "Road Tax Expiry": "Tarikh Luput Cukai Jalan",
  "Role": "Peranan",

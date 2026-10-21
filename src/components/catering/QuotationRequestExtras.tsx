@@ -95,7 +95,7 @@ export function AdditionalServicesEditor({
 
       <div className={row}>
         <YesNo name="staff-serving" label="Staff serving (RM / pax)" answer={value.staffServing} onAnswer={(v) => patch({ staffServing: v })} />
-        <input type="number" min="0" step="0.01" disabled={value.staffServing !== true} required={value.staffServing === true} value={value.staffServingPricePerPax ?? ""} onChange={(e) => patch({ staffServingPricePerPax: num(e.target.value) })} className={small} placeholder="RM per pax *" />
+        <input type="number" min="0" step="0.01" disabled={value.staffServing !== true} value={value.staffServingPricePerPax ?? ""} onChange={(e) => patch({ staffServingPricePerPax: num(e.target.value) })} className={small} placeholder="RM per pax (optional)" />
         {value.staffServing === true && value.staffServingPricePerPax !== undefined && totalServings > 0 && (
           <span className="text-xs text-text-muted">{totalServings} pax × {formatPrice(value.staffServingPricePerPax)} = {formatPrice(totalServings * value.staffServingPricePerPax)}</span>
         )}

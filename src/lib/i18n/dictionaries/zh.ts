@@ -2546,7 +2546,7 @@ const dictionary: Record<string, string> = {
  "RM {0} on {1} · {2}": "RM {0} 于 {1} · {2}",
  "RM {0} on {1} · {2} · ref {3}": "RM {0},{1} · {2} · 参考号 {3}",
  "RM {0} on {1} · ref {2}": "RM {0},{1} · 参考号 {2}",
- "RM per pax *": "每 pax RM *",
+ "RM per pax (optional)": "每 pax RM（可选）",
  "Road Tax": "路税",
  "Road Tax Expiry": "路税到期日",
  "Role": "角色",
