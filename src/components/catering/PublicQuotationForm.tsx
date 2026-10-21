@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { submitQuotationRequest } from "@/lib/catering/quotationRequestActions";
-import { EVENT_TYPE_LABEL, SALES_AGENTS } from "@/lib/catering/constants";
-import { dayAmount, dayPax, type EventDay } from "@/lib/catering/days";
+import { EVENT_TYPE_OPTIONS, SALES_AGENTS } from "@/lib/catering/constants";
+import { dayAmount, type EventDay } from "@/lib/catering/days";
 import { additionalServiceLines, unansweredAdditionalServices, type AdditionalServices, type ExtraItem, type QuotationRequestInput } from "@/lib/catering/quotationRequest";
 import { EventDaysEditor, emptyDay } from "@/components/catering/EventDaysEditor";
 import { AdditionalServicesEditor } from "@/components/catering/QuotationRequestExtras";
@@ -22,7 +22,7 @@ const emptyHeader: Header = {
   salesAgent: "",
   customerName: "",
   eventName: "",
-  eventType: "corporate",
+  eventType: "",
   location: "",
   picName: "",
   picPhone: "",
@@ -51,8 +51,7 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
 
   const extrasTotal = useMemo(() => extras.reduce((t, r) => t + (Number(r.quantity) || 0) * (Number(r.unitPrice) || 0), 0), [extras]);
   const daysTotal = days.reduce((t, d) => t + dayAmount(d), 0);
-  const totalServings = days.reduce((t, d) => t + dayPax(d), 0);
-  const additionalTotal = additionalServiceLines(additional, totalServings).reduce((t, i) => t + i.quantity * i.unitPrice, 0);
+  const additionalTotal = additionalServiceLines(additional).reduce((t, i) => t + i.quantity * i.unitPrice, 0);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -114,7 +113,8 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
         <div>
           <label className={labelClass}>Event type *</label>
           <select required value={form.eventType} onChange={(e) => set("eventType", e.target.value)} className={inputClass}>
-            {Object.entries(EVENT_TYPE_LABEL).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+            <option value="">Select event type</option>
+            {EVENT_TYPE_OPTIONS.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
           </select>
         </div>
       </div>
@@ -144,7 +144,7 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
       <div>
         <div className="text-[14px] font-extrabold text-text">Additional requirement (answer each one) *</div>
         <p className="mb-2 text-xs text-text-muted">Choose Yes or No for each. Each Yes is added to the quotation.</p>
-        <AdditionalServicesEditor value={additional} onChange={setAdditional} totalServings={totalServings} />
+        <AdditionalServicesEditor value={additional} onChange={setAdditional} />
       </div>
 
       <div>

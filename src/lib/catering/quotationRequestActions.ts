@@ -106,7 +106,7 @@ function sanitizeAdditional(a: AdditionalServices | undefined): AdditionalServic
     equipmentHandling: !!a.equipmentHandling,
     equipmentHandlingPrice: a.equipmentHandling ? price(a.equipmentHandlingPrice, "Equipment handling", false) : undefined,
     staffServing: !!a.staffServing,
-    staffServingPricePerPax: a.staffServing ? price(a.staffServingPricePerPax, "Staff serving", false) : undefined,
+    staffServingPrice: a.staffServing ? price(a.staffServingPrice, "Staff serving", false) : undefined,
     transportation: !!a.transportation,
     transportationPrice: a.transportation ? price(a.transportationPrice, "Transportation", true) : undefined,
     domeSet: a.domeSet,
@@ -154,9 +154,8 @@ async function saveQuotationRequest(companySlug: string, input: QuotationRequest
   days.forEach((d, i) => {
     if (d.mealTypes.length === 0) throw new Error(`Day ${i + 1}: select at least one meal type.`);
   });
-  const totalServings = days.reduce((t, d) => t + dayPax(d), 0);
   const additional = sanitizeAdditional(input.additional);
-  const extraItems = [...additionalServiceLines(additional, totalServings), ...sanitizeExtras(input.extraItems ?? [])];
+  const extraItems = [...additionalServiceLines(additional), ...sanitizeExtras(input.extraItems ?? [])];
   if (extraItems.length > MAX_EXTRA_ITEMS) throw new Error(`At most ${MAX_EXTRA_ITEMS} extra items.`);
   const hasPrice = days.some((d) => (d.pricePerPax ?? 0) > 0) || extraItems.some((i) => i.unitPrice > 0);
   if (!hasPrice) throw new Error("Enter the price per pax for at least one day (or an extra item with a price).");

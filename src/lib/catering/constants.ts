@@ -8,13 +8,74 @@ export const EVENT_STATUS_LABEL: Record<string, string> = {
   cancelled: "Cancelled",
 };
 
-export const EVENT_TYPE_LABEL: Record<string, string> = {
+/** The event types that can be chosen, in alphabetical order ("Other" last). */
+export const EVENT_TYPE_OPTIONS: [string, string][] = [
+  ["aidilfitri_gathering", "Aidilfitri Gathering"],
+  ["annual_dinner", "Annual Dinner"],
+  ["appreciation_dinner", "Appreciation Dinner"],
+  ["award_ceremony", "Award Ceremony"],
+  ["birthday_party", "Birthday Party"],
+  ["business_dinner", "Business Dinner"],
+  ["business_luncheon", "Business Luncheon"],
+  ["charity_event", "Charity Event"],
+  ["community_event", "Community Event"],
+  ["company_anniversary", "Company Anniversary"],
+  ["conference", "Conference"],
+  ["corporate_event", "Corporate Event"],
+  ["corporate_meeting", "Corporate Meeting"],
+  ["cultural_celebration", "Cultural Celebration"],
+  ["customer_appreciation_event", "Customer Appreciation Event"],
+  ["engagement_ceremony", "Engagement Ceremony"],
+  ["exhibition", "Exhibition"],
+  ["family_day", "Family Day"],
+  ["farewell_party", "Farewell Party"],
+  ["fundraising_event", "Fundraising Event"],
+  ["gala_dinner", "Gala Dinner"],
+  ["government_event", "Government Event"],
+  ["graduation_ceremony", "Graduation Ceremony"],
+  ["grand_opening", "Grand Opening"],
+  ["housewarming", "Housewarming"],
+  ["majlis_akikah", "Majlis Akikah"],
+  ["majlis_berkhatan", "Majlis Berkhatan"],
+  ["majlis_doa_selamat", "Majlis Doa Selamat"],
+  ["majlis_kesyukuran", "Majlis Kesyukuran"],
+  ["majlis_perkahwinan", "Majlis Perkahwinan"],
+  ["majlis_pertunangan", "Majlis Pertunangan"],
+  ["official_ceremony", "Official Ceremony"],
+  ["open_house", "Open House"],
+  ["press_conference", "Press Conference"],
+  ["product_launch", "Product Launch"],
+  ["ramadan_iftar", "Ramadan Iftar"],
+  ["religious_gathering", "Religious Gathering"],
+  ["retirement_party", "Retirement Party"],
+  ["roadshow", "Roadshow"],
+  ["school_event", "School Event"],
+  ["seminar", "Seminar"],
+  ["sports_event", "Sports Event"],
+  ["staff_appreciation_event", "Staff Appreciation Event"],
+  ["team_building", "Team Building"],
+  ["training", "Training"],
+  ["university_event", "University Event"],
+  ["vip_reception", "VIP Reception"],
+  ["wedding_reception", "Wedding Reception"],
+  ["workshop", "Workshop"],
+  ["other", "Other"],
+];
+
+/** Event types chosen before the new list: no longer offered, still shown on the bookings that have them. */
+const LEGACY_EVENT_TYPE_LABEL: Record<string, string> = {
   wedding: "Wedding",
   corporate: "Corporate",
   birthday: "Birthday",
   funeral: "Funeral",
-  other: "Other",
 };
+
+export const EVENT_TYPE_LABEL: Record<string, string> = { ...LEGACY_EVENT_TYPE_LABEL, ...Object.fromEntries(EVENT_TYPE_OPTIONS) };
+
+/** The options of an event type choice: the list above, plus an old value the booking already has. */
+export function eventTypeOptions(selected?: string): [string, string][] {
+  return selected && !EVENT_TYPE_OPTIONS.some(([k]) => k === selected) && LEGACY_EVENT_TYPE_LABEL[selected] ? [...EVENT_TYPE_OPTIONS, [selected, LEGACY_EVENT_TYPE_LABEL[selected]]] : EVENT_TYPE_OPTIONS;
+}
 
 export const QUOTATION_STATUS_LABEL: Record<string, string> = {
   draft: "Draft",

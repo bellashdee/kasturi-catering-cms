@@ -34,8 +34,8 @@ export type AdditionalServices = {
   /** Optional: the office can price it later. */
   equipmentHandlingPrice?: number;
   staffServing: boolean | null;
-  /** RM per pax, charged for every serving of the event (all days). */
-  staffServingPricePerPax?: number;
+  /** Optional: RM for the whole event. */
+  staffServingPrice?: number;
   transportation: boolean | null;
   /** RM for the whole event. */
   transportationPrice?: number;
@@ -59,7 +59,7 @@ export function additionalRows(a: AdditionalServices | null | undefined, extras:
   if (a) {
     return [
       { label: "Equipment handling", yes: !!a.equipmentHandling, detail: a.equipmentHandling ? price(a.equipmentHandlingPrice) : "" },
-      { label: "Staff serving", yes: !!a.staffServing, detail: a.staffServing ? price(a.staffServingPricePerPax, true) : "" },
+      { label: "Staff serving", yes: !!a.staffServing, detail: a.staffServing ? price(a.staffServingPrice) : "" },
       { label: "Transportation", yes: !!a.transportation, detail: a.transportation ? price(a.transportationPrice) : "" },
       { label: "Dome set", yes: !!a.domeSet, detail: a.domeSet ? price(a.domeSetPrice) : "" },
     ];
@@ -67,7 +67,8 @@ export function additionalRows(a: AdditionalServices | null | undefined, extras:
   const line = (name: string) => extras.find((i) => i.itemName === name);
   const rows = [
     { label: "Equipment handling", item: line("Equipment handling"), perPax: false },
-    { label: "Staff serving", item: line("Staff serving (per pax)"), perPax: true },
+    // requests sent earlier priced staff serving per pax
+    { label: "Staff serving", item: line("Staff serving") ?? line("Staff serving (per pax)"), perPax: !line("Staff serving") },
     { label: "Transportation", item: line("Transportation"), perPax: false },
     { label: "Dome set", item: line("Dome set"), perPax: false },
   ];
@@ -76,12 +77,12 @@ export function additionalRows(a: AdditionalServices | null | undefined, extras:
     .map((r) => ({ label: r.label, yes: !!r.item, detail: r.item ? price(r.item.unitPrice, r.perPax) : "" }));
 }
 
-/** The quotation lines for the ticked additional services. `totalServings` is the pax of all days added together. */
-export function additionalServiceLines(a: AdditionalServices | undefined, totalServings: number): ExtraItem[] {
+/** The quotation lines for the ticked additional services. */
+export function additionalServiceLines(a: AdditionalServices | undefined): ExtraItem[] {
   if (!a) return [];
   const lines: ExtraItem[] = [];
   if (a.equipmentHandling) lines.push({ itemName: "Equipment handling", quantity: 1, unitPrice: a.equipmentHandlingPrice ?? 0 });
-  if (a.staffServing) lines.push({ itemName: "Staff serving (per pax)", quantity: totalServings, unitPrice: a.staffServingPricePerPax ?? 0 });
+  if (a.staffServing) lines.push({ itemName: "Staff serving", quantity: 1, unitPrice: a.staffServingPrice ?? 0 });
   if (a.transportation) lines.push({ itemName: "Transportation", quantity: 1, unitPrice: a.transportationPrice ?? 0 });
   if (a.domeSet) lines.push({ itemName: "Dome set", quantity: 1, unitPrice: a.domeSetPrice ?? 0 });
   return lines;

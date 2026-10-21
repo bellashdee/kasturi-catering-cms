@@ -93,7 +93,7 @@ export default async function CateringReportPage({
         from={fromParam}
         to={toParam}
         category={categoryParam}
-        categoryOptions={Object.entries(EVENT_TYPE_LABEL).map(([value, label]) => ({ value, label }))}
+        categoryOptions={Object.entries(EVENT_TYPE_LABEL).sort((a, b) => a[1].localeCompare(b[1])).map(([value, label]) => ({ value, label }))}
         categoryLabel="Event Type"
         status={statusParam}
         statusOptions={Object.entries(EVENT_STATUS_LABEL).map(([value, label]) => ({ value, label }))}

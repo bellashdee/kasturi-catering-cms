@@ -4,7 +4,6 @@ import { SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
 import { MealTypeSelect } from "@/components/catering/MealTypeSelect";
 import type { SecondChoice } from "@/lib/catering/days";
 import type { AdditionalServices } from "@/lib/catering/quotationRequest";
-import { formatPrice } from "@/lib/format";
 
 const inputClass =
   "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
@@ -70,16 +69,13 @@ function YesNo({ name, label, answer, onAnswer }: { name: string; label: string;
   );
 }
 
-/** "Additional requirement": each of equipment handling, staff serving (RM per pax) and transportation (RM) must be answered Yes or No. */
+/** "Additional requirement": each of equipment handling, staff serving (RM per event) and transportation (RM) must be answered Yes or No. */
 export function AdditionalServicesEditor({
   value,
   onChange,
-  totalServings,
 }: {
   value: AdditionalServices;
   onChange: (v: AdditionalServices) => void;
-  /** Pax of all days added together, used to show the staff serving amount. */
-  totalServings: number;
 }) {
   const patch = (change: Partial<AdditionalServices>) => onChange({ ...value, ...change });
   const small = "h-9 w-36 rounded border border-border-strong px-2 text-[13px] outline-none disabled:bg-surface-alt disabled:opacity-50";
@@ -94,11 +90,8 @@ export function AdditionalServicesEditor({
       </div>
 
       <div className={row}>
-        <YesNo name="staff-serving" label="Staff serving (RM / pax)" answer={value.staffServing} onAnswer={(v) => patch({ staffServing: v })} />
-        <input type="number" min="0" step="0.01" disabled={value.staffServing !== true} value={value.staffServingPricePerPax ?? ""} onChange={(e) => patch({ staffServingPricePerPax: num(e.target.value) })} className={small} placeholder="RM per pax (optional)" />
-        {value.staffServing === true && value.staffServingPricePerPax !== undefined && totalServings > 0 && (
-          <span className="text-xs text-text-muted">{totalServings} pax × {formatPrice(value.staffServingPricePerPax)} = {formatPrice(totalServings * value.staffServingPricePerPax)}</span>
-        )}
+        <YesNo name="staff-serving" label="Staff serving (RM / event)" answer={value.staffServing} onAnswer={(v) => patch({ staffServing: v })} />
+        <input type="number" min="0" step="0.01" disabled={value.staffServing !== true} value={value.staffServingPrice ?? ""} onChange={(e) => patch({ staffServingPrice: num(e.target.value) })} className={small} placeholder="RM (optional)" />
       </div>
 
       <div className={row}>

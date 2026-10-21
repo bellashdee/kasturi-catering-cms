@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createEvent, updateEvent, type EventInput } from "@/lib/catering/actions";
-import { SALES_AGENTS, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
+import { SALES_AGENTS, SERVICE_TYPE_LABEL, eventTypeOptions } from "@/lib/catering/constants";
 import { MealTypeSelect } from "@/components/catering/MealTypeSelect";
 import type { EventDay } from "@/lib/catering/days";
 import { hasPackagePrice } from "@/lib/kitchen/packages/format";
@@ -55,7 +55,7 @@ export function EventForm({
     eventTime: initial?.eventTime ?? "",
     location: initial?.location ?? "",
     paxCount: initial?.paxCount,
-    eventType: initial?.eventType ?? "corporate",
+    eventType: initial?.eventType ?? "corporate_event",
     packageMenuId: initial?.packageMenuId,
     menuDescription: initial?.menuDescription ?? "",
     specialRequirements: initial?.specialRequirements ?? "",
@@ -210,11 +210,7 @@ export function EventForm({
         <div>
           <label className={labelClass}>Event Type</label>
           <select value={form.eventType} onChange={(e) => set("eventType", e.target.value)} className={inputClass}>
-            <option value="wedding">Wedding</option>
-            <option value="corporate">Corporate</option>
-            <option value="birthday">Birthday</option>
-            <option value="funeral">Funeral</option>
-            <option value="other">Other</option>
+            {eventTypeOptions(form.eventType).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
           </select>
         </div>
       </div>
