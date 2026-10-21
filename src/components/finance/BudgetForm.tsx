@@ -1,5 +1,6 @@
 "use client";
 
+import { DEPARTMENT_OPTIONS } from "@/lib/finance/constants";
 import { malaysiaYearMonth } from "@/lib/format";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -61,7 +62,10 @@ export function BudgetForm({ companies, defaultCompanyId, categories }: { compan
         </div>
         <div>
           <label className="text-[12.5px] font-semibold text-text-secondary">Department</label>
-          <input value={department} onChange={(e) => setDepartment(e.target.value)} className="mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none" placeholder="Optional — leave blank for company-wide" />
+          <select value={department} onChange={(e) => setDepartment(e.target.value)} className="mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none">
+            <option value="">Company-wide (no department)</option>
+            {DEPARTMENT_OPTIONS.map((d) => <option key={d} value={d}>{d}</option>)}
+          </select>
         </div>
       </div>
 

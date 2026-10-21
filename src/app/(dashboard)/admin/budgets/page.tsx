@@ -6,6 +6,7 @@ import { resolveCompanyScope } from "@/lib/companyScope";
 import { listBudgets, getMonthlyCostBreakdown } from "@/lib/finance/queries";
 import { MONTH_LABEL } from "@/lib/finance/constants";
 import { formatCurrency } from "@/lib/format";
+import { BudgetRowActions } from "@/components/finance/BudgetRowActions";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
@@ -65,25 +66,27 @@ export default async function BudgetsPage({
           <EmptyRow text="No budgets set yet." />
         ) : (
           <div>
-            <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
+            <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_auto] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
               <div>Period</div>
               <div>Category</div>
               <div>Department</div>
               <div>Budgeted</div>
               <div>Actual</div>
               <div>Status</div>
+              <div>Action</div>
             </div>
             {budgets.map((b) => {
               const actual = actualFor(b);
               const over = actual > Number(b.budgeted_amount);
               return (
-                <div key={b.id} className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr] border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0">
+                <div key={b.id} className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_auto] border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0">
                   <div className="text-text-secondary">{MONTH_LABEL[b.month - 1]} {b.year}</div>
                   <div className="font-semibold text-text">{b.category}</div>
                   <div className="text-text-secondary">{b.department ?? "Company-wide"}</div>
                   <div className="text-text-secondary">{formatCurrency(Number(b.budgeted_amount))}</div>
                   <div className={over ? "font-semibold text-danger" : "text-text-secondary"}>{formatCurrency(actual)}</div>
                   <div><StatusBadge tone={over ? "danger" : "success"}>{over ? "Over Budget" : "On Track"}</StatusBadge></div>
+                  <BudgetRowActions id={b.id} label={`${b.category} · ${MONTH_LABEL[b.month - 1]} ${b.year}`} amount={Number(b.budgeted_amount)} department={b.department} notes={b.notes} />
                 </div>
               );
             })}

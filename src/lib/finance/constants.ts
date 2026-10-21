@@ -72,3 +72,21 @@ export function parseDateRange(from: string | undefined, to: string | undefined)
 export function resolvePeriod(year: number, month: number, range?: DateRange): DateRange {
   return range ?? monthDateRange(year, month);
 }
+
+/** The departments an expense or a budget belongs to, in alphabetical order. */
+export const DEPARTMENT_OPTIONS = [
+  "ACCOUNTS / FINANCE",
+  "ADMIN",
+  "KITCHEN / PRODUCTION",
+  "LOGISTICS / DELIVERY",
+  "MAINTENANCE",
+  "OPERATION / EVENT",
+  "SALES & MARKETING",
+  "SERVICE / BANQUET",
+  "STORE / PURCHASING",
+] as const;
+
+/** The department choices, plus a department already on the record that is not in the list (for example "Kitchen" from the imported sheets). */
+export function departmentChoices(current?: string | null): string[] {
+  return current && !(DEPARTMENT_OPTIONS as readonly string[]).includes(current) ? [...DEPARTMENT_OPTIONS, current] : [...DEPARTMENT_OPTIONS];
+}

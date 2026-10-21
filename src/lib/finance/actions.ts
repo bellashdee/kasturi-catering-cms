@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { logTaskAudit } from "@/lib/taskProofs/actions";
 import { recordAudit } from "@/lib/audit";
 import { confirmedPaymentDate, todayInMalaysia } from "@/lib/format";
@@ -55,11 +56,184 @@ export async function createCompanyExpense(input: CompanyExpenseInput) {
   revalidatePath("/");
 }
 
+export type CompanyExpenseRow = {
+  id: string;
+  company_id: string;
+  category: string;
+  department: string | null;
+  amount: number;
+  expense_date: string;
+  notes: string | null;
+  document_id: string | null;
+  created_by: string | null;
+};
+
+async function requireExpenseAccess(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], companyId: string) {
+  const { data } = await supabase.rpc("user_has_company_access", { target_company_id: companyId });
+  if (data !== true) throw new Error("You cannot change the expenses of this company.");
+}
+
+function revalidateExpenses() {
+  revalidatePath("/finance/expenses");
+  revalidatePath("/admin");
+  revalidatePath("/reports/expenses");
+  revalidatePath("/");
+}
+
+/** Edit a company expense: category, department, amount, date and notes. */
+export async function updateCompanyExpense(
+  id: string,
+  input: { category: string; department?: string; amount: number; expenseDate: string; notes?: string },
+) {
+  const { supabase } = await requireUser();
+  const { data: before, error: readError } = await supabase.from("expenses").select("*").eq("id", id).single();
+  if (readError || !before) throw new Error("Expense not found.");
+  await requireExpenseAccess(supabase, before.company_id);
+  if (!input.category.trim()) throw new Error("Choose the category.");
+  if (!(input.amount >= 0)) throw new Error("Enter a valid amount.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.expenseDate)) throw new Error("Choose the expense date.");
+  const { error } = await supabase
+    .from("expenses")
+    .update({ category: input.category.trim(), department: input.department?.trim() || null, amount: input.amount, expense_date: input.expenseDate, notes: input.notes?.trim() || null })
+    .eq("id", id);
+  if (error) throw new Error("Could not save the expense.");
+  await recordAudit({
+    companyId: before.company_id,
+    relatedTable: "expenses",
+    relatedId: id,
+    action: "expense_edited",
+    previousValue: `${before.category} · RM ${Number(before.amount).toFixed(2)} · ${before.expense_date}`,
+    newValue: `${input.category.trim()} · RM ${Number(input.amount).toFixed(2)} · ${input.expenseDate}`,
+  });
+  revalidateExpenses();
+}
+
+/** Delete a company expense. The deleted row is returned so the person can Undo (restoreCompanyExpense). */
+export async function deleteCompanyExpense(id: string): Promise<CompanyExpenseRow> {
+  const { supabase } = await requireUser();
+  const { data: before, error: readError } = await supabase.from("expenses").select("*").eq("id", id).single();
+  if (readError || !before) throw new Error("Expense not found.");
+  await requireExpenseAccess(supabase, before.company_id);
+  // there is no delete policy for expenses: the access check above is the permission, the delete itself uses the service role
+  const { error } = await createAdminClient().from("expenses").delete().eq("id", id);
+  if (error) throw new Error("Could not delete the expense.");
+  await recordAudit({
+    companyId: before.company_id,
+    relatedTable: "expenses",
+    relatedId: id,
+    action: "expense_deleted",
+    previousValue: `${before.category} · RM ${Number(before.amount).toFixed(2)} · ${before.expense_date}`,
+  });
+  revalidateExpenses();
+  return {
+    id: before.id,
+    company_id: before.company_id,
+    category: before.category,
+    department: before.department,
+    amount: Number(before.amount),
+    expense_date: before.expense_date,
+    notes: before.notes,
+    document_id: before.document_id,
+    created_by: before.created_by,
+  };
+}
+
+/** Undo a delete: the same expense (same id) is put back. */
+export async function restoreCompanyExpense(row: CompanyExpenseRow) {
+  const { supabase } = await requireUser();
+  await requireExpenseAccess(supabase, row.company_id);
+  const { error } = await supabase.from("expenses").insert({
+    id: row.id,
+    company_id: row.company_id,
+    category: row.category,
+    department: row.department,
+    amount: row.amount,
+    expense_date: row.expense_date,
+    notes: row.notes,
+    document_id: row.document_id,
+    created_by: row.created_by,
+  });
+  if (error) throw new Error("Could not undo the delete.");
+  await recordAudit({ companyId: row.company_id, relatedTable: "expenses", relatedId: row.id, action: "expense_restored", newValue: `${row.category} · RM ${row.amount.toFixed(2)} · ${row.expense_date}` });
+  revalidateExpenses();
+}
+
 export async function createCostCategory(companyId: string, name: string) {
   const { supabase } = await requireUser();
   const { error } = await supabase.from("cost_categories").insert({ company_id: companyId, name });
   if (error) throw error;
   revalidatePath("/admin/categories");
+}
+
+/** Rename a company's cost category; its existing expenses and budgets follow the new name. */
+export async function renameCostCategory(id: string, name: string) {
+  const { supabase } = await requireUser();
+  const newName = name.trim();
+  if (!newName) throw new Error("Enter the category name.");
+  const { data: before } = await supabase.from("cost_categories").select("*").eq("id", id).single();
+  if (!before || !before.company_id) throw new Error("A default category cannot be changed.");
+  await requireExpenseAccess(supabase, before.company_id);
+  const { data: same } = await supabase.from("cost_categories").select("id, name").eq("company_id", before.company_id).neq("id", id);
+  if (same?.some((c) => c.name.toUpperCase() === newName.toUpperCase())) throw new Error("This company already has a category with that name.");
+  const { error } = await supabase.from("cost_categories").update({ name: newName }).eq("id", id);
+  if (error) throw new Error("Could not rename the category.");
+  await supabase.from("expenses").update({ category: newName }).eq("company_id", before.company_id).eq("category", before.name);
+  await supabase.from("budgets").update({ category: newName }).eq("company_id", before.company_id).eq("category", before.name);
+  await recordAudit({ companyId: before.company_id, relatedTable: "cost_categories", relatedId: id, action: "category_renamed", previousValue: before.name, newValue: newName });
+  revalidatePath("/admin/categories");
+  revalidateExpenses();
+}
+
+/** Delete a company's cost category (past expenses keep their category name; it just leaves the choice lists). Returns the row for Undo. */
+export async function deleteCostCategory(id: string): Promise<{ id: string; company_id: string; name: string }> {
+  const { supabase } = await requireUser();
+  const { data: before } = await supabase.from("cost_categories").select("*").eq("id", id).single();
+  if (!before || !before.company_id) throw new Error("A default category cannot be deleted.");
+  await requireExpenseAccess(supabase, before.company_id);
+  const { error } = await createAdminClient().from("cost_categories").delete().eq("id", id);
+  if (error) throw new Error("Could not delete the category.");
+  await recordAudit({ companyId: before.company_id, relatedTable: "cost_categories", relatedId: id, action: "category_deleted", previousValue: before.name });
+  revalidatePath("/admin/categories");
+  return { id: before.id, company_id: before.company_id, name: before.name };
+}
+
+/** Undo a category delete: the same category (same id) is put back. */
+export async function restoreCostCategory(row: { id: string; company_id: string; name: string }) {
+  const { supabase } = await requireUser();
+  await requireExpenseAccess(supabase, row.company_id);
+  const { error } = await supabase.from("cost_categories").insert({ id: row.id, company_id: row.company_id, name: row.name });
+  if (error) throw new Error("Could not undo the delete.");
+  revalidatePath("/admin/categories");
+}
+
+/** Change the amount, department and notes of a budget. */
+export async function updateBudget(id: string, input: { budgetedAmount: number; department?: string; notes?: string }) {
+  const { supabase } = await requireUser();
+  if (!(input.budgetedAmount >= 0)) throw new Error("Enter a valid amount.");
+  const { data: before } = await supabase.from("budgets").select("company_id, budgeted_amount, category").eq("id", id).single();
+  if (!before) throw new Error("Budget not found.");
+  const { error } = await supabase
+    .from("budgets")
+    .update({ budgeted_amount: input.budgetedAmount, department: input.department?.trim() || null, notes: input.notes?.trim() || null })
+    .eq("id", id);
+  if (error) throw new Error("Could not save the budget.");
+  await recordAudit({
+    companyId: before.company_id,
+    relatedTable: "budgets",
+    relatedId: id,
+    action: "budget_edited",
+    previousValue: `${before.category} · RM ${Number(before.budgeted_amount).toFixed(2)}`,
+    newValue: `${before.category} · RM ${Number(input.budgetedAmount).toFixed(2)}`,
+  });
+  revalidatePath("/admin/budgets");
+}
+
+export async function deleteBudget(id: string) {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.from("budgets").delete().eq("id", id).select("company_id, category, budgeted_amount");
+  if (error || !data?.length) throw new Error("You cannot delete this budget.");
+  await recordAudit({ companyId: data[0].company_id, relatedTable: "budgets", relatedId: id, action: "budget_deleted", previousValue: `${data[0].category} · RM ${Number(data[0].budgeted_amount).toFixed(2)}` });
+  revalidatePath("/admin/budgets");
 }
 
 export type PettyCashInput = {

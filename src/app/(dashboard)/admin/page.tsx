@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
-import { getMonthlyCostBreakdown, getMonthlySales, listCostCategories } from "@/lib/finance/queries";
+import { getMonthlyCostBreakdown, getMonthlySales, listCostCategories, uniqueCategories } from "@/lib/finance/queries";
 import { MONTH_LABEL } from "@/lib/finance/constants";
 import { formatCurrency, malaysiaYearMonth } from "@/lib/format";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
@@ -100,7 +100,7 @@ export default async function AdminPage({
           <label className="text-[12px] font-semibold text-text-secondary">Category</label>
           <select name="category" defaultValue={categoryParam ?? ""} className="mt-1 h-9 w-52 rounded-lg border border-border-strong px-2 text-[13px]">
             <option value="">All Categories</option>
-            {categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+            {uniqueCategories(categories).map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
           </select>
         </div>
         <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply Filters</button>

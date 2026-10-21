@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { getRecipe } from "@/lib/kitchen/queries";
 import { SectionCard } from "@/components/dashboard/SectionCard";
+import { RecipeDeleteButton } from "@/components/kitchen/RecipeDeleteButton";
 import { RecipePaxCalculator } from "@/components/kitchen/RecipePaxCalculator";
 
 export default async function RecipeDetailPage({
@@ -42,9 +43,12 @@ export default async function RecipeDetailPage({
             {recipe.menu_items?.name && ` · ${recipe.menu_items.name}`}
           </div>
         </div>
-        <Link href={`/kitchen/recipes/${id}/edit${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text">
-          Edit Recipe &amp; Ingredients
-        </Link>
+        <div className="flex flex-wrap items-start gap-2">
+          <Link href={`/kitchen/recipes/${id}/edit${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text">
+            Edit Recipe &amp; Ingredients
+          </Link>
+          <RecipeDeleteButton recipeId={recipe.id} recipeName={recipe.name} redirectTo={`/kitchen/recipes${query}`} />
+        </div>
       </div>
 
       {recipe.instructions && (

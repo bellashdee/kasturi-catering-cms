@@ -213,6 +213,20 @@ export async function listCostCategories(supabase: DB, companyIds: string[]) {
   return data;
 }
 
+/**
+ * The category choices for a drop-down: the same category kept by several companies (or written "Other" / "OTHER") is listed once,
+ * in alphabetical order. The name written in capitals wins, as in the imported costing sheets.
+ */
+export function uniqueCategories<T extends { name: string }>(categories: T[]): T[] {
+  const byKey = new Map<string, T>();
+  for (const c of categories) {
+    const key = c.name.toUpperCase().replace(/\s+/g, " ").trim();
+    const kept = byKey.get(key);
+    if (!kept || (c.name === c.name.toUpperCase() && kept.name !== kept.name.toUpperCase())) byKey.set(key, c);
+  }
+  return Array.from(byKey.values()).sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export async function listCompanyExpenses(supabase: DB, companyIds: string[]) {
   const { data, error } = await supabase
     .from("expenses")

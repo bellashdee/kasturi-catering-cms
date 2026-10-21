@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listCostCategories } from "@/lib/finance/queries";
+import { CategoryRow } from "@/components/finance/CategoryRow";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { CostCategoryForm } from "@/components/finance/CostCategoryForm";
@@ -28,7 +29,23 @@ export default async function CostCategoriesPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const categories = await listCostCategories(supabase, targetCompanyIds);
+  const rawCategories = await listCostCategories(supabase, targetCompanyIds);
+  // the same category (also written Other / OTHER) kept by several companies is one row, with all its companies; alphabetical
+  const companyName = new Map(companies.map((c) => [c.id, c.name]));
+  const groups = new Map<string, { name: string; ids: string[]; companyNames: string[]; isDefault: boolean }>();
+  for (const c of rawCategories) {
+    const key = c.name.toUpperCase().replace(/\s+/g, " ").trim();
+    const g = groups.get(key) ?? { name: c.name, ids: [], companyNames: [], isDefault: false };
+    if (c.name === c.name.toUpperCase() && g.name !== g.name.toUpperCase()) g.name = c.name;
+    if (c.company_id) {
+      g.ids.push(c.id);
+      g.companyNames.push(companyName.get(c.company_id) ?? "");
+    } else {
+      g.isDefault = true;
+    }
+    groups.set(key, g);
+  }
+  const categories = Array.from(groups.values()).sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div className="flex flex-col gap-5">
@@ -47,10 +64,13 @@ export default async function CostCategoriesPage({
         ) : (
           <div className="divide-y divide-border">
             {categories.map((c) => (
-              <div key={c.id} className="flex items-center justify-between px-5 py-3 text-[13.5px]">
-                <span className="font-semibold text-text">{c.name}</span>
-                <span className="text-xs text-text-muted">{c.company_id ? "Company-specific" : "Global default"}</span>
-              </div>
+              <CategoryRow
+                key={c.name.toUpperCase()}
+                ids={c.ids}
+                name={c.name}
+                companyName={[...c.companyNames, ...(c.isDefault ? ["Global default"] : [])].join(" / ")}
+                editable={c.ids.length > 0}
+              />
             ))}
           </div>
         )}

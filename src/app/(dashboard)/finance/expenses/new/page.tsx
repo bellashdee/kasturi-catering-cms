@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
-import { listCostCategories } from "@/lib/finance/queries";
+import { listCostCategories, uniqueCategories } from "@/lib/finance/queries";
 import { listPaymentAccounts } from "@/lib/finance/paymentQueries";
 import { CompanyExpenseUploadReview } from "@/components/finance/CompanyExpenseUploadReview";
 
@@ -24,7 +24,7 @@ export default async function NewCompanyExpensePage({
   const defaultCompanyId = requestedId && accessibleIds.includes(requestedId) ? requestedId : selectable[0]?.id;
   const query = requestedId ? `?company=${requestedId}` : "";
 
-  const categories = await listCostCategories(supabase, accessibleIds);
+  const categories = uniqueCategories(await listCostCategories(supabase, accessibleIds));
   // the utility accounts (water, electricity ...) of each branch, to attach an account number to a utilities expense
   const utilityAccounts = (await listPaymentAccounts(supabase, accessibleIds, "utility").catch(() => [])).map((a) => ({
     id: a.id,

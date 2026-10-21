@@ -6,13 +6,13 @@ import { useRouter } from "next/navigation";
 import { useDocumentUpload } from "@/lib/importFlow/useDocumentUpload";
 import { ImportTabs, FileDropZone, ExtractionNotice, FormError, ConfirmActions } from "@/components/shared/import/ImportFlowAtoms";
 import { createCompanyExpense } from "@/lib/finance/actions";
+import { DEPARTMENT_OPTIONS } from "@/lib/finance/constants";
 
 type Company = { id: string; name: string };
 type CostCategory = { id: string; name: string };
 type UtilityAccount = { id: string; companyId: string; name: string; provider: string | null; accountNo: string | null };
 
-/** The supplier name written in the Department of a utilities expense. */
-const PROVIDER_DEPARTMENT: Record<string, string> = { SAJ: "RANHILL SAJ SDN BHD" };
+
 
 type ExtractedExpense = {
   category?: string;
@@ -50,14 +50,14 @@ export function CompanyExpenseUploadReview({
   const accountsOfCompany = utilityAccounts.filter((a) => a.companyId === companyId);
   const accountLabel = (a: UtilityAccount) => [a.provider, a.name, a.accountNo].filter(Boolean).join(" · ");
 
-  /** Picking a utility account writes its branch and account number into the description (and the supplier into the department). */
+  /** Picking a utility account writes its supplier, branch and account number into the description. */
   function pickAccount(id: string) {
     setAccountId(id);
     const a = accountsOfCompany.find((x) => x.id === id);
     if (!a) return;
-    const tag = `${a.name.toUpperCase()}${a.accountNo ? ` · ACC NO: ${a.accountNo}` : ""}`;
+    const supplier = a.provider === "SAJ" ? "RANHILL SAJ SDN BHD" : (a.provider ?? "").toUpperCase();
+    const tag = `${supplier ? `${supplier} · ` : ""}${a.name.toUpperCase()}${a.accountNo ? ` · ACC NO: ${a.accountNo}` : ""}`;
     setForm((f) => ({ ...f, description: tag }));
-    if (a.provider && !department.trim()) setDepartment(`UTILITIES - ${PROVIDER_DEPARTMENT[a.provider] ?? a.provider.toUpperCase()}`);
   }
 
   async function handleUploadAndExtract() {
@@ -117,7 +117,10 @@ export function CompanyExpenseUploadReview({
           </div>
           <div>
             <label className={labelClass}>Department</label>
-            <input value={department} onChange={(e) => setDepartment(e.target.value)} className={inputClass} placeholder="Optional" />
+            <select value={department} onChange={(e) => setDepartment(e.target.value)} className={inputClass}>
+              <option value="">Select department (optional)</option>
+              {DEPARTMENT_OPTIONS.map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
           </div>
         </div>
 

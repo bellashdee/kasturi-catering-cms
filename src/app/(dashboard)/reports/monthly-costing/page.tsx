@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
-import { getMonthlyCostBreakdown, listCostCategories } from "@/lib/finance/queries";
+import { getMonthlyCostBreakdown, listCostCategories, uniqueCategories } from "@/lib/finance/queries";
 import { formatCurrency, malaysiaYearMonth } from "@/lib/format";
 import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { ReportTable } from "@/components/reports/ReportTable";
@@ -90,7 +90,7 @@ export default async function MonthlyCostingReportPage({
         department={departmentParam}
         departmentOptions={departments.map((d) => ({ value: d, label: d }))}
         category={categoryParam}
-        categoryOptions={categories.map((c) => ({ value: c.name, label: c.name }))}
+        categoryOptions={uniqueCategories(categories).map((c) => ({ value: c.name, label: c.name }))}
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

@@ -326,6 +326,14 @@ export async function updateRecipe(recipeId: string, input: RecipeUpdateInput) {
   revalidatePath(`/kitchen/recipes/${recipeId}`);
 }
 
+/** Delete a recipe with its ingredient lines. Production orders made from it stay (they just lose the link). */
+export async function deleteRecipe(recipeId: string) {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.from("recipes").delete().eq("id", recipeId).select("id");
+  if (error || !data?.length) throw new Error("You cannot delete this recipe.");
+  revalidatePath("/kitchen/recipes");
+}
+
 export type ProductionOrderInput = {
   companyId: string;
   recipeId?: string;

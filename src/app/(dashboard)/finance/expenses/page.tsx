@@ -3,10 +3,11 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
-import { listCompanyExpenses } from "@/lib/finance/queries";
+import { listCompanyExpenses, listCostCategories, uniqueCategories } from "@/lib/finance/queries";
 import { formatCurrency } from "@/lib/format";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
+import { CompanyExpenseTable } from "@/components/finance/CompanyExpenseTable";
 
 export default async function CompanyExpensesPage({
   searchParams,
@@ -28,7 +29,7 @@ export default async function CompanyExpensesPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const expenses = await listCompanyExpenses(supabase, targetCompanyIds);
+  const [expenses, categories] = await Promise.all([listCompanyExpenses(supabase, targetCompanyIds), listCostCategories(supabase, targetCompanyIds)]);
   const total = expenses.reduce((t, e) => t + Number(e.amount), 0);
 
   return (
@@ -49,24 +50,18 @@ export default async function CompanyExpensesPage({
         {expenses.length === 0 ? (
           <EmptyRow text="No company expenses recorded yet." />
         ) : (
-          <div>
-            <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1.4fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
-              <div>Date</div>
-              <div>Category</div>
-              <div>Amount</div>
-              <div>Department</div>
-              <div>Company / Notes</div>
-            </div>
-            {expenses.map((e) => (
-              <div key={e.id} className="grid grid-cols-[1fr_1fr_1fr_1fr_1.4fr] border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0">
-                <div className="text-text-secondary">{e.expense_date}</div>
-                <div className="font-semibold text-text">{e.category}</div>
-                <div className="text-text-secondary">{formatCurrency(Number(e.amount))}</div>
-                <div className="text-text-secondary">{e.department ?? "—"}</div>
-                <div className="truncate text-text-muted">{e.companies?.name}{e.notes ? ` · ${e.notes}` : ""}</div>
-              </div>
-            ))}
-          </div>
+          <CompanyExpenseTable
+            categories={uniqueCategories(categories).map((c) => c.name)}
+            rows={expenses.map((e) => ({
+              id: e.id,
+              companyName: e.companies?.name ?? "",
+              category: e.category,
+              department: e.department,
+              amount: Number(e.amount),
+              expenseDate: e.expense_date,
+              notes: e.notes,
+            }))}
+          />
         )}
       </div>
     </div>
