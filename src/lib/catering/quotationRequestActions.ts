@@ -155,7 +155,8 @@ async function saveQuotationRequest(companySlug: string, input: QuotationRequest
     if (d.mealTypes.length === 0) throw new Error(`Day ${i + 1}: select at least one meal type.`);
   });
   const totalServings = days.reduce((t, d) => t + dayPax(d), 0);
-  const extraItems = [...additionalServiceLines(sanitizeAdditional(input.additional), totalServings), ...sanitizeExtras(input.extraItems ?? [])];
+  const additional = sanitizeAdditional(input.additional);
+  const extraItems = [...additionalServiceLines(additional, totalServings), ...sanitizeExtras(input.extraItems ?? [])];
   if (extraItems.length > MAX_EXTRA_ITEMS) throw new Error(`At most ${MAX_EXTRA_ITEMS} extra items.`);
   const hasPrice = days.some((d) => (d.pricePerPax ?? 0) > 0) || extraItems.some((i) => i.unitPrice > 0);
   if (!hasPrice) throw new Error("Enter the price per pax for at least one day (or an extra item with a price).");
@@ -183,6 +184,7 @@ async function saveQuotationRequest(companySlug: string, input: QuotationRequest
     remarks: clean(input.remarks, 2000),
     days: days as unknown as Json,
     extra_items: extraItems as unknown as Json,
+    additional: additional as unknown as Json,
   });
   if (error) throw new Error("Could not save. Please try again.");
 

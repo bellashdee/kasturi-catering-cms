@@ -49,6 +49,33 @@ export const noAdditionalServices = (): AdditionalServices => ({ equipmentHandli
 /** The form starts with nothing answered: each of the three must be answered Yes or No before the request can be sent. */
 export const unansweredAdditionalServices = (): AdditionalServices => ({ equipmentHandling: null, staffServing: null, transportation: null, domeSet: null });
 
+/**
+ * What the sales agent answered under "Additional requirement", for the event page: every question with Yes / No and its price.
+ * Requests sent before the answers were kept have none: the Yes answers are read back from their quotation lines, and Dome set
+ * (asked later) is only listed when it was ticked.
+ */
+export function additionalRows(a: AdditionalServices | null | undefined, extras: ExtraItem[] = []): { label: string; yes: boolean; detail: string }[] {
+  const price = (n: number | undefined, perPax = false) => (n && n > 0 ? `RM ${n.toFixed(2)}${perPax ? " per pax" : ""}` : "");
+  if (a) {
+    return [
+      { label: "Equipment handling", yes: !!a.equipmentHandling, detail: a.equipmentHandling ? price(a.equipmentHandlingPrice) : "" },
+      { label: "Staff serving", yes: !!a.staffServing, detail: a.staffServing ? price(a.staffServingPricePerPax, true) : "" },
+      { label: "Transportation", yes: !!a.transportation, detail: a.transportation ? price(a.transportationPrice) : "" },
+      { label: "Dome set", yes: !!a.domeSet, detail: a.domeSet ? price(a.domeSetPrice) : "" },
+    ];
+  }
+  const line = (name: string) => extras.find((i) => i.itemName === name);
+  const rows = [
+    { label: "Equipment handling", item: line("Equipment handling"), perPax: false },
+    { label: "Staff serving", item: line("Staff serving (per pax)"), perPax: true },
+    { label: "Transportation", item: line("Transportation"), perPax: false },
+    { label: "Dome set", item: line("Dome set"), perPax: false },
+  ];
+  return rows
+    .filter((r) => r.item || r.label !== "Dome set")
+    .map((r) => ({ label: r.label, yes: !!r.item, detail: r.item ? price(r.item.unitPrice, r.perPax) : "" }));
+}
+
 /** The quotation lines for the ticked additional services. `totalServings` is the pax of all days added together. */
 export function additionalServiceLines(a: AdditionalServices | undefined, totalServings: number): ExtraItem[] {
   if (!a) return [];

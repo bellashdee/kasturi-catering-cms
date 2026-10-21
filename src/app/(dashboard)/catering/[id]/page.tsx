@@ -23,6 +23,7 @@ import {
 } from "@/lib/catering/constants";
 import { formatCurrency, formatPrice } from "@/lib/format";
 import { dayAmount, dayPax } from "@/lib/catering/days";
+import { additionalRows, type AdditionalServices, type ExtraItem } from "@/lib/catering/quotationRequest";
 import { toEventDays } from "@/lib/catering/queries";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SectionCard, EmptyRow } from "@/components/dashboard/SectionCard";
@@ -69,6 +70,10 @@ export default async function EventDetailPage({
   } catch {
     notFound();
   }
+
+  // an event made from a sales agent's quotation request shows what the agent ticked under "Additional requirement"
+  const { data: fromRequest } = await supabase.from("quotation_requests").select("sales_agent, additional, extra_items").eq("catering_event_id", id).maybeSingle();
+  const additional = fromRequest ? additionalRows(fromRequest.additional as AdditionalServices | null, (fromRequest.extra_items ?? []) as unknown as ExtraItem[]) : [];
 
   const dayRowsData = await listEventDays(supabase, id);
   const eventDays = toEventDays(dayRowsData);
@@ -184,6 +189,22 @@ export default async function EventDetailPage({
                 </div>
                 {d.menuDetails && <div className="mt-1 whitespace-pre-line text-text-secondary">{d.menuDetails}</div>}
                 {d.remarks && <div className="mt-1 whitespace-pre-line text-xs text-text-muted">Remarks: {d.remarks}</div>}
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
+      {additional.length > 0 && (
+        <SectionCard title="Additional requirement">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {additional.map((a) => (
+              <div key={a.label} className="rounded-lg border border-border bg-surface-alt px-4 py-3">
+                <div className="text-[12px] font-bold uppercase tracking-wide text-text-muted">{a.label}</div>
+                <div className="mt-1 flex items-center gap-2">
+                  <StatusBadge tone={a.yes ? "success" : "neutral"}>{a.yes ? "Yes" : "No"}</StatusBadge>
+                  {a.detail && <span className="text-[13px] font-semibold text-text">{a.detail}</span>}
+                </div>
               </div>
             ))}
           </div>
