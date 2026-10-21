@@ -36,14 +36,25 @@ export default async function DriversPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const drivers = await listDrivers(supabase, targetCompanyIds);
+  const records = await listDrivers(supabase, targetCompanyIds);
+
+  // The same driver who works for several companies has one driver record per company (deliveries and expenses stay separate per
+  // company). The list shows each person once, with the companies he works for.
+  type DriverRecord = (typeof records)[number];
+  const byName = new Map<string, DriverRecord[]>();
+  for (const d of records) {
+    const key = (d.employees?.full_name ?? d.id).toUpperCase().replace(/\s+/g, " ").trim();
+    byName.set(key, [...(byName.get(key) ?? []), d]);
+  }
+  const drivers = Array.from(byName.values());
+  const joined = (values: (string | null | undefined)[]) => Array.from(new Set(values.filter((v): v is string => !!v))).join(" / ") || "—";
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[22px] font-extrabold text-text">Operation Management</h1>
-          <p className="mt-0.5 text-[13px] text-text-secondary">{drivers.length} driver{drivers.length === 1 ? "" : "s"}</p>
+          <p className="mt-0.5 text-[13px] text-text-secondary">{drivers.length} driver{drivers.length === 1 ? "" : "s"}{records.length !== drivers.length ? ` (${records.length} company records)` : ""}</p>
         </div>
         <Link href={`/driver-logistics/drivers/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
           + New Driver
@@ -64,24 +75,31 @@ export default async function DriversPage({
               <div>License Expiry</div>
               <div>Availability</div>
             </div>
-            {drivers.map((d) => (
-              <Link
-                key={d.id}
-                href={`/driver-logistics/drivers/${d.id}${query}`}
-                className="grid grid-cols-[1.6fr_1.2fr_1fr_1fr_1fr] border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0 hover:bg-surface-alt"
-              >
-                <div className="font-semibold text-text">{d.employees?.full_name}</div>
-                <div className="text-text-secondary">{d.employees?.phone ?? d.employees?.email ?? "—"}</div>
-                <div className="text-text-secondary">{d.companies?.name}</div>
-                <div className="flex items-center gap-2 text-text-secondary">
-                  {d.license_expiry ?? "—"}
-                  {isExpiringSoon(d.license_expiry) && <StatusBadge tone="warning">Expiring</StatusBadge>}
-                </div>
-                <div>
-                  <StatusBadge tone={availabilityTone(d.availability_status)}>{AVAILABILITY_LABEL[d.availability_status] ?? d.availability_status}</StatusBadge>
-                </div>
-              </Link>
-            ))}
+            {drivers.map((group) => {
+              const d = group[0];
+              const expiry = group.map((g) => g.license_expiry).filter((v): v is string => !!v).sort()[0] ?? null;
+              const statuses = Array.from(new Set(group.map((g) => g.availability_status)));
+              return (
+                <Link
+                  key={d.id}
+                  href={`/driver-logistics/drivers/${d.id}${query}`}
+                  className="grid grid-cols-[1.6fr_1.2fr_1fr_1fr_1fr] border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0 hover:bg-surface-alt"
+                >
+                  <div className="font-semibold text-text">{d.employees?.full_name}</div>
+                  <div className="text-text-secondary">{joined(group.map((g) => g.employees?.phone ?? g.employees?.email))}</div>
+                  <div className="text-text-secondary">{joined(group.map((g) => g.companies?.name))}</div>
+                  <div className="flex items-center gap-2 text-text-secondary">
+                    {expiry ?? "—"}
+                    {isExpiringSoon(expiry) && <StatusBadge tone="warning">Expiring</StatusBadge>}
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {statuses.map((st) => (
+                      <StatusBadge key={st} tone={availabilityTone(st)}>{AVAILABILITY_LABEL[st] ?? st}</StatusBadge>
+                    ))}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>
