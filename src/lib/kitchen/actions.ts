@@ -259,6 +259,73 @@ export async function createRecipe(input: RecipeInput) {
   return recipe;
 }
 
+export type RecipeUpdateInput = {
+  name: string;
+  menuItemId?: string;
+  yieldPax: number;
+  instructions?: string;
+  /** A line that already belongs to the recipe keeps its id; a line without an id is new; a saved line that is left out is removed. */
+  ingredients: { id?: string; ingredientId: string; quantityPerYield: number; unit?: string }[];
+};
+
+/** Edit a recipe: its name, base yield, instructions and every ingredient line (change the item, quantity or unit, add or remove). */
+export async function updateRecipe(recipeId: string, input: RecipeUpdateInput) {
+  const { supabase } = await requireUser();
+  const name = input.name.trim();
+  if (!name) throw new Error("Enter the recipe name.");
+  if (!(input.yieldPax >= 1)) throw new Error("The base yield must be at least 1 pax.");
+
+  const { data: recipe, error: readError } = await supabase.from("recipes").select("id, company_id").eq("id", recipeId).single();
+  if (readError || !recipe) throw new Error("Recipe not found.");
+
+  const { data: others, error: othersError } = await supabase.from("recipes").select("id, name").eq("company_id", recipe.company_id).neq("id", recipeId);
+  if (othersError) throw othersError;
+  const clash = others?.find((r) => recipeNameKey(r.name) === recipeNameKey(name));
+  if (clash) throw new Error(`Another recipe called "${clash.name}" already exists for this company.`);
+
+  const lines = input.ingredients.filter((l) => l.ingredientId && l.quantityPerYield > 0);
+  if (lines.length === 0) throw new Error("Add at least one ingredient with a quantity.");
+
+  // an ingredient can only be used from the same company as the recipe
+  const { data: allowed } = await supabase.from("ingredients").select("id").eq("company_id", recipe.company_id).in("id", lines.map((l) => l.ingredientId));
+  const allowedIds = new Set((allowed ?? []).map((i) => i.id));
+  if (lines.some((l) => !allowedIds.has(l.ingredientId))) throw new Error("An ingredient does not belong to this company.");
+
+  const { error: updateError } = await supabase
+    .from("recipes")
+    .update({ name, menu_item_id: input.menuItemId || null, yield_pax: input.yieldPax, instructions: input.instructions?.trim() || null })
+    .eq("id", recipeId);
+  if (updateError) throw updateError;
+
+  const { data: existing, error: existingError } = await supabase.from("recipe_ingredients").select("id").eq("recipe_id", recipeId);
+  if (existingError) throw existingError;
+  const existingIds = new Set((existing ?? []).map((l) => l.id));
+  const keptIds = new Set(lines.map((l) => l.id).filter((id): id is string => !!id && existingIds.has(id)));
+
+  for (const l of lines.filter((x) => x.id && existingIds.has(x.id))) {
+    const { error } = await supabase
+      .from("recipe_ingredients")
+      .update({ ingredient_id: l.ingredientId, quantity_per_yield: l.quantityPerYield, unit: l.unit || null })
+      .eq("id", l.id as string);
+    if (error) throw error;
+  }
+  const fresh = lines.filter((l) => !l.id || !existingIds.has(l.id));
+  if (fresh.length > 0) {
+    const { error } = await supabase
+      .from("recipe_ingredients")
+      .insert(fresh.map((l) => ({ recipe_id: recipeId, ingredient_id: l.ingredientId, quantity_per_yield: l.quantityPerYield, unit: l.unit || null })));
+    if (error) throw error;
+  }
+  const removed = Array.from(existingIds).filter((id) => !keptIds.has(id));
+  if (removed.length > 0) {
+    const { error } = await supabase.from("recipe_ingredients").delete().in("id", removed);
+    if (error) throw error;
+  }
+
+  revalidatePath("/kitchen/recipes");
+  revalidatePath(`/kitchen/recipes/${recipeId}`);
+}
+
 export type ProductionOrderInput = {
   companyId: string;
   recipeId?: string;

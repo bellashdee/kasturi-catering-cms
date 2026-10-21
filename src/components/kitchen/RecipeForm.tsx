@@ -2,13 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createIngredient, createRecipe, renameIngredient, type RecipeInput } from "@/lib/kitchen/actions";
+import { createIngredient, createRecipe, renameIngredient, updateRecipe, type RecipeInput } from "@/lib/kitchen/actions";
 import { normalizeUnit, unitChoices } from "@/lib/kitchen/constants";
 
 type Company = { id: string; name: string };
 type MenuItem = { id: string; name: string; company_id: string };
 type Ingredient = { id: string; name: string; unit_of_measure: string | null; company_id: string };
-type Line = { ingredientId: string; quantityPerYield: string; unit: string };
+type Line = { id?: string; ingredientId: string; quantityPerYield: string; unit: string };
+
+/** The saved recipe being edited (its company cannot be changed). */
+export type RecipeInitial = { id: string; companyId: string; menuItemId: string; name: string; yieldPax: number; instructions: string; lines: { id: string; ingredientId: string; quantityPerYield: number; unit: string }[] };
 
 const inputClass =
   "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
@@ -25,7 +28,9 @@ export function RecipeForm({
   defaultCompanyId,
   menuItems,
   ingredients,
+  initial,
 }: {
+  initial?: RecipeInitial;
   companies: Company[];
   defaultCompanyId?: string;
   menuItems: MenuItem[];
@@ -34,12 +39,16 @@ export function RecipeForm({
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [companyId, setCompanyId] = useState(defaultCompanyId ?? companies[0]?.id ?? "");
-  const [menuItemId, setMenuItemId] = useState("");
-  const [name, setName] = useState("");
-  const [yieldPax, setYieldPax] = useState("10");
-  const [instructions, setInstructions] = useState("");
-  const [lines, setLines] = useState<Line[]>([emptyLine()]);
+  const [companyId, setCompanyId] = useState(initial?.companyId ?? defaultCompanyId ?? companies[0]?.id ?? "");
+  const [menuItemId, setMenuItemId] = useState(initial?.menuItemId ?? "");
+  const [name, setName] = useState(initial?.name ?? "");
+  const [yieldPax, setYieldPax] = useState(initial ? String(initial.yieldPax) : "10");
+  const [instructions, setInstructions] = useState(initial?.instructions ?? "");
+  const [lines, setLines] = useState<Line[]>(
+    initial && initial.lines.length > 0
+      ? initial.lines.map((l) => ({ id: l.id, ingredientId: l.ingredientId, quantityPerYield: String(l.quantityPerYield), unit: l.unit }))
+      : [emptyLine()],
+  );
   const [ingredientList, setIngredientList] = useState<Ingredient[]>(ingredients);
   // Inline editor under an ingredient row: add a brand-new item, or rename the selected one.
   const [editor, setEditor] = useState<{ index: number; mode: "new" | "rename"; name: string; unit: string } | null>(null);
@@ -109,6 +118,25 @@ export function RecipeForm({
     e.preventDefault();
     setSaving(true);
     setError(null);
+    if (initial) {
+      try {
+        await updateRecipe(initial.id, {
+          name,
+          menuItemId: menuItemId || undefined,
+          yieldPax: Number(yieldPax) || 1,
+          instructions: instructions || undefined,
+          ingredients: lines
+            .filter((l) => l.ingredientId && Number(l.quantityPerYield) > 0)
+            .map((l) => ({ id: l.id, ingredientId: l.ingredientId, quantityPerYield: Number(l.quantityPerYield), unit: l.unit || undefined })),
+        });
+        router.push(`/kitchen/recipes/${initial.id}`);
+        router.refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Something went wrong.");
+        setSaving(false);
+      }
+      return;
+    }
     const payload: RecipeInput = {
       companyId,
       menuItemId: menuItemId || undefined,
@@ -138,6 +166,7 @@ export function RecipeForm({
           <label className={labelClass}>Company *</label>
           <select
             required
+            disabled={!!initial}
             value={companyId}
             onChange={(e) => { setCompanyId(e.target.value); setMenuItemId(""); setLines([emptyLine()]); }}
             className={inputClass}
@@ -248,7 +277,7 @@ export function RecipeForm({
           Cancel
         </button>
         <button type="submit" disabled={saving || !name.trim()} className="rounded-lg bg-primary px-5 py-2.5 text-[13.5px] font-semibold text-white disabled:opacity-60">
-          {saving ? "Saving..." : "Create Recipe"}
+          {saving ? "Saving..." : initial ? "Save changes" : "Create Recipe"}
         </button>
       </div>
     </form>
