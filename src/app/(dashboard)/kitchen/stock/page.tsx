@@ -10,7 +10,7 @@ import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 import { KitchenSubNav } from "@/components/kitchen/KitchenSubNav";
 import { UNCATEGORISED, categoryOf, latestPurchasePrices } from "@/lib/kitchen/itemPrices";
 import { normaliseName } from "@/lib/purchaseList/calc";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, formatUnitPrice } from "@/lib/format";
 
 export default async function StockPage({
   searchParams,
@@ -116,7 +116,7 @@ export default async function StockPage({
                             <td className="px-3 py-2 text-text-secondary">{i.unit_of_measure ?? "—"}</td>
                             <td className="px-3 py-2 text-right tabular-nums text-text">{Number(i.current_stock_qty)}</td>
                             <td className="px-3 py-2 text-right tabular-nums text-text">
-                              {i.price === null ? <span className="text-text-secondary">—</span> : formatPrice(i.price)}
+                              {i.price === null ? <span className="text-text-secondary">—</span> : formatUnitPrice(i.price)}
                               {i.priceSource === "po" && <span className="ml-1.5 text-[12px] font-semibold text-primary">PO</span>}
                             </td>
                             <td className="px-4 py-2 text-right font-semibold tabular-nums text-text">{i.stockValue === null ? "—" : formatPrice(i.stockValue)}</td>

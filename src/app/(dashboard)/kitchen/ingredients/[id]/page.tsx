@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { getIngredient, listStockMovementsForIngredient } from "@/lib/kitchen/queries";
 import { MOVEMENT_TYPE_LABEL, isLowStock } from "@/lib/kitchen/constants";
-import { formatCurrency } from "@/lib/format";
+import { formatUnitPrice } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SectionCard, EmptyRow } from "@/components/dashboard/SectionCard";
 import { StockMovementForm } from "@/components/kitchen/StockMovementForm";
@@ -64,7 +64,7 @@ export default async function IngredientDetailPage({
         </div>
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
           <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Unit Cost</div>
-          <div className="mt-1 text-xl font-extrabold text-text">{formatCurrency(Number(ingredient.unit_cost))}</div>
+          <div className="mt-1 text-xl font-extrabold text-text">{Number(ingredient.unit_cost) > 0 ? `${formatUnitPrice(Number(ingredient.unit_cost))}${ingredient.unit_of_measure ? ` / ${ingredient.unit_of_measure}` : ""}` : "—"}</div>
         </div>
       </div>
 

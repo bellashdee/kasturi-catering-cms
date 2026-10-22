@@ -5,7 +5,7 @@ import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listIngredients } from "@/lib/kitchen/queries";
 import { isLowStock } from "@/lib/kitchen/constants";
-import { formatCurrency } from "@/lib/format";
+import { formatUnitPrice } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SearchBox } from "@/components/SearchBox";
@@ -81,7 +81,7 @@ export default async function IngredientsPage({
                   {isLowStock(Number(i.current_stock_qty), Number(i.reorder_level)) && <StatusBadge tone="warning">Low</StatusBadge>}
                 </div>
                 <div className="text-text-secondary">{i.reorder_level} {i.unit_of_measure ?? ""}</div>
-                <div className="text-text-secondary">{formatCurrency(Number(i.unit_cost))}</div>
+                <div className="text-text-secondary">{Number(i.unit_cost) > 0 ? `${formatUnitPrice(Number(i.unit_cost))}${i.unit_of_measure ? ` / ${i.unit_of_measure}` : ""}` : "—"}</div>
                 <div className="text-text-secondary">{i.suppliers?.name ?? "—"}</div>
               </Link>
             ))}

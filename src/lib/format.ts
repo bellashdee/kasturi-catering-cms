@@ -147,3 +147,10 @@ export function confirmedPaymentDate(date: string | null | undefined): string {
   if (value > today) throw new Error("The payment date cannot be in the future.");
   return value;
 }
+
+/** A price per unit (per G, per piece ...): RM 2.50 for normal prices, up to 4 decimals for small ones (RM 0.0035). */
+export function formatUnitPrice(amount: number): string {
+  if (!Number.isFinite(amount)) return "RM 0.00";
+  const decimals = amount >= 1 || amount === 0 ? 2 : amount >= 0.1 ? 3 : 4;
+  return `RM ${amount.toFixed(decimals)}`;
+}

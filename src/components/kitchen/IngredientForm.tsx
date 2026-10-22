@@ -120,7 +120,7 @@ export function IngredientForm({
         </div>
         <div>
           <label className={labelClass}>Unit Cost (RM)</label>
-          <input type="number" min="0" step="0.01" value={form.unitCost} onChange={(e) => setForm((f) => ({ ...f, unitCost: e.target.value }))} className={inputClass} />
+          <input type="number" min="0" step="0.0001" value={form.unitCost} onChange={(e) => setForm((f) => ({ ...f, unitCost: e.target.value }))} className={inputClass} />
         </div>
       </div>
 
