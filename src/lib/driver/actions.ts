@@ -1,5 +1,6 @@
 "use server";
 
+import { fromMalaysiaInputValue, toMalaysiaInputValue } from "@/lib/format";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { logTaskAudit } from "@/lib/taskProofs/actions";
@@ -196,6 +197,8 @@ export type DeliveryInput = {
   driverId?: string;
   vendorId?: string;
   notes?: string;
+  /** Scheduled time as typed in a datetime-local field (Malaysia time, "YYYY-MM-DDTHH:mm"); the time of creation when left out. */
+  scheduledTime?: string;
 };
 
 export async function createDelivery(input: DeliveryInput) {
@@ -206,8 +209,7 @@ export async function createDelivery(input: DeliveryInput) {
     .insert({
       company_id: input.companyId,
       catering_event_id: input.cateringEventId || null,
-      // Always the server clock, never a value sent by the browser.
-      scheduled_time: new Date().toISOString(),
+      scheduled_time: fromMalaysiaInputValue(input.scheduledTime) ?? new Date().toISOString(),
       location: input.location || null,
       items_description: input.itemsDescription || null,
       vehicle_id: input.vehicleId || null,
@@ -231,13 +233,15 @@ export async function createDelivery(input: DeliveryInput) {
 
 export async function updateDeliveryDetails(deliveryId: string, input: Partial<DeliveryInput>) {
   const { supabase } = await requireUser();
-  const { data: existing } = await supabase.from("deliveries").select("company_id, driver_id, delivery_vendor_id").eq("id", deliveryId).single();
+  const { data: existing } = await supabase.from("deliveries").select("company_id, driver_id, delivery_vendor_id, scheduled_time").eq("id", deliveryId).single();
   if (existing) await assertValidAssignee(supabase, existing.company_id, input.driverId, input.vendorId);
+  const newTime = input.scheduledTime ? fromMalaysiaInputValue(input.scheduledTime) : null;
+  if (input.scheduledTime && !newTime) throw new Error("Enter a valid scheduled date and time.");
 
   const { error } = await supabase
     .from("deliveries")
     .update({
-      // scheduled_time is the system-generated creation timestamp and is never edited.
+      ...(newTime ? { scheduled_time: newTime } : {}),
       location: input.location || null,
       items_description: input.itemsDescription || null,
       vehicle_id: input.vehicleId || null,
@@ -247,6 +251,17 @@ export async function updateDeliveryDetails(deliveryId: string, input: Partial<D
     })
     .eq("id", deliveryId);
   if (error) throw error;
+
+  if (existing && newTime && toMalaysiaInputValue(existing.scheduled_time) !== toMalaysiaInputValue(newTime)) {
+    await logTaskAudit({
+      companyId: existing.company_id,
+      relatedTable: "deliveries",
+      relatedId: deliveryId,
+      action: "schedule_changed",
+      previousValue: existing.scheduled_time ?? undefined,
+      newValue: newTime,
+    });
+  }
 
   const previousAssignee = existing?.driver_id ?? existing?.delivery_vendor_id ?? undefined;
   const nextAssignee = input.driverId ?? input.vendorId;

@@ -6,6 +6,7 @@ import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 import { deleteTaskProof } from "@/lib/taskProofs/actions";
 import { markDeliveryProofUploaded } from "@/lib/driver/actions";
 import { PROOF_TYPE_LABEL } from "@/lib/taskProofs/constants";
+import { formatMalaysiaDateTime } from "@/lib/format";
 
 type Proof = {
   id: string;
@@ -37,7 +38,7 @@ export function DeliveryProofSection({ companyId, deliveryId, proofs }: { compan
               <div>
                 <div className="font-semibold text-text">{PROOF_TYPE_LABEL[p.proof_type] ?? p.proof_type}</div>
                 <div className="text-[11.5px] text-text-muted">
-                  {p.documents?.original_filename} · {new Date(p.created_at).toLocaleString("en-MY")}
+                  {p.documents?.original_filename} · {formatMalaysiaDateTime(p.created_at)}
                   {p.remarks ? ` · ${p.remarks}` : ""}
                 </div>
               </div>

@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { getIngredient, listStockMovementsForIngredient } from "@/lib/kitchen/queries";
 import { MOVEMENT_TYPE_LABEL, isLowStock } from "@/lib/kitchen/constants";
-import { formatUnitPrice } from "@/lib/format";
+import { formatMalaysiaDateTime, formatUnitPrice } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SectionCard, EmptyRow } from "@/components/dashboard/SectionCard";
 import { StockMovementForm } from "@/components/kitchen/StockMovementForm";
@@ -93,7 +93,7 @@ export default async function IngredientDetailPage({
                   <span className="ml-2 text-text-secondary">{Number(m.quantity) > 0 ? "+" : ""}{m.quantity} {ingredient.unit_of_measure ?? ""}</span>
                   {m.notes && <span className="ml-2 text-text-muted">— {m.notes}</span>}
                 </div>
-                <div className="text-text-muted">{new Date(m.created_at).toLocaleString("en-MY")}</div>
+                <div className="text-text-muted">{formatMalaysiaDateTime(m.created_at)}</div>
               </div>
             ))}
           </div>

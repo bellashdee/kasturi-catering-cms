@@ -154,3 +154,18 @@ export function formatUnitPrice(amount: number): string {
   const decimals = amount >= 1 || amount === 0 ? 2 : amount >= 0.1 ? 3 : 4;
   return `RM ${amount.toFixed(decimals)}`;
 }
+
+/** A timestamp as the value of a datetime-local input, in Malaysia time: "2026-10-22T15:50". */
+export function toMalaysiaInputValue(iso: string | Date | null | undefined): string {
+  if (!iso) return "";
+  const p = new Intl.DateTimeFormat("en-CA", { timeZone: MALAYSIA_TIMEZONE, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(iso));
+  const v = Object.fromEntries(p.map((x) => [x.type, x.value])) as Record<string, string>;
+  return `${v.year}-${v.month}-${v.day}T${v.hour}:${v.minute}`;
+}
+
+/** The value of a datetime-local input (Malaysia time) as an ISO timestamp; null when it is not a valid date and time. */
+export function fromMalaysiaInputValue(value: string | null | undefined): string | null {
+  if (!value || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return null;
+  const d = new Date(`${value}:00+08:00`);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}

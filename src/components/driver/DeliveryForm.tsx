@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { createDelivery, updateDeliveryDetails, type DeliveryInput } from "@/lib/driver/actions";
 import { decodeAssignee, encodeAssignee, type DeliveryPerson } from "@/lib/driver/deliveryPersons";
 import { DeliveryPersonSelect } from "@/components/driver/DeliveryPersonSelect";
-import { formatMalaysiaDateTime } from "@/lib/format";
+import { toMalaysiaInputValue } from "@/lib/format";
 
 type Company = { id: string; name: string };
 type Event = { id: string; event_name: string; company_id: string };
@@ -47,6 +47,7 @@ export function DeliveryForm({
     vehicleId: initial?.vehicleId ?? "",
     assignee: encodeAssignee(initial?.driverId, initial?.vendorId),
     notes: initial?.notes ?? "",
+    scheduledTime: toMalaysiaInputValue(scheduledTime ?? new Date()),
   });
 
   const eventsForCompany = events.filter((e) => e.company_id === companyId);
@@ -69,6 +70,7 @@ export function DeliveryForm({
       vehicleId: form.vehicleId || undefined,
       ...decodeAssignee(form.assignee),
       notes: form.notes || undefined,
+      scheduledTime: form.scheduledTime || undefined,
     };
     try {
       if (deliveryId) {
@@ -108,9 +110,8 @@ export function DeliveryForm({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Scheduled Time</label>
-          <div className="mt-1.5 flex h-10 w-full items-center rounded-lg border border-border bg-bg px-3 text-sm text-text-secondary" aria-readonly="true">
-            {scheduledTime ? `${formatMalaysiaDateTime(scheduledTime)} (Malaysia time)` : "Recorded automatically when you create the delivery"}
-          </div>
+          <input type="datetime-local" required value={form.scheduledTime} onChange={(e) => set("scheduledTime", e.target.value)} className={inputClass} />
+          <p className="mt-1 text-xs text-text-muted">Malaysia time. You can change it if the schedule changes.</p>
         </div>
         <div>
           <label className={labelClass}>Location</label>

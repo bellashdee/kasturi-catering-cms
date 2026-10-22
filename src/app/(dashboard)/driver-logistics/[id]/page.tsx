@@ -106,7 +106,7 @@ export default async function DeliveryDetailPage({
                   <span className="font-semibold">{entry.action.replace(/_/g, " ")}</span>
                   {entry.reason && <span className="text-text-muted"> — {entry.reason}</span>}
                 </div>
-                <div className="text-text-muted">{new Date(entry.created_at).toLocaleString("en-MY")}</div>
+                <div className="text-text-muted">{formatMalaysiaDateTime(entry.created_at)}</div>
               </div>
             ))}
           </div>
