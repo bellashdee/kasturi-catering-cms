@@ -1,5 +1,6 @@
 "use client";
 
+import { RecipePicker } from "@/components/kitchen/RecipePicker";
 import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPurchaseList } from "@/lib/purchaseList/actions";
@@ -16,7 +17,6 @@ type Override = { final?: string; remark?: string; status?: string };
 
 const inputClass = "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
 const labelClass = "text-[12.5px] font-semibold text-text-secondary";
-const MAX_RECIPES_SHOWN = 150;
 
 function chip(on: boolean) {
   return `cursor-pointer rounded-lg border px-3 py-1.5 text-[13px] font-semibold ${on ? "border-primary bg-info-bg text-primary" : "border-border-strong text-text-secondary hover:bg-surface-alt"}`;
@@ -59,7 +59,6 @@ export function PurchaseListBuilder({
   const [sessions, setSessions] = useState<string[]>([]);
   const [combine, setCombine] = useState(false);
   const [recipeKeys, setRecipeKeys] = useState<string[]>([]);
-  const [recipeSearch, setRecipeSearch] = useState("");
   const [stage, setStage] = useState<0 | 1 | 2>(0);
   const [edits, setEdits] = useState<Record<string, Override>>({});
   const [openItem, setOpenItem] = useState<string | null>(null);
@@ -301,19 +300,12 @@ export function PurchaseListBuilder({
             <div className="sm:col-span-2">
               <label className={labelClass}>Recipes * ({recipeKeys.length} selected)</label>
               <p className="mt-0.5 text-xs text-text-muted">This company has no weekly menu schedule, only recipes. Pick the recipes to buy for.</p>
-              <input value={recipeSearch} onChange={(e) => setRecipeSearch(e.target.value)} className={inputClass} placeholder="Search recipe name" />
-              <div className="mt-2 max-h-64 divide-y divide-border overflow-y-auto rounded-lg border border-border">
-                {recipes.filter((r) => !recipeSearch.trim() || r.name.toLowerCase().includes(recipeSearch.trim().toLowerCase())).slice(0, MAX_RECIPES_SHOWN).map((r) => {
-                  const on = recipeKeys.includes(r.key);
-                  return (
-                    <label key={r.key} className={`flex cursor-pointer items-center gap-3 px-3 py-2 text-[13px] ${on ? "bg-info-bg" : "hover:bg-surface-alt"}`}>
-                      <input type="checkbox" checked={on} onChange={() => { setRecipeKeys((l) => toggle(l, r.key)); setStage(0); touch(); }} className="accent-[var(--color-primary)]" />
-                      <span className="font-semibold text-text">{r.name}</span>
-                      <span className="text-xs text-text-muted">{r.lines.length} ingredient(s)</span>
-                    </label>
-                  );
-                })}
-              </div>
+              <RecipePicker
+                recipes={recipes.map((r) => ({ key: r.key, name: r.name, ingredientCount: r.lines.length }))}
+                selected={recipeKeys}
+                onToggle={(key) => { setRecipeKeys((l) => toggle(l, key)); setStage(0); touch(); }}
+                onClear={() => { setRecipeKeys([]); setStage(0); touch(); }}
+              />
             </div>
           )}
         </div>
