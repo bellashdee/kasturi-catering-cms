@@ -304,6 +304,7 @@ export function PurchaseListBuilder({
                 recipes={recipes.map((r) => ({ key: r.key, name: r.name, ingredientCount: r.lines.length }))}
                 selected={recipeKeys}
                 onToggle={(key) => { setRecipeKeys((l) => toggle(l, key)); setStage(0); touch(); }}
+                onSetMany={(keys, on) => { setRecipeKeys((l) => (on ? [...new Set([...l, ...keys])] : l.filter((k) => !keys.includes(k)))); setStage(0); touch(); }}
                 onClear={() => { setRecipeKeys([]); setStage(0); touch(); }}
               />
             </div>
