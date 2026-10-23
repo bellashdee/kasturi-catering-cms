@@ -65,6 +65,26 @@ function ItemPicker({ ingredient, selected, suggestions, all, onPick }: { ingred
   );
 }
 
+/** The chosen items together (so many can be chosen while searching), each one removable. */
+function ChosenChips({ items, onRemove, onClear }: { items: { id: string; label: string }[]; onRemove: (id: string) => void; onClear: () => void }) {
+  if (items.length === 0) return null;
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+      {items.map((i) => (
+        <span key={i.id} className="flex items-center gap-1 rounded-md bg-info-bg px-2 py-0.5 text-[12.5px] font-semibold text-text">
+          {i.label}
+          <button type="button" aria-label="Remove" onClick={() => onRemove(i.id)} className="text-text-muted hover:text-danger">
+            ×
+          </button>
+        </span>
+      ))}
+      <button type="button" onClick={onClear} className="text-[12px] font-semibold text-text-secondary hover:underline">
+        Clear all
+      </button>
+    </div>
+  );
+}
+
 export function PurchasePlanner({ companyId, companyName, events, recipeOptions, supplierItems, query }: { companyId: string; companyName: string; events: PlannerEvent[]; recipeOptions: RecipeRef[]; supplierItems: SupplierItemOption[]; query: string }) {
   const router = useRouter();
   const [eventSearch, setEventSearch] = useState("");
@@ -275,6 +295,7 @@ export function PurchasePlanner({ companyId, companyName, events, recipeOptions,
             <div className="mt-4 text-[14.5px] font-extrabold text-text">1. Choose the event(s)</div>
             <p className="mt-0.5 text-[12.5px] text-text-secondary">Search, then tick the events to buy for. Their menus and pax come from the event order.</p>
             <input value={eventSearch} onChange={(e) => setEventSearch(e.target.value)} placeholder="Search event name or date..." className={`${inputClass} mt-3 max-w-md`} />
+            <ChosenChips items={picked.map((id) => ({ id, label: events.find((e) => e.id === id)?.name ?? id }))} onRemove={(id) => setPicked((p) => p.filter((x) => x !== id))} onClear={() => setPicked([])} />
             <div className="mt-2 max-h-56 overflow-y-auto rounded-lg border border-border">
               {shownEvents.length === 0 && <div className="px-4 py-3 text-[13px] text-text-muted">No event found.</div>}
               {shownEvents.map((e) => (
@@ -296,7 +317,13 @@ export function PurchasePlanner({ companyId, companyName, events, recipeOptions,
           <>
             <div className="mt-4 text-[14.5px] font-extrabold text-text">1. Choose the recipes</div>
             <p className="mt-0.5 text-[12.5px] text-text-secondary">Search, then tick the recipes to cook. You enter the pax of each one next; the ingredient list is worked out from the recipes only.</p>
-            <input value={recipeSearch} onChange={(e) => setRecipeSearch(e.target.value)} placeholder="Search recipe..." className={`${inputClass} mt-3 max-w-md`} />
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <input value={recipeSearch} onChange={(e) => setRecipeSearch(e.target.value)} placeholder="Search recipe..." className={`${inputClass} max-w-md`} />
+              <button type="button" disabled={shownRecipes.length === 0} onClick={() => setPickedRecipes((p) => Array.from(new Set([...p, ...shownRecipes.map((r) => r.id)])))} className="h-9 rounded-lg border border-border-strong bg-white px-3 text-[12.5px] font-semibold text-text hover:border-primary disabled:opacity-50">
+                {`Select all shown (${shownRecipes.length})`}
+              </button>
+            </div>
+            <ChosenChips items={pickedRecipes.map((id) => ({ id, label: recipeOptions.find((r) => r.id === id)?.name ?? id }))} onRemove={(id) => setPickedRecipes((p) => p.filter((x) => x !== id))} onClear={() => setPickedRecipes([])} />
             <div className="mt-2 max-h-56 overflow-y-auto rounded-lg border border-border">
               {shownRecipes.length === 0 && <div className="px-4 py-3 text-[13px] text-text-muted">No recipe found.</div>}
               {shownRecipes.map((r) => (
@@ -311,6 +338,7 @@ export function PurchasePlanner({ companyId, companyName, events, recipeOptions,
                 {busy && !plan ? "Reading..." : "Generate the ingredient list"}
               </button>
               <span className="text-[12.5px] text-text-muted">{`${pickedRecipes.length} selected`}</span>
+              {pickedRecipes.length > 1 && <span className="text-[12.5px] text-text-muted">The ingredients of all of them are added together.</span>}
             </div>
           </>
         )}
