@@ -205,7 +205,8 @@ export async function runExtraction(params: {
 
   // An empty result must never look like a successful read.
   const foundFields = result.report.fields.filter((f) => f.status === "found").length;
-  const tableRows = result.report.tables.reduce((n, t) => n + t.rows.length, 0);
+  // the sheet's own rows ("rows as in the file") do not count: they exist even when the reader found nothing
+  const tableRows = result.report.tables.filter((t) => !/\(rows as in the file\)$/.test(t.name)).reduce((n, t) => n + t.rows.length, 0);
   if (foundFields === 0 && tableRows === 0) {
     const why = result.report.issues.filter((i) => !/lighter fallback model/i.test(i)).slice(0, 3).join(" ");
     if (result.report.legibility === "poor" || result.report.fields.some((f) => f.status === "unreadable")) {

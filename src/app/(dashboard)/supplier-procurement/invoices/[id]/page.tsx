@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { getSupplierInvoice } from "@/lib/procurement/queries";
 import { INVOICE_STATUS_LABEL, PAYMENT_STATUS_LABEL, isOverdue } from "@/lib/procurement/constants";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatUnitPrice } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SectionCard, EmptyRow } from "@/components/dashboard/SectionCard";
 import { RequestPaymentForm } from "@/components/procurement/RequestPaymentForm";
@@ -99,9 +99,16 @@ export default async function SupplierInvoiceDetailPage({
         ) : (
           <div className="-mx-5 -mb-5 divide-y divide-border">
             {invoice.supplier_invoice_items.map((item) => (
-              <div key={item.id} className="flex items-center justify-between px-5 py-3 text-[13px]">
-                <span className="font-semibold text-text">{item.item_name}</span>
-                <span className="text-text-secondary">{item.quantity} × {formatCurrency(Number(item.unit_price))} = {formatCurrency(Number(item.line_total))}</span>
+              <div key={item.id} className="flex flex-wrap items-center justify-between gap-x-4 px-5 py-3 text-[13px]">
+                <span className="font-semibold text-text">
+                  {item.item_code && <span className="mr-2 font-normal text-text-muted">{item.item_code}</span>}
+                  {item.item_name}
+                </span>
+                <span className="text-text-secondary">
+                  {Number(item.quantity)}
+                  {item.uom ? ` ${item.uom}` : ""} × {formatUnitPrice(Number(item.unit_price))}
+                  {item.discount !== null && Number(item.discount) !== 0 ? ` − ${formatUnitPrice(Number(item.discount))} discount` : ""} = {formatCurrency(Number(item.line_total))}
+                </span>
               </div>
             ))}
           </div>

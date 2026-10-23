@@ -89,10 +89,10 @@ If a field is not visible or you are not confident, use null for it rather than 
   "due_date": ISO date (YYYY-MM-DD) if visible, else null,
   "amount": the total amount payable as a plain number (no currency symbol), else null,
   "items": [
-    { "item_name": "as written on the invoice", "quantity": a plain number, "unit_price": a plain number if visible, else null }
+    { "item_code": the item / product code printed on the line, else null, "item_name": the description EXACTLY as printed (same spelling, capitals, abbreviations, sizes and brackets: never correct, translate, shorten or reword it), "uom": the unit of measure exactly as printed (e.g. "KG", "PKT", "CTN"), else null, "quantity": the quantity exactly as printed (keep every decimal), "unit_price": the unit price exactly as printed (keep every decimal), else null, "discount": the discount printed for that line, else null, "line_total": the amount printed for that line, else null }
   ]
 }
-List every distinct line item you can identify. If a field is not legible or you are not confident, use null for it rather than guessing.`,
+This invoice is saved into the accounts exactly as printed, so copy it line by line, in the order printed: every line, one entry per printed line (never merge, split, skip, sort or rename lines), and never round, convert or recalculate a figure. If a field is not legible or you are not confident, use null for it rather than guessing.`,
   company_expense: `You are reading a receipt or invoice for a general company expense (utilities, rent, office supplies, insurance, etc). Extract the following fields and respond with ONLY a JSON object, no other text:
 {
   "category": a short category name as best guess (e.g. "Utilities", "Rent & Facilities", "Supplies & Equipment", "Other"),

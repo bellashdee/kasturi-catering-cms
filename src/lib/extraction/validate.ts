@@ -35,12 +35,15 @@ export function validateFigures(params: { items: Item[]; stated: { subtotal: unk
     const t = toNumber(it.line_total);
     if (q === null || p === null || t === null) return;
     verified++;
-    const diff = Math.abs(q * p - t);
+    // a printed line discount is either an amount or a percentage: the line is fine if either reading gives the printed total
+    const discount = toNumber(it.discount) ?? 0;
+    const gross = q * p;
+    const diff = discount > 0 ? Math.min(Math.abs(gross - discount - t), Math.abs(gross * (1 - discount / 100) - t)) : Math.abs(gross - t);
     if (diff > TOL) {
       checks.push({
         name: `Line total, ${itemLabel(it, i)}`,
         ok: false,
-        detail: `${q} × ${money(p)} = ${money(q * p)}, but the document prints ${money(t)} (difference ${money(diff)}).`,
+        detail: `${q} × ${p}${discount > 0 ? ` less the printed discount ${discount}` : ""} does not give the printed line total ${money(t)} (difference ${money(diff)}).`,
       });
     }
   });

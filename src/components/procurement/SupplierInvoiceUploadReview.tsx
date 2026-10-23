@@ -12,7 +12,8 @@ import type { DuplicateMatch } from "@/lib/importFlow/types";
 type Company = { id: string; name: string };
 type Supplier = { id: string; name: string; company_id: string };
 type PurchaseOrder = { id: string; po_number: string; company_id: string; supplier_id: string };
-type Item = { itemName: string; quantity: string; unitPrice: string };
+/** One invoice line, every value as text exactly as printed / typed. `auto` = the amount of a hand-typed line follows quantity × price. */
+type Item = { itemCode: string; itemName: string; uom: string; quantity: string; unitPrice: string; discount: string; lineTotal: string; auto: boolean };
 
 type ExtractedInvoice = {
   supplier_name?: string;
@@ -20,7 +21,7 @@ type ExtractedInvoice = {
   invoice_date?: string;
   due_date?: string;
   amount?: number;
-  items?: { item_name?: string; quantity?: number; unit_price?: number }[];
+  items?: { item_code?: string | null; item_name?: string | null; uom?: string | null; quantity?: number | string | null; unit_price?: number | string | null; discount?: number | string | null; line_total?: number | string | null }[];
 };
 
 const inputClass =
@@ -28,7 +29,19 @@ const inputClass =
 const labelClass = "text-[12.5px] font-semibold text-text-secondary";
 
 function emptyItem(): Item {
-  return { itemName: "", quantity: "1", unitPrice: "" };
+  return { itemCode: "", itemName: "", uom: "", quantity: "", unitPrice: "", discount: "", lineTotal: "", auto: true };
+}
+
+const text = (v: unknown) => (v === null || v === undefined ? "" : String(v));
+const isBlank = (i: Item) => !i.itemCode.trim() && !i.itemName.trim() && !i.uom.trim() && !i.quantity.trim() && !i.unitPrice.trim() && !i.discount.trim() && !i.lineTotal.trim();
+const money = (n: number) => n.toFixed(2);
+
+/** quantity × unit price − discount, for a line the user types by hand (extracted lines keep the amount printed on the invoice). */
+function typedLineTotal(i: Item): string {
+  const q = Number(i.quantity);
+  const p = Number(i.unitPrice);
+  if (!i.quantity.trim() || !i.unitPrice.trim() || !Number.isFinite(q) || !Number.isFinite(p)) return "";
+  return money(q * p - (Number(i.discount) || 0));
 }
 
 export function SupplierInvoiceUploadReview({
@@ -74,7 +87,19 @@ export function SupplierInvoiceUploadReview({
         amount: extracted.amount?.toString() ?? "",
       });
       if (extracted.items && extracted.items.length > 0) {
-        setItems(extracted.items.map((it) => ({ itemName: it.item_name ?? "", quantity: it.quantity?.toString() ?? "1", unitPrice: it.unit_price?.toString() ?? "" })));
+        // exactly what the reader found on each line: a value that is not printed stays blank (no default quantity or price)
+        setItems(
+          extracted.items.map((it) => ({
+            itemCode: text(it.item_code),
+            itemName: text(it.item_name),
+            uom: text(it.uom),
+            quantity: text(it.quantity),
+            unitPrice: text(it.unit_price),
+            discount: text(it.discount),
+            lineTotal: text(it.line_total),
+            auto: false,
+          })),
+        );
       }
     }
   }
@@ -96,22 +121,38 @@ export function SupplierInvoiceUploadReview({
     });
   }
 
-  function updateItem(index: number, field: keyof Item, value: string) {
+  function updateItem(index: number, field: Exclude<keyof Item, "auto">, value: string) {
     setItems((prev) => {
       const next = [...prev];
-      next[index] = { ...next[index], [field]: value };
+      const line = { ...next[index], [field]: value };
+      if (field === "lineTotal") line.auto = false;
+      else if (line.auto) line.lineTotal = typedLineTotal(line);
+      next[index] = line;
       return next;
     });
   }
+
+  const filledItems = items.filter((i) => !isBlank(i));
+  const linesSum = filledItems.every((i) => i.lineTotal.trim() && Number.isFinite(Number(i.lineTotal))) ? filledItems.reduce((t, i) => t + Number(i.lineTotal), 0) : null;
+  const invoiceAmount = form.amount.trim() && Number.isFinite(Number(form.amount)) ? Number(form.amount) : null;
 
   async function handleConfirm() {
     if (!supplierId || !form.invoiceNumber || !form.invoiceDate || !form.dueDate || !form.amount) {
       flow.setError("Supplier, invoice number, dates and amount are all required.");
       return;
     }
+    // every line is saved exactly as shown: a line that is missing a figure is reported, never completed or dropped
+    const lines = items.filter((i) => !isBlank(i));
+    for (const [n, i] of lines.entries()) {
+      const bad = (value: string, required: boolean) => (value.trim() === "" ? required : !Number.isFinite(Number(value)));
+      if (!i.itemName.trim() || bad(i.quantity, true) || bad(i.unitPrice, true) || bad(i.lineTotal, true) || bad(i.discount, false)) {
+        flow.setError(`Line ${n + 1}: fill in the item, quantity, unit price and amount exactly as on the invoice (or remove the line).`);
+        return;
+      }
+    }
     try {
       await flow.confirm(async () => {
-        await createSupplierInvoice({
+        const result = await createSupplierInvoice({
           companyId,
           supplierId,
           invoiceNumber: form.invoiceNumber,
@@ -121,10 +162,17 @@ export function SupplierInvoiceUploadReview({
           department: department || undefined,
           purchaseOrderId: purchaseOrderId || undefined,
           documentId: flow.documentId || undefined,
-          items: items
-            .filter((i) => i.itemName.trim())
-            .map((i) => ({ itemName: i.itemName.trim(), quantity: Number(i.quantity) || 1, unitPrice: Number(i.unitPrice) || 0 })),
+          items: lines.map((i) => ({
+            itemCode: i.itemCode.trim() || undefined,
+            itemName: i.itemName.trim(),
+            uom: i.uom.trim() || undefined,
+            quantity: Number(i.quantity),
+            unitPrice: Number(i.unitPrice),
+            discount: i.discount.trim() ? Number(i.discount) : undefined,
+            lineTotal: Number(i.lineTotal),
+          })),
         });
+        if (!result.ok) throw new Error(result.error);
       });
       router.push(redirectTo);
       router.refresh();
@@ -223,23 +271,47 @@ export function SupplierInvoiceUploadReview({
                   + Add Item
                 </button>
               </div>
-              <div className="flex flex-col gap-2">
-                {items.map((item, i) => (
-                  <div key={i} className="grid grid-cols-[2fr_0.8fr_1fr_auto] items-center gap-2">
-                    <input value={item.itemName} onChange={(e) => updateItem(i, "itemName", e.target.value)} placeholder="Item name" className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
-                    <input type="number" min="0" step="0.01" value={item.quantity} onChange={(e) => updateItem(i, "quantity", e.target.value)} placeholder="Qty" className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
-                    <input type="number" min="0" step="0.01" value={item.unitPrice} onChange={(e) => updateItem(i, "unitPrice", e.target.value)} placeholder="Unit Price" className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
-                    <button
-                      type="button"
-                      onClick={() => setItems((prev) => prev.filter((_, idx) => idx !== i))}
-                      disabled={items.length === 1}
-                      className="text-xs font-semibold text-danger disabled:opacity-40"
-                    >
-                      Remove
-                    </button>
+              <p className="mb-2 text-[12px] text-text-muted">Saved exactly as printed on the invoice: nothing is rounded, renamed or completed.</p>
+              <div className="overflow-x-auto">
+                <div className="flex min-w-[760px] flex-col gap-2">
+                  <div className="grid grid-cols-[0.9fr_2.2fr_0.6fr_0.8fr_0.9fr_0.8fr_1fr_auto] gap-2 text-[11px] font-bold uppercase tracking-wide text-text-muted">
+                    <div>Code</div>
+                    <div>Item (as printed)</div>
+                    <div>UOM</div>
+                    <div>Qty</div>
+                    <div>Unit price</div>
+                    <div>Discount</div>
+                    <div>Amount</div>
+                    <div className="w-14" />
                   </div>
-                ))}
+                  {items.map((item, i) => (
+                    <div key={i} className="grid grid-cols-[0.9fr_2.2fr_0.6fr_0.8fr_0.9fr_0.8fr_1fr_auto] items-center gap-2">
+                      <input value={item.itemCode} onChange={(e) => updateItem(i, "itemCode", e.target.value)} className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
+                      <input value={item.itemName} onChange={(e) => updateItem(i, "itemName", e.target.value)} className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
+                      <input value={item.uom} onChange={(e) => updateItem(i, "uom", e.target.value)} className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
+                      <input type="number" step="any" value={item.quantity} onChange={(e) => updateItem(i, "quantity", e.target.value)} className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
+                      <input type="number" step="any" value={item.unitPrice} onChange={(e) => updateItem(i, "unitPrice", e.target.value)} className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
+                      <input type="number" step="any" value={item.discount} onChange={(e) => updateItem(i, "discount", e.target.value)} className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
+                      <input type="number" step="any" value={item.lineTotal} onChange={(e) => updateItem(i, "lineTotal", e.target.value)} className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
+                      <button
+                        type="button"
+                        onClick={() => setItems((prev) => prev.filter((_, idx) => idx !== i))}
+                        disabled={items.length === 1}
+                        className="w-14 text-xs font-semibold text-danger disabled:opacity-40"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
+              {filledItems.length > 0 && linesSum !== null && invoiceAmount !== null && (
+                <p className={`mt-2 text-[12.5px] font-semibold ${Math.abs(linesSum - invoiceAmount) <= 0.05 ? "text-success" : "text-warning"}`}>
+                  {Math.abs(linesSum - invoiceAmount) <= 0.05
+                    ? `The ${filledItems.length} lines add up to RM ${money(linesSum)}, the invoice amount.`
+                    : `The ${filledItems.length} lines add up to RM ${money(linesSum)}, but the invoice amount is RM ${money(invoiceAmount)} (difference RM ${money(Math.abs(linesSum - invoiceAmount))}). Check both against the invoice; nothing is changed automatically.`}
+                </p>
+              )}
             </div>
 
             <DuplicateCheckPanel

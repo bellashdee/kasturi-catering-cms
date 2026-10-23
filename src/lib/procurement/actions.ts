@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { runAction, type ActionResult } from "@/lib/actionResult";
 import { logTaskAudit } from "@/lib/taskProofs/actions";
 import { recordAudit } from "@/lib/audit";
 import { confirmedPaymentDate, todayInMalaysia } from "@/lib/format";
@@ -294,10 +296,11 @@ export type SupplierInvoiceInput = {
   department?: string;
   purchaseOrderId?: string;
   documentId?: string;
-  items: { itemName: string; quantity: number; unitPrice: number }[];
+  /** every line exactly as printed on the invoice */
+  items: { itemCode?: string; itemName: string; uom?: string; quantity: number; unitPrice: number; discount?: number; lineTotal: number }[];
 };
 
-export async function createSupplierInvoice(input: SupplierInvoiceInput) {
+async function createSupplierInvoiceImpl(input: SupplierInvoiceInput) {
   const { supabase, userId } = await requireUser();
 
   const { data: invoice, error: invoiceError } = await supabase
@@ -318,18 +321,27 @@ export async function createSupplierInvoice(input: SupplierInvoiceInput) {
     .single();
   if (invoiceError) throw invoiceError;
 
-  const items = input.items.filter((i) => i.itemName.trim() && i.quantity > 0);
-  if (items.length > 0) {
+  // Nothing is changed on the way in: the lines are stored with the quantity, price, discount and amount as given (no rounding,
+  // no default quantity or price, no line dropped or recalculated).
+  if (input.items.length > 0) {
     const { error: itemsError } = await supabase.from("supplier_invoice_items").insert(
-      items.map((i) => ({
+      input.items.map((i) => ({
         supplier_invoice_id: invoice.id,
+        item_code: i.itemCode || null,
         item_name: i.itemName,
+        uom: i.uom || null,
         quantity: i.quantity,
         unit_price: i.unitPrice,
-        line_total: Math.round(i.quantity * i.unitPrice * 100) / 100,
+        discount: i.discount ?? null,
+        line_total: i.lineTotal,
       })),
     );
-    if (itemsError) throw itemsError;
+    if (itemsError) {
+      // the invoice must not be left without the lines it was entered with (suppliers' invoices have no delete policy, so the
+      // rollback of this just-created row uses the admin client)
+      await createAdminClient().from("supplier_invoices").delete().eq("id", invoice.id).eq("company_id", input.companyId);
+      throw itemsError;
+    }
   }
 
   if (input.documentId) {
@@ -342,6 +354,11 @@ export async function createSupplierInvoice(input: SupplierInvoiceInput) {
   revalidatePath("/supplier-procurement/invoices");
   revalidatePath("/");
   return invoice;
+}
+
+/** Saves the invoice exactly as entered. Returns `{ ok: false, error }` instead of throwing (a thrown message is hidden in production). */
+export async function createSupplierInvoice(input: SupplierInvoiceInput): Promise<ActionResult<{ id: string }>> {
+  return runAction(async () => ({ id: (await createSupplierInvoiceImpl(input)).id }), "Could not save the invoice. Please try again.");
 }
 
 export type SupplierPaymentInput = {

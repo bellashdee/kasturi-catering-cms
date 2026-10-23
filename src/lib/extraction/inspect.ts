@@ -217,6 +217,7 @@ function inspectSpreadsheet(buffer: ArrayBuffer, limit: number): Inspected {
     info: { kind: "spreadsheet", pageCount: null, textPages: [], scannedPages: [], sheets, summary: `${nonEmpty.length} sheet${nonEmpty.length === 1 ? "" : "s"} with data (${nonEmpty.map((s) => `${s.name}: ${s.rows} rows`).join(", ")})` },
     pageTexts: null,
     sheetText: parts.join("\n\n"),
+    grids,
     warnings,
     mime: "text/csv",
   };

@@ -5049,28 +5049,37 @@ export type Database = {
       }
       supplier_invoice_items: {
         Row: {
+          discount: number | null
           id: string
+          item_code: string | null
           item_name: string
           line_total: number
           quantity: number
           supplier_invoice_id: string
           unit_price: number
+          uom: string | null
         }
         Insert: {
+          discount?: number | null
           id?: string
+          item_code?: string | null
           item_name: string
           line_total: number
           quantity?: number
           supplier_invoice_id: string
           unit_price: number
+          uom?: string | null
         }
         Update: {
+          discount?: number | null
           id?: string
+          item_code?: string | null
           item_name?: string
           line_total?: number
           quantity?: number
           supplier_invoice_id?: string
           unit_price?: number
+          uom?: string | null
         }
         Relationships: [
           {

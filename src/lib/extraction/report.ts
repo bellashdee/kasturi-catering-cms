@@ -2,6 +2,7 @@ import { DOCUMENT_TYPES, DOCUMENT_TYPE_LABEL, EXPECTED_TYPES, type DocumentType 
 import { validateFigures } from "./validate";
 import type { Confidence, ExtractionReport, FieldStatus, ReportField, ReportTable } from "./types";
 import type { Inspected } from "./inspect";
+import { hasSourceText, snapToSource } from "./snap";
 
 type Meta = { status?: string; page?: unknown; confidence?: string; note?: unknown; printed?: unknown; label?: unknown };
 type Json = Record<string, unknown>;
@@ -76,6 +77,25 @@ export function buildReport(params: {
   const fieldMeta: Record<string, Meta> = isObject(parsed.field_meta) ? (parsed.field_meta as Record<string, Meta>) : {};
   const issues: string[] = Array.isArray(parsed.issues) ? parsed.issues.filter((i): i is string => typeof i === "string" && i.trim().length > 0) : [];
   issues.push(...inspected.warnings);
+
+  // A supplier invoice is saved exactly as printed: the reader's copy of names, codes and numbers is replaced by the file's own
+  // characters, and anything that cannot be found in the file as written is flagged instead of being trusted.
+  if (kind === "supplier_invoice" && hasSourceText(inspected)) {
+    const snap = (value: unknown, label: string): unknown => {
+      if (typeof value !== "string" || !value.trim()) return value;
+      const { text, found } = snapToSource(value, inspected);
+      if (!found && value.replace(/\s+/g, "").length >= 3) issues.push(`${label} "${value}" was not found exactly as written in the file. Check it against the original.`);
+      return found ? text : value;
+    };
+    data.supplier_name = snap(data.supplier_name, "The supplier name");
+    data.invoice_number = snap(data.invoice_number, "The invoice number");
+    if (Array.isArray(data.items)) {
+      data.items = data.items.map((it, n) => {
+        if (!isObject(it)) return it;
+        return { ...it, item_name: snap(it.item_name, `Line ${n + 1} description`), item_code: snap(it.item_code, `Line ${n + 1} item code`) };
+      });
+    }
+  }
   if (!wrapped) issues.push("The reader did not return confidence details for this file, so every field should be checked.");
 
   const detected = typeof parsed.document_type === "string" && (DOCUMENT_TYPES as readonly string[]).includes(parsed.document_type) ? (parsed.document_type as DocumentType) : "other";
@@ -230,10 +250,10 @@ export function buildReport(params: {
   if (kind !== "auto" && Array.isArray(extracted.items)) {
     extracted.items = extracted.items.map((it) => {
       if (!isObject(it)) return it;
-      const { page: _page, line_total: _lineTotal, ...rest } = it;
+      const { page: _page, line_total: lineTotal, ...rest } = it;
       void _page;
-      void _lineTotal;
-      return rest;
+      // a supplier invoice is saved exactly as printed, so its form also gets the amount printed for each line
+      return kind === "supplier_invoice" ? { ...rest, line_total: lineTotal } : rest;
     });
   }
 
