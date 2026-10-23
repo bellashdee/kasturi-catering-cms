@@ -9,7 +9,7 @@ const PLACEHOLDER = /\{(\d+)\}/g;
 
 const collapse = (s: string) => s.replace(/\s+/g, " ").trim();
 
-type Pattern = { regex: RegExp; target: string; weight: number };
+type Pattern = { regex: RegExp; target: string; weight: number; /** the longest fixed piece of the key: a text without it cannot match, which is checked first because it is cheap */ needle: string };
 
 /**
  * Builds a translator from a dictionary whose keys are the English texts. A key with {0}, {1} ... is a pattern: it matches
@@ -26,7 +26,8 @@ export function createTranslator(dict: Dictionary | null): Translator {
       const escaped = key.replace(/[.*+?^$()|[\]\\]/g, "\\$&").replace(/\{\d+\}/g, (m) => `{${m.slice(1, -1)}}`);
       const source = escaped.replace(/\{(\d+)\}/g, "(?<g$1>.+?)");
       try {
-        patterns.push({ regex: new RegExp(`^${source}$`, "s"), target: value, weight: key.replace(PLACEHOLDER, "").length });
+        const needle = key.split(PLACEHOLDER).map((piece) => collapse(piece)).sort((a, b) => b.length - a.length)[0] ?? "";
+        patterns.push({ regex: new RegExp(`^${source}$`, "s"), target: value, weight: key.replace(PLACEHOLDER, "").length, needle });
       } catch {
         // a malformed pattern is skipped, never breaks the page
       }
@@ -43,6 +44,8 @@ export function createTranslator(dict: Dictionary | null): Translator {
     const trail = text.match(/\s*$/)?.[0] ?? "";
     const core = collapse(text);
     if (!core) return text;
+    // numbers, dates, times and amounts have no words to translate (most of the text of a long list)
+    if (!/[A-Za-z]/.test(core)) return text;
 
     const cached = cache.get(core);
     if (cached !== undefined) return lead + cached + trail;
@@ -50,6 +53,7 @@ export function createTranslator(dict: Dictionary | null): Translator {
     let result = exact.get(core);
     if (result === undefined) {
       for (const p of patterns) {
+        if (p.needle && !core.includes(p.needle)) continue;
         const m = p.regex.exec(core);
         if (m?.groups) {
           result = p.target.replace(PLACEHOLDER, (_, n: string) => m.groups?.[`g${n}`] ?? "");

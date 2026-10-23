@@ -50,20 +50,21 @@ export default async function DashboardPage({
     );
   }
 
-  const data = await getDashboardData(supabase, targetCompanyIds, session.allowedModules);
-
-  // A member limited to some modules only sees the dashboard cards and alerts of those modules.
+  // a member limited to some modules only sees the dashboard cards and alerts of those modules
   const can = (key: Parameters<typeof canAccessModule>[1]) => canAccessModule(session.allowedModules, key);
-  const pendingSubmissions = can("catering") ? await getPendingSubmissions(supabase, targetCompanyIds) : null;
+
+  // everything the page needs is read at the same time (one after the other made the dashboard slow to open); the birthdays and the
+  // bulletin board must never take the dashboard down, so a failure there is just an empty list
+  const [data, pendingSubmissions, birthdays, bulletin] = await Promise.all([
+    getDashboardData(supabase, targetCompanyIds, session.allowedModules),
+    can("catering") ? getPendingSubmissions(supabase, targetCompanyIds) : Promise.resolve(null),
+    loadBirthdayRows(supabase, targetCompanyIds)
+      .then((rows) => upcomingBirthdays(rows, todayInMalaysia(), 7, { userId: session.userId, email: session.email }))
+      .catch(() => []),
+    listBulletinPosts(supabase, targetCompanyIds, { includeExpired: false, limit: 3 }).catch(() => []),
+  ]);
   const companyQuery = requestedId ? `?company=${requestedId}` : "";
   const alerts = alertsForModules(data.alerts, session.allowedModules);
-  // birthdays of the staff (today, and the coming week): a failure here must never take the dashboard down
-  const birthdays = await loadBirthdayRows(supabase, targetCompanyIds)
-    .then((rows) => upcomingBirthdays(rows, todayInMalaysia(), 7, { userId: session.userId, email: session.email }))
-    .catch(() => []);
-
-  // the latest announcements of the bulletin board: a failure here must never take the dashboard down either
-  const bulletin = await listBulletinPosts(supabase, targetCompanyIds, { includeExpired: false, limit: 3 }).catch(() => []);
 
   return (
     <div className="flex flex-col gap-6">

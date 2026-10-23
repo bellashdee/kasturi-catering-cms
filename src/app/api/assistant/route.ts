@@ -184,6 +184,10 @@ export async function POST(request: Request) {
             { role: "user", parts: [...attachments.files.map((f): GeminiPart => ({ inline_data: { mime_type: f.mime, data: f.data.toString("base64") } })), { text: message }] },
           ],
           maxOutputTokens: MAX_ANSWER_TOKENS,
+          // a model that is slow to start is dropped after a few seconds (a photo needs longer)
+          attemptCapMs: attachments.files.length > 0 ? 25_000 : 9_000,
+          // total time for the answer: after this the written help for the question is shown instead of waiting longer
+          budgetMs: attachments.files.length > 0 ? 55_000 : 25_000,
         });
         reply = text.trim() || kbOnlyReply(kbEntries);
       } else {

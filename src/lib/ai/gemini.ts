@@ -61,6 +61,7 @@ export async function geminiGenerateDetailed({
   maxOutputTokens,
   json,
   budgetMs = 52_000,
+  attemptCapMs,
 }: {
   system?: string;
   turns: GeminiTurn[];
@@ -68,6 +69,8 @@ export async function geminiGenerateDetailed({
   json?: boolean;
   /** Total time allowed across all models/attempts (the serverless function itself is limited to 60s). */
   budgetMs?: number;
+  /** A model that has not answered after this long is given up on (the next model is tried): for quick chat answers. */
+  attemptCapMs?: number;
 }): Promise<GeminiResult> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new GeminiError("GEMINI_API_KEY is not set.", "other");
@@ -80,7 +83,7 @@ export async function geminiGenerateDetailed({
     const remaining = budgetMs - (Date.now() - started);
     if (remaining < 4_000) break;
     // A hung model must not eat the whole budget while others could answer.
-    const attemptMs = index === chain.length - 1 ? remaining : Math.max(20_000, remaining / 2);
+    const attemptMs = index === chain.length - 1 ? remaining : Math.min(attemptCapMs ?? Infinity, Math.max(20_000, remaining / 2));
 
     // "low" thinking keeps reading fast and leaves the output budget for the actual JSON.
     const generationConfig = {
@@ -140,6 +143,8 @@ export async function geminiGenerate(params: {
   turns: GeminiTurn[];
   maxOutputTokens: number;
   json?: boolean;
+  budgetMs?: number;
+  attemptCapMs?: number;
 }): Promise<string> {
   try {
     return (await geminiGenerateDetailed(params)).text;

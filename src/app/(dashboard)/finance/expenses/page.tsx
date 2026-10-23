@@ -12,7 +12,7 @@ import { CompanyExpenseTable } from "@/components/finance/CompanyExpenseTable";
 export default async function CompanyExpensesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string }>;
+  searchParams: Promise<{ company?: string; page?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -21,7 +21,7 @@ export default async function CompanyExpensesPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId } = await searchParams;
+  const { company: requestedId, page: pageParam } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -31,6 +31,12 @@ export default async function CompanyExpensesPage({
 
   const [expenses, categories] = await Promise.all([listCompanyExpenses(supabase, targetCompanyIds), listCostCategories(supabase, targetCompanyIds)]);
   const total = expenses.reduce((t, e) => t + Number(e.amount), 0);
+  // the list is shown 100 at a time (a long list makes the page heavy); the total is of every expense
+  const PAGE_SIZE = 100;
+  const pages = Math.max(1, Math.ceil(expenses.length / PAGE_SIZE));
+  const page = Math.min(pages, Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1));
+  const shown = expenses.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const pageHref = (n: number) => `/finance/expenses?${new URLSearchParams({ ...(requestedId ? { company: requestedId } : {}), ...(n > 1 ? { page: String(n) } : {}) }).toString()}`;
 
   return (
     <div className="flex flex-col gap-5">
@@ -52,7 +58,7 @@ export default async function CompanyExpensesPage({
         ) : (
           <CompanyExpenseTable
             categories={uniqueCategories(categories).map((c) => c.name)}
-            rows={expenses.map((e) => ({
+            rows={shown.map((e) => ({
               id: e.id,
               companyName: e.companies?.name ?? "",
               category: e.category,
@@ -64,6 +70,25 @@ export default async function CompanyExpensesPage({
           />
         )}
       </div>
+
+      {pages > 1 && (
+        <div className="flex items-center justify-between text-[13px] text-text-secondary">
+          <span>{`Showing ${(page - 1) * PAGE_SIZE + 1}-${Math.min(page * PAGE_SIZE, expenses.length)} of ${expenses.length}`}</span>
+          <div className="flex items-center gap-2">
+            {page > 1 && (
+              <Link href={pageHref(page - 1)} className="rounded-lg border border-border-strong bg-surface px-3 py-1.5 font-semibold text-text hover:bg-surface-alt">
+                Previous
+              </Link>
+            )}
+            <span>{`Page ${page} of ${pages}`}</span>
+            {page < pages && (
+              <Link href={pageHref(page + 1)} className="rounded-lg border border-border-strong bg-surface px-3 py-1.5 font-semibold text-text hover:bg-surface-alt">
+                Next
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
