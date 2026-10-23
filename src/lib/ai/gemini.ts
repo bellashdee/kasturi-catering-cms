@@ -33,13 +33,15 @@ export type GeminiResult = { text: string; finishReason: string | null; model: s
  * Models tried in order. The preferred model is often "experiencing high demand" (HTTP 503) on the free tier, so rather
  * than waiting and retrying the same one we move on to the next, within an overall time budget.
  */
-const FALLBACK_MODELS = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.7-flash", "gemini-3-flash-preview", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"];
+// Measured 2026-10-24: 3.6-flash, 3-flash-preview and the lite models answer in 1.5-3.5 s; 3.8-flash and 3.7-flash often hang for 30 s or
+// answer "high demand", so they come last.
+const FALLBACK_MODELS = ["gemini-3-flash-preview", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.7-flash", "gemini-3.8-flash"];
 /** A model that just answered "overloaded" is tried last for a couple of minutes (remembered per server instance). */
 const COOLDOWN_MS = 120_000;
 const overloadedAt = new Map<string, number>();
 
 function modelChain(): string[] {
-  const preferred = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+  const preferred = process.env.GEMINI_MODEL || "gemini-3.6-flash";
   const all = Array.from(new Set([preferred, ...FALLBACK_MODELS]));
   const hot = (m: string) => Date.now() - (overloadedAt.get(m) ?? 0) < COOLDOWN_MS;
   return [...all.filter((m) => !hot(m)), ...all.filter(hot)];
