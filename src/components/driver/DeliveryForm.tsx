@@ -7,6 +7,8 @@ import { createDelivery, updateDeliveryDetails, type DeliveryInput } from "@/lib
 import { decodeAssignee, encodeAssignee, type DeliveryPerson } from "@/lib/driver/deliveryPersons";
 import { DeliveryPersonSelect } from "@/components/driver/DeliveryPersonSelect";
 import { toMalaysiaInputValue } from "@/lib/format";
+import { uploadDocument, fileTypeFromMime } from "@/lib/documents/upload";
+import { attachTaskProof } from "@/lib/taskProofs/actions";
 
 type Company = { id: string; name: string };
 type Event = { id: string; event_name: string; company_id: string };
@@ -40,6 +42,8 @@ export function DeliveryForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
+  const [createdId, setCreatedId] = useState<string | null>(null);
   const [companyId, setCompanyId] = useState(initial?.companyId ?? defaultCompanyId ?? companies[0]?.id ?? "");
   const [form, setForm] = useState({
     cateringEventId: initial?.cateringEventId ?? "",
@@ -55,6 +59,17 @@ export function DeliveryForm({
   const vehiclesForCompany = vehicles.filter((v) => v.company_id === companyId);
   const personsForCompany = deliveryPersons.filter((p) => p.companyId === companyId);
 
+  // an external delivery service (Lalamove ...) is chosen: its booking / receipt can be attached to the delivery
+  const vendor = personsForCompany.find((p) => p.value === form.assignee && p.kind === "vendor") ?? null;
+
+  /** Uploads the attached files and keeps them with the delivery (a booking / receipt is not proof of delivery). */
+  async function attachFiles(id: string) {
+    for (const file of files) {
+      const doc = await uploadDocument({ companyId, module: "deliveries", fileType: fileTypeFromMime(file), file });
+      await attachTaskProof({ companyId, relatedTable: "deliveries", relatedId: id, documentId: doc.id, proofType: "booking_receipt", remarks: vendor?.label, revalidatePaths: [`/driver-logistics/${id}`] });
+    }
+  }
+
   function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
@@ -64,6 +79,7 @@ export function DeliveryForm({
     setSaving(true);
     setError(null);
     setSaved(false);
+    setCreatedId(null);
     const payload: DeliveryInput = {
       companyId,
       cateringEventId: form.cateringEventId || undefined,
@@ -78,12 +94,34 @@ export function DeliveryForm({
       if (deliveryId) {
         // the person is already on this delivery's page: stay here, show that it was saved and refresh what the page shows
         await updateDeliveryDetails(deliveryId, payload);
+        if (vendor && files.length > 0) {
+          try {
+            await attachFiles(deliveryId);
+            setFiles([]);
+          } catch {
+            setError("The changes were saved, but the file could not be attached. Please try attaching it again.");
+            setSaving(false);
+            router.refresh();
+            return;
+          }
+        }
         setSaved(true);
         setSaving(false);
         router.refresh();
         return;
       }
       const created = await createDelivery(payload);
+      if (vendor && files.length > 0) {
+        try {
+          await attachFiles(created.id);
+        } catch {
+          // the delivery exists: do not create it twice, let the person open it and attach the file there
+          setCreatedId(created.id);
+          setError("The delivery was created, but the file could not be attached.");
+          setSaving(false);
+          return;
+        }
+      }
       router.push(`/driver-logistics/${created.id}`);
       router.refresh();
     } catch (err) {
@@ -95,6 +133,11 @@ export function DeliveryForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {error && <div className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">{error}</div>}
+      {createdId && (
+        <a href={`/driver-logistics/${createdId}`} className="text-sm font-semibold text-primary hover:underline">
+          Open the delivery and attach the file there
+        </a>
+      )}
       {saved && <div role="status" className="rounded-lg border border-success/30 bg-success-bg px-3 py-2 text-sm text-success">Saved.</div>}
 
       <div className="grid grid-cols-2 gap-4">
@@ -141,6 +184,21 @@ export function DeliveryForm({
           labelClassName={labelClass}
         />
       </div>
+
+      {vendor && (
+        <div className="rounded-lg border border-border bg-surface-alt p-3.5">
+          <label className={labelClass}>{`Attach the ${vendor.label} booking / receipt (optional)`}</label>
+          <input
+            type="file"
+            multiple
+            accept="image/jpeg,image/png,image/webp,application/pdf"
+            onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+            className="mt-1.5 block w-full text-sm"
+          />
+          <p className="mt-1 text-xs text-text-muted">A screenshot or PDF of the booking, order number or receipt. It stays with this delivery.</p>
+          {files.length > 0 && <p className="mt-1 text-xs font-semibold text-text-secondary">{files.map((f) => f.name).join(", ")}</p>}
+        </div>
+      )}
 
       <div>
         <label className={labelClass}>Items</label>

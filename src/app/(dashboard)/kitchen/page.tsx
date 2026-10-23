@@ -8,6 +8,8 @@ import { PRODUCTION_STATUS_LABEL } from "@/lib/kitchen/constants";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { KitchenSubNav } from "@/components/kitchen/KitchenSubNav";
+import { ProductionOrderRowActions } from "@/components/kitchen/ProductionOrderRowActions";
+import { RecordUndoBanner } from "@/components/driver/RecordUndoBanner";
 
 function statusTone(status: string): "success" | "warning" | "info" {
   if (status === "completed") return "success";
@@ -51,6 +53,8 @@ export default async function KitchenPage({
 
       <KitchenSubNav />
 
+      <RecordUndoBanner />
+
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {orders.length === 0 ? (
           <EmptyRow text="No production orders yet. Confirming a catering event, or creating one manually, will list it here." />
@@ -65,10 +69,10 @@ export default async function KitchenPage({
               <div>Status</div>
             </div>
             {orders.map((o) => (
+              <div key={o.id} className="border-b border-border last:border-b-0">
               <Link
-                key={o.id}
                 href={`/kitchen/${o.id}${query}`}
-                className="grid grid-cols-[1fr_1.4fr_0.8fr_0.8fr_1.4fr_1fr] border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0 hover:bg-surface-alt"
+                className="grid grid-cols-[1fr_1.4fr_0.8fr_0.8fr_1.4fr_1fr] px-5 py-3.5 text-[13.5px] hover:bg-surface-alt"
               >
                 <div className="text-text-secondary">{o.planned_date}</div>
                 <div className="font-semibold text-text">{o.recipes?.name ?? o.menu_plan_dishes?.name ?? "—"}</div>
@@ -79,6 +83,14 @@ export default async function KitchenPage({
                   <StatusBadge tone={statusTone(o.status)}>{PRODUCTION_STATUS_LABEL[o.status] ?? o.status}</StatusBadge>
                 </div>
               </Link>
+              <div className="px-5 pb-3">
+                <ProductionOrderRowActions
+                  id={o.id}
+                  detailHref={`/kitchen/${o.id}${query}`}
+                  initial={{ plannedDate: o.planned_date ?? "", paxCount: o.pax_count !== null ? String(o.pax_count) : "", assignedStaff: o.assigned_staff ?? "", prepTimeMinutes: o.prep_time_minutes !== null ? String(o.prep_time_minutes) : "", notes: o.notes ?? "" }}
+                />
+              </div>
+              </div>
             ))}
           </div>
         )}

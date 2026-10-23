@@ -12,7 +12,7 @@ type Tables = Database["public"]["Tables"];
 
 /** What an Undo needs to put a deleted record back (the rows as they were, with the same ids). */
 export type RecordUndo = {
-  kind: "delivery" | "maintenance" | "vehicle" | "driver";
+  kind: "delivery" | "maintenance" | "vehicle" | "driver" | "production_order";
   label: string;
   rows: Record<string, unknown>[];
   /** rows that were removed together with the main rows (a vehicle's service records) */
@@ -34,6 +34,7 @@ function refresh() {
   revalidatePath("/driver-logistics/vehicles");
   revalidatePath("/driver-logistics/drivers");
   revalidatePath("/driver-logistics/dashboard");
+  revalidatePath("/kitchen");
   revalidatePath("/");
 }
 
@@ -131,6 +132,56 @@ export async function deleteMaintenance(id: string): Promise<ActionResult<{ undo
   }, "Could not delete the service record. Please try again.");
 }
 
+// ---- kitchen production orders
+
+export type ProductionOrderQuickEdit = { id: string; plannedDate: string; paxCount: number | null; assignedStaff: string; prepTimeMinutes: number | null; notes: string };
+
+/** Quick edit of a production order from the Production Schedule: date, pax, who cooks, preparation time and notes. */
+export async function updateProductionOrderQuick(input: ProductionOrderQuickEdit): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    if (!DATE_RE.test(input.plannedDate)) throw new Error("Select the planned date.");
+    if (input.paxCount !== null && !(Number.isFinite(input.paxCount) && input.paxCount > 0 && input.paxCount <= 100000)) throw new Error("Enter the pax (more than 0).");
+    if (input.prepTimeMinutes !== null && !(Number.isInteger(input.prepTimeMinutes) && input.prepTimeMinutes >= 0 && input.prepTimeMinutes <= 10000)) throw new Error("Enter the preparation time in whole minutes.");
+    const { data, error } = await supabase
+      .from("production_orders")
+      .update({ planned_date: input.plannedDate, pax_count: input.paxCount, assigned_staff: input.assignedStaff.trim() || null, prep_time_minutes: input.prepTimeMinutes, notes: input.notes.trim() || null })
+      .eq("id", input.id)
+      .select("id, company_id");
+    if (error) throw error;
+    if (!data || data.length !== 1) throw new Error("The change was not saved. The production order may have been deleted, or you may not have permission.");
+    await recordAudit({ companyId: data[0].company_id, relatedTable: "production_orders", relatedId: input.id, action: "production_order_edited", newValue: `${input.plannedDate}${input.paxCount ? ` · ${input.paxCount} pax` : ""}` });
+    revalidatePath("/kitchen");
+    revalidatePath(`/kitchen/${input.id}`);
+    revalidatePath("/");
+    return {};
+  }, "Could not save the production order. Please try again.");
+}
+
+/**
+ * Deletes a production order that has not used any stock: not completed and no purchase request made from it. There is no delete policy
+ * for production orders, so the permission is checked first (the same company access as editing) and the delete uses the service role.
+ */
+export async function deleteProductionOrder(id: string): Promise<ActionResult<{ undo: RecordUndo }>> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { data: row } = await supabase.from("production_orders").select("*").eq("id", id).maybeSingle();
+    if (!row) throw new Error("This production order was not found (it may already be deleted).");
+    if (row.status === "completed") throw new Error("A completed production order cannot be deleted: its stock has already been used.");
+    const { count: requests } = await supabase.from("purchase_requests").select("id", { count: "exact", head: true }).eq("production_order_id", id);
+    if ((requests ?? 0) > 0) throw new Error("There are purchase requests made from this production order, so it cannot be deleted.");
+    const { data: touched, error: permError } = await supabase.from("production_orders").update({ status: row.status }).eq("id", id).select("id");
+    if (permError) throw permError;
+    if (!touched || touched.length !== 1) throw new Error("You do not have permission to delete this production order.");
+    const { error } = await createAdminClient().from("production_orders").delete().eq("id", id).eq("company_id", row.company_id);
+    if (error) throw new Error("The production order could not be deleted.");
+    await recordAudit({ companyId: row.company_id, relatedTable: "production_orders", relatedId: id, action: "deleted", previousValue: `${row.planned_date ?? ""} · ${row.status}` });
+    revalidatePath("/kitchen");
+    revalidatePath("/");
+    return { undo: { kind: "production_order" as const, label: `Production order of ${row.planned_date ?? "—"}`, rows: [row] } };
+  }, "Could not delete the production order. Please try again.");
+}
+
 // ---- vehicles (one plate can have a record per company: the list shows them as one)
 
 export async function deleteVehicles(ids: string[]): Promise<ActionResult<{ undo: RecordUndo }>> {
@@ -197,7 +248,7 @@ async function syncNextMaintenance(supabase: Awaited<ReturnType<typeof createCli
 export async function restoreRecords(undo: RecordUndo): Promise<ActionResult> {
   return runAction(async () => {
     const { supabase } = await requireUser();
-    const put = async (table: "deliveries" | "vehicle_maintenance_records" | "vehicles" | "driver_profiles", rows: Record<string, unknown>[]) => {
+    const put = async (table: "deliveries" | "vehicle_maintenance_records" | "vehicles" | "driver_profiles" | "production_orders", rows: Record<string, unknown>[]) => {
       if (rows.length === 0) return;
       const { error } = await supabase.from(table).insert(rows as Tables[typeof table]["Insert"][]);
       if (error) {
@@ -211,6 +262,7 @@ export async function restoreRecords(undo: RecordUndo): Promise<ActionResult> {
       await syncNextMaintenance(supabase, undo.rows.map((r) => String(r.vehicle_id)));
     }
     else if (undo.kind === "driver") await put("driver_profiles", undo.rows);
+    else if (undo.kind === "production_order") await put("production_orders", undo.rows);
     else {
       await put("vehicles", undo.rows);
       await put("vehicle_maintenance_records", undo.children ?? []);

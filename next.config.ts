@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
       { source: "/kitchen/purchase-lists/:path*", destination: "/kitchen/purchase-requests", permanent: false },
       { source: "/kitchen/calendar", destination: "/catering/calendar", permanent: false },
       { source: "/driver-logistics/expenses/:path*", destination: "/driver-logistics", permanent: false },
+      { source: "/ingredient-calculator/:path*", destination: "/kitchen", permanent: false },
+      { source: "/ingredient-calculator", destination: "/kitchen", permanent: false },
     ];
   },
 

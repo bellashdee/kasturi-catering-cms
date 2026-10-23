@@ -5,6 +5,7 @@ export const PROOF_TYPE_LABEL: Record<string, string> = {
   signed_do: "Signed Delivery Order (DO)",
   event_setup: "Photo of Event Setup",
   equipment_delivered: "Photo of Equipment Delivered",
+  booking_receipt: "Delivery Service Booking / Receipt (e.g. Lalamove)",
   other: "Other Proof",
 };
 

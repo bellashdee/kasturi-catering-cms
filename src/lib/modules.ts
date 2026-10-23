@@ -7,7 +7,6 @@ const PATH_MODULE: [string, ModuleKey][] = [
   ["/catering", "catering"],
   ["/driver-logistics", "driver-logistics"],
   ["/kitchen", "kitchen"],
-  ["/ingredient-calculator", "kitchen"],
   ["/supplier-procurement", "supplier-procurement"],
   ["/admin", "finance-admin"],
   ["/finance", "finance-admin"],

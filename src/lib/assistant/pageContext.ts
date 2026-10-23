@@ -41,7 +41,6 @@ const PAGE_CONTEXT_MAP: PageContextEntry[] = [
   { prefix: "/admin/budgets", label: "Admin & Finance → Budgets", module: "finance-admin" },
   { prefix: "/admin/categories", label: "Admin & Finance → Cost Categories", module: "finance-admin" },
   { prefix: "/admin", label: "Admin & Finance → Monthly Costing", module: "finance-admin" },
-  { prefix: "/ingredient-calculator", label: "Kitchen → Ingredient Calculator", module: "kitchen" },
   { prefix: "/reports", label: "Reports", module: "reports" },
   { prefix: "/settings", label: "Settings", module: "general" },
   { prefix: "/ai-assistant", label: "AI Assistant", module: "general" },
