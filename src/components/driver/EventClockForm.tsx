@@ -3,25 +3,25 @@
 import { useEffect, useState } from "react";
 import { getCurrentPosition } from "@/lib/driverAttendance/geo";
 import { submitEventClock } from "@/lib/eventAttendance/actions";
-import { EVENT_RADIUS_M, STAFF_TYPE_LABEL, formatIc, type StaffType } from "@/lib/eventAttendance/rules";
+import { EVENT_RADIUS_M } from "@/lib/eventAttendance/rules";
 
 const inputClass = "mt-1.5 h-11 w-full rounded-lg border border-border-strong bg-surface px-3 text-[15px] outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
 const labelClass = "text-[13px] font-semibold text-text-secondary";
 const STORE = "kasturi-event-clock";
 
-type Remembered = { driverId?: string; fullName?: string; ic?: string; eventName?: string; eventLocation?: string };
+type Remembered = { driverId?: string; eventName?: string; eventLocation?: string };
 
-function readStore(type: StaffType): Remembered {
+function readStore(): Remembered {
   try {
-    return (JSON.parse(localStorage.getItem(`${STORE}:${type}`) ?? "{}") as Remembered) ?? {};
+    return (JSON.parse(localStorage.getItem(`${STORE}:driver`) ?? "{}") as Remembered) ?? {};
   } catch {
     return {};
   }
 }
 
-function writeStore(type: StaffType, value: Remembered) {
+function writeStore(value: Remembered) {
   try {
-    localStorage.setItem(`${STORE}:${type}`, JSON.stringify(value));
+    localStorage.setItem(`${STORE}:driver`, JSON.stringify(value));
   } catch {
     // private window or blocked storage: the form just does not remember
   }
@@ -32,27 +32,21 @@ export type ClockDriver = { id: string; name: string; companySlug: string };
 export type ClockSuggestion = { name: string; location: string; companySlug: string };
 
 /**
- * The clock in / clock out form for a driver (basic details) or an IA MyStaff part-timer (name and IC number as well). It asks
- * the phone for its location and the server checks that it is within 100 m of the event location.
+ * The clock in / clock out form for the staff on duty at an event (the drivers). It asks the phone for its location and the
+ * server checks that it is within 100 m of the event location.
  */
 export function EventClockForm({
   companies,
   drivers,
-  fixedType,
   suggestions = [],
 }: {
   companies: ClockCompany[];
   drivers: ClockDriver[];
-  /** When set the form is only for this kind of staff (no switch). */
-  fixedType?: StaffType;
   suggestions?: ClockSuggestion[];
 }) {
-  const [staffType, setStaffType] = useState<StaffType>(fixedType ?? "driver");
   const [companySlug, setCompanySlug] = useState(companies[0]?.slug ?? "");
   const [action, setAction] = useState<"in" | "out">("in");
   const [driverId, setDriverId] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [ic, setIc] = useState("");
   const [eventName, setEventName] = useState("");
   const [eventLocation, setEventLocation] = useState("");
   const [website, setWebsite] = useState("");
@@ -60,22 +54,19 @@ export function EventClockForm({
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<{ message: string; verified: boolean } | null>(null);
 
-  const type = fixedType ?? staffType;
   const companyDrivers = drivers.filter((d) => d.companySlug === companySlug);
   const eventHints = suggestions.filter((s) => s.companySlug === companySlug);
 
   // what this phone used last time (so the clock-out needs no retyping)
   useEffect(() => {
     const t = setTimeout(() => {
-      const r = readStore(type);
+      const r = readStore();
       setDriverId(r.driverId ?? "");
-      setFullName(r.fullName ?? "");
-      setIc(r.ic ?? "");
       setEventName(r.eventName ?? "");
       setEventLocation(r.eventLocation ?? "");
     }, 0);
     return () => clearTimeout(t);
-  }, [type]);
+  }, []);
 
   function pickEvent(name: string) {
     setEventName(name);
@@ -92,10 +83,8 @@ export function EventClockForm({
       const position = await getCurrentPosition();
       const result = await submitEventClock(companySlug, {
         action,
-        staffType: type,
-        driverProfileId: type === "driver" ? driverId : undefined,
-        fullName: type === "ia_mystaff" ? fullName : undefined,
-        icNumber: type === "ia_mystaff" ? ic : undefined,
+        staffType: "driver",
+        driverProfileId: driverId,
         eventName,
         eventLocation,
         latitude: position.coords.latitude,
@@ -104,7 +93,7 @@ export function EventClockForm({
         website,
       });
       if (!result.ok) throw new Error(result.error);
-      writeStore(type, { driverId, fullName, ic, eventName, eventLocation });
+      writeStore({ driverId, eventName, eventLocation });
       setDone({ message: result.message, verified: result.verified });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save. Please try again.");
@@ -115,16 +104,6 @@ export function EventClockForm({
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
-      {!fixedType && (
-        <div className="grid grid-cols-2 gap-2" role="group" aria-label="Who are you">
-          {(Object.keys(STAFF_TYPE_LABEL) as StaffType[]).map((t) => (
-            <button key={t} type="button" aria-pressed={type === t} onClick={() => { setStaffType(t); setDone(null); setError(null); }} className={`rounded-lg border px-3 py-2.5 text-[14px] font-bold ${type === t ? "border-primary bg-primary text-white" : "border-border-strong bg-surface text-text-secondary"}`}>
-              {STAFF_TYPE_LABEL[t]}
-            </button>
-          ))}
-        </div>
-      )}
-
       {companies.length > 1 && (
         <div>
           <label className={labelClass} htmlFor="ec-company">Company</label>
@@ -136,28 +115,15 @@ export function EventClockForm({
         </div>
       )}
 
-      {type === "driver" ? (
-        <div>
-          <label className={labelClass} htmlFor="ec-driver">Driver name</label>
-          <select id="ec-driver" className={inputClass} value={driverId} onChange={(e) => setDriverId(e.target.value)} required>
-            <option value="">Select your name</option>
-            {companyDrivers.map((d) => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
-        </div>
-      ) : (
-        <>
-          <div>
-            <label className={labelClass} htmlFor="ec-name">Full name (capital letters)</label>
-            <input id="ec-name" className={`${inputClass} uppercase`} value={fullName} onChange={(e) => setFullName(e.target.value.toUpperCase().replace(/^\s+/, "").replace(/\s{2,}/g, " "))} autoComplete="name" autoCapitalize="characters" required />
-          </div>
-          <div>
-            <label className={labelClass} htmlFor="ec-ic">IC number</label>
-            <input id="ec-ic" className={inputClass} value={ic} onChange={(e) => setIc(formatIc(e.target.value))} inputMode="numeric" placeholder="xxxxxx-xx-xxxx" maxLength={14} required />
-          </div>
-        </>
-      )}
+      <div>
+        <label className={labelClass} htmlFor="ec-driver">Staff name</label>
+        <select id="ec-driver" className={inputClass} value={driverId} onChange={(e) => setDriverId(e.target.value)} required>
+          <option value="">Select your name</option>
+          {companyDrivers.map((d) => (
+            <option key={d.id} value={d.id}>{d.name}</option>
+          ))}
+        </select>
+      </div>
 
       <div>
         <label className={labelClass} htmlFor="ec-event">Event name</label>

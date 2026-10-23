@@ -38,8 +38,8 @@ export default async function DriverAttendancePage({
   const companies = allCompanies ?? [];
 
   const { company: requestedId, driver: driverParam, date: dateParam, tab: tabParam, name: nameParam } = await searchParams;
-  // Drivers and IA MyStaff part-timers clock in and out of events (100 m from the event location); company staff keep the original form
-  const tab: "driver" | "ia_mystaff" | "staff" = tabParam === "ia" ? "ia_mystaff" : tabParam === "staff" ? "staff" : "driver";
+  // The staff on duty at an event clock in and out of it (within 100 m of the event location); company staff keep the original form
+  const tab: "driver" | "staff" = tabParam === "staff" ? "staff" : "driver";
   const { accessibleIds, targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const selectable = companies.filter((c) => accessibleIds.includes(c.id));
 
@@ -68,7 +68,7 @@ export default async function DriverAttendancePage({
     .sort((a, b) => a.name.localeCompare(b.name));
 
   const eventTab = tab !== "staff";
-  const staffType: StaffType = tab === "ia_mystaff" ? "ia_mystaff" : "driver";
+  const staffType: StaffType = "driver";
   const [eventRows, eventSites, eventSuggestions] = eventTab
     ? await Promise.all([
         listEventAttendance(supabase, targetCompanyIds, { staffType, date: dateParam || undefined, name: nameParam || undefined }),
@@ -82,7 +82,6 @@ export default async function DriverAttendancePage({
   });
   const eventDrivers = driversInSelectable.map((d) => ({ id: d.id, name: d.employees?.full_name ?? "", companySlug: slugForCompany(d.company_id) ?? "" })).filter((d) => d.companySlug).sort((a, b) => a.name.localeCompare(b.name));
   const tabHref = (t: string) => `/driver-logistics/attendance?tab=${t}${requestedId ? `&company=${requestedId}` : ""}`;
-  const maskIc = (ic: string | null, companyId: string) => (!ic ? "—" : adminCompanyIds.has(companyId) ? ic : `••••••-••-${ic.slice(-4)}`);
   const metres = (m: number | null) => (m === null ? "—" : `${Math.round(Number(m))} m`);
   const checkLabel = (c: string | null) => (c === "verified" ? "Within 100 m" : c === "unverified" ? "Location not verified" : "—");
 
@@ -146,7 +145,6 @@ export default async function DriverAttendancePage({
     eventRows,
     [
       { key: "name", label: "Name", exportValue: (r) => r.person_name },
-      ...(staffType === "ia_mystaff" ? [{ key: "ic", label: "IC number", exportValue: (r: (typeof eventRows)[number]) => maskIc(r.ic_number, r.company_id) }] : []),
       { key: "company", label: "Company", exportValue: (r) => r.companies?.name ?? "—" },
       { key: "date", label: "Date", exportValue: (r) => r.attendance_date },
       { key: "event", label: "Event", exportValue: (r) => r.event_name },
@@ -176,8 +174,7 @@ export default async function DriverAttendancePage({
   const knownLocations = [...eventSites.map((x) => ({ companyId: x.company_id, text: x.location_text })), ...eventRows.map((x) => ({ companyId: x.company_id, text: x.event_location }))];
   const tabs: { key: string; label: string; active: boolean }[] = [
     { key: "driver", label: STAFF_TYPE_LABEL.driver, active: tab === "driver" },
-    { key: "ia", label: STAFF_TYPE_LABEL.ia_mystaff, active: tab === "ia_mystaff" },
-    { key: "staff", label: "Company staff & event part-time", active: tab === "staff" },
+    { key: "staff", label: "Company staff (clock in / out with photo)", active: tab === "staff" },
   ];
 
   return (
@@ -203,15 +200,13 @@ export default async function DriverAttendancePage({
             <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-5 shadow-sm">
               <div className="text-[15px] font-bold text-text">{STAFF_TYPE_LABEL[staffType]}: Clock In / Clock Out</div>
               <p className="text-[13px] text-text-secondary">
-                {staffType === "driver"
-                  ? "Driver: choose the name, write the event name and location, then Clock In or Clock Out. You must be within 100 m of the event location."
-                  : "IA MyStaff part-timer: write the full name in capital letters, the IC number, the event name and location, then Clock In or Clock Out. You must be within 100 m of the event location."}
+                Staff on duty at the event: choose your name, write the event name and location, then Clock In or Clock Out. You must be within 100 m of the event location.
               </p>
-              <EventClockForm key={staffType} fixedType={staffType} companies={clockCompanies} drivers={eventDrivers} suggestions={eventSuggestions.flatMap((e) => { const slug = slugForCompany(e.companyId); return slug ? [{ name: e.name, location: e.location, companySlug: slug }] : []; })} />
+              <EventClockForm companies={clockCompanies} drivers={eventDrivers} suggestions={eventSuggestions.flatMap((e) => { const slug = slugForCompany(e.companyId); return slug ? [{ name: e.name, location: e.location, companySlug: slug }] : []; })} />
             </div>
             <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-5 shadow-sm">
-              <div className="text-[15px] font-bold text-text">Link for drivers and part-timers (no login needed)</div>
-              <p className="text-[13px] text-text-secondary">Send this link on WhatsApp. They open it on their phone and clock in and out of the event themselves.</p>
+              <div className="text-[15px] font-bold text-text">Link for the staff on event duty (no login needed)</div>
+              <p className="text-[13px] text-text-secondary">Send this link on WhatsApp. The staff on duty open it on their phone and clock in and out of the event themselves.</p>
               {selectable.flatMap((c) => {
                 const slug = slugForCompany(c.id);
                 return slug && EVENT_CLOCK_COMPANIES[slug] ? [<CopyLink key={slug} path={`/event-clock/${slug}`} label={c.name} />] : [];

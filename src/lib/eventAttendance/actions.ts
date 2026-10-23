@@ -9,10 +9,7 @@ import {
   EVENT_RADIUS_M,
   MAX_GPS_ACCURACY_M,
   checkRadius,
-  cleanFullName,
   locationKey,
-  validateFullName,
-  validateIc,
   type LatLng,
   type StaffType,
 } from "@/lib/eventAttendance/rules";
@@ -22,10 +19,6 @@ export type EventClockInput = {
   staffType: StaffType;
   /** driver_profiles.id (drivers only). */
   driverProfileId?: string;
-  /** Full name in capital letters (IA MyStaff only; a driver's name comes from the driver record). */
-  fullName?: string;
-  /** xxxxxx-xx-xxxx (IA MyStaff only). */
-  icNumber?: string;
   eventName: string;
   eventLocation: string;
   latitude: number;
@@ -77,7 +70,7 @@ function tooFar(distanceM: number, what: "in" | "out") {
 }
 
 /**
- * Public (no login): a driver or an IA MyStaff part-timer clocks in or out of an event. The company comes from the link. The phone
+ * Public (no login): a member of staff on duty at an event (a driver) clocks in or out of the event. The company comes from the link. The phone
  * must be within 100 m of the event location: the distance is worked out here, from the location the phone sent. A location that
  * cannot be found on the map is recorded as "not verified" for the office to check instead of locking the person out.
  */
@@ -87,7 +80,7 @@ export async function submitEventClock(companySlug: string, input: EventClockInp
     if (!company) throw new Error("This link is not valid.");
     if (input.website?.trim()) return { ok: true, message: "Saved.", verified: true, distanceM: null }; // a bot filled the hidden field
     if (input.action !== "in" && input.action !== "out") throw new Error("Choose Clock In or Clock Out.");
-    if (input.staffType !== "driver" && input.staffType !== "ia_mystaff") throw new Error("Choose who you are.");
+    if (input.staffType !== "driver") throw new Error("Only the staff on duty at an event can clock in here.");
     if (!Number.isFinite(input.latitude) || !Number.isFinite(input.longitude) || Math.abs(input.latitude) > 90 || Math.abs(input.longitude) > 180) throw new Error("Your location could not be read. Allow location access and try again.");
     if (input.accuracy !== undefined && input.accuracy > MAX_GPS_ACCURACY_M) {
       throw new Error(`Your phone's location is not exact enough (about ${Math.round(input.accuracy)} m). Go outdoors, switch on high-accuracy location and try again.`);
@@ -97,27 +90,14 @@ export async function submitEventClock(companySlug: string, input: EventClockInp
 
     const admin = createAdminClient();
 
-    // who is clocking: a driver from the company's driver list, or an IA MyStaff part-timer with name and IC number
-    let staffKey: string;
-    let personName: string;
-    let ic: string | null = null;
-    let driverProfileId: string | null = null;
-    if (input.staffType === "driver") {
-      if (!input.driverProfileId) throw new Error("Select your name from the driver list.");
-      const { data: driver } = await admin.from("driver_profiles").select("id, company_id, employees(full_name, status)").eq("id", input.driverProfileId).maybeSingle();
-      if (!driver || driver.company_id !== company.id || driver.employees?.status !== "active") throw new Error("Select your name from the driver list.");
-      staffKey = driver.id;
-      driverProfileId = driver.id;
-      personName = driver.employees.full_name;
-    } else {
-      personName = cleanFullName(input.fullName ?? "");
-      const nameProblem = validateFullName(personName);
-      if (nameProblem) throw new Error(nameProblem);
-      ic = (input.icNumber ?? "").trim();
-      const icProblem = validateIc(ic);
-      if (icProblem) throw new Error(icProblem);
-      staffKey = ic.replace(/\D/g, "");
-    }
+    // who is clocking: a member of staff chosen from the company's list (the name comes from the staff record, never typed)
+    if (!input.driverProfileId) throw new Error("Select your name from the staff list.");
+    const { data: driver } = await admin.from("driver_profiles").select("id, company_id, employees(full_name, status)").eq("id", input.driverProfileId).maybeSingle();
+    if (!driver || driver.company_id !== company.id || driver.employees?.status !== "active") throw new Error("Select your name from the staff list.");
+    const staffKey: string = driver.id;
+    const driverProfileId: string = driver.id;
+    const personName: string = driver.employees.full_name;
+    const ic: string | null = null;
 
     const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     const { count } = await admin.from("event_attendance").select("id", { count: "exact", head: true }).eq("company_id", company.id).gte("updated_at", since);

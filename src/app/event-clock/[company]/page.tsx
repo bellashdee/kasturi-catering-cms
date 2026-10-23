@@ -24,7 +24,7 @@ export default async function EventClockPage({ params }: { params: Promise<{ com
       <GuestLanguageBar />
       <div className="text-[13px] font-bold uppercase tracking-wide text-text-secondary">{company.name}</div>
       <h1 className="mt-1 text-[24px] font-extrabold text-text">Event Clock In / Clock Out</h1>
-      <p className="mt-1 text-[14px] text-text-secondary">For delivery drivers and part-time staff from IA MyStaff. Choose who you are, fill in the event and press Clock In when you arrive and Clock Out when you finish.</p>
+      <p className="mt-1 text-[14px] text-text-secondary">For the staff on duty at an event. Choose your name, fill in the event and press Clock In when you arrive and Clock Out when you finish.</p>
       <div className="mt-5 rounded-xl border border-border bg-surface p-6 shadow-sm">
         <EventClockForm companies={[{ slug, name: company.name }]} drivers={drivers} />
       </div>
