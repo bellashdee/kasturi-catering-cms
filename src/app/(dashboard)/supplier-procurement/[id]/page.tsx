@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { getSupplier } from "@/lib/procurement/queries";
 import { SUPPLIER_STATUS_LABEL, INVOICE_STATUS_LABEL, PO_STATUS_LABEL } from "@/lib/procurement/constants";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatMalaysiaDate, formatUnitPrice } from "@/lib/format";
+import { listPurchaseLines, summariseSupplierItems } from "@/lib/procurement/purchaseLines";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SectionCard, EmptyRow } from "@/components/dashboard/SectionCard";
 
@@ -31,10 +32,12 @@ export default async function SupplierDetailPage({
     notFound();
   }
 
-  const [{ data: orders }, { data: invoices }] = await Promise.all([
+  const [{ data: orders }, { data: invoices }, purchaseLines] = await Promise.all([
     supabase.from("purchase_orders").select("id, po_number, status, total_amount, order_date").eq("supplier_id", id).order("order_date", { ascending: false }).limit(10),
     supabase.from("supplier_invoices").select("id, invoice_number, status, amount, due_date").eq("supplier_id", id).order("invoice_date", { ascending: false }).limit(10),
+    listPurchaseLines(supabase, [supplier.company_id], { supplierIds: [id] }),
   ]);
+  const soldItems = summariseSupplierItems(purchaseLines)[0]?.items ?? [];
 
   return (
     <div className="flex flex-col gap-5">
@@ -93,6 +96,44 @@ export default async function SupplierDetailPage({
           </div>
         </SectionCard>
       )}
+
+      <SectionCard
+        title={`Items sold & price per unit (${soldItems.length})`}
+        action={
+          <Link href={`/supplier-procurement/items?supplier=${encodeURIComponent(supplier.name)}${requestedId ? `&company=${requestedId}` : ""}`} className="text-[12.5px] font-semibold text-primary">
+            Open in Items & Prices
+          </Link>
+        }
+      >
+        {soldItems.length === 0 ? (
+          <EmptyRow text="No purchase lines recorded for this supplier yet." />
+        ) : (
+          <div className="-mx-5 -mb-5 max-h-[28rem] overflow-auto">
+            <table className="w-full min-w-[560px] border-collapse text-left">
+              <thead className="sticky top-0 bg-surface-alt">
+                <tr className="text-[11px] font-bold uppercase tracking-wide text-text-muted">
+                  <th className="px-5 py-2.5">Item</th>
+                  <th className="px-3 py-2.5">UOM</th>
+                  <th className="px-3 py-2.5 text-right">Latest price / unit</th>
+                  <th className="px-3 py-2.5">Date</th>
+                  <th className="px-5 py-2.5 text-right">Bought</th>
+                </tr>
+              </thead>
+              <tbody>
+                {soldItems.map((i) => (
+                  <tr key={i.key} className="border-t border-border text-[13px]">
+                    <td className="px-5 py-2.5 font-semibold text-text">{i.description}</td>
+                    <td className="px-3 py-2.5 text-text-secondary">{i.uom || "—"}</td>
+                    <td className="px-3 py-2.5 text-right font-semibold text-text">{formatUnitPrice(i.latestPrice)}</td>
+                    <td className="px-3 py-2.5 text-text-secondary">{formatMalaysiaDate(`${i.latestDate}T12:00:00+08:00`)}</td>
+                    <td className="px-5 py-2.5 text-right text-text-secondary">{`${i.timesBought}×`}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </SectionCard>
 
       <SectionCard title="Recent Purchase Orders" action={<Link href={`/supplier-procurement/orders/new?supplier=${id}${requestedId ? `&company=${requestedId}` : ""}`} className="text-[12.5px] font-semibold text-primary">+ New PO</Link>}>
         {!orders || orders.length === 0 ? (

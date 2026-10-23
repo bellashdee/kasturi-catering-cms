@@ -49,9 +49,6 @@ export default async function PurchaseRequestsPage({
           <p className="mt-0.5 text-[13px] text-text-secondary">{requests.length} purchase request{requests.length === 1 ? "" : "s"}</p>
         </div>
         <div className="flex flex-wrap gap-2.5">
-          <Link href={`/kitchen/purchase-lists/new${query}`} className="rounded-lg border border-primary bg-surface px-4 py-2.5 text-[13px] font-semibold text-primary">
-            Build from menus
-          </Link>
           <Link href={`/kitchen/purchase-requests/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
             + New Purchase Request
           </Link>

@@ -67,7 +67,7 @@ List every distinct line item. If a quantity is not legible, omit that item rath
 List every distinct line item. If a quantity or price is not legible, omit that field rather than guessing.`,
   driver_expense_receipt: `You are reading a receipt for a vehicle/delivery running cost (fuel, toll, parking, or another vehicle-related expense). Extract the following fields and respond with ONLY a JSON object, no other text:
 {
-  "category": one of "fuel" | "toll" | "parking" | "mileage" | "other",
+  "category": one of "fuel" | "lalamove" | "parking" | "toll" | "other" (use "lalamove" for a Lalamove delivery receipt),
   "description": a short description of what this expense was for (e.g. vendor/station name),
   "amount": the total amount as a plain number (no currency symbol), else null,
   "expense_date": ISO date (YYYY-MM-DD) if visible, else null

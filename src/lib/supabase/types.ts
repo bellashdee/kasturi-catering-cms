@@ -1385,6 +1385,7 @@ export type Database = {
         Row: {
           amount: number
           category: string
+          claimed_by: string | null
           company_id: string
           created_at: string
           created_by: string | null
@@ -1401,6 +1402,7 @@ export type Database = {
         Insert: {
           amount: number
           category: string
+          claimed_by?: string | null
           company_id: string
           created_at?: string
           created_by?: string | null
@@ -1417,6 +1419,7 @@ export type Database = {
         Update: {
           amount?: number
           category?: string
+          claimed_by?: string | null
           company_id?: string
           created_at?: string
           created_by?: string | null
@@ -1431,6 +1434,13 @@ export type Database = {
           vehicle_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "driver_expenses_claimed_by_fkey"
+            columns: ["claimed_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "driver_expenses_company_id_fkey"
             columns: ["company_id"]
@@ -4967,6 +4977,72 @@ export type Database = {
             columns: ["ingredient_id"]
             isOneToOne: false
             referencedRelation: "ingredients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_purchase_lines: {
+        Row: {
+          company_id: string
+          created_at: string
+          description: string
+          doc_date: string
+          doc_no: string
+          id: string
+          item_code: string | null
+          line_amount: number
+          line_no: number
+          quantity: number
+          source: string | null
+          supplier_id: string
+          unit_price: number
+          uom: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          description: string
+          doc_date: string
+          doc_no: string
+          id?: string
+          item_code?: string | null
+          line_amount: number
+          line_no: number
+          quantity: number
+          source?: string | null
+          supplier_id: string
+          unit_price: number
+          uom?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          description?: string
+          doc_date?: string
+          doc_no?: string
+          id?: string
+          item_code?: string | null
+          line_amount?: number
+          line_no?: number
+          quantity?: number
+          source?: string | null
+          supplier_id?: string
+          unit_price?: number
+          uom?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_purchase_lines_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_purchase_lines_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]

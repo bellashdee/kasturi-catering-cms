@@ -22,10 +22,10 @@ export const VEHICLE_STATUS_LABEL: Record<string, string> = {
 };
 
 export const EXPENSE_CATEGORY_LABEL: Record<string, string> = {
-  mileage: "Mileage",
   fuel: "Fuel",
-  toll: "Toll",
+  lalamove: "Lalamove",
   parking: "Parking",
+  toll: "Toll",
   other: "Other",
 };
 

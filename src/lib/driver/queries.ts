@@ -94,7 +94,7 @@ export async function listMaintenanceForCompanies(supabase: DB, companyIds: stri
 export async function listDriverExpenses(supabase: DB, companyIds: string[]) {
   const { data, error } = await supabase
     .from("driver_expenses")
-    .select("*, vehicles(plate_number), employees(full_name), deliveries(id), companies(name)")
+    .select("*, vehicles(plate_number), claimant:employees!driver_expenses_claimed_by_fkey(full_name), employees!driver_expenses_driver_id_fkey(full_name), deliveries(id), companies(name)")
     .in("company_id", companyIds)
     .order("expense_date", { ascending: false });
   if (error) throw error;

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { logTaskAudit } from "@/lib/taskProofs/actions";
 import { assertValidAssignee } from "@/lib/driver/assignee";
+import { runAction, type ActionResult } from "@/lib/actionResult";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -435,6 +436,8 @@ export type DriverExpenseInput = {
   deliveryId?: string;
   vehicleId?: string;
   driverId?: string;
+  /** the staff member who claims the expense */
+  claimedBy?: string;
   category: string;
   distanceKm?: number;
   amount: number;
@@ -443,13 +446,14 @@ export type DriverExpenseInput = {
   documentId?: string;
 };
 
-export async function createDriverExpense(input: DriverExpenseInput) {
+async function createDriverExpenseImpl(input: DriverExpenseInput) {
   const { supabase, userId } = await requireUser();
   const { error } = await supabase.from("driver_expenses").insert({
     company_id: input.companyId,
     delivery_id: input.deliveryId || null,
     vehicle_id: input.vehicleId || null,
     driver_id: input.driverId || null,
+    claimed_by: input.claimedBy || null,
     category: input.category,
     distance_km: input.distanceKm || null,
     amount: input.amount,
@@ -469,4 +473,8 @@ export async function createDriverExpense(input: DriverExpenseInput) {
 
   revalidatePath("/driver-logistics/expenses");
   revalidatePath("/");
+}
+
+export async function createDriverExpense(input: DriverExpenseInput): Promise<ActionResult> {
+  return runAction(async () => { await createDriverExpenseImpl(input); return {}; }, "Could not save the expense. Please try again.");
 }

@@ -22,10 +22,7 @@ export default async function NewDriverExpensePage({
   const defaultCompanyId = requestedId && accessibleIds.includes(requestedId) ? requestedId : selectable[0]?.id;
   const query = requestedId ? `?company=${requestedId}` : "";
 
-  const [{ data: vehicles }, { data: employees }] = await Promise.all([
-    supabase.from("vehicles").select("id, plate_number, vehicle_type, company_id").in("company_id", accessibleIds).order("plate_number"),
-    supabase.from("employees").select("id, full_name, company_id").in("company_id", accessibleIds).eq("status", "active").order("full_name"),
-  ]);
+  const { data: employees } = await supabase.from("employees").select("id, full_name, company_id").in("company_id", accessibleIds).eq("status", "active").order("full_name");
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -34,7 +31,6 @@ export default async function NewDriverExpensePage({
         <DriverExpenseUploadReview
           companies={selectable}
           defaultCompanyId={defaultCompanyId}
-          vehicles={vehicles ?? []}
           employees={employees ?? []}
           redirectTo={`/driver-logistics/expenses${query}`}
         />

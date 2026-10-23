@@ -51,21 +51,19 @@ export default async function DriverExpensesPage({
           <EmptyRow text="No expenses recorded yet." />
         ) : (
           <div>
-            <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1.4fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
+            <div className="grid grid-cols-[1fr_1fr_1fr_1.4fr_1.6fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
               <div>Date</div>
               <div>Category</div>
               <div>Amount</div>
-              <div>Vehicle</div>
-              <div>Driver</div>
+              <div>Claimed by</div>
               <div>Company / Notes</div>
             </div>
             {expenses.map((e) => (
-              <div key={e.id} className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1.4fr] border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0">
+              <div key={e.id} className="grid grid-cols-[1fr_1fr_1fr_1.4fr_1.6fr] border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0">
                 <div className="text-text-secondary">{e.expense_date}</div>
                 <div className="font-semibold text-text">{EXPENSE_CATEGORY_LABEL[e.category] ?? e.category}</div>
                 <div className="text-text-secondary">{formatCurrency(Number(e.amount))}</div>
-                <div className="text-text-secondary">{e.vehicles?.plate_number ?? "—"}</div>
-                <div className="text-text-secondary">{e.employees?.full_name ?? "—"}</div>
+                <div className="text-text-secondary">{e.claimant?.full_name ?? e.employees?.full_name ?? "—"}</div>
                 <div className="truncate text-text-muted">{e.companies?.name}{e.notes ? ` · ${e.notes}` : ""}</div>
               </div>
             ))}

@@ -83,11 +83,7 @@ export default async function IngredientCalculatorPage({
           />
 
           <div className="rounded-xl border border-border bg-surface p-4 text-[13px] text-text-secondary">
-            Need one combined shopping list for a whole week or meal? Use{" "}
-            <Link href={`/kitchen/purchase-lists/new${query}`} className="font-semibold text-primary hover:underline">
-              Kitchen → Purchase List
-            </Link>{" "}
-            (saves, prints and exports to Excel). Otherwise review these quantities, then create the actual purchase request yourself in{" "}
+            Review these quantities, then create the actual purchase request yourself in{" "}
             <Link href={`/kitchen/purchase-requests${query}`} className="font-semibold text-primary hover:underline">
               Kitchen → Purchase Requests
             </Link>{" "}

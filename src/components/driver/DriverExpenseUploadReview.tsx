@@ -1,15 +1,14 @@
 "use client";
 
-import { vehicleLabel } from "@/lib/driver/constants";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { uploadDocument, fileTypeFromMime, DOCUMENT_FILE_ACCEPT } from "@/lib/documents/upload";
 import { createDriverExpense } from "@/lib/driver/actions";
+import { errorMessage } from "@/lib/actionResult";
 import { requestExtraction } from "@/lib/importFlow/extractClient";
 
 type Tab = "manual" | "pdf" | "photo";
 type Company = { id: string; name: string };
-type Vehicle = { id: string; plate_number: string; vehicle_type?: string | null; company_id: string };
 type Employee = { id: string; full_name: string; company_id: string };
 
 type ExtractedExpense = {
@@ -26,13 +25,11 @@ const labelClass = "text-[12.5px] font-semibold text-text-secondary";
 export function DriverExpenseUploadReview({
   companies,
   defaultCompanyId,
-  vehicles,
   employees,
   redirectTo,
 }: {
   companies: Company[];
   defaultCompanyId?: string;
-  vehicles: Vehicle[];
   employees: Employee[];
   redirectTo: string;
 }) {
@@ -47,12 +44,11 @@ export function DriverExpenseUploadReview({
   const [saving, setSaving] = useState(false);
 
   const [companyId, setCompanyId] = useState(defaultCompanyId ?? companies[0]?.id ?? "");
-  const [vehicleId, setVehicleId] = useState("");
-  const [driverId, setDriverId] = useState("");
-  const [form, setForm] = useState({ category: "fuel", description: "", amount: "", expenseDate: "", distanceKm: "" });
+  const [claimedBy, setClaimedBy] = useState("");
+  const [form, setForm] = useState({ category: "fuel", description: "", amount: "", expenseDate: "" });
 
-  const vehiclesForCompany = vehicles.filter((v) => v.company_id === companyId);
-  const employeesForCompany = employees.filter((e) => e.company_id === companyId);
+  // the people who can claim: the active staff of the company, in alphabetical order
+  const employeesForCompany = employees.filter((e) => e.company_id === companyId).sort((a, b) => a.full_name.localeCompare(b.full_name));
 
   function selectTab(next: Tab) {
     setTab(next);
@@ -81,7 +77,7 @@ export function DriverExpenseUploadReview({
         const extracted: ExtractedExpense = result.extracted ?? {};
         setForm((f) => ({
           ...f,
-          category: extracted.category && ["fuel", "toll", "parking", "mileage"].includes(extracted.category) ? extracted.category : "other",
+          category: extracted.category && ["fuel", "lalamove", "parking", "toll"].includes(extracted.category) ? extracted.category : "other",
           description: extracted.description ?? "",
           amount: extracted.amount?.toString() ?? "",
           expenseDate: extracted.expense_date ?? "",
@@ -97,6 +93,10 @@ export function DriverExpenseUploadReview({
   }
 
   async function handleConfirm() {
+    if (!claimedBy) {
+      setError("Select the name of the person who claims this expense.");
+      return;
+    }
     if (!form.amount || !form.expenseDate) {
       setError("Amount and date are required.");
       return;
@@ -104,21 +104,24 @@ export function DriverExpenseUploadReview({
     setSaving(true);
     setError(null);
     try {
-      await createDriverExpense({
+      const result = await createDriverExpense({
         companyId,
-        vehicleId: vehicleId || undefined,
-        driverId: driverId || undefined,
+        claimedBy,
         category: form.category,
-        distanceKm: form.category === "mileage" && form.distanceKm ? Number(form.distanceKm) : undefined,
         amount: Number(form.amount),
         expenseDate: form.expenseDate,
         notes: form.description || undefined,
         documentId: documentId || undefined,
       });
+      if (!result.ok) {
+        setError(result.error);
+        setSaving(false);
+        return;
+      }
       router.push(redirectTo);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save.");
+      setError(errorMessage(err, "Could not save."));
       setSaving(false);
     }
   }
@@ -144,7 +147,7 @@ export function DriverExpenseUploadReview({
             required
             disabled={documentId !== null}
             value={companyId}
-            onChange={(e) => { setCompanyId(e.target.value); setVehicleId(""); setDriverId(""); }}
+            onChange={(e) => { setCompanyId(e.target.value); setClaimedBy(""); }}
             className={`${inputClass} max-w-xs disabled:bg-surface-alt disabled:text-text-muted`}
           >
             {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -183,21 +186,12 @@ export function DriverExpenseUploadReview({
             )}
             {error && <div className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">{error}</div>}
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelClass}>Vehicle</label>
-                <select value={vehicleId} onChange={(e) => setVehicleId(e.target.value)} className={inputClass}>
-                  <option value="">Not linked to a vehicle</option>
-                  {vehiclesForCompany.map((v) => <option key={v.id} value={v.id}>{vehicleLabel(v)}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className={labelClass}>Driver</label>
-                <select value={driverId} onChange={(e) => setDriverId(e.target.value)} className={inputClass}>
-                  <option value="">Not linked to a driver</option>
-                  {employeesForCompany.map((emp) => <option key={emp.id} value={emp.id}>{emp.full_name}</option>)}
-                </select>
-              </div>
+            <div>
+              <label className={labelClass}>Claimed by *</label>
+              <select value={claimedBy} onChange={(e) => setClaimedBy(e.target.value)} className={`${inputClass} max-w-md`}>
+                <option value="">Select the name of the person claiming</option>
+                {employeesForCompany.map((emp) => <option key={emp.id} value={emp.id}>{emp.full_name}</option>)}
+              </select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -205,9 +199,9 @@ export function DriverExpenseUploadReview({
                 <label className={labelClass}>Category *</label>
                 <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} className={inputClass}>
                   <option value="fuel">Fuel</option>
-                  <option value="toll">Toll</option>
+                  <option value="lalamove">Lalamove</option>
                   <option value="parking">Parking</option>
-                  <option value="mileage">Mileage</option>
+                  <option value="toll">Toll</option>
                   <option value="other">Other</option>
                 </select>
               </div>
@@ -216,13 +210,6 @@ export function DriverExpenseUploadReview({
                 <input type="date" value={form.expenseDate} onChange={(e) => setForm((f) => ({ ...f, expenseDate: e.target.value }))} className={inputClass} />
               </div>
             </div>
-
-            {form.category === "mileage" && (
-              <div>
-                <label className={labelClass}>Distance (km)</label>
-                <input type="number" min="0" step="0.1" value={form.distanceKm} onChange={(e) => setForm((f) => ({ ...f, distanceKm: e.target.value }))} className={`${inputClass} max-w-xs`} />
-              </div>
-            )}
 
             <div>
               <label className={labelClass}>Description</label>
