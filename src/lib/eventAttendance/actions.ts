@@ -19,7 +19,6 @@ export type EventClockInput = {
   staffType: StaffType;
   /** driver_profiles.id (drivers only). */
   driverProfileId?: string;
-  eventName: string;
   eventLocation: string;
   latitude: number;
   longitude: number;
@@ -85,7 +84,6 @@ export async function submitEventClock(companySlug: string, input: EventClockInp
     if (input.accuracy !== undefined && input.accuracy > MAX_GPS_ACCURACY_M) {
       throw new Error(`Your phone's location is not exact enough (about ${Math.round(input.accuracy)} m). Go outdoors, switch on high-accuracy location and try again.`);
     }
-    const eventName = clip(input.eventName, 200, "Write the event name.", "The event name is too long.");
     const eventLocation = clip(input.eventLocation, 300, "Write the event location.", "The event location is too long.");
 
     const admin = createAdminClient();
@@ -106,7 +104,8 @@ export async function submitEventClock(companySlug: string, input: EventClockInp
     const here: LatLng = { latitude: input.latitude, longitude: input.longitude };
     const nowIso = new Date().toISOString();
     const today = todayInMalaysia();
-    const eventKey = locationKey(eventName);
+    // the event is identified by where it is: the same person at the same place on the same day is one event
+    const eventKey = locationKey(eventLocation);
 
     if (input.action === "in") {
       const { data: already } = await admin
@@ -130,8 +129,13 @@ export async function submitEventClock(companySlug: string, input: EventClockInp
 
       // link to the event of the same name in the calendar, when there is one (yesterday to tomorrow)
       const day = (offset: number) => new Date(Date.parse(`${today}T00:00:00Z`) + offset * 86_400_000).toISOString().slice(0, 10);
-      const { data: events } = await admin.from("catering_events").select("id, event_name").eq("company_id", company.id).gte("event_date", day(-1)).lte("event_date", day(1));
-      const matched = (events ?? []).find((e) => locationKey(e.event_name) === eventKey);
+      const { data: events } = await admin.from("catering_events").select("id, event_name, location").eq("company_id", company.id).gte("event_date", day(-1)).lte("event_date", day(1));
+      const matched = (events ?? []).find((e) => {
+        const k = e.location ? locationKey(e.location) : "";
+        return k.length > 3 && (k === eventKey || k.includes(eventKey) || eventKey.includes(k));
+      });
+      // no event name is typed: the name of the event in the calendar at this place, otherwise the place itself
+      const eventName = (matched?.event_name ?? eventLocation).slice(0, 200);
 
       const { error } = await admin.from("event_attendance").insert({
         company_id: company.id,
@@ -178,7 +182,7 @@ export async function submitEventClock(companySlug: string, input: EventClockInp
       .order("clock_in_time", { ascending: false });
     const record = (open ?? []).find((r) => r.event_key === eventKey);
     if (!record) {
-      throw new Error((open ?? []).length > 0 ? `No clock-in found for "${eventName}". You are clocked in for: ${(open ?? []).map((r) => r.event_name).join(", ")}.` : "You have not clocked in for this event. Clock in first.");
+      throw new Error((open ?? []).length > 0 ? `No clock-in found for "${eventLocation}". You are clocked in at: ${(open ?? []).map((r) => r.event_name).join(", ")}.` : "You have not clocked in at this location. Clock in first.");
     }
 
     let distanceM: number | null = null;

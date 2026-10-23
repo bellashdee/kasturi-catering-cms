@@ -9,7 +9,7 @@ const inputClass = "mt-1.5 h-11 w-full rounded-lg border border-border-strong bg
 const labelClass = "text-[13px] font-semibold text-text-secondary";
 const STORE = "kasturi-event-clock";
 
-type Remembered = { driverId?: string; eventName?: string; eventLocation?: string };
+type Remembered = { driverId?: string; eventLocation?: string };
 
 function readStore(): Remembered {
   try {
@@ -47,7 +47,6 @@ export function EventClockForm({
   const [companySlug, setCompanySlug] = useState(companies[0]?.slug ?? "");
   const [action, setAction] = useState<"in" | "out">("in");
   const [driverId, setDriverId] = useState("");
-  const [eventName, setEventName] = useState("");
   const [eventLocation, setEventLocation] = useState("");
   const [website, setWebsite] = useState("");
   const [busy, setBusy] = useState(false);
@@ -55,24 +54,18 @@ export function EventClockForm({
   const [done, setDone] = useState<{ message: string; verified: boolean } | null>(null);
 
   const companyDrivers = drivers.filter((d) => d.companySlug === companySlug);
-  const eventHints = suggestions.filter((s) => s.companySlug === companySlug);
+  // places used before (and the places of the events in the calendar), to pick from or to type a new one
+  const locationHints = Array.from(new Set(suggestions.filter((s) => s.companySlug === companySlug).map((s) => s.location).filter(Boolean)));
 
   // what this phone used last time (so the clock-out needs no retyping)
   useEffect(() => {
     const t = setTimeout(() => {
       const r = readStore();
       setDriverId(r.driverId ?? "");
-      setEventName(r.eventName ?? "");
       setEventLocation(r.eventLocation ?? "");
     }, 0);
     return () => clearTimeout(t);
   }, []);
-
-  function pickEvent(name: string) {
-    setEventName(name);
-    const hit = eventHints.find((s) => s.name.toLowerCase() === name.trim().toLowerCase());
-    if (hit && !eventLocation.trim()) setEventLocation(hit.location);
-  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -85,7 +78,6 @@ export function EventClockForm({
         action,
         staffType: "driver",
         driverProfileId: driverId,
-        eventName,
         eventLocation,
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
@@ -93,7 +85,7 @@ export function EventClockForm({
         website,
       });
       if (!result.ok) throw new Error(result.error);
-      writeStore({ driverId, eventName, eventLocation });
+      writeStore({ driverId, eventLocation });
       setDone({ message: result.message, verified: result.verified });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save. Please try again.");
@@ -126,17 +118,13 @@ export function EventClockForm({
       </div>
 
       <div>
-        <label className={labelClass} htmlFor="ec-event">Event name</label>
-        <input id="ec-event" className={inputClass} list="ec-events" value={eventName} onChange={(e) => pickEvent(e.target.value)} maxLength={200} required />
-        <datalist id="ec-events">
-          {eventHints.map((s) => (
-            <option key={`${s.name}|${s.location}`} value={s.name} />
+        <label className={labelClass} htmlFor="ec-location">Event location</label>
+        <input id="ec-location" className={inputClass} list="ec-locations" value={eventLocation} onChange={(e) => setEventLocation(e.target.value)} maxLength={300} placeholder="Venue name and address" required />
+        <datalist id="ec-locations">
+          {locationHints.map((l) => (
+            <option key={l} value={l} />
           ))}
         </datalist>
-      </div>
-      <div>
-        <label className={labelClass} htmlFor="ec-location">Event location</label>
-        <input id="ec-location" className={inputClass} value={eventLocation} onChange={(e) => setEventLocation(e.target.value)} maxLength={300} placeholder="Venue name and address" required />
       </div>
 
       <div className="grid grid-cols-2 gap-2" role="group" aria-label="Clock in or clock out">

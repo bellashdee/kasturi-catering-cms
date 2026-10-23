@@ -200,7 +200,7 @@ export default async function DriverAttendancePage({
             <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-5 shadow-sm">
               <div className="text-[15px] font-bold text-text">{STAFF_TYPE_LABEL[staffType]}: Clock In / Clock Out</div>
               <p className="text-[13px] text-text-secondary">
-                Staff on duty at the event: choose your name, write the event name and location, then Clock In or Clock Out. You must be within 100 m of the event location.
+                Staff on duty at the event: choose your name, write the event location, then Clock In or Clock Out. You must be within 100 m of the event location.
               </p>
               <EventClockForm companies={clockCompanies} drivers={eventDrivers} suggestions={eventSuggestions.flatMap((e) => { const slug = slugForCompany(e.companyId); return slug ? [{ name: e.name, location: e.location, companySlug: slug }] : []; })} />
             </div>
