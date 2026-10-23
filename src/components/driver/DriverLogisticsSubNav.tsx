@@ -16,7 +16,6 @@ const GROUPS: { title: string; tabs: Tab[] }[] = [
       { href: "/driver-logistics/drivers", label: "Drivers Information", match: (p) => p.startsWith("/driver-logistics/drivers") },
       { href: "/driver-logistics/vehicles", label: "Vehicles", match: (p) => p.startsWith("/driver-logistics/vehicles") },
       { href: "/driver-logistics/maintenance", label: "Maintenance", match: (p) => p.startsWith("/driver-logistics/maintenance") },
-      { href: "/driver-logistics/expenses", label: "Expenses", match: (p) => p.startsWith("/driver-logistics/expenses") },
     ],
   },
   {

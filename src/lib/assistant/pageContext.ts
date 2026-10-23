@@ -33,7 +33,6 @@ const PAGE_CONTEXT_MAP: PageContextEntry[] = [
   { prefix: "/driver-logistics/drivers", label: "Operation Management → Drivers", module: "driver-logistics" },
   { prefix: "/driver-logistics/vehicles", label: "Operation Management → Vehicles", module: "driver-logistics" },
   { prefix: "/driver-logistics/maintenance", label: "Operation Management → Maintenance", module: "driver-logistics" },
-  { prefix: "/driver-logistics/expenses", label: "Operation Management → Expenses", module: "driver-logistics" },
   { prefix: "/driver-logistics", label: "Operation Management", module: "driver-logistics" },
   { prefix: "/finance/invoices", label: "Admin & Finance → Customer Invoices", module: "finance-admin" },
   { prefix: "/finance/expenses", label: "Admin & Finance → Company Expenses", module: "finance-admin" },

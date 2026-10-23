@@ -5,8 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { errorMessage } from "@/lib/actionResult";
-import { EXPENSE_CATEGORY_LABEL } from "@/lib/driver/constants";
-import { deleteDelivery, deleteDrivers, deleteExpense, deleteMaintenance, deleteVehicles, updateDeliveryQuick, updateExpenseQuick, updateMaintenanceQuick, type RecordUndo } from "@/lib/driver/recordActions";
+import { deleteDelivery, deleteDrivers, deleteMaintenance, deleteVehicles, updateDeliveryQuick, updateMaintenanceQuick, type RecordUndo } from "@/lib/driver/recordActions";
 import { rememberDeleted } from "@/components/driver/RecordUndoBanner";
 import type { ActionResult } from "@/lib/actionResult";
 import { DescriptionInput } from "@/components/DescriptionInput";
@@ -18,14 +17,12 @@ const btn = "rounded-md border border-border-strong bg-white px-2.5 py-1 text-[1
 export type RowActionsProps =
   | { kind: "delivery"; id: string; initial: { scheduledTime: string; location: string; itemsDescription: string; notes: string }; fullEditHref: string }
   | { kind: "maintenance"; id: string; initial: { serviceDate: string; nextServiceDate: string; cost: string; notes: string } }
-  | { kind: "expense"; id: string; initial: { expenseDate: string; category: string; amount: string; notes: string } }
   | { kind: "vehicle"; ids: string[]; editHref: string }
   | { kind: "driver"; ids: string[]; editHref: string };
 
 const CONFIRM: Record<RowActionsProps["kind"], string> = {
   delivery: "Delete this delivery? You can undo it right after.",
   maintenance: "Delete this service record? You can undo it right after.",
-  expense: "Delete this expense? You can undo it right after.",
   vehicle: "Delete this vehicle and its service records? You can undo it right after.",
   driver: "Remove this driver profile? The person stays in HR. You can undo it right after.",
 };
@@ -64,8 +61,6 @@ export function OperationRowActions(props: RowActionsProps) {
       void run(() => updateDeliveryQuick({ id: props.id, scheduledTime: form.scheduledTime, location: form.location, itemsDescription: form.itemsDescription, notes: form.notes }), () => setEditing(false));
     } else if (props.kind === "maintenance") {
       void run(() => updateMaintenanceQuick({ id: props.id, serviceDate: form.serviceDate, nextServiceDate: form.nextServiceDate, cost: Number(form.cost), notes: form.notes }), () => setEditing(false));
-    } else if (props.kind === "expense") {
-      void run(() => updateExpenseQuick({ id: props.id, expenseDate: form.expenseDate, category: form.category, amount: Number(form.amount), notes: form.notes }), () => setEditing(false));
     }
   }
 
@@ -74,13 +69,12 @@ export function OperationRowActions(props: RowActionsProps) {
     const work: () => Promise<ActionResult<{ undo: RecordUndo }>> =
       props.kind === "delivery" ? () => deleteDelivery(props.id)
       : props.kind === "maintenance" ? () => deleteMaintenance(props.id)
-      : props.kind === "expense" ? () => deleteExpense(props.id)
       : props.kind === "vehicle" ? () => deleteVehicles(props.ids)
       : () => deleteDrivers(props.ids);
     void run(work, (r) => rememberDeleted(r.undo as RecordUndo));
   }
 
-  const inline = props.kind === "delivery" || props.kind === "maintenance" || props.kind === "expense";
+  const inline = props.kind === "delivery" || props.kind === "maintenance";
 
   return (
     <div className="flex flex-col gap-2">
@@ -144,30 +138,6 @@ export function OperationRowActions(props: RowActionsProps) {
                   <input type="number" required min={0} step="0.01" value={form.cost} onChange={(e) => set("cost", e.target.value)} className={inputClass} />
                 </div>
                 <div className="col-span-2 sm:col-span-4">
-                  <label className={labelClass}>Notes</label>
-                  <input value={form.notes} onChange={(e) => set("notes", e.target.value)} className={inputClass} />
-                </div>
-              </>
-            )}
-            {props.kind === "expense" && (
-              <>
-                <div>
-                  <label className={labelClass}>Date *</label>
-                  <input type="date" required value={form.expenseDate} onChange={(e) => set("expenseDate", e.target.value)} className={inputClass} />
-                </div>
-                <div>
-                  <label className={labelClass}>Category *</label>
-                  <select required value={form.category} onChange={(e) => set("category", e.target.value)} className={inputClass}>
-                    {Object.entries(EXPENSE_CATEGORY_LABEL).map(([value, label]) => (
-                      <option key={value} value={value}>{label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className={labelClass}>Amount (RM) *</label>
-                  <input type="number" required min={0.01} step="0.01" value={form.amount} onChange={(e) => set("amount", e.target.value)} className={inputClass} />
-                </div>
-                <div>
                   <label className={labelClass}>Notes</label>
                   <input value={form.notes} onChange={(e) => set("notes", e.target.value)} className={inputClass} />
                 </div>

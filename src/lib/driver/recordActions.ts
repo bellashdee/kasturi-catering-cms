@@ -6,14 +6,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { recordAudit } from "@/lib/audit";
 import { runAction, type ActionResult } from "@/lib/actionResult";
 import { fromMalaysiaInputValue } from "@/lib/format";
-import { EXPENSE_CATEGORY_LABEL } from "@/lib/driver/constants";
 import type { Database } from "@/lib/supabase/types";
 
 type Tables = Database["public"]["Tables"];
 
 /** What an Undo needs to put a deleted record back (the rows as they were, with the same ids). */
 export type RecordUndo = {
-  kind: "delivery" | "expense" | "maintenance" | "vehicle" | "driver";
+  kind: "delivery" | "maintenance" | "vehicle" | "driver";
   label: string;
   rows: Record<string, unknown>[];
   /** rows that were removed together with the main rows (a vehicle's service records) */
@@ -32,7 +31,6 @@ async function requireUser() {
 function refresh() {
   revalidatePath("/driver-logistics");
   revalidatePath("/driver-logistics/maintenance");
-  revalidatePath("/driver-logistics/expenses");
   revalidatePath("/driver-logistics/vehicles");
   revalidatePath("/driver-logistics/drivers");
   revalidatePath("/driver-logistics/dashboard");
@@ -133,42 +131,6 @@ export async function deleteMaintenance(id: string): Promise<ActionResult<{ undo
   }, "Could not delete the service record. Please try again.");
 }
 
-// ---- expenses
-
-export type ExpenseQuickEdit = { id: string; expenseDate: string; category: string; amount: number; notes: string };
-
-export async function updateExpenseQuick(input: ExpenseQuickEdit): Promise<ActionResult> {
-  return runAction(async () => {
-    const { supabase } = await requireUser();
-    if (!DATE_RE.test(input.expenseDate)) throw new Error("Select the date.");
-    if (!(input.category in EXPENSE_CATEGORY_LABEL)) throw new Error("Choose a category.");
-    if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("Enter the amount (more than 0).");
-    const { data, error } = await supabase
-      .from("driver_expenses")
-      .update({ expense_date: input.expenseDate, category: input.category, amount: input.amount, notes: input.notes.trim() || null })
-      .eq("id", input.id)
-      .select("id");
-    if (error) throw error;
-    if (!data || data.length !== 1) throw new Error("The change was not saved. The expense may have been deleted, or you may not have permission.");
-    refresh();
-    return {};
-  }, "Could not save the expense. Please try again.");
-}
-
-export async function deleteExpense(id: string): Promise<ActionResult<{ undo: RecordUndo }>> {
-  return runAction(async () => {
-    const { supabase } = await requireUser();
-    const { data: row } = await supabase.from("driver_expenses").select("*").eq("id", id).maybeSingle();
-    if (!row) throw new Error("This expense was not found (it may already be deleted).");
-    const { data: gone, error } = await supabase.from("driver_expenses").delete().eq("id", id).select("id");
-    if (error) throw error;
-    if (!gone || gone.length !== 1) throw new Error("You do not have permission to delete this expense.");
-    await recordAudit({ companyId: row.company_id, relatedTable: "driver_expenses", relatedId: id, action: "deleted", previousValue: `${row.expense_date} · ${row.category} · RM ${row.amount}` });
-    refresh();
-    return { undo: { kind: "expense" as const, label: `Expense ${row.expense_date} · RM ${Number(row.amount).toFixed(2)}`, rows: [row] } };
-  }, "Could not delete the expense. Please try again.");
-}
-
 // ---- vehicles (one plate can have a record per company: the list shows them as one)
 
 export async function deleteVehicles(ids: string[]): Promise<ActionResult<{ undo: RecordUndo }>> {
@@ -235,7 +197,7 @@ async function syncNextMaintenance(supabase: Awaited<ReturnType<typeof createCli
 export async function restoreRecords(undo: RecordUndo): Promise<ActionResult> {
   return runAction(async () => {
     const { supabase } = await requireUser();
-    const put = async (table: "deliveries" | "driver_expenses" | "vehicle_maintenance_records" | "vehicles" | "driver_profiles", rows: Record<string, unknown>[]) => {
+    const put = async (table: "deliveries" | "vehicle_maintenance_records" | "vehicles" | "driver_profiles", rows: Record<string, unknown>[]) => {
       if (rows.length === 0) return;
       const { error } = await supabase.from(table).insert(rows as Tables[typeof table]["Insert"][]);
       if (error) {
@@ -244,7 +206,6 @@ export async function restoreRecords(undo: RecordUndo): Promise<ActionResult> {
       }
     };
     if (undo.kind === "delivery") await put("deliveries", undo.rows);
-    else if (undo.kind === "expense") await put("driver_expenses", undo.rows);
     else if (undo.kind === "maintenance") {
       await put("vehicle_maintenance_records", undo.rows);
       await syncNextMaintenance(supabase, undo.rows.map((r) => String(r.vehicle_id)));

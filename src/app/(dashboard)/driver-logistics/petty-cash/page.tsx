@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
@@ -175,14 +174,6 @@ export default async function OperationPettyCashPage({ searchParams }: { searchP
           </div>
         )}
       </div>
-
-      <p className="text-[12px] text-text-muted">
-        Receipts and invoices paid directly by the Director of Finance are not recorded here: add them under{" "}
-        <Link href={`/driver-logistics/expenses${query}`} className="font-semibold text-primary hover:underline">
-          Expenses
-        </Link>
-        .
-      </p>
     </div>
   );
 }

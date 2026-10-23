@@ -5,7 +5,6 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { logTaskAudit } from "@/lib/taskProofs/actions";
 import { assertValidAssignee } from "@/lib/driver/assignee";
-import { runAction, type ActionResult } from "@/lib/actionResult";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -429,52 +428,4 @@ export async function createMaintenanceRecord(input: MaintenanceInput) {
   revalidatePath(`/driver-logistics/vehicles/${input.vehicleId}`);
   revalidatePath("/");
   return data;
-}
-
-export type DriverExpenseInput = {
-  companyId: string;
-  deliveryId?: string;
-  vehicleId?: string;
-  driverId?: string;
-  /** the staff member who claims the expense */
-  claimedBy?: string;
-  category: string;
-  distanceKm?: number;
-  amount: number;
-  expenseDate: string;
-  notes?: string;
-  documentId?: string;
-};
-
-async function createDriverExpenseImpl(input: DriverExpenseInput) {
-  const { supabase, userId } = await requireUser();
-  const { error } = await supabase.from("driver_expenses").insert({
-    company_id: input.companyId,
-    delivery_id: input.deliveryId || null,
-    vehicle_id: input.vehicleId || null,
-    driver_id: input.driverId || null,
-    claimed_by: input.claimedBy || null,
-    category: input.category,
-    distance_km: input.distanceKm || null,
-    amount: input.amount,
-    expense_date: input.expenseDate,
-    notes: input.notes || null,
-    document_id: input.documentId || null,
-    created_by: userId,
-  });
-  if (error) throw error;
-
-  if (input.documentId) {
-    await supabase
-      .from("documents")
-      .update({ extraction_status: "confirmed", reviewed_by: userId, reviewed_at: new Date().toISOString() })
-      .eq("id", input.documentId);
-  }
-
-  revalidatePath("/driver-logistics/expenses");
-  revalidatePath("/");
-}
-
-export async function createDriverExpense(input: DriverExpenseInput): Promise<ActionResult> {
-  return runAction(async () => { await createDriverExpenseImpl(input); return {}; }, "Could not save the expense. Please try again.");
 }
