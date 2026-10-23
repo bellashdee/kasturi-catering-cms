@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CateringSubNav } from "@/components/catering/CateringSubNav";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
@@ -35,12 +36,13 @@ export default async function QuotationRequestsPage({ searchParams }: { searchPa
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <Link href={`/catering${query}`} className="text-[12.5px] font-semibold text-text-secondary">← Back to Events</Link>
-        <h1 className="mt-1 text-[22px] font-extrabold text-text">Quotation Requests</h1>
+        <h1 className="text-[22px] font-extrabold text-text">Quotation Requests</h1>
         <p className="mt-0.5 text-[13px] text-text-secondary">
           Requests sent by sales agents through the quotation form. Approving one creates the event (as an enquiry) and a draft quotation.
         </p>
       </div>
+
+      <CateringSubNav />
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         <div className="border-b border-border px-5 py-3 text-[13px] font-bold text-text">Waiting for review ({pending.length})</div>

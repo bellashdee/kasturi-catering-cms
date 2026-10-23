@@ -11,6 +11,7 @@ import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SearchBox } from "@/components/SearchBox";
 import { CopyLink } from "@/components/driver/CopyLink";
 import { INTAKE_COMPANIES } from "@/lib/catering/intake";
+import { CateringSubNav } from "@/components/catering/CateringSubNav";
 
 function statusTone(status: string): "success" | "warning" | "danger" | "info" | "neutral" {
   if (status === "completed" || status === "confirmed") return "success";
@@ -55,20 +56,19 @@ export default async function CateringPage({
           <p className="mt-0.5 text-[13px] text-text-secondary">{events.length} event{events.length === 1 ? "" : "s"}</p>
         </div>
         <div className="flex gap-2.5">
-          <Link href={`/catering/customers${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text">
-            Customers
-          </Link>
-          <Link href={`/catering/quotation-requests${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text">
-            Quotation Requests{pendingRequests ? ` (${pendingRequests})` : ""}
-          </Link>
-          <Link href={`/catering/quotations${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text">
-            Quotations
-          </Link>
           <Link href={`/catering/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
             + New Event
           </Link>
         </div>
       </div>
+
+      <CateringSubNav />
+
+      {pendingRequests ? (
+        <Link href={`/catering/quotation-requests${query}`} className="rounded-xl border border-info bg-info-bg px-4 py-3 text-[13px] font-semibold text-text hover:opacity-90">
+          {`Quotation requests waiting for review: ${pendingRequests}. They are on the Event Calendar too.`}
+        </Link>
+      ) : null}
 
       <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-surface p-4 shadow-sm">
         <div>

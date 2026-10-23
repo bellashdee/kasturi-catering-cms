@@ -13,12 +13,12 @@ import {
   type LatLng,
   type StaffType,
 } from "@/lib/eventAttendance/rules";
+import { isForeigner } from "@/lib/hr/birthdays";
 
 export type EventClockInput = {
   action: "in" | "out";
-  staffType: StaffType;
-  /** driver_profiles.id (drivers only). */
-  driverProfileId?: string;
+  /** employees.id: a driver or a foreign staff member on duty at the event. */
+  employeeId?: string;
   eventLocation: string;
   latitude: number;
   longitude: number;
@@ -79,7 +79,6 @@ export async function submitEventClock(companySlug: string, input: EventClockInp
     if (!company) throw new Error("This link is not valid.");
     if (input.website?.trim()) return { ok: true, message: "Saved.", verified: true, distanceM: null }; // a bot filled the hidden field
     if (input.action !== "in" && input.action !== "out") throw new Error("Choose Clock In or Clock Out.");
-    if (input.staffType !== "driver") throw new Error("Only the staff on duty at an event can clock in here.");
     if (!Number.isFinite(input.latitude) || !Number.isFinite(input.longitude) || Math.abs(input.latitude) > 90 || Math.abs(input.longitude) > 180) throw new Error("Your location could not be read. Allow location access and try again.");
     if (input.accuracy !== undefined && input.accuracy > MAX_GPS_ACCURACY_M) {
       throw new Error(`Your phone's location is not exact enough (about ${Math.round(input.accuracy)} m). Go outdoors, switch on high-accuracy location and try again.`);
@@ -88,13 +87,16 @@ export async function submitEventClock(companySlug: string, input: EventClockInp
 
     const admin = createAdminClient();
 
-    // who is clocking: a member of staff chosen from the company's list (the name comes from the staff record, never typed)
-    if (!input.driverProfileId) throw new Error("Select your name from the staff list.");
-    const { data: driver } = await admin.from("driver_profiles").select("id, company_id, employees(full_name, status)").eq("id", input.driverProfileId).maybeSingle();
-    if (!driver || driver.company_id !== company.id || driver.employees?.status !== "active") throw new Error("Select your name from the staff list.");
-    const staffKey: string = driver.id;
-    const driverProfileId: string = driver.id;
-    const personName: string = driver.employees.full_name;
+    // who is clocking: a driver or a foreign staff member chosen from the company's list (the name comes from the staff record, never typed)
+    if (!input.employeeId) throw new Error("Select your name from the staff list.");
+    const { data: person } = await admin.from("employees").select("id, company_id, full_name, status, nationality, ic_passport_no").eq("id", input.employeeId).maybeSingle();
+    if (!person || person.company_id !== company.id || person.status !== "active") throw new Error("Select your name from the staff list.");
+    const { data: driverProfile } = await admin.from("driver_profiles").select("id").eq("employee_id", person.id).eq("company_id", company.id).maybeSingle();
+    if (!driverProfile && !isForeigner(person)) throw new Error("Only the drivers and the foreign staff on duty at an event clock in here. Select your name from the staff list.");
+    const staffType: StaffType = driverProfile ? "driver" : "foreign_staff";
+    const staffKey: string = person.id;
+    const driverProfileId: string | null = driverProfile?.id ?? null;
+    const personName: string = person.full_name;
     const ic: string | null = null;
 
     const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
@@ -112,7 +114,7 @@ export async function submitEventClock(companySlug: string, input: EventClockInp
         .from("event_attendance")
         .select("id, clock_in_time")
         .eq("company_id", company.id)
-        .eq("staff_type", input.staffType)
+        .eq("staff_type", staffType)
         .eq("staff_key", staffKey)
         .eq("event_key", eventKey)
         .eq("attendance_date", today)
@@ -139,7 +141,7 @@ export async function submitEventClock(companySlug: string, input: EventClockInp
 
       const { error } = await admin.from("event_attendance").insert({
         company_id: company.id,
-        staff_type: input.staffType,
+        staff_type: staffType,
         staff_key: staffKey,
         driver_profile_id: driverProfileId,
         person_name: personName,
@@ -174,7 +176,7 @@ export async function submitEventClock(companySlug: string, input: EventClockInp
       .from("event_attendance")
       .select("id, event_key, event_name, site_id, clock_in_time")
       .eq("company_id", company.id)
-      .eq("staff_type", input.staffType)
+      .eq("staff_type", staffType)
       .eq("staff_key", staffKey)
       .is("clock_out_time", null)
       .not("clock_in_time", "is", null)

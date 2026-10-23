@@ -9,7 +9,7 @@ const inputClass = "mt-1.5 h-11 w-full rounded-lg border border-border-strong bg
 const labelClass = "text-[13px] font-semibold text-text-secondary";
 const STORE = "kasturi-event-clock";
 
-type Remembered = { driverId?: string; eventLocation?: string };
+type Remembered = { staffId?: string; eventLocation?: string };
 
 function readStore(): Remembered {
   try {
@@ -28,7 +28,7 @@ function writeStore(value: Remembered) {
 }
 
 export type ClockCompany = { slug: string; name: string };
-export type ClockDriver = { id: string; name: string; companySlug: string };
+export type ClockStaff = { id: string; name: string; companySlug: string };
 export type ClockSuggestion = { name: string; location: string; companySlug: string };
 
 /**
@@ -37,23 +37,23 @@ export type ClockSuggestion = { name: string; location: string; companySlug: str
  */
 export function EventClockForm({
   companies,
-  drivers,
+  staff,
   suggestions = [],
 }: {
   companies: ClockCompany[];
-  drivers: ClockDriver[];
+  staff: ClockStaff[];
   suggestions?: ClockSuggestion[];
 }) {
   const [companySlug, setCompanySlug] = useState(companies[0]?.slug ?? "");
   const [action, setAction] = useState<"in" | "out">("in");
-  const [driverId, setDriverId] = useState("");
+  const [staffId, setStaffId] = useState("");
   const [eventLocation, setEventLocation] = useState("");
   const [website, setWebsite] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<{ message: string; verified: boolean } | null>(null);
 
-  const companyDrivers = drivers.filter((d) => d.companySlug === companySlug);
+  const companyStaff = staff.filter((d) => d.companySlug === companySlug);
   // places used before (and the places of the events in the calendar), to pick from or to type a new one
   const locationHints = Array.from(new Set(suggestions.filter((s) => s.companySlug === companySlug).map((s) => s.location).filter(Boolean)));
 
@@ -61,7 +61,7 @@ export function EventClockForm({
   useEffect(() => {
     const t = setTimeout(() => {
       const r = readStore();
-      setDriverId(r.driverId ?? "");
+      setStaffId(r.staffId ?? "");
       setEventLocation(r.eventLocation ?? "");
     }, 0);
     return () => clearTimeout(t);
@@ -76,8 +76,7 @@ export function EventClockForm({
       const position = await getCurrentPosition();
       const result = await submitEventClock(companySlug, {
         action,
-        staffType: "driver",
-        driverProfileId: driverId,
+        employeeId: staffId,
         eventLocation,
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
@@ -85,7 +84,7 @@ export function EventClockForm({
         website,
       });
       if (!result.ok) throw new Error(result.error);
-      writeStore({ driverId, eventLocation });
+      writeStore({ staffId, eventLocation });
       setDone({ message: result.message, verified: result.verified });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save. Please try again.");
@@ -99,7 +98,7 @@ export function EventClockForm({
       {companies.length > 1 && (
         <div>
           <label className={labelClass} htmlFor="ec-company">Company</label>
-          <select id="ec-company" className={inputClass} value={companySlug} onChange={(e) => { setCompanySlug(e.target.value); setDriverId(""); }}>
+          <select id="ec-company" className={inputClass} value={companySlug} onChange={(e) => { setCompanySlug(e.target.value); setStaffId(""); }}>
             {companies.map((c) => (
               <option key={c.slug} value={c.slug}>{c.name}</option>
             ))}
@@ -109,9 +108,9 @@ export function EventClockForm({
 
       <div>
         <label className={labelClass} htmlFor="ec-driver">Staff name</label>
-        <select id="ec-driver" className={inputClass} value={driverId} onChange={(e) => setDriverId(e.target.value)} required>
+        <select id="ec-driver" className={inputClass} value={staffId} onChange={(e) => setStaffId(e.target.value)} required>
           <option value="">Select your name</option>
-          {companyDrivers.map((d) => (
+          {companyStaff.map((d) => (
             <option key={d.id} value={d.id}>{d.name}</option>
           ))}
         </select>

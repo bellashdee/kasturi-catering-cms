@@ -1,15 +1,17 @@
 import Link from "next/link";
 import { EVENT_STATUS_LABEL, MEAL_TYPE_LABEL } from "@/lib/catering/constants";
 import { addDays, dateLabel, monthGrid, startOfWeek, type CalendarEntry, type CalendarView, type EventPhase } from "@/lib/catering/calendar";
+import { CalendarEntryActions } from "@/components/catering/CalendarEntryActions";
 
 const PHASE_STYLE: Record<EventPhase, string> = {
+  request: "border-l-[3px] border-dotted border-info bg-info-bg/60 text-text",
   confirmed: "border-l-[3px] border-success bg-success-bg text-text",
   tentative: "border-l-[3px] border-dashed border-warning bg-warning-bg/60 text-text",
   finished: "border-l-[3px] border-border-strong bg-surface-alt text-text-secondary",
   cancelled: "border-l-[3px] border-danger bg-danger-bg/60 text-text-muted line-through",
 };
 
-const PHASE_MARK: Record<EventPhase, string> = { confirmed: "●", tentative: "◌", finished: "✓", cancelled: "✕" };
+const PHASE_MARK: Record<EventPhase, string> = { request: "✉", confirmed: "●", tentative: "◌", finished: "✓", cancelled: "✕" };
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -22,7 +24,13 @@ type Props = {
   href: (view: CalendarView, date: string) => string;
   /** link to an event, keeping the company */
   eventHref: (eventId: string) => string;
+  /** the companies whose events the signed-in person may delete (company admins) */
+  adminCompanyIds: string[];
+  /** "?company=..." or "" */
+  query: string;
 };
+
+const QUOTATION_LABEL: Record<string, string> = { draft: "Draft", sent: "Sent", accepted: "Accepted", rejected: "Rejected" };
 
 function groupByDate(entries: CalendarEntry[]) {
   const map = new Map<string, CalendarEntry[]>();
@@ -37,8 +45,8 @@ function totalPax(list: CalendarEntry[]) {
 function Chip({ e, eventHref }: { e: CalendarEntry; eventHref: Props["eventHref"] }) {
   return (
     <Link
-      href={eventHref(e.eventId)}
-      title={`${e.eventName} · ${EVENT_STATUS_LABEL[e.status] ?? e.status} · ${e.pax} pax${e.venue ? ` · ${e.venue}` : ""}`}
+      href={e.kind === "request" ? "/catering/quotation-requests" : eventHref(e.eventId)}
+      title={`${e.eventName} · ${e.kind === "request" ? "Quotation request" : EVENT_STATUS_LABEL[e.status] ?? e.status} · ${e.pax} pax${e.venue ? ` · ${e.venue}` : ""}`}
       className={`block truncate rounded px-1.5 py-1 text-[11.5px] font-semibold leading-tight hover:opacity-80 ${PHASE_STYLE[e.phase]}`}
     >
       <span aria-hidden="true">{PHASE_MARK[e.phase]} </span>
@@ -50,30 +58,41 @@ function Chip({ e, eventHref }: { e: CalendarEntry; eventHref: Props["eventHref"
   );
 }
 
-function EntryCard({ e, eventHref }: { e: CalendarEntry; eventHref: Props["eventHref"] }) {
+function EntryCard({ e, eventHref, canDelete, query }: { e: CalendarEntry; eventHref: Props["eventHref"]; canDelete: boolean; query: string }) {
   return (
-    <Link href={eventHref(e.eventId)} className={`block rounded-xl px-4 py-3 shadow-sm hover:opacity-90 ${PHASE_STYLE[e.phase]} ${e.phase === "cancelled" ? "" : "border border-border"}`}>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[15px] font-extrabold">{e.eventName}</span>
-        <span className="rounded-full bg-surface px-2 py-0.5 text-[11.5px] font-bold text-text-secondary">{EVENT_STATUS_LABEL[e.status] ?? e.status}</span>
-        {e.dayNumber && e.dayCount > 1 && <span className="text-[12px] text-text-muted">{`Day ${e.dayNumber} of ${e.dayCount}`}</span>}
-        <span className="ml-auto text-[12px] text-text-muted">{e.companyName}</span>
-      </div>
-      <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1 text-[12.5px] text-text-secondary sm:grid-cols-4">
-        <span>{`Pax: ${e.pax > 0 ? e.pax : "—"}`}</span>
-        <span>{`Food ready: ${e.eventTime || "—"}`}</span>
-        <span>{`Set-up (kitchen): ${e.setupTime || "—"}`}</span>
-        <span>{`Kitchen PIC: ${e.pic || "—"}`}</span>
-      </div>
-      {e.venue && <div className="mt-1 text-[12.5px] text-text-secondary">{`Venue: ${e.venue}`}</div>}
-      {e.mealTypes.length > 0 && <div className="mt-1 text-[12.5px] text-text-secondary">{`Meals: ${e.mealTypes.map((m) => MEAL_TYPE_LABEL[m] ?? m).join(", ")}`}</div>}
-      {e.menu && <div className="mt-1 line-clamp-2 whitespace-pre-line text-[12.5px] text-text">{e.menu}</div>}
-      {e.alert && <div className="mt-1.5 text-[12.5px] font-bold text-danger">{`⚠ ${e.alert}`}</div>}
-    </Link>
+    <div className={`rounded-xl px-4 py-3 shadow-sm ${PHASE_STYLE[e.phase]} ${e.phase === "cancelled" ? "" : "border border-border"}`}>
+      <Link href={e.kind === "request" ? `/catering/quotation-requests${query}` : eventHref(e.eventId)} className="block hover:opacity-90">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[15px] font-extrabold">{e.eventName}</span>
+          <span className="rounded-full bg-surface px-2 py-0.5 text-[11.5px] font-bold text-text-secondary">{e.kind === "request" ? "Quotation request" : EVENT_STATUS_LABEL[e.status] ?? e.status}</span>
+          {e.quotation && (
+            <span className="rounded-full bg-surface px-2 py-0.5 text-[11.5px] font-semibold text-text-secondary">{`Quotation ${e.quotation.number} · ${QUOTATION_LABEL[e.quotation.status] ?? e.quotation.status}`}</span>
+          )}
+          {e.dayNumber && e.dayCount > 1 && <span className="text-[12px] text-text-muted">{`Day ${e.dayNumber} of ${e.dayCount}`}</span>}
+          <span className="ml-auto text-[12px] text-text-muted">{e.companyName}</span>
+        </div>
+        <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1 text-[12.5px] text-text-secondary sm:grid-cols-4">
+          <span>{`Pax: ${e.pax > 0 ? e.pax : "—"}`}</span>
+          <span>{`Food ready: ${e.eventTime || "—"}`}</span>
+          <span>{`Set-up (kitchen): ${e.setupTime || "—"}`}</span>
+          <span>{`Kitchen PIC: ${e.pic || "—"}`}</span>
+        </div>
+        {e.venue && <div className="mt-1 text-[12.5px] text-text-secondary">{`Venue: ${e.venue}`}</div>}
+        {e.mealTypes.length > 0 && <div className="mt-1 text-[12.5px] text-text-secondary">{`Meals: ${e.mealTypes.map((m) => MEAL_TYPE_LABEL[m] ?? m).join(", ")}`}</div>}
+        {e.menu && <div className="mt-1 line-clamp-2 whitespace-pre-line text-[12.5px] text-text">{e.menu}</div>}
+        {e.alert && <div className="mt-1.5 text-[12.5px] font-bold text-danger">{`⚠ ${e.alert}`}</div>}
+      </Link>
+      <CalendarEntryActions
+        key={`${e.key}:${e.date}:${e.eventTime}:${e.setupTime}:${e.pax}:${e.status}`}
+        entry={{ kind: e.kind, eventId: e.eventId, requestId: e.requestId, dayId: e.dayId, status: e.status, eventName: e.eventName, date: e.date, eventTime: e.eventTime, setupTime: e.setupTime, venue: e.venue, pax: e.pax, twoServices: e.twoServices }}
+        canDelete={canDelete && e.kind === "event"}
+        query={query}
+      />
+    </div>
   );
 }
 
-export function EventCalendarView({ view, date, today, entries, href, eventHref }: Props) {
+export function EventCalendarView({ view, date, today, entries, href, eventHref, adminCompanyIds, query }: Props) {
   const byDate = groupByDate(entries);
 
   if (view === "month") {
@@ -152,7 +171,7 @@ export function EventCalendarView({ view, date, today, entries, href, eventHref 
         <div className="text-[13px] text-text-secondary">
           {`${list.filter((e) => e.phase !== "cancelled").length} event(s) · ${totalPax(list)} pax in total`}
         </div>
-        {list.length === 0 ? <div className="rounded-xl border border-border bg-surface px-5 py-10 text-center text-[14px] text-text-muted">No events on this day.</div> : list.map((e) => <EntryCard key={e.key} e={e} eventHref={eventHref} />)}
+        {list.length === 0 ? <div className="rounded-xl border border-border bg-surface px-5 py-10 text-center text-[14px] text-text-muted">No events on this day.</div> : list.map((e) => <EntryCard key={e.key} e={e} eventHref={eventHref} canDelete={adminCompanyIds.includes(e.companyId)} query={query} />)}
       </div>
     );
   }
@@ -173,7 +192,7 @@ export function EventCalendarView({ view, date, today, entries, href, eventHref 
           </div>
           <div className="flex flex-col gap-2">
             {(byDate.get(d) ?? []).map((e) => (
-              <EntryCard key={e.key} e={e} eventHref={eventHref} />
+              <EntryCard key={e.key} e={e} eventHref={eventHref} canDelete={adminCompanyIds.includes(e.companyId)} query={query} />
             ))}
           </div>
         </section>

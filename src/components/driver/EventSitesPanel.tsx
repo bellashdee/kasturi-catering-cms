@@ -54,7 +54,7 @@ export function EventSitesPanel({ sites, companies, knownLocations }: { sites: S
       <div>
         <div className="text-[15px] font-bold text-text">Event locations on the map</div>
         <p className="mt-1 text-[13px] text-text-secondary">
-          The first time an event location is used it is looked up on the map automatically. If a driver or part-timer at the venue is told they are too far away, set the exact point here (stand at the venue and use your own position, or paste coordinates or a Google Maps link).
+          The first time an event location is used it is looked up on the map automatically. If a driver or foreign staff member at the venue is told they are too far away, set the exact point here (stand at the venue and use your own position, or paste coordinates or a Google Maps link).
         </p>
       </div>
 

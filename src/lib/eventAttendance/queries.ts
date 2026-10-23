@@ -1,15 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
-import type { StaffType } from "@/lib/eventAttendance/rules";
 
 type DB = SupabaseClient<Database>;
 
-export async function listEventAttendance(supabase: DB, companyIds: string[], filters: { staffType: StaffType; date?: string; name?: string }) {
+export async function listEventAttendance(supabase: DB, companyIds: string[], filters: { date?: string; name?: string }) {
   let query = supabase
     .from("event_attendance")
     .select("*, companies(name), event_sites(source)")
     .in("company_id", companyIds)
-    .eq("staff_type", filters.staffType)
     .order("attendance_date", { ascending: false })
     .order("clock_in_time", { ascending: false })
     .limit(500);

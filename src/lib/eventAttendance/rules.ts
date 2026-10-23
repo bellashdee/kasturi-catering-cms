@@ -16,12 +16,8 @@ export function slugForCompany(companyId: string): string | null {
   return Object.entries(EVENT_CLOCK_COMPANIES).find(([, c]) => c.id === companyId)?.[0] ?? null;
 }
 
-/** Only the staff on duty at an event clock in and out here (part-timers are not part of this). */
-export type StaffType = "driver";
-
-export const STAFF_TYPE_LABEL: Record<StaffType, string> = {
-  driver: "Staff on event duty (drivers)",
-};
+/** The staff on duty at an event who clock in and out: the drivers and the foreign staff (part-timers are not part of this). */
+export type StaffType = "driver" | "foreign_staff";
 
 export type LatLng = { latitude: number; longitude: number };
 

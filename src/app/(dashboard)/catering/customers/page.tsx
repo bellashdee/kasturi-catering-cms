@@ -6,6 +6,7 @@ import { resolveCompanyScope } from "@/lib/companyScope";
 import { listCustomersWithHistory } from "@/lib/catering/queries";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SearchBox } from "@/components/SearchBox";
+import { CateringSubNav } from "@/components/catering/CateringSubNav";
 
 export default async function CateringCustomersPage({
   searchParams,
@@ -46,10 +47,10 @@ export default async function CateringCustomersPage({
 
   return (
     <div className="flex flex-col gap-5">
+      <CateringSubNav />
       <div className="flex items-center justify-between">
         <div>
-          <Link href={`/catering${query}`} className="text-[12.5px] font-semibold text-text-secondary">← Back to Events</Link>
-          <h1 className="mt-1 text-[22px] font-extrabold text-text">Customer Database</h1>
+          <h1 className="text-[22px] font-extrabold text-text">Customer Database</h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">
             {customers.length} customer{customers.length === 1 ? "" : "s"}
             {records.length !== customers.length ? ` (${records.length} company records)` : ""}

@@ -5,18 +5,20 @@ import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { todayInMalaysia } from "@/lib/format";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
-import { KitchenSubNav } from "@/components/kitchen/KitchenSubNav";
-import { EventCalendarView } from "@/components/kitchen/EventCalendarView";
+import { CateringSubNav } from "@/components/catering/CateringSubNav";
+import { CalendarUndoBanner } from "@/components/catering/CalendarUndoBanner";
+import { EventCalendarView } from "@/components/catering/EventCalendarView";
 import { CALENDAR_VIEWS, PHASE_LABEL, addDays, dateLabel, loadCalendarEntries, monthStart, rangeOf, shiftMonth, startOfWeek, type CalendarView } from "@/lib/catering/calendar";
 
 const VIEW_LABEL: Record<CalendarView, string> = { month: "Month", week: "Week", day: "Day", list: "Upcoming" };
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
- * Event calendar for the kitchen: confirmed events and tentative bookings (enquiry / quoted) look different; cancelled events are
- * hidden unless asked for. The same events as the Catering module, shown by month, week, day and as an upcoming list.
+ * Event calendar of Catering: a quotation request from a sales agent appears here as soon as it comes in, then the event it becomes
+ * (tentative while it is an enquiry / quoted, confirmed afterwards). Cancelled events are hidden unless asked for. Every entry can be
+ * edited (save / cancel), cancelled (with undo) and deleted from here. Shown by month, week, day and as an upcoming list.
  */
-export default async function KitchenCalendarPage({ searchParams }: { searchParams: Promise<{ company?: string; view?: string; date?: string; tentative?: string; cancelled?: string }> }) {
+export default async function CateringCalendarPage({ searchParams }: { searchParams: Promise<{ company?: string; view?: string; date?: string; tentative?: string; cancelled?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
@@ -26,6 +28,14 @@ export default async function KitchenCalendarPage({ searchParams }: { searchPara
   const sp = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, sp.company);
   if (targetCompanyIds.length === 0) return <EmptyRow text="You don't have access to any company yet." />;
+  const adminFlags = await Promise.all(
+    targetCompanyIds.map(async (id) => {
+      const { data } = await supabase.rpc("user_is_company_admin", { target_company_id: id });
+      return [id, data === true] as const;
+    }),
+  );
+  const adminCompanyIds = adminFlags.filter(([, isAdmin]) => isAdmin).map(([id]) => id);
+  const query = sp.company ? `?company=${sp.company}` : "";
 
   const today = todayInMalaysia();
   const view: CalendarView = CALENDAR_VIEWS.includes(sp.view as CalendarView) ? (sp.view as CalendarView) : "month";
@@ -49,7 +59,7 @@ export default async function KitchenCalendarPage({ searchParams }: { searchPara
       if (val === undefined) q.delete(k);
       else q.set(k, val);
     }
-    return `/kitchen/calendar?${q.toString()}`;
+    return `/catering/calendar?${q.toString()}`;
   };
   const eventHref = (id: string) => `/catering/${id}${sp.company ? `?company=${sp.company}` : ""}`;
 
@@ -66,17 +76,20 @@ export default async function KitchenCalendarPage({ searchParams }: { searchPara
 
   const confirmed = entries.filter((e) => e.phase === "confirmed").length;
   const tentative = entries.filter((e) => e.phase === "tentative").length;
+  const requests = entries.filter((e) => e.phase === "request").length;
   const alerts = entries.filter((e) => e.alert).length;
   const btn = "rounded-lg border border-border-strong bg-surface px-3 py-2 text-[13px] font-semibold text-text hover:bg-surface-alt";
 
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-[22px] font-extrabold text-text">Kitchen</h1>
-        <p className="mt-0.5 text-[13px] text-text-secondary">Event Calendar — confirmed events and tentative bookings, by month, week and day</p>
+        <h1 className="text-[22px] font-extrabold text-text">Catering Events</h1>
+        <p className="mt-0.5 text-[13px] text-text-secondary">Event Calendar — quotation requests, tentative bookings and confirmed events, by month, week and day</p>
       </div>
 
-      <KitchenSubNav />
+      <CateringSubNav />
+
+      <CalendarUndoBanner />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -103,7 +116,11 @@ export default async function KitchenCalendarPage({ searchParams }: { searchPara
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] text-text-secondary">
         <span className="font-semibold text-text">{`${confirmed} confirmed`}</span>
         <span>{`${tentative} tentative`}</span>
+        <span>{`Quotation requests waiting: ${requests}`}</span>
         {alerts > 0 && <span className="font-bold text-danger">{`⚠ ${alerts} need attention`}</span>}
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-3 rounded-sm border-l-[3px] border-dotted border-info bg-info-bg/60" /> {PHASE_LABEL.request}
+        </span>
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-3 w-3 rounded-sm border-l-[3px] border-success bg-success-bg" /> {PHASE_LABEL.confirmed}
         </span>
@@ -121,7 +138,7 @@ export default async function KitchenCalendarPage({ searchParams }: { searchPara
         </Link>
       </div>
 
-      <EventCalendarView view={view} date={date} today={today} entries={entries} href={(v, d) => params(v, d)} eventHref={eventHref} />
+      <EventCalendarView view={view} date={date} today={today} entries={entries} href={(v, d) => params(v, d)} eventHref={eventHref} adminCompanyIds={adminCompanyIds} query={query} />
     </div>
   );
 }

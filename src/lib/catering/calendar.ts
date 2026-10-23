@@ -1,13 +1,17 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
+import { dayPax, type EventDay } from "@/lib/catering/days";
 
 type DB = SupabaseClient<Database>;
 
 export type CalendarView = "month" | "week" | "day" | "list";
 export const CALENDAR_VIEWS: CalendarView[] = ["month", "week", "day", "list"];
 
-/** How an event is shown: a tentative booking (enquiry / quoted), a confirmed one, a finished one, or a cancelled one. */
-export type EventPhase = "tentative" | "confirmed" | "finished" | "cancelled";
+/**
+ * How an entry is shown: a quotation request from a sales agent that is not yet an event ("request"), a tentative booking
+ * (enquiry / quoted), a confirmed event, a finished one, or a cancelled one.
+ */
+export type EventPhase = "request" | "tentative" | "confirmed" | "finished" | "cancelled";
 
 export function phaseOf(status: string): EventPhase {
   if (status === "cancelled") return "cancelled";
@@ -17,6 +21,7 @@ export function phaseOf(status: string): EventPhase {
 }
 
 export const PHASE_LABEL: Record<EventPhase, string> = {
+  request: "Quotation request (not approved yet)",
   tentative: "Tentative (enquiry / quoted)",
   confirmed: "Confirmed",
   finished: "Delivered / completed",
@@ -26,7 +31,13 @@ export const PHASE_LABEL: Record<EventPhase, string> = {
 export type CalendarEntry = {
   /** event id + day, so an event with several days is several entries */
   key: string;
+  kind: "event" | "request";
   eventId: string;
+  /** the quotation request, for an entry that is not an event yet */
+  requestId: string | null;
+  /** the catering_event_days row of this entry, when the event has separate days */
+  dayId: string | null;
+  companyId: string;
   eventName: string;
   status: string;
   phase: EventPhase;
@@ -38,11 +49,15 @@ export type CalendarEntry = {
   venue: string | null;
   pic: string | null;
   pax: number;
+  /** a day with a second service type has two pax numbers: its total cannot be edited in one box */
+  twoServices: boolean;
   mealTypes: string[];
   menu: string | null;
   /** 1-based number of the day and the number of days of a multi-day event */
   dayNumber: number | null;
   dayCount: number;
+  /** the latest quotation of the event (accepted before sent before draft) */
+  quotation: { number: string; status: string } | null;
   /** An urgent preparation alert, when there is one. */
   alert: string | null;
 };
@@ -99,15 +114,19 @@ export function dateLabel(iso: string, opts: Intl.DateTimeFormatOptions): string
   return new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", ...opts }).format(new Date(`${iso}T00:00:00Z`));
 }
 
+const QUOTATION_RANK: Record<string, number> = { accepted: 4, sent: 3, draft: 2, rejected: 1 };
+
 /**
  * The calendar entries of a date range. A multi-day event gives one entry per day (with that day's pax, meals and times);
- * an event without separate days gives one entry on its date. Nothing is invented: a missing time or menu stays empty.
+ * an event without separate days gives one entry on its date. A quotation request from a sales agent that has not been
+ * approved yet is shown too (as a request), so a new request is on the calendar as soon as it comes in. Nothing is invented:
+ * a missing time or menu stays empty.
  */
 export async function loadCalendarEntries(supabase: DB, companyIds: string[], start: string, end: string, today: string): Promise<CalendarEntry[]> {
   if (companyIds.length === 0) return [];
-  const eventSelect = "id, event_name, status, location, pic_name, pax_count, event_date, event_time, setup_time, meal_types, menu_description, company_id, companies(name)";
+  const eventSelect = "id, event_name, status, location, pic_name, pax_count, event_date, event_time, setup_time, meal_types, menu_description, company_id, second_service_type, service_pax, companies(name)";
 
-  const [{ data: inRange, error: e1 }, { data: dayRows, error: e2 }] = await Promise.all([
+  const [{ data: inRange, error: e1 }, { data: dayRows, error: e2 }, { data: requests, error: e3 }] = await Promise.all([
     supabase.from("catering_events").select(eventSelect).in("company_id", companyIds).gte("event_date", start).lte("event_date", end),
     supabase
       .from("catering_event_days")
@@ -115,9 +134,11 @@ export async function loadCalendarEntries(supabase: DB, companyIds: string[], st
       .in("company_id", companyIds)
       .gte("day_date", start)
       .lte("day_date", end),
+    supabase.from("quotation_requests").select("id, company_id, event_name, location, pic_name, days, companies(name)").in("company_id", companyIds).eq("status", "pending"),
   ]);
   if (e1) throw e1;
   if (e2) throw e2;
+  if (e3) throw e3;
 
   // events that have separate days (those days are the entries); the others are shown on their own date
   const candidateIds = (inRange ?? []).map((e) => e.id);
@@ -140,7 +161,11 @@ export async function loadCalendarEntries(supabase: DB, companyIds: string[], st
       const dates = order.get(d.catering_event_id) ?? [];
       entries.push({
         key: `${ev.id}:${d.day_date}`,
+        kind: "event",
         eventId: ev.id,
+        requestId: null,
+        dayId: d.id,
+        companyId: ev.company_id,
         eventName: ev.event_name,
         status: ev.status,
         phase: phaseOf(ev.status),
@@ -151,10 +176,12 @@ export async function loadCalendarEntries(supabase: DB, companyIds: string[], st
         venue: ev.location,
         pic: ev.pic_name,
         pax: (d.service_pax ?? 0) + (d.second_service_type ? d.second_service_pax ?? 0 : 0),
+        twoServices: !!d.second_service_type,
         mealTypes: d.meal_types ?? [],
         menu: d.menu_details || ev.menu_description,
         dayNumber: dates.indexOf(d.day_date) + 1 || null,
         dayCount: countByEvent.get(d.catering_event_id) ?? 1,
+        quotation: null,
         alert: null,
       });
     }
@@ -163,7 +190,11 @@ export async function loadCalendarEntries(supabase: DB, companyIds: string[], st
     if (withDays.has(ev.id)) continue;
     entries.push({
       key: `${ev.id}:${ev.event_date}`,
+      kind: "event",
       eventId: ev.id,
+      requestId: null,
+      dayId: null,
+      companyId: ev.company_id,
       eventName: ev.event_name,
       status: ev.status,
       phase: phaseOf(ev.status),
@@ -174,12 +205,59 @@ export async function loadCalendarEntries(supabase: DB, companyIds: string[], st
       venue: ev.location,
       pic: ev.pic_name,
       pax: ev.pax_count ?? 0,
+      twoServices: !!ev.second_service_type,
       mealTypes: ev.meal_types ?? [],
       menu: ev.menu_description,
       dayNumber: null,
       dayCount: 1,
+      quotation: null,
       alert: null,
     });
+  }
+
+  // quotation requests that no one has approved yet: one entry per requested day
+  for (const r of requests ?? []) {
+    const days = (Array.isArray(r.days) ? r.days : []) as unknown as EventDay[];
+    days.forEach((d, i) => {
+      if (!d.dayDate || d.dayDate < start || d.dayDate > end) return;
+      entries.push({
+        key: `req:${r.id}:${d.dayDate}`,
+        kind: "request",
+        eventId: "",
+        requestId: r.id,
+        dayId: null,
+        companyId: r.company_id,
+        eventName: r.event_name,
+        status: "request",
+        phase: "request",
+        companyName: r.companies?.name ?? "",
+        date: d.dayDate,
+        eventTime: d.eventTime ?? "",
+        setupTime: d.setupTime ?? "",
+        venue: r.location,
+        pic: r.pic_name,
+        pax: dayPax(d),
+        twoServices: !!d.secondServiceType,
+        mealTypes: d.mealTypes ?? [],
+        menu: d.menuDetails ?? null,
+        dayNumber: days.length > 1 ? i + 1 : null,
+        dayCount: days.length,
+        quotation: null,
+        alert: null,
+      });
+    });
+  }
+
+  // the quotation of each event
+  const eventIds = Array.from(new Set(entries.filter((e) => e.kind === "event").map((e) => e.eventId)));
+  if (eventIds.length > 0) {
+    const { data: quotes } = await supabase.from("quotations").select("catering_event_id, quotation_number, status").in("catering_event_id", eventIds);
+    const best = new Map<string, { number: string; status: string }>();
+    for (const q of quotes ?? []) {
+      const cur = best.get(q.catering_event_id);
+      if (!cur || (QUOTATION_RANK[q.status] ?? 0) > (QUOTATION_RANK[cur.status] ?? 0)) best.set(q.catering_event_id, { number: q.quotation_number, status: q.status });
+    }
+    for (const e of entries) if (e.kind === "event") e.quotation = best.get(e.eventId) ?? null;
   }
 
   // urgent preparation alerts: a confirmed event in the next 3 days without a kitchen plan (production order) or without a time

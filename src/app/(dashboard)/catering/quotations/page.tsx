@@ -9,6 +9,7 @@ import { formatCurrency } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { QuotationActions } from "@/components/catering/QuotationActions";
+import { CateringSubNav } from "@/components/catering/CateringSubNav";
 
 function quotationTone(status: string): "success" | "warning" | "danger" | "neutral" {
   if (status === "accepted") return "success";
@@ -44,6 +45,8 @@ export default async function QuotationsPage({
         <h1 className="text-[22px] font-extrabold text-text">Quotations</h1>
         <p className="mt-0.5 text-[13px] text-text-secondary">Across every catering event you can access.</p>
       </div>
+
+      <CateringSubNav />
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {quotations.length === 0 ? (
