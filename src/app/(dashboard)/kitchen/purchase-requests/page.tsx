@@ -5,12 +5,13 @@ import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listPurchaseRequests } from "@/lib/kitchen/queries";
 import { PURCHASE_REQUEST_STATUS_LABEL } from "@/lib/kitchen/constants";
-import { formatMalaysiaDate } from "@/lib/format";
+import { formatMalaysiaDate, formatPrice } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { KitchenSubNav } from "@/components/kitchen/KitchenSubNav";
 import { PurchaseRequestActions } from "@/components/kitchen/PurchaseRequestActions";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
+import { DeletePurchaseOrderButton } from "@/components/procurement/DeletePurchaseOrderButton";
 
 function statusTone(status: string): "success" | "warning" | "danger" | "info" {
   if (status === "completed") return "success";
@@ -40,6 +41,13 @@ export default async function PurchaseRequestsPage({
   }
 
   const requests = await listPurchaseRequests(supabase, targetCompanyIds);
+  const { data: menuOrders } = await supabase
+    .from("purchase_orders")
+    .select("id, po_number, order_date, status, total_amount, source_events, suppliers(name), companies(name), purchase_order_items(id)")
+    .in("company_id", targetCompanyIds)
+    .not("source_events", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(100);
 
   return (
     <div className="flex flex-col gap-5">
@@ -49,8 +57,11 @@ export default async function PurchaseRequestsPage({
           <p className="mt-0.5 text-[13px] text-text-secondary">{requests.length} purchase request{requests.length === 1 ? "" : "s"}</p>
         </div>
         <div className="flex flex-wrap gap-2.5">
-          <Link href={`/kitchen/purchase-requests/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
-            + New Purchase Request
+          <Link href={`/kitchen/purchase-requests/new${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text">
+            + Single item
+          </Link>
+          <Link href={`/kitchen/purchase-requests/from-menu${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
+            + New Purchase Request from an event menu
           </Link>
         </div>
       </div>
@@ -58,7 +69,30 @@ export default async function PurchaseRequestsPage({
       <KitchenSubNav />
 
       <div className="rounded-xl border border-border bg-surface px-4 py-3 text-[14px] text-text-secondary shadow-sm">
-        <b className="text-text">Build from menus:</b> 1. Choose the menu (add more menus if needed) · 2. Enter how many pax to cook · 3. The ingredient list is worked out · 4. Items and quantities are grouped by supplier, ready to order.
+        <b className="text-text">From an event menu:</b> 1. Choose the event(s) · 2. The menu gives the ingredients and quantities (from the recipes and the pax) · 3. Choose the supplier item of each ingredient, at the latest price of that supplier · 4. One purchase order is made for each supplier.
+      </div>
+
+      <div className="rounded-xl border border-border bg-surface shadow-sm">
+        <div className="border-b border-border px-5 py-3 text-[13px] font-bold text-text">Purchase orders made from event menus</div>
+        {(menuOrders ?? []).length === 0 ? (
+          <EmptyRow text="No purchase order made from an event menu yet." />
+        ) : (
+          (menuOrders ?? []).map((po) => (
+            <div key={po.id} className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3 text-[13.5px] last:border-b-0">
+              <div className="min-w-0">
+                <div className="font-semibold text-text">{`${po.po_number} · ${po.suppliers?.name ?? "—"}`}</div>
+                <div className="truncate text-[12px] text-text-muted">{`${po.companies?.name ?? ""} · ${po.order_date} · ${po.purchase_order_items?.length ?? 0} item(s) · ${formatPrice(Number(po.total_amount))} · ${po.source_events}`}</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <StatusBadge tone={po.status === "draft" ? "warning" : "info"}>{po.status}</StatusBadge>
+                <Link href={`/supplier-procurement/orders/${po.id}${query}`} className="rounded-md border border-border-strong bg-white px-2.5 py-1 text-[12px] font-semibold text-text hover:border-primary hover:text-primary">
+                  Open / Edit
+                </Link>
+                <DeletePurchaseOrderButton poId={po.id} poNumber={po.po_number} listHref={`/kitchen/purchase-requests${query}`} />
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">

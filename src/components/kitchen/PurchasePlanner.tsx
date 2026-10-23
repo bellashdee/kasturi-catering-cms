@@ -1,0 +1,431 @@
+"use client";
+
+import { useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { errorMessage } from "@/lib/actionResult";
+import { calculate, normName, type StockLookup } from "@/lib/kitchenAi/calc";
+import { display, formatQty, type Base } from "@/lib/kitchenAi/units";
+import type { KItem, KSession, KState, RecipeData } from "@/lib/kitchenAi/types";
+import { loadEventPlan, loadRecipes, createPlannedPurchaseOrders, type EventPlan } from "@/lib/purchasePlanner/actions";
+import { quantityInUom, rankSupplierItems, type SupplierItemOption } from "@/lib/purchasePlanner/shared";
+import type { PlannerEvent } from "@/lib/purchasePlanner/data";
+import { formatPrice, formatCurrency } from "@/lib/format";
+
+const inputClass = "h-9 w-full rounded-lg border border-border-strong bg-white px-2 text-[13px] outline-none focus:border-primary";
+const norm = (s: string) => s.trim().replace(/\s+/g, " ").toUpperCase();
+
+type RowState = { optionKey?: string; qty?: string; price?: string; skip?: boolean };
+
+type Created = { id: string; poNumber: string; supplierName: string; total: number; items: number }[];
+
+/** Searchable pick of a supplier item: the ingredient's likely matches first, or type to search every item of every supplier. */
+function ItemPicker({ ingredient, selected, suggestions, all, onPick }: { ingredient: string; selected: SupplierItemOption | null; suggestions: SupplierItemOption[]; all: SupplierItemOption[]; onPick: (key: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState("");
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const list = useMemo(() => {
+    const words = norm(typed).split(" ").filter(Boolean);
+    if (words.length === 0) return suggestions;
+    return all.filter((o) => words.every((w) => norm(`${o.description} ${o.supplierName}`).includes(w))).slice(0, 60);
+  }, [typed, suggestions, all]);
+
+  return (
+    <div className="relative">
+      <button type="button" onClick={() => setOpen((o) => !o)} className={`${inputClass} flex items-center justify-between gap-2 text-left`} aria-label={`Supplier item for ${ingredient}`}>
+        <span className="truncate">{selected ? `${selected.description} · ${selected.supplierName}` : <span className="text-text-muted">Search and choose the supplier item</span>}</span>
+        <span aria-hidden="true" className="text-text-muted">▾</span>
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-30 mt-1 w-[26rem] max-w-[90vw] rounded-lg border border-border-strong bg-surface p-2 shadow-lg" onBlur={() => { closeTimer.current = setTimeout(() => setOpen(false), 150); }} onFocus={() => { if (closeTimer.current) clearTimeout(closeTimer.current); }}>
+          <input autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Search item or supplier..." className={inputClass} />
+          <ul className="mt-1.5 max-h-64 overflow-y-auto">
+            {list.length === 0 && <li className="px-2 py-2 text-[12.5px] text-text-muted">No supplier item found.</li>}
+            {list.map((o) => (
+              <li
+                key={o.key}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onPick(o.key);
+                  setOpen(false);
+                  setTyped("");
+                }}
+                className={`cursor-pointer rounded-md px-2 py-1.5 hover:bg-info-bg ${selected?.key === o.key ? "bg-info-bg" : ""}`}
+              >
+                <div className="text-[13px] font-semibold text-text">{o.description}</div>
+                <div className="text-[11.5px] text-text-muted">{`${o.supplierName} · ${o.uom || "unit"} · ${formatPrice(o.price)}`}</div>
+              </li>
+            ))}
+          </ul>
+          {typed === "" && <div className="mt-1 px-1 text-[11px] text-text-muted">{suggestions.length > 0 ? "Likely matches. Type to search all items." : "No likely match. Type to search all items."}</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function PurchasePlanner({ companyId, companyName, events, supplierItems, query }: { companyId: string; companyName: string; events: PlannerEvent[]; supplierItems: SupplierItemOption[]; query: string }) {
+  const router = useRouter();
+  const [eventSearch, setEventSearch] = useState("");
+  const [picked, setPicked] = useState<string[]>([]);
+  const [plan, setPlan] = useState<EventPlan | null>(null);
+  const [recipes, setRecipes] = useState<Map<string, RecipeData>>(new Map());
+  const [pax, setPax] = useState<Record<string, string>>({});
+  const [dishRecipe, setDishRecipe] = useState<Record<string, string | null>>({});
+  const [deduct, setDeduct] = useState(false);
+  const [rowState, setRowState] = useState<Record<string, RowState>>({});
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [created, setCreated] = useState<Created | null>(null);
+
+  const shownEvents = useMemo(() => {
+    const words = norm(eventSearch).split(" ").filter(Boolean);
+    return events.filter((e) => words.every((w) => norm(`${e.name} ${e.date}`).includes(w)));
+  }, [events, eventSearch]);
+
+  async function readMenus() {
+    setBusy(true);
+    setError(null);
+    setCreated(null);
+    try {
+      const r = await loadEventPlan(companyId, picked);
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      setPlan(r);
+      setRecipes(new Map(r.recipes.map((x) => [x.id, x])));
+      setPax(Object.fromEntries(r.sessions.map((s) => [s.id, s.pax !== null ? String(s.pax) : ""])));
+      setDishRecipe(Object.fromEntries(r.sessions.flatMap((s) => s.dishes.map((d) => [d.id, d.recipeId] as const))));
+      setRowState({});
+    } catch (err) {
+      setError(errorMessage(err, "Could not read the menu. Please try again."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function chooseRecipe(dishId: string, recipeId: string) {
+    const id = recipeId || null;
+    setDishRecipe((d) => ({ ...d, [dishId]: id }));
+    if (id && !recipes.has(id)) {
+      try {
+        const r = await loadRecipes([id]);
+        if (r.ok) setRecipes((m) => new Map([...m, ...r.recipes.map((x) => [x.id, x] as const)]));
+      } catch {
+        setError("Could not read the recipe. Please try again.");
+      }
+    }
+  }
+
+  const stockLookup = useMemo<StockLookup | null>(() => {
+    if (!plan) return null;
+    const byId: StockLookup["byId"] = new Map();
+    const byName: StockLookup["byName"] = new Map();
+    for (const s of plan.stock) {
+      const info = { name: s.name, qty: s.qty, unit: s.unit };
+      byId.set(s.id, info);
+      byName.set(normName(s.name), info);
+    }
+    return { byId, byName };
+  }, [plan]);
+
+  const calc = useMemo(() => {
+    if (!plan) return null;
+    const sessions: KSession[] = plan.sessions.map((s) => ({
+      id: s.id,
+      name: `${s.eventName} · ${s.name}`,
+      pax: Number(pax[s.id]) > 0 ? Number(pax[s.id]) : null,
+      paxSource: "event",
+      items: s.dishes.map(
+        (d): KItem => ({ id: d.id, name: d.name, recipeId: dishRecipe[d.id] ?? null, recipeBy: dishRecipe[d.id] === d.recipeId && d.auto ? "auto" : "user", candidates: d.candidates, estimate: null, origin: "event", note: null }),
+      ),
+    }));
+    const state: KState = { version: 1, companyId, companyName, event: null, photoEventName: null, sessions, documentIds: [], unitMode: "auto", mismatches: [], readerIssues: [], view: "ingredients", viewDish: null, stockCompared: false };
+    return calculate(state, recipes, deduct ? stockLookup : null);
+  }, [plan, pax, dishRecipe, recipes, deduct, stockLookup, companyId, companyName]);
+
+  const lines = useMemo(() => {
+    if (!calc) return [];
+    return calc.combined.map((row) => {
+      const key = `${normName(row.name)}|${row.family}|${row.key}`;
+      const base: Base = { qty: row.qty, family: row.family, key: row.key };
+      const known = deduct && row.stock?.known;
+      const needQty = known ? row.shortage ?? 0 : row.qty;
+      const need: Base = { ...base, qty: needQty };
+      const ranked = rankSupplierItems(row.name, supplierItems);
+      return { key, row, need, enough: known && needQty <= 1e-9, ranked };
+    });
+  }, [calc, supplierItems, deduct]);
+
+  const resolved = lines.map((l) => {
+    const st = rowState[l.key] ?? {};
+    const option = st.optionKey !== undefined ? (supplierItems.find((o) => o.key === st.optionKey) ?? null) : (l.ranked[0]?.option ?? null);
+    const auto = option ? quantityInUom(l.need, option.uom) : { qty: null as number | null };
+    const qty = st.qty !== undefined ? Number(st.qty) : auto.qty;
+    const price = st.price !== undefined ? Number(st.price) : (option?.price ?? null);
+    const orderable = !!option && !st.skip && !l.enough && qty !== null && qty > 0 && price !== null && Number.isFinite(price);
+    return { ...l, st, option, autoQty: auto.qty, unitMismatch: !!option && auto.qty === null, qty, price, orderable };
+  });
+
+  const bySupplier = useMemo(() => {
+    const m = new Map<string, { supplierId: string; supplierName: string; items: { itemName: string; quantity: number; unit: string; unitPrice: number }[] }>();
+    for (const r of resolved) {
+      if (!r.orderable || !r.option) continue;
+      const cur = m.get(r.option.supplierId) ?? { supplierId: r.option.supplierId, supplierName: r.option.supplierName, items: [] };
+      cur.items.push({ itemName: r.option.description, quantity: r.qty as number, unit: r.option.uom, unitPrice: r.price as number });
+      m.set(r.option.supplierId, cur);
+    }
+    return Array.from(m.values()).sort((a, b) => a.supplierName.localeCompare(b.supplierName));
+  }, [resolved]);
+
+  const setRow = (key: string, patch: RowState) => setRowState((s) => ({ ...s, [key]: { ...s[key], ...patch } }));
+
+  async function createOrders() {
+    if (!plan) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const names = Array.from(new Set(plan.sessions.map((s) => `${s.eventName} (${s.eventDate})`))).join("; ");
+      const r = await createPlannedPurchaseOrders({ companyId, sourceEvents: names, orders: bySupplier.map((s) => ({ supplierId: s.supplierId, items: s.items })) });
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      setCreated(r.created);
+      router.refresh();
+    } catch (err) {
+      setError(errorMessage(err, "Could not create the purchase orders. Please try again."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const grand = bySupplier.reduce((t, s) => t + s.items.reduce((u, i) => u + i.quantity * i.unitPrice, 0), 0);
+
+  if (created) {
+    return (
+      <div className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-5 shadow-sm">
+        <div className="text-[16px] font-extrabold text-text">{`Purchase orders created (draft): ${created.length}`}</div>
+        <div className="flex flex-col gap-2">
+          {created.map((c) => (
+            <Link key={c.id} href={`/supplier-procurement/orders/${c.id}${query}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-4 py-2.5 text-[13.5px] hover:bg-surface-alt">
+              <span className="font-semibold text-text">{`${c.poNumber} · ${c.supplierName}`}</span>
+              <span className="text-text-secondary">{`Items: ${c.items} · ${formatCurrency(c.total)}`}</span>
+            </Link>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <Link href={`/kitchen/purchase-requests${query}`} className="rounded-lg bg-primary px-4 py-2 text-[13px] font-semibold text-white">
+            Back to Purchase Requests
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      {/* 1. events */}
+      <section className="rounded-xl border border-border bg-surface p-5 shadow-sm">
+        <div className="text-[14.5px] font-extrabold text-text">1. Choose the event(s)</div>
+        <p className="mt-0.5 text-[12.5px] text-text-secondary">Search, then tick the events to buy for. Their menus and pax come from the event order.</p>
+        <input value={eventSearch} onChange={(e) => setEventSearch(e.target.value)} placeholder="Search event name or date..." className={`${inputClass} mt-3 max-w-md`} />
+        <div className="mt-2 max-h-56 overflow-y-auto rounded-lg border border-border">
+          {shownEvents.length === 0 && <div className="px-4 py-3 text-[13px] text-text-muted">No event found.</div>}
+          {shownEvents.map((e) => (
+            <label key={e.id} className="flex cursor-pointer items-center gap-3 border-b border-border px-4 py-2 text-[13px] last:border-b-0 hover:bg-surface-alt">
+              <input type="checkbox" checked={picked.includes(e.id)} onChange={(ev) => setPicked((p) => (ev.target.checked ? [...p, e.id] : p.filter((x) => x !== e.id)))} />
+              <span className="font-semibold text-text">{e.name}</span>
+              <span className="text-text-muted">{`${e.date}${e.pax ? ` · ${e.pax} pax` : ""} · ${e.status}`}</span>
+            </label>
+          ))}
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <button type="button" disabled={busy || picked.length === 0} onClick={readMenus} className="rounded-lg bg-primary px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-50">
+            {busy && !plan ? "Reading..." : plan ? "Read the menus again" : "Read the menu of the selected events"}
+          </button>
+          <span className="text-[12.5px] text-text-muted">{`${picked.length} selected`}</span>
+        </div>
+      </section>
+
+      {error && <div role="alert" className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-[13px] text-danger">{error}</div>}
+
+      {plan && calc && (
+        <>
+          {/* 2. menu */}
+          <section className="rounded-xl border border-border bg-surface p-5 shadow-sm">
+            <div className="text-[14.5px] font-extrabold text-text">2. Menu and pax</div>
+            <p className="mt-0.5 text-[12.5px] text-text-secondary">Check the pax and the recipe of every dish. The ingredients are calculated only from the recipes: (recipe quantity ÷ recipe yield) × pax.</p>
+            <div className="mt-3 flex flex-col gap-4">
+              {plan.sessions.map((s) => (
+                <div key={s.id} className="rounded-lg border border-border p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="text-[13.5px] font-bold text-text">{`${s.eventName} · ${s.name}`}</div>
+                    <label className="flex items-center gap-2 text-[12.5px] font-semibold text-text-secondary">
+                      Pax
+                      <input type="number" min={1} value={pax[s.id] ?? ""} onChange={(e) => setPax((p) => ({ ...p, [s.id]: e.target.value }))} className="h-8 w-24 rounded-md border border-border-strong px-2 text-[13px]" />
+                    </label>
+                  </div>
+                  {s.dishes.length === 0 && <div className="mt-2 text-[12.5px] text-warning">This event has no menu written yet.</div>}
+                  {s.dishes.map((d) => {
+                    const chosen = dishRecipe[d.id];
+                    return (
+                      <div key={d.id} className="mt-2 grid items-center gap-2 sm:grid-cols-[1fr_1.2fr]">
+                        <div className="text-[13px] font-semibold text-text">{d.name}</div>
+                        <select value={chosen ?? ""} onChange={(e) => void chooseRecipe(d.id, e.target.value)} className={`${inputClass} ${chosen ? "" : "border-warning"}`}>
+                          <option value="">No recipe chosen</option>
+                          {d.candidates.length > 0 && (
+                            <optgroup label="Suggested">
+                              {d.candidates.map((c) => <option key={c.recipeId} value={c.recipeId}>{`${c.name} (${Math.round(c.score * 100)}%)`}</option>)}
+                            </optgroup>
+                          )}
+                          <optgroup label="All recipes">
+                            {plan.recipeRefs.map((r) => <option key={r.id} value={r.id}>{`${r.name}${r.hasIngredients ? "" : " (no ingredients yet)"}`}</option>)}
+                          </optgroup>
+                        </select>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+            {calc.needsData.length > 0 && (
+              <div className="mt-3 rounded-lg border border-warning/40 bg-warning-bg px-3 py-2 text-[12.5px] text-text">
+                <b>Not in the list below yet:</b>
+                {calc.needsData.map((n, i) => (
+                  <div key={`${n.itemId}-${i}`}>{`• ${n.itemName} (${n.sessionName}): ${n.reason === "pax" ? "enter the pax" : n.reason === "recipe_empty" ? "its recipe has no ingredients yet" : "Recipe Data Required: choose a recipe"}`}</div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* 3. ingredients and suppliers */}
+          <section className="rounded-xl border border-border bg-surface p-5 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-[14.5px] font-extrabold text-text">3. Ingredients and suppliers</div>
+                <p className="mt-0.5 text-[12.5px] text-text-secondary">For each ingredient, choose the supplier item (search first, then select). The price is the latest price of that supplier; the quantity is worked out in the unit of that supplier.</p>
+              </div>
+              <label className="flex items-center gap-2 text-[12.5px] font-semibold text-text-secondary">
+                <input type="checkbox" checked={deduct} onChange={(e) => setDeduct(e.target.checked)} />
+                Deduct what is already in stock
+              </label>
+            </div>
+
+            {resolved.length === 0 ? (
+              <div className="mt-3 text-[13px] text-text-muted">No ingredients yet: choose the pax and the recipes above.</div>
+            ) : (
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full min-w-[60rem] text-left text-[13px]">
+                  <thead>
+                    <tr className="border-b border-border text-[11px] font-bold uppercase tracking-wide text-text-muted">
+                      <th className="py-2 pr-3">Ingredient</th>
+                      <th className="py-2 pr-3">Needed</th>
+                      <th className="py-2 pr-3 w-[22rem]">Supplier item</th>
+                      <th className="py-2 pr-3">Order qty</th>
+                      <th className="py-2 pr-3">Unit price (RM)</th>
+                      <th className="py-2 pr-3 text-right">Amount</th>
+                      <th className="py-2">Skip</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resolved.map((r) => {
+                      const need = display(r.need);
+                      const total = display({ qty: r.row.qty, family: r.row.family, key: r.row.key });
+                      return (
+                        <tr key={r.key} className={`border-b border-border align-top last:border-b-0 ${r.st.skip || r.enough ? "opacity-60" : ""}`}>
+                          <td className="py-2 pr-3 font-semibold text-text">
+                            {r.row.name}
+                            {r.row.estimateQty > 0 && <div className="text-[11px] font-normal text-warning">Includes an AI estimate</div>}
+                          </td>
+                          <td className="py-2 pr-3 text-text-secondary">
+                            {r.enough ? <span className="text-success">Enough in stock</span> : `${formatQty(need.qty)} ${need.unit}`}
+                            {deduct && r.row.stock?.known && !r.enough && <div className="text-[11px] text-text-muted">{`of ${formatQty(total.qty)} ${total.unit} (stock deducted)`}</div>}
+                            {deduct && r.row.stock && !r.row.stock.known && <div className="text-[11px] text-text-muted">stock not recorded</div>}
+                          </td>
+                          <td className="py-2 pr-3">
+                            <ItemPicker
+                              ingredient={r.row.name}
+                              selected={r.option}
+                              suggestions={r.ranked.map((x) => x.option)}
+                              all={supplierItems}
+                              onPick={(key) => setRowState((s) => ({ ...s, [r.key]: { ...s[r.key], optionKey: key, qty: undefined, price: undefined } }))}
+                            />
+                            {r.option && <div className="mt-0.5 text-[11px] text-text-muted">{`${r.option.uom || "unit"} · last bought ${r.option.date}`}</div>}
+                            {!r.option && <div className="mt-0.5 text-[11px] text-warning">No supplier item matched: search for it.</div>}
+                          </td>
+                          <td className="py-2 pr-3">
+                            <input
+                              type="number"
+                              min={0}
+                              step="any"
+                              value={r.st.qty !== undefined ? r.st.qty : r.autoQty ?? ""}
+                              onChange={(e) => setRow(r.key, { qty: e.target.value })}
+                              disabled={!r.option}
+                              className="h-8 w-24 rounded-md border border-border-strong px-2 text-[13px] disabled:bg-surface-alt"
+                            />
+                            {r.unitMismatch && r.st.qty === undefined && <div className="mt-0.5 w-32 text-[11px] text-warning">{`Sold per ${r.option?.uom || "unit"}: enter the quantity`}</div>}
+                          </td>
+                          <td className="py-2 pr-3">
+                            <input
+                              type="number"
+                              min={0}
+                              step="any"
+                              value={r.st.price !== undefined ? r.st.price : r.option?.price ?? ""}
+                              onChange={(e) => setRow(r.key, { price: e.target.value })}
+                              disabled={!r.option}
+                              className="h-8 w-24 rounded-md border border-border-strong px-2 text-[13px] disabled:bg-surface-alt"
+                            />
+                          </td>
+                          <td className="py-2 pr-3 text-right font-semibold text-text">{r.orderable ? formatPrice((r.qty as number) * (r.price as number)) : "—"}</td>
+                          <td className="py-2">
+                            <input type="checkbox" checked={!!r.st.skip} onChange={(e) => setRow(r.key, { skip: e.target.checked })} aria-label={`Do not order ${r.row.name}`} />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          {/* 4. purchase orders */}
+          <section className="rounded-xl border border-border bg-surface p-5 shadow-sm">
+            <div className="text-[14.5px] font-extrabold text-text">4. Purchase orders by supplier</div>
+            {bySupplier.length === 0 ? (
+              <div className="mt-2 text-[13px] text-text-muted">Nothing to order yet: choose a supplier item and a quantity for at least one ingredient.</div>
+            ) : (
+              <>
+                <div className="mt-3 flex flex-col gap-3">
+                  {bySupplier.map((s) => (
+                    <div key={s.supplierId} className="rounded-lg border border-border">
+                      <div className="flex items-center justify-between border-b border-border bg-surface-alt px-4 py-2 text-[13px] font-bold text-text">
+                        <span>{s.supplierName}</span>
+                        <span>{formatPrice(s.items.reduce((t, i) => t + i.quantity * i.unitPrice, 0))}</span>
+                      </div>
+                      {s.items.map((i, idx) => (
+                        <div key={idx} className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-1.5 text-[12.5px] last:border-b-0">
+                          <span className="text-text">{i.itemName}</span>
+                          <span className="text-text-secondary">{`${formatQty(i.quantity)} ${i.unit} × ${formatPrice(i.unitPrice)} = ${formatPrice(i.quantity * i.unitPrice)}`}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-4">
+                  <button type="button" disabled={busy} onClick={createOrders} className="rounded-lg bg-primary px-5 py-2.5 text-[13.5px] font-semibold text-white disabled:opacity-60">
+                    {busy ? "Creating..." : `Create purchase orders (${bySupplier.length})`}
+                  </button>
+                  <span className="text-[13px] font-semibold text-text">{`Total ${formatPrice(grand)}`}</span>
+                  <span className="text-[12px] text-text-muted">The orders are saved as drafts; you can still edit or delete them.</span>
+                </div>
+              </>
+            )}
+          </section>
+        </>
+      )}
+    </div>
+  );
+}

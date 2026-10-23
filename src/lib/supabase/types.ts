@@ -4606,6 +4606,7 @@ export type Database = {
           id: string
           order_date: string
           po_number: string
+          source_events: string | null
           status: string
           supplier_id: string
           total_amount: number
@@ -4618,6 +4619,7 @@ export type Database = {
           id?: string
           order_date: string
           po_number: string
+          source_events?: string | null
           status?: string
           supplier_id: string
           total_amount?: number
@@ -4630,6 +4632,7 @@ export type Database = {
           id?: string
           order_date?: string
           po_number?: string
+          source_events?: string | null
           status?: string
           supplier_id?: string
           total_amount?: number
