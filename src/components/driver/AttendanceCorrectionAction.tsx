@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { correctAttendance } from "@/lib/driverAttendance/actions";
+import { errorMessage } from "@/lib/actionResult";
 import { fromMalaysiaInputValue, toMalaysiaInputValue } from "@/lib/format";
 
 export function AttendanceCorrectionAction({
@@ -40,17 +41,21 @@ export function AttendanceCorrectionAction({
     setSaving(true);
     setError(null);
     try {
-      await correctAttendance({
+      const result = await correctAttendance({
         attendanceId,
         companyId,
         clockInTime: clockIn ? fromMalaysiaInputValue(clockIn) : null,
         clockOutTime: clockOut ? fromMalaysiaInputValue(clockOut) : null,
         reason,
       });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
       router.refresh();
       setOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save correction.");
+      setError(errorMessage(err, "Could not save correction."));
     } finally {
       setSaving(false);
     }

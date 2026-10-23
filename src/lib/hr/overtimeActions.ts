@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { logTaskAudit } from "@/lib/taskProofs/actions";
 import { todayInMalaysia } from "@/lib/driverAttendance/date";
+import { runAction, type ActionResult } from "@/lib/actionResult";
 import { countedHoursForMonth } from "@/lib/hr/otQueries";
 import {
   OT_DECIDABLE_STATUSES,
@@ -59,7 +60,7 @@ function validate(input: OvertimeInput, submitting: boolean) {
   if (input.normalWorkingHours !== undefined && (!Number.isFinite(input.normalWorkingHours) || input.normalWorkingHours < 0 || input.normalWorkingHours > 24)) {
     throw new Error("Normal working hours must be between 0 and 24.");
   }
-  if (submitting && !input.reason?.trim()) throw new Error("Enter the reason / description for this OT.");
+  if (submitting && !input.reason?.trim()) throw new Error("Enter the reason / description for this OT. For a saved draft, press Edit Draft and fill it in.");
 }
 
 async function assertNoOverlap(supabase: DB, employeeId: string, workDate: string, start: string, end: string, excludeId?: string) {
@@ -122,7 +123,7 @@ export type SaveOvertimeResult = {
  * Save an OT as a draft or submit it. The staff name must be an existing staff record, the hours are always
  * calculated from the start/end times (also enforced by a database trigger), and the submission time is the server clock.
  */
-export async function saveOvertime(input: OvertimeInput, intent: "draft" | "submit", overtimeId?: string): Promise<SaveOvertimeResult> {
+async function saveOvertimeImpl(input: OvertimeInput, intent: "draft" | "submit", overtimeId?: string): Promise<SaveOvertimeResult> {
   const { supabase, userId } = await requireUser();
   const submitting = intent === "submit";
   validate(input, submitting);
@@ -194,15 +195,23 @@ export async function saveOvertime(input: OvertimeInput, intent: "draft" | "subm
   return { id: id!, status, needsApproval, monthlyTotal };
 }
 
+/**
+ * Save or submit an OT. A problem the staff member can fix (no reason, overlapping OT, no permission ...) comes back as
+ * `{ ok: false, error }` so the real message is shown; it is never thrown, because production hides thrown messages.
+ */
+export async function saveOvertime(input: OvertimeInput, intent: "draft" | "submit", overtimeId?: string): Promise<ActionResult<SaveOvertimeResult>> {
+  return runAction(() => saveOvertimeImpl(input, intent, overtimeId), "Could not save the OT. Please try again.");
+}
+
 /** Submit a saved draft (re-checks the monthly limit at the moment of submission). */
-export async function submitOvertime(overtimeId: string): Promise<SaveOvertimeResult> {
+async function submitOvertimeImpl(overtimeId: string): Promise<SaveOvertimeResult> {
   const { supabase } = await requireUser();
   const { data: rec } = await supabase.from("overtime_records").select("*").eq("id", overtimeId).maybeSingle();
   if (!rec) throw new Error("OT record not found.");
   if (rec.status !== "draft") throw new Error("Only a draft can be submitted.");
   if (!rec.ot_start_time || !rec.ot_end_time) throw new Error("This draft has no start and end time.");
 
-  return saveOvertime(
+  return saveOvertimeImpl(
     {
       employeeId: rec.employee_id,
       workDate: rec.work_date,
@@ -217,8 +226,12 @@ export async function submitOvertime(overtimeId: string): Promise<SaveOvertimeRe
   );
 }
 
+export async function submitOvertime(overtimeId: string): Promise<ActionResult<SaveOvertimeResult>> {
+  return runAction(() => submitOvertimeImpl(overtimeId), "Could not submit the OT. Please try again.");
+}
+
 /** Records are never deleted: a staff member (or admin) cancels an OT that has not been approved or rejected yet. */
-export async function cancelOvertime(overtimeId: string, reason?: string) {
+async function cancelOvertimeImpl(overtimeId: string, reason?: string) {
   const { supabase, userId } = await requireUser();
   const { data: rec } = await supabase.from("overtime_records").select("id, status, employee_id, company_id, approval_id").eq("id", overtimeId).maybeSingle();
   if (!rec) throw new Error("OT record not found.");
@@ -234,11 +247,15 @@ export async function cancelOvertime(overtimeId: string, reason?: string) {
   refresh(rec.employee_id, overtimeId);
 }
 
+export async function cancelOvertime(overtimeId: string, reason?: string): Promise<ActionResult> {
+  return runAction(async () => { await cancelOvertimeImpl(overtimeId, reason); return {}; }, "Could not cancel the OT. Please try again.");
+}
+
 /**
  * Manager decision. Recorded with the manager, the time, the decision, the approved hours and remarks.
  * A manager can never decide their own OT (also enforced by a database trigger).
  */
-export async function decideOvertime(overtimeId: string, decision: "approved" | "rejected", options: { approvedHours?: number; remarks?: string }) {
+async function decideOvertimeImpl(overtimeId: string, decision: "approved" | "rejected", options: { approvedHours?: number; remarks?: string }) {
   const { supabase, userId } = await requireUser();
   const { data: rec } = await supabase.from("overtime_records").select("*, employees(user_id)").eq("id", overtimeId).maybeSingle();
   if (!rec) throw new Error("OT record not found.");
@@ -276,6 +293,10 @@ export async function decideOvertime(overtimeId: string, decision: "approved" | 
     reason: remarks ?? undefined,
   });
   refresh(rec.employee_id, overtimeId);
+}
+
+export async function decideOvertime(overtimeId: string, decision: "approved" | "rejected", options: { approvedHours?: number; remarks?: string }): Promise<ActionResult> {
+  return runAction(async () => { await decideOvertimeImpl(overtimeId, decision, options); return {}; }, "Could not save the decision. Please try again.");
 }
 
 export type OvertimePreview = {

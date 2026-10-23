@@ -27,7 +27,7 @@ export async function listAttendance(
 export async function listActiveDriversForCompanies(supabase: DB, companyIds: string[]) {
   const { data, error } = await supabase
     .from("driver_profiles")
-    .select("id, employee_id, user_id, expected_clock_in_time, company_id, employees(full_name, status), companies(name)")
+    .select("id, employee_id, user_id, expected_clock_in_time, company_id, employees(full_name, status, user_id), companies(name)")
     .in("company_id", companyIds);
   if (error) throw error;
   return (data ?? []).filter((d) => d.employees?.status === "active");

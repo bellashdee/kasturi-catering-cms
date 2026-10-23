@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { uploadDocument } from "@/lib/documents/upload";
+import { errorMessage } from "@/lib/actionResult";
+import { formatMalaysiaDateTime } from "@/lib/format";
 import { clockIn, clockOut } from "@/lib/driverAttendance/actions";
 import { getCurrentPosition } from "@/lib/driverAttendance/geo";
 
@@ -49,18 +52,27 @@ export function ClockInOutWidget({
       const longitude = position.coords.longitude;
 
       const doc = await uploadDocument({ companyId, module: "driver-logistics", fileType: "photo", file: photo });
-      if (mode === "in") {
-        await clockIn({ companyId, driverProfileId: selectedId, documentId: doc.id, remarks: remarks || undefined, latitude, longitude });
-        setSuccess("Clocked in successfully.");
-      } else {
-        await clockOut({ companyId, driverProfileId: selectedId, documentId: doc.id, remarks: remarks || undefined, latitude, longitude });
-        setSuccess("Clocked out successfully.");
+      const input = { companyId, driverProfileId: selectedId, documentId: doc.id, remarks: remarks || undefined, latitude, longitude };
+      const result = mode === "in" ? await clockIn(input) : await clockOut(input);
+      if (!result.ok) {
+        // nothing was saved: the photo of this failed attempt is removed again so it does not pile up
+        try {
+          const supabase = createClient();
+          await supabase.storage.from("documents").remove([doc.storage_path]);
+          await supabase.from("documents").delete().eq("id", doc.id);
+        } catch {
+          /* the clean-up is best effort */
+        }
+        setError(result.error);
+        return;
       }
+      // shown only now: the database has confirmed the record
+      setSuccess(mode === "in" ? `Clocked in successfully at ${formatMalaysiaDateTime(result.at)} (Malaysia time).` : `Clocked out successfully at ${formatMalaysiaDateTime(result.at)} (Malaysia time).`);
       setPhoto(null);
       setRemarks("");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save attendance.");
+      setError(errorMessage(err, "Could not save attendance."));
     } finally {
       setSaving(false);
     }

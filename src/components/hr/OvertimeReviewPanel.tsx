@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { decideOvertime } from "@/lib/hr/overtimeActions";
+import { errorMessage } from "@/lib/actionResult";
 
 /** Manager decision: approve (optionally fewer hours than requested) or reject, with remarks. */
 export function OvertimeReviewPanel({ overtimeId, requestedHours }: { overtimeId: string; requestedHours: number }) {
@@ -16,10 +17,11 @@ export function OvertimeReviewPanel({ overtimeId, requestedHours }: { overtimeId
     setBusy(decision);
     setError(null);
     try {
-      await decideOvertime(overtimeId, decision, { approvedHours: Number(approvedHours), remarks });
-      router.refresh();
+      const result = await decideOvertime(overtimeId, decision, { approvedHours: Number(approvedHours), remarks });
+      if (!result.ok) setError(result.error);
+      else router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the decision.");
+      setError(errorMessage(err, "Could not save the decision."));
     } finally {
       setBusy(null);
     }

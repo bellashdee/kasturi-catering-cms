@@ -63,7 +63,7 @@ export default async function DriverAttendancePage({
   );
   const adminCompanyIds = new Set(adminFlags.filter(([, isAdmin]) => isAdmin).map(([id]) => id));
   const clockDrivers = driversInSelectable
-    .filter((d) => adminCompanyIds.has(d.company_id) || d.user_id === session.userId)
+    .filter((d) => adminCompanyIds.has(d.company_id) || d.user_id === session.userId || d.employees?.user_id === session.userId)
     .map((d) => ({ profileId: d.id, name: d.employees?.full_name ?? "", companyId: d.company_id }))
     .sort((a, b) => a.name.localeCompare(b.name));
 

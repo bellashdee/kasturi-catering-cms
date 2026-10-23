@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cancelOvertime, submitOvertime } from "@/lib/hr/overtimeActions";
+import { errorMessage, type ActionResult } from "@/lib/actionResult";
 
 /** Staff-side actions: submit a draft, edit a draft, or cancel an OT that has not been decided yet. */
 export function OvertimeRecordActions({ overtimeId, status }: { overtimeId: string; status: string }) {
@@ -13,14 +14,15 @@ export function OvertimeRecordActions({ overtimeId, status }: { overtimeId: stri
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function run(name: string, action: () => Promise<unknown>) {
+  async function run(name: string, action: () => Promise<ActionResult<object>>) {
     setBusy(name);
     setError(null);
     try {
-      await action();
-      router.refresh();
+      const result = await action();
+      if (!result.ok) setError(result.error);
+      else router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setError(errorMessage(err, "Something went wrong."));
     } finally {
       setBusy(null);
     }

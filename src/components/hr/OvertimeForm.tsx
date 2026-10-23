@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { uploadDocument } from "@/lib/documents/upload";
+import { errorMessage } from "@/lib/actionResult";
 import { previewOvertime, saveOvertime, type OvertimePreview } from "@/lib/hr/overtimeActions";
 import { OT_MONTHLY_LIMIT, OT_WARNING_FROM, calcOtHours, formatHours } from "@/lib/hr/overtime";
 
@@ -78,6 +79,10 @@ export function OvertimeForm({
       setError("Enter the OT start and end time.");
       return;
     }
+    if (intent === "submit" && !reason.trim()) {
+      setError("Enter the reason / description for this OT.");
+      return;
+    }
     setBusy(intent);
     setError(null);
     try {
@@ -91,10 +96,15 @@ export function OvertimeForm({
         intent,
         overtimeId,
       );
+      if (!result.ok) {
+        setError(result.error);
+        setBusy(null);
+        return;
+      }
       router.push(`/hr/overtime/${result.id}`);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save.");
+      setError(errorMessage(err, "Could not save."));
       setBusy(null);
     }
   }
@@ -187,7 +197,7 @@ export function OvertimeForm({
 
       <div>
         <label className={labelClass}>Reason / Description *</label>
-        <textarea value={reason} onChange={(e) => setReason(e.target.value)} className="mt-1.5 h-20 w-full resize-none rounded-lg border border-border-strong px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" placeholder="e.g. Event preparation" />
+        <textarea required value={reason} onChange={(e) => setReason(e.target.value)} className="mt-1.5 h-20 w-full resize-none rounded-lg border border-border-strong px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" placeholder="e.g. Event preparation" />
       </div>
 
       <div>
