@@ -221,15 +221,23 @@ export function PurchasePlanner({ companyId, companyName, events, recipeOptions,
   });
 
   const bySupplier = useMemo(() => {
-    const m = new Map<string, { supplierId: string; supplierName: string; items: { itemName: string; quantity: number; unit: string; unitPrice: number }[] }>();
+    const m = new Map<string, { supplierId: string; supplierName: string; items: { ingredient: string; itemName: string; quantity: number; unit: string; unitPrice: number }[] }>();
     for (const r of resolved) {
       if (!r.orderable || !r.option) continue;
       const cur = m.get(r.option.supplierId) ?? { supplierId: r.option.supplierId, supplierName: r.option.supplierName, items: [] };
-      cur.items.push({ itemName: r.option.description, quantity: r.qty as number, unit: r.option.uom, unitPrice: r.price as number });
+      cur.items.push({ ingredient: r.row.name, itemName: r.option.description, quantity: r.qty as number, unit: r.option.uom, unitPrice: r.price as number });
       m.set(r.option.supplierId, cur);
     }
     return Array.from(m.values()).sort((a, b) => a.supplierName.localeCompare(b.supplierName));
   }, [resolved]);
+
+  const notOrdered = resolved
+    .filter((r) => !r.orderable)
+    .map((r) => {
+      const need = display(r.need);
+      const reason = r.enough ? "Enough in stock" : r.st.skip ? "Skipped" : !r.option ? "No supplier item chosen yet" : r.qty === null || !(r.qty > 0) ? `Sold per ${r.option.uom || "unit"}: enter the quantity` : "Price missing";
+      return { key: r.key, name: r.row.name, needed: `${formatQty(need.qty)} ${need.unit}`, reason };
+    });
 
   const setRow = (key: string, patch: RowState) => setRowState((s) => ({ ...s, [key]: { ...s[key], ...patch } }));
 
@@ -241,7 +249,7 @@ export function PurchasePlanner({ companyId, companyName, events, recipeOptions,
       const names = plan.sessions.some((s) => s.eventId)
         ? Array.from(new Set(plan.sessions.map((s) => `${s.eventName} (${s.eventDate})`))).join("; ")
         : `Recipes: ${plan.sessions.map((s) => s.name).join(", ")}`;
-      const r = await createPlannedPurchaseOrders({ companyId, sourceEvents: names, orders: bySupplier.map((s) => ({ supplierId: s.supplierId, items: s.items })) });
+      const r = await createPlannedPurchaseOrders({ companyId, sourceEvents: names, orders: bySupplier.map((s) => ({ supplierId: s.supplierId, items: s.items.map((i) => ({ itemName: i.itemName, quantity: i.quantity, unit: i.unit, unitPrice: i.unitPrice })) })) });
       if (!r.ok) {
         setError(r.error);
         return;
@@ -348,6 +356,17 @@ export function PurchasePlanner({ companyId, companyName, events, recipeOptions,
 
       {plan && calc && (
         <>
+          <section className="rounded-xl border border-border bg-surface px-5 py-3 shadow-sm">
+            <div className="text-[13px] font-extrabold text-text">{plan.sessions.some((s) => s.eventId) ? "Chosen events and menus" : "Recipes chosen"}</div>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {plan.sessions.map((s) => (
+                <span key={s.id} className="rounded-md bg-info-bg px-2 py-0.5 text-[12.5px] font-semibold text-text">
+                  {`${s.eventName ? `${s.eventName} · ${s.name}` : s.name}${Number(pax[s.id]) > 0 ? ` · ${pax[s.id]} pax` : ""}`}
+                </span>
+              ))}
+            </div>
+          </section>
+
           {/* 2. menu */}
           <section className="rounded-xl border border-border bg-surface p-5 shadow-sm">
             <div className="text-[14.5px] font-extrabold text-text">2. Menu and pax</div>
@@ -501,34 +520,72 @@ export function PurchasePlanner({ companyId, companyName, events, recipeOptions,
           {/* 4. purchase orders */}
           <section className="rounded-xl border border-border bg-surface p-5 shadow-sm">
             <div className="text-[14.5px] font-extrabold text-text">4. Purchase orders by supplier</div>
+            <p className="mt-0.5 text-[12.5px] text-text-secondary">The same list as above, by supplier: from which supplier, which item to buy and how much.</p>
             {bySupplier.length === 0 ? (
               <div className="mt-2 text-[13px] text-text-muted">Nothing to order yet: choose a supplier item and a quantity for at least one ingredient.</div>
             ) : (
-              <>
-                <div className="mt-3 flex flex-col gap-3">
-                  {bySupplier.map((s) => (
-                    <div key={s.supplierId} className="rounded-lg border border-border">
-                      <div className="flex items-center justify-between border-b border-border bg-surface-alt px-4 py-2 text-[13px] font-bold text-text">
-                        <span>{s.supplierName}</span>
-                        <span>{formatPrice(s.items.reduce((t, i) => t + i.quantity * i.unitPrice, 0))}</span>
-                      </div>
-                      {s.items.map((i, idx) => (
-                        <div key={idx} className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-1.5 text-[12.5px] last:border-b-0">
-                          <span className="text-text">{i.itemName}</span>
-                          <span className="text-text-secondary">{`${formatQty(i.quantity)} ${i.unit} × ${formatPrice(i.unitPrice)} = ${formatPrice(i.quantity * i.unitPrice)}`}</span>
-                        </div>
-                      ))}
+              <div className="mt-3 flex flex-col gap-3">
+                {bySupplier.map((s) => (
+                  <div key={s.supplierId} className="overflow-x-auto rounded-lg border border-border">
+                    <div className="flex items-center justify-between border-b border-border bg-surface-alt px-4 py-2 text-[13px] font-bold text-text">
+                      <span>{s.supplierName}</span>
+                      <span>{formatPrice(s.items.reduce((t, i) => t + i.quantity * i.unitPrice, 0))}</span>
                     </div>
-                  ))}
-                </div>
-                <div className="mt-3 flex flex-wrap items-center gap-4">
-                  <button type="button" disabled={busy} onClick={createOrders} className="rounded-lg bg-primary px-5 py-2.5 text-[13.5px] font-semibold text-white disabled:opacity-60">
-                    {busy ? "Creating..." : `Create purchase orders (${bySupplier.length})`}
-                  </button>
-                  <span className="text-[13px] font-semibold text-text">{`Total ${formatPrice(grand)}`}</span>
-                  <span className="text-[12px] text-text-muted">The orders are saved as drafts; you can still edit or delete them.</span>
-                </div>
-              </>
+                    <table className="w-full min-w-[40rem] text-left text-[12.5px]">
+                      <thead>
+                        <tr className="border-b border-border text-[10.5px] font-bold uppercase tracking-wide text-text-muted">
+                          <th className="px-4 py-1.5">Ingredient</th>
+                          <th className="px-2 py-1.5">Item to buy</th>
+                          <th className="px-2 py-1.5 text-right">Qty</th>
+                          <th className="px-2 py-1.5">Unit</th>
+                          <th className="px-2 py-1.5 text-right">Unit price</th>
+                          <th className="px-4 py-1.5 text-right">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {s.items.map((i, idx) => (
+                          <tr key={idx} className="border-b border-border last:border-b-0">
+                            <td className="px-4 py-1.5 font-semibold text-text">{i.ingredient}</td>
+                            <td className="px-2 py-1.5 text-text">{i.itemName}</td>
+                            <td className="px-2 py-1.5 text-right text-text">{formatQty(i.quantity)}</td>
+                            <td className="px-2 py-1.5 text-text-secondary">{i.unit || "unit"}</td>
+                            <td className="px-2 py-1.5 text-right text-text-secondary">{formatPrice(i.unitPrice)}</td>
+                            <td className="px-4 py-1.5 text-right font-semibold text-text">{formatPrice(i.quantity * i.unitPrice)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {notOrdered.length > 0 && (
+              <div className="mt-3 rounded-lg border border-warning/40 bg-warning-bg px-4 py-3">
+                <div className="text-[13px] font-bold text-text">Not in a purchase order yet</div>
+                <p className="mt-0.5 text-[12px] text-text-secondary">These ingredients have no supplier item and quantity yet. Choose them in the list above to add them to an order.</p>
+                <table className="mt-2 w-full text-left text-[12.5px]">
+                  <tbody>
+                    {notOrdered.map((n) => (
+                      <tr key={n.key} className="border-t border-warning/20">
+                        <td className="py-1 pr-3 font-semibold text-text">{n.name}</td>
+                        <td className="py-1 pr-3 text-text-secondary">{n.needed}</td>
+                        <td className="py-1 text-text-secondary">{n.reason}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {bySupplier.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-4">
+                <button type="button" disabled={busy} onClick={createOrders} className="rounded-lg bg-primary px-5 py-2.5 text-[13.5px] font-semibold text-white disabled:opacity-60">
+                  {busy ? "Creating..." : `Create purchase orders (${bySupplier.length})`}
+                </button>
+                <span className="text-[13px] font-semibold text-text">{`Total ${formatPrice(grand)}`}</span>
+                <span className="text-[12px] text-text-muted">The orders are saved as drafts; you can still edit or delete them.</span>
+              </div>
             )}
           </section>
         </>
