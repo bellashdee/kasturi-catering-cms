@@ -27,6 +27,7 @@ export default async function NewDriverExpensePage({
   return (
     <div className="mx-auto max-w-3xl">
       <h1 className="text-[22px] font-extrabold text-text">New Expense</h1>
+      <p className="mt-0.5 text-[13px] text-text-secondary">For receipts and invoices paid directly by the Director of Finance.</p>
       <div className="mt-5 rounded-xl border border-border bg-surface shadow-sm">
         <DriverExpenseUploadReview
           companies={selectable}

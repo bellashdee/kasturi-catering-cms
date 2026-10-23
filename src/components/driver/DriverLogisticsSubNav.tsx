@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { canUseOperationPettyCash } from "@/lib/operationPettyCash/actions";
 
 type Tab = { href: string; label: string; match: (p: string) => boolean };
 
@@ -27,10 +29,24 @@ export function DriverLogisticsSubNav() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const company = searchParams.get("company");
+  // the Petty Cash tab is shown only to the person who holds it and the Director of Finance
+  const [pettyCash, setPettyCash] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    canUseOperationPettyCash()
+      .then((ok) => !cancelled && setPettyCash(ok))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const groups = pettyCash
+    ? [...GROUPS, { title: "Petty Cash", tabs: [{ href: "/driver-logistics/petty-cash", label: "Petty Cash", match: (p: string) => p.startsWith("/driver-logistics/petty-cash") }] }]
+    : GROUPS;
 
   return (
     <div className="flex flex-wrap gap-x-8 gap-y-2 border-b border-border">
-      {GROUPS.map((group) => (
+      {groups.map((group) => (
         <div key={group.title}>
           <div className="px-3.5 pt-1 text-[10.5px] font-bold uppercase tracking-wider text-text-muted">{group.title}</div>
           <div className="flex flex-wrap gap-1">

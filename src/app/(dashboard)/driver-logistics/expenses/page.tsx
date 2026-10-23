@@ -38,6 +38,7 @@ export default async function DriverExpensesPage({
         <div>
           <h1 className="text-[22px] font-extrabold text-text">Operation Management</h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">{expenses.length} expense{expenses.length === 1 ? "" : "s"} · {formatCurrency(total)} total</p>
+          <p className="mt-0.5 text-[12.5px] text-text-muted">Expenses: receipts and invoices paid directly by the Director of Finance. Money spent from the Operation petty cash goes under Petty Cash.</p>
         </div>
         <Link href={`/driver-logistics/expenses/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
           + New Expense

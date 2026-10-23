@@ -3276,6 +3276,70 @@ export type Database = {
           },
         ]
       }
+      operation_petty_cash: {
+        Row: {
+          amount: number
+          category: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          document_id: string | null
+          entry_date: string
+          entry_type: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          document_id?: string | null
+          entry_date: string
+          entry_type: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          document_id?: string | null
+          entry_date?: string
+          entry_type?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operation_petty_cash_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operation_petty_cash_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operation_petty_cash_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       overtime_records: {
         Row: {
           approval_id: string | null
@@ -5804,6 +5868,7 @@ export type Database = {
     }
     Functions: {
       current_user_is_super_admin: { Args: never; Returns: boolean }
+      user_can_use_operation_petty_cash: { Args: never; Returns: boolean }
       user_can_use_payroll_centre: { Args: never; Returns: boolean }
       user_has_company_access: {
         Args: { target_company_id: string }
