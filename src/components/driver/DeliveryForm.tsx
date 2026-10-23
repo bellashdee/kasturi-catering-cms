@@ -39,6 +39,7 @@ export function DeliveryForm({
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
   const [companyId, setCompanyId] = useState(initial?.companyId ?? defaultCompanyId ?? companies[0]?.id ?? "");
   const [form, setForm] = useState({
     cateringEventId: initial?.cateringEventId ?? "",
@@ -62,6 +63,7 @@ export function DeliveryForm({
     e.preventDefault();
     setSaving(true);
     setError(null);
+    setSaved(false);
     const payload: DeliveryInput = {
       companyId,
       cateringEventId: form.cateringEventId || undefined,
@@ -74,12 +76,15 @@ export function DeliveryForm({
     };
     try {
       if (deliveryId) {
+        // the person is already on this delivery's page: stay here, show that it was saved and refresh what the page shows
         await updateDeliveryDetails(deliveryId, payload);
-        router.push(`/driver-logistics/${deliveryId}`);
-      } else {
-        const created = await createDelivery(payload);
-        router.push(`/driver-logistics/${created.id}`);
+        setSaved(true);
+        setSaving(false);
+        router.refresh();
+        return;
       }
+      const created = await createDelivery(payload);
+      router.push(`/driver-logistics/${created.id}`);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -90,6 +95,7 @@ export function DeliveryForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {error && <div className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">{error}</div>}
+      {saved && <div role="status" className="rounded-lg border border-success/30 bg-success-bg px-3 py-2 text-sm text-success">Saved.</div>}
 
       <div className="grid grid-cols-2 gap-4">
         <div>
