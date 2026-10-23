@@ -9,6 +9,7 @@ import { display, formatQty, type Base } from "@/lib/kitchenAi/units";
 import type { KItem, KSession, KState, RecipeData } from "@/lib/kitchenAi/types";
 import { loadEventPlan, loadRecipePlan, loadRecipes, createPlannedPurchaseOrders, type EventPlan } from "@/lib/purchasePlanner/actions";
 import type { RecipeRef } from "@/lib/kitchenAi/match";
+import { SIDE_LABEL, sideOf, type KitchenSide } from "@/lib/kitchen/side";
 import { quantityInUom, rankSupplierItems, type SupplierItemOption } from "@/lib/purchasePlanner/shared";
 import type { PlannerEvent } from "@/lib/purchasePlanner/data";
 import { formatPrice, formatCurrency } from "@/lib/format";
@@ -92,6 +93,7 @@ export function PurchasePlanner({ companyId, companyName, events, recipeOptions,
   // where the purchase starts: the menu of an event, or recipes chosen by hand
   const [mode, setMode] = useState<"event" | "recipes">("event");
   const [recipeSearch, setRecipeSearch] = useState("");
+  const [recipeSide, setRecipeSide] = useState<"all" | KitchenSide>("all");
   const [pickedRecipes, setPickedRecipes] = useState<string[]>([]);
   const [plan, setPlan] = useState<EventPlan | null>(null);
   const [recipes, setRecipes] = useState<Map<string, RecipeData>>(new Map());
@@ -110,8 +112,8 @@ export function PurchasePlanner({ companyId, companyName, events, recipeOptions,
 
   const shownRecipes = useMemo(() => {
     const words = norm(recipeSearch).split(" ").filter(Boolean);
-    return recipeOptions.filter((r) => r.hasIngredients && words.every((w) => norm(r.name).includes(w)));
-  }, [recipeOptions, recipeSearch]);
+    return recipeOptions.filter((r) => r.hasIngredients && (recipeSide === "all" || sideOf(r.name) === recipeSide) && words.every((w) => norm(r.name).includes(w)));
+  }, [recipeOptions, recipeSearch, recipeSide]);
 
   function startPlan(r: EventPlan) {
     setPlan(r);
@@ -325,7 +327,14 @@ export function PurchasePlanner({ companyId, companyName, events, recipeOptions,
           <>
             <div className="mt-4 text-[14.5px] font-extrabold text-text">1. Choose the recipes</div>
             <p className="mt-0.5 text-[12.5px] text-text-secondary">Search, then tick the recipes to cook. You enter the pax of each one next; the ingredient list is worked out from the recipes only.</p>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              {(["all", "kitchen", "bar"] as const).map((k) => (
+                <button key={k} type="button" onClick={() => setRecipeSide(k)} className={`rounded-full border px-3 py-1 text-[12.5px] font-semibold ${recipeSide === k ? "border-primary bg-primary text-white" : "border-border-strong bg-surface text-text hover:bg-surface-alt"}`}>
+                  {k === "all" ? "All" : SIDE_LABEL[k]}
+                </button>
+              ))}
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
               <input value={recipeSearch} onChange={(e) => setRecipeSearch(e.target.value)} placeholder="Search recipe..." className={`${inputClass} max-w-md`} />
               <button type="button" disabled={shownRecipes.length === 0} onClick={() => setPickedRecipes((p) => Array.from(new Set([...p, ...shownRecipes.map((r) => r.id)])))} className="h-9 rounded-lg border border-border-strong bg-white px-3 text-[12.5px] font-semibold text-text hover:border-primary disabled:opacity-50">
                 {`Select all shown (${shownRecipes.length})`}

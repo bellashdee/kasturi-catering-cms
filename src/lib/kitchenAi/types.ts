@@ -66,7 +66,7 @@ export type KState = {
   mismatches: string[];
   /** problems with the photo itself (partly legible, cut off ...) */
   readerIssues: string[];
-  view: "review" | "ingredients" | "shopping" | "dish";
+  view: "review" | "ingredients" | "shopping" | "suppliers" | "dish";
   viewDish: string | null;
   stockCompared: boolean;
 };

@@ -152,7 +152,7 @@ Message: """${text.slice(0, 400)}"""
 Respond with ONLY a JSON object: { "ops": [ ... ] } where each operation is one of:
 {"type":"set_pax","pax":number,"session":string|null}  {"type":"add_pax","delta":number (negative to reduce),"session":string|null}
 {"type":"remove_item","phrase":string}  {"type":"replace_item","from":string,"to":string}  {"type":"add_item","name":string}
-{"type":"view","view":"ingredients"|"shopping"|"dish","dish":string|null}  {"type":"unit_mode","mode":"kg"|"auto"}
+{"type":"view","view":"ingredients"|"shopping"|"suppliers"|"dish","dish":string|null}  {"type":"unit_mode","mode":"kg"|"auto"}
 {"type":"stock"}  {"type":"export"}  {"type":"estimate","phrase":string|null}  {"type":"use_recipe","phrase":string,"recipe":string}  {"type":"approve"}  {"type":"help"}
 Use an empty list if the message is not a request about this menu. Never invent a number the message does not contain.`;
   try {

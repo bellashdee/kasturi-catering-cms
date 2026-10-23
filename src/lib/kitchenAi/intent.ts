@@ -9,7 +9,7 @@ export type Op =
   | { type: "remove_item"; phrase: string }
   | { type: "replace_item"; from: string; to: string }
   | { type: "add_item"; name: string; session?: string }
-  | { type: "view"; view: "ingredients" | "shopping" | "dish"; dish?: string }
+  | { type: "view"; view: "ingredients" | "shopping" | "suppliers" | "dish"; dish?: string }
   | { type: "unit_mode"; mode: "kg" | "auto" }
   | { type: "stock" }
   | { type: "export" }
@@ -81,6 +81,9 @@ export function parseCommand(raw: string): Op[] | null {
   m = text.match(/^(?:please\s+)?(?:add|tambah)\s+(.+)$/i);
   if (m && !/^\d/.test(m[1]) && !new RegExp(PAX_WORD, "i").test(m[1])) return [{ type: "add_item", name: clean(m[1].replace(/\s+(?:to|ke)\s+(?:the\s+)?menu$/i, "")), session: undefined }];
 
+  // views: what to buy from which supplier
+  if (/\b(by supplier|per supplier|from (?:the )?suppliers?|supplier list|purchase order|order list|pembekal|supplier|senarai pembekal|pesanan pembelian|untuk dibeli mengikut)\b/.test(t) && /\b(buy|purchase|order|list|senarai|beli|pembelian|pesan|supplier|pembekal)\b/.test(t)) return [{ type: "view", view: "suppliers" }];
+
   // views
   if (/\b(shopping list|purchase list|buying list|senarai (?:belian|beli|barang|belanja)|belanja|to buy)\b/.test(t)) return [{ type: "view", view: "shopping" }];
   const dish = text.match(/\b(?:ingredients?|bahan(?:-bahan)?)\b.*?\b(?:for|untuk|bagi)\s+(.+?)(?:\s+only|\s+sahaja)?[.!?]*$/i);
@@ -128,7 +131,7 @@ export function sanitizeOps(value: unknown): Op[] {
         break;
       }
       case "view": {
-        if (o.view === "ingredients" || o.view === "shopping") out.push({ type: "view", view: o.view });
+        if (o.view === "ingredients" || o.view === "shopping" || o.view === "suppliers") out.push({ type: "view", view: o.view });
         else if (o.view === "dish" && str(o.dish)) out.push({ type: "view", view: "dish", dish: str(o.dish) });
         break;
       }

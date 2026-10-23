@@ -8,6 +8,10 @@ import { packagePriceLabel } from "@/lib/kitchen/packages/format";
 import { SectionCard } from "@/components/dashboard/SectionCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { PackageActiveToggle } from "@/components/kitchen/PackageActiveToggle";
+import { PackageMenuPicker, type PackageDish } from "@/components/kitchen/PackageMenuPicker";
+import { menuChoices, sideOf } from "@/lib/kitchen/side";
+import { loadRecipeData, loadRecipeRefs } from "@/lib/kitchenAi/data";
+import { autoMatch, candidatesFor } from "@/lib/kitchenAi/match";
 
 export default async function PackageMenuDetailPage({
   params,
@@ -39,6 +43,20 @@ export default async function PackageMenuDetailPage({
     itemsByMeal.set(item.meal_type, list);
   }
 
+  // every choice of every line is one menu item (a line "A / B / C" is three items), with the recipe that clearly fits it
+  const refs = await loadRecipeRefs(supabase, pkg.company_id);
+  const dishes: PackageDish[] = [];
+  for (const meal of Object.keys(PACKAGE_MEAL_TYPE_LABEL).filter((m) => itemsByMeal.has(m))) {
+    itemsByMeal.get(meal)!.forEach((item, li) => {
+      menuChoices(item.item_name).forEach((c, ci) => {
+        const best = autoMatch(c.name, refs);
+        dishes.push({ id: `${meal}:${li}:${ci}`, mealLabel: PACKAGE_MEAL_TYPE_LABEL[meal], section: c.section, name: c.name, side: sideOf(c.name, c.section), recipeId: best?.recipeId ?? null, candidates: candidatesFor(c.name, refs) });
+      });
+    });
+  }
+  const recipeIds = Array.from(new Set(dishes.flatMap((d) => [...(d.recipeId ? [d.recipeId] : []), ...d.candidates.map((x) => x.recipeId)])));
+  const recipeData = Array.from((await loadRecipeData(supabase, recipeIds)).values());
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-start justify-between">
@@ -67,21 +85,10 @@ export default async function PackageMenuDetailPage({
       </div>
 
       <SectionCard title="Menu Items">
-        {itemsByMeal.size === 0 ? (
+        {dishes.length === 0 ? (
           <p className="text-[13px] text-text-muted">No items added.</p>
         ) : (
-          <div className="flex flex-col gap-3">
-            {Object.keys(PACKAGE_MEAL_TYPE_LABEL)
-              .filter((meal) => itemsByMeal.has(meal))
-              .map((meal) => (
-                <div key={meal}>
-                  <div className="text-[12.5px] font-bold text-text">{PACKAGE_MEAL_TYPE_LABEL[meal]}</div>
-                  <ul className="mt-1 list-disc pl-5 text-[13.5px] text-text-secondary">
-                    {itemsByMeal.get(meal)!.map((item, idx) => <li key={idx}>{item.item_name}</li>)}
-                  </ul>
-                </div>
-              ))}
-          </div>
+          <PackageMenuPicker dishes={dishes} recipeData={recipeData} recipeRefs={refs} minimumPax={pkg.minimum_pax ?? 1} companyId={pkg.company_id} />
         )}
       </SectionCard>
 

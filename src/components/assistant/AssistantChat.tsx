@@ -7,6 +7,7 @@ import { resolvePageContext } from "@/lib/assistant/pageContext";
 import { uploadDocument } from "@/lib/documents/upload";
 import { prepareMenuFile } from "@/lib/kitchenAi/clientImage";
 import { exportKitchenList } from "@/lib/kitchenAi/exportXlsx";
+import type { PurchasePlan } from "@/lib/kitchenAi/purchase";
 import type { RecipeRef } from "@/lib/kitchenAi/match";
 import type { CalcResult, KState } from "@/lib/kitchenAi/types";
 import { ChatMarkdown } from "./ChatMarkdown";
@@ -56,6 +57,7 @@ export function AssistantChat({ variant = "widget" }: { variant?: "widget" | "pa
   const fileRef = useRef<HTMLInputElement>(null);
   const camRef = useRef<HTMLInputElement>(null);
   const localIdRef = useRef(0);
+  const lastErrorCode = useRef<string | null>(null);
 
   // a new answer is read from its top (an ingredient list is long); everything else scrolls to the end
   useEffect(() => {
@@ -145,6 +147,7 @@ export function AssistantChat({ variant = "widget" }: { variant?: "widget" | "pa
         signal: AbortSignal.timeout(90_000),
       });
       const data = await res.json().catch(() => null);
+      lastErrorCode.current = res.ok ? null : (data?.code ?? null);
       if (!res.ok || !data) {
         setError(data?.error ?? (res.status === 504 ? "Reading took longer than the server allows. Try again, or use a smaller photo." : "The kitchen assistant could not answer just now. Please try again."));
         return null;
@@ -158,12 +161,46 @@ export function AssistantChat({ variant = "widget" }: { variant?: "widget" | "pa
     }
   }
 
+  /** A photo or PDF that is not (or not only) a menu: read it and answer, like a general assistant. */
+  async function askAboutFiles(documentIds: string[], text: string) {
+    setLoading(true);
+    setError(null);
+    setWorking("Reading the file…");
+    const shown = text.trim() ? `📎 ${text.trim()}` : `📎 ${documentIds.length > 1 ? `${documentIds.length} files` : "File"}`;
+    setMessages((prev) => [...prev, { id: nextLocalId("local"), role: "user", content: shown }]);
+    try {
+      const res = await fetch("/api/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text.trim(), documentIds, conversationId, pageLabel, pageModule, companyParam }),
+        signal: AbortSignal.timeout(90_000),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.reply) throw new Error(data?.error ?? "The assistant could not read the file just now. Please try again.");
+      if (data.conversationId) setConversationId(data.conversationId);
+      setMessages((prev) => [...prev, { id: data.messageId ?? nextLocalId("local-reply"), role: "assistant", content: data.reply }]);
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : "Could not reach the server. Please try again.");
+    } finally {
+      setWorking(null);
+      setLoading(false);
+    }
+  }
+
   async function startKitchen(documentIds: string[], eventId?: string, userText?: string) {
     setLoading(true);
     setError(null);
     setWorking(documentIds.length > 0 ? "Reading the menu photo… this can take up to a minute" : "Preparing the event menu…");
     if (userText) setMessages((prev) => [...prev, { id: nextLocalId("local"), role: "user", content: userText }]);
     const data = await kitchenCall({ action: "start", companyId, eventId, documentIds, conversationId: conversationId ?? undefined });
+    if (!data && lastErrorCode.current === "nothing_read" && documentIds.length > 0) {
+      // not a readable menu: read it as an ordinary photo / document instead
+      setMessages((prev) => prev.filter((m) => m.content !== userText));
+      setWorking(null);
+      setLoading(false);
+      await askAboutFiles(documentIds, "");
+      return;
+    }
     if (data?.reply) setMessages((prev) => [...prev, { id: data.messageId ?? nextLocalId("local-reply"), role: "assistant", content: data.reply! }]);
     setWorking(null);
     setLoading(false);
@@ -174,7 +211,9 @@ export function AssistantChat({ variant = "widget" }: { variant?: "widget" | "pa
     if (fileRef.current) fileRef.current.value = "";
     if (camRef.current) camRef.current.value = "";
     if (files.length === 0 || loading) return;
-    if (!companyId) {
+    const typed = input.trim();
+    const general = !kitchen && typed.length > 0;
+    if (!companyId && !general) {
       setError("Choose the company first (its recipes are used for the quantities).");
       return;
     }
@@ -186,13 +225,48 @@ export function AssistantChat({ variant = "widget" }: { variant?: "widget" | "pa
         setWorking(`Preparing photo ${i + 1} of ${files.length}…`);
         const prepared = await prepareMenuFile(f);
         setWorking(`Uploading photo ${i + 1} of ${files.length}…`);
-        const doc = await uploadDocument({ companyId, module: "kitchen", fileType: prepared.type, file: prepared.file, skipMarkdown: true });
+        const doc = await uploadDocument({ companyId: companyId || meta?.companies[0]?.id || "", module: "kitchen", fileType: prepared.type, file: prepared.file, skipMarkdown: true });
         ids.push(doc.id);
       }
       setLoading(false);
+      if (general) {
+        setInput("");
+        await askAboutFiles(ids, typed);
+        return;
+      }
       await startKitchen(ids, meta?.event?.id && !kitchen ? meta.event.id : undefined, `📷 Menu photo${ids.length > 1 ? `s (${ids.length})` : ""}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "The photo could not be uploaded.");
+      setWorking(null);
+      setLoading(false);
+    }
+  }
+
+  /** The result as a PDF to save or to print (it includes the by-supplier purchase list). */
+  async function makePdf(print: boolean) {
+    if (!kitchen || !conversationId || loading) return;
+    // the print window is opened by the click itself, otherwise the browser blocks it
+    const win = print ? window.open("", "_blank") : null;
+    setLoading(true);
+    setError(null);
+    setWorking("Preparing the PDF…");
+    try {
+      const res = await fetch("/api/kitchen-assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "purchase", conversationId, lang, pageLabel }),
+        signal: AbortSignal.timeout(60_000),
+      });
+      const data = (await res.json().catch(() => null)) as { state: KState; calc: CalcResult; purchase: PurchasePlan; error?: string } | null;
+      if (!res.ok || !data?.state) throw new Error(data?.error ?? "The PDF could not be prepared. Please try again.");
+      const pdf = await import("@/lib/kitchenAi/exportPdf");
+      if (print) pdf.printKitchenPdf(data.state, data.calc, data.purchase, win);
+      else pdf.downloadKitchenPdf(data.state, data.calc, data.purchase);
+      setMessages((prev) => [...prev, { id: nextLocalId("local-reply"), role: "assistant", content: print ? "The list is open in a new tab, ready to print." : "The PDF was downloaded: menu and recipes, ingredients with quantities, and what to buy from each supplier." }]);
+    } catch (err) {
+      win?.close();
+      setError(err instanceof Error ? err.message : "The PDF could not be prepared. Please try again.");
+    } finally {
       setWorking(null);
       setLoading(false);
     }
@@ -226,6 +300,12 @@ export function AssistantChat({ variant = "widget" }: { variant?: "widget" | "pa
     setInput("");
     setLoading(true);
     setError(null);
+
+    if (kitchen && conversationId && /\b(pdf|print|cetak)\b/i.test(trimmed) && !/\b(pax|remove|add|change|tukar)\b/i.test(trimmed)) {
+      setLoading(false);
+      await makePdf(!/\bpdf\b/i.test(trimmed));
+      return;
+    }
 
     if (kitchen && conversationId) {
       const data = await kitchenCall({ action: "message", conversationId, text: trimmed });
@@ -338,6 +418,7 @@ export function AssistantChat({ variant = "widget" }: { variant?: "widget" | "pa
             busy={loading}
             onPatch={patch}
             onExport={() => exportKitchenList(kitchen.state, kitchen.calc)}
+            onPdf={(print) => void makePdf(print)}
             onExit={() => setKitchen(null)}
           />
         </div>

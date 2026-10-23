@@ -7,11 +7,12 @@ import { listRecipes } from "@/lib/kitchen/queries";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { KitchenSubNav } from "@/components/kitchen/KitchenSubNav";
 import { RECIPE_CATEGORIES, recipeCategory } from "@/lib/kitchen/recipeCategory";
+import { SIDE_LABEL, sideOf, type KitchenSide } from "@/lib/kitchen/side";
 
 export default async function RecipesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; category?: string; q?: string }>;
+  searchParams: Promise<{ company?: string; category?: string; q?: string; side?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -20,7 +21,7 @@ export default async function RecipesPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, category: categoryParam, q } = await searchParams;
+  const { company: requestedId, category: categoryParam, q, side: sideParam } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -30,15 +31,19 @@ export default async function RecipesPage({
 
   const allRecipes = await listRecipes(supabase, targetCompanyIds);
   const search = q?.trim().toLowerCase();
-  const matching = search ? allRecipes.filter((r) => r.name.toLowerCase().includes(search)) : allRecipes;
+  const activeSide: KitchenSide | undefined = sideParam === "kitchen" || sideParam === "bar" ? sideParam : undefined;
+  const bySearch = search ? allRecipes.filter((r) => r.name.toLowerCase().includes(search)) : allRecipes;
+  const sideCounts = { kitchen: bySearch.filter((r) => sideOf(r.name) === "kitchen").length, bar: bySearch.filter((r) => sideOf(r.name) === "bar").length };
+  const matching = activeSide ? bySearch.filter((r) => sideOf(r.name) === activeSide) : bySearch;
   const counts = Object.fromEntries(RECIPE_CATEGORIES.map((c) => [c.key, matching.filter((r) => recipeCategory(r.name) === c.key).length]));
   const activeCategory = RECIPE_CATEGORIES.some((c) => c.key === categoryParam) ? categoryParam : undefined;
   const recipes = activeCategory ? matching.filter((r) => recipeCategory(r.name) === activeCategory) : matching;
   const sections = RECIPE_CATEGORIES.map((c) => ({ ...c, items: recipes.filter((r) => recipeCategory(r.name) === c.key) })).filter((s) => s.items.length > 0);
-  const link = (category?: string) => {
+  const link = (category?: string, side: string | undefined = activeSide) => {
     const params = new URLSearchParams();
     if (requestedId) params.set("company", requestedId);
     if (category) params.set("category", category);
+    if (side) params.set("side", side);
     if (q) params.set("q", q);
     const qs = params.toString();
     return `/kitchen/recipes${qs ? `?${qs}` : ""}`;
@@ -64,9 +69,22 @@ export default async function RecipesPage({
       <form method="get" className="flex flex-wrap items-center gap-2">
         {requestedId && <input type="hidden" name="company" value={requestedId} />}
         {activeCategory && <input type="hidden" name="category" value={activeCategory} />}
+        {activeSide && <input type="hidden" name="side" value={activeSide} />}
         <input name="q" defaultValue={q ?? ""} placeholder="Search recipe name" className="h-9 w-64 rounded-lg border border-border-strong px-3 text-[13px] outline-none focus:border-primary" />
         <button type="submit" className="h-9 rounded-lg border border-border-strong bg-surface px-3.5 text-[13px] font-semibold text-text">Search</button>
       </form>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[12.5px] font-semibold text-text-secondary">Side</span>
+        <Link href={link(activeCategory, undefined)} className={`rounded-full border px-3.5 py-1.5 text-[13px] font-semibold ${!activeSide ? "border-primary bg-primary text-white" : "border-border-strong bg-surface text-text hover:bg-surface-alt"}`}>
+          {`All (${bySearch.length})`}
+        </Link>
+        {(["kitchen", "bar"] as const).map((k) => (
+          <Link key={k} href={link(activeCategory, k)} className={`rounded-full border px-3.5 py-1.5 text-[13px] font-semibold ${activeSide === k ? "border-primary bg-primary text-white" : "border-border-strong bg-surface text-text hover:bg-surface-alt"}`}>
+            {`${SIDE_LABEL[k]} (${sideCounts[k]})`}
+          </Link>
+        ))}
+      </div>
 
       <div className="flex flex-wrap gap-2">
         <Link href={link()} className={`rounded-lg border px-3 py-1.5 text-[13px] font-semibold ${!activeCategory ? "border-primary bg-info-bg text-primary" : "border-border-strong text-text-secondary hover:bg-surface-alt"}`}>

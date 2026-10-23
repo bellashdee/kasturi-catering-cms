@@ -6,6 +6,7 @@ import { getAiProvider } from "@/lib/ai/gemini";
 import { inspectFile } from "@/lib/extraction/inspect";
 import { createConversation, countTodayUserMessages, saveMessage, touchConversation } from "@/lib/assistant/actions";
 import { calculate } from "@/lib/kitchenAi/calc";
+import { loadPurchasePlan, purchaseText } from "@/lib/kitchenAi/purchase";
 import { estimateDish, interpretWithAi, KitchenAiError, readMenuImages, type ReadMenu } from "@/lib/kitchenAi/ai";
 import { loadRecipeData, loadRecipeRefs, loadStock } from "@/lib/kitchenAi/data";
 import { compareWithEvent, loadEventDraft, type EventDraft } from "@/lib/kitchenAi/event";
@@ -100,6 +101,13 @@ function sessionsFromEvent(draft: EventDraft, recipes: RecipeRef[]): KSession[] 
   return draft.sessions.map((s) => ({ id: newId("s"), name: s.name, pax: s.pax, paxSource: s.pax ? ("event" as const) : null, items: s.menu.map((m) => makeItem(m, "event", recipes)) }));
 }
 
+/** The reply for the current view; the by-supplier list needs the supplier prices, so it is read from the database here. */
+async function replyForAsync(supabase: DB, state: KState, calc: CalcResult, lang: Lang): Promise<string> {
+  if (state.view !== "suppliers") return replyFor(state, calc, lang);
+  const plan = await loadPurchasePlan(supabase, state.companyId, calc.combined, state.stockCompared, lang);
+  return [ingredientsText(state, calc, lang), purchaseText(plan, lang)].join("\n\n");
+}
+
 function replyFor(state: KState, calc: CalcResult, lang: Lang): string {
   switch (state.view) {
     case "ingredients":
@@ -169,7 +177,7 @@ export async function GET(request: Request) {
 }
 
 type Body = {
-  action?: "start" | "message" | "patch";
+  action?: "start" | "message" | "patch" | "purchase";
   conversationId?: string;
   companyId?: string;
   eventId?: string;
@@ -339,10 +347,10 @@ export async function POST(request: Request) {
         }
         case "view": {
           const v = p.view;
-          if (v === "ingredients" || v === "shopping") {
+          if (v === "ingredients" || v === "shopping" || v === "suppliers") {
             state.view = v;
             state.viewDish = null;
-            userNote = v === "ingredients" ? "Generate Ingredients" : "Generate Shopping List";
+            userNote = v === "ingredients" ? "Generate Ingredients" : v === "shopping" ? "Generate Shopping List" : "Purchase by Supplier";
           }
           break;
         }
@@ -370,7 +378,7 @@ export async function POST(request: Request) {
       const calc = await computeAll(supabase, state, state.stockCompared);
       let messageId: string | null = null;
       if (p.kind === "view" || p.kind === "stock" || estimateWhich) {
-        const text0 = p.kind === "stock" ? stockText(state, calc, lang) : p.kind === "view" ? replyFor(state, calc, lang) : [reply, replyFor({ ...state, view: state.view === "review" ? "review" : state.view }, calc, lang)].filter(Boolean).join("\n\n");
+        const text0 = p.kind === "stock" ? stockText(state, calc, lang) : p.kind === "view" ? await replyForAsync(supabase, state, calc, lang) : [reply, replyFor({ ...state, view: state.view === "review" ? "review" : state.view }, calc, lang)].filter(Boolean).join("\n\n");
         await saveMessage(supabase, conversationId, "user", userNote ?? "", pageLabel);
         messageId = await saveMessage(supabase, conversationId, "assistant", text0, pageLabel);
         reply = text0;
@@ -378,6 +386,14 @@ export async function POST(request: Request) {
       }
       await saveState(supabase, conversationId, session.userId, state);
       return NextResponse.json({ conversationId, reply, messageId, state, calc, recipeOptions: recipes });
+    }
+
+    // ---------------------------------------------------------------------------------------------------- purchase
+    // the by-supplier list for the PDF / print (always the current menu, pax and recipes)
+    if (body.action === "purchase") {
+      const calc = await computeAll(supabase, ks.state, ks.state.stockCompared);
+      const purchase = await loadPurchasePlan(supabase, ks.state.companyId, calc.combined, ks.state.stockCompared, lang);
+      return NextResponse.json({ conversationId, purchase, state: ks.state, calc });
     }
 
     // ----------------------------------------------------------------------------------------------------- message
@@ -430,7 +446,7 @@ export async function POST(request: Request) {
       const calc = await computeAll(supabase, state, withStock);
       const onlyErrors = applied.changes.length > 0 && applied.changes.every((c: Change) => c.kind === "error");
       if (applied.effects.stock) lines.push(stockText(state, calc, lang));
-      else if (!applied.effects.help && !applied.effects.export && !onlyErrors) lines.push(replyFor(state, calc, lang));
+      else if (!applied.effects.help && !applied.effects.export && !onlyErrors) lines.push(await replyForAsync(supabase, state, calc, lang));
       else if (onlyErrors) lines.push(reviewText(state, calc, lang));
       const reply = lines.filter(Boolean).join("\n\n");
 

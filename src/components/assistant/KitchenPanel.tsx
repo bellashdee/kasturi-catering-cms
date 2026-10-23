@@ -13,6 +13,7 @@ type Props = {
   busy: boolean;
   onPatch: (patch: KitchenPatch) => void;
   onExport: () => void;
+  onPdf: (print: boolean) => void;
   onExit: () => void;
 };
 
@@ -136,7 +137,7 @@ function SessionBox({ session, recipeOptions, busy, onPatch }: { session: KSessi
  * The menu and pax of the kitchen conversation, editable before anything is calculated: dish names, the recipe each dish uses,
  * pax per session, and the buttons for the results.
  */
-export function KitchenPanel({ state, calc, recipeOptions, busy, onPatch: patchOut, onExport, onExit }: Props) {
+export function KitchenPanel({ state, calc, recipeOptions, busy, onPatch: patchOut, onExport, onPdf, onExit }: Props) {
   const [open, setOpen] = useState(true);
   // asking for a result closes the editor so the answer has the room (it opens again from the header)
   const onPatch: Props["onPatch"] = (p) => {
@@ -179,6 +180,9 @@ export function KitchenPanel({ state, calc, recipeOptions, busy, onPatch: patchO
             <button type="button" disabled={busy} onClick={() => onPatch({ kind: "view", view: "shopping" })} className={btn}>
               Generate Shopping List
             </button>
+            <button type="button" disabled={busy} onClick={() => onPatch({ kind: "view", view: "suppliers" })} className={btn}>
+              Purchase by Supplier
+            </button>
             <button type="button" disabled={busy} onClick={() => onPatch({ kind: "stock" })} className={btn}>
               Compare with Stock
             </button>
@@ -190,7 +194,13 @@ export function KitchenPanel({ state, calc, recipeOptions, busy, onPatch: patchO
                 Mark AI estimates reviewed
               </button>
             )}
-            <button type="button" disabled={busy || calc.combined.length === 0} onClick={onExport} className="rounded-lg bg-primary px-3 py-1.5 text-[12.5px] font-semibold text-white disabled:opacity-40">
+            <button type="button" disabled={busy || calc.combined.length === 0} onClick={() => onPdf(false)} className="rounded-lg bg-primary px-3 py-1.5 text-[12.5px] font-semibold text-white disabled:opacity-40">
+              Download PDF
+            </button>
+            <button type="button" disabled={busy || calc.combined.length === 0} onClick={() => onPdf(true)} className="rounded-lg bg-primary px-3 py-1.5 text-[12.5px] font-semibold text-white disabled:opacity-40">
+              Print
+            </button>
+            <button type="button" disabled={busy || calc.combined.length === 0} onClick={onExport} className={btn}>
               Export to Excel
             </button>
           </div>
