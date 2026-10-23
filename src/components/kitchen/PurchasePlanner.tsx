@@ -7,7 +7,8 @@ import { errorMessage } from "@/lib/actionResult";
 import { calculate, normName, type StockLookup } from "@/lib/kitchenAi/calc";
 import { display, formatQty, type Base } from "@/lib/kitchenAi/units";
 import type { KItem, KSession, KState, RecipeData } from "@/lib/kitchenAi/types";
-import { loadEventPlan, loadRecipes, createPlannedPurchaseOrders, type EventPlan } from "@/lib/purchasePlanner/actions";
+import { loadEventPlan, loadRecipePlan, loadRecipes, createPlannedPurchaseOrders, type EventPlan } from "@/lib/purchasePlanner/actions";
+import type { RecipeRef } from "@/lib/kitchenAi/match";
 import { quantityInUom, rankSupplierItems, type SupplierItemOption } from "@/lib/purchasePlanner/shared";
 import type { PlannerEvent } from "@/lib/purchasePlanner/data";
 import { formatPrice, formatCurrency } from "@/lib/format";
@@ -64,10 +65,14 @@ function ItemPicker({ ingredient, selected, suggestions, all, onPick }: { ingred
   );
 }
 
-export function PurchasePlanner({ companyId, companyName, events, supplierItems, query }: { companyId: string; companyName: string; events: PlannerEvent[]; supplierItems: SupplierItemOption[]; query: string }) {
+export function PurchasePlanner({ companyId, companyName, events, recipeOptions, supplierItems, query }: { companyId: string; companyName: string; events: PlannerEvent[]; recipeOptions: RecipeRef[]; supplierItems: SupplierItemOption[]; query: string }) {
   const router = useRouter();
   const [eventSearch, setEventSearch] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
+  // where the purchase starts: the menu of an event, or recipes chosen by hand
+  const [mode, setMode] = useState<"event" | "recipes">("event");
+  const [recipeSearch, setRecipeSearch] = useState("");
+  const [pickedRecipes, setPickedRecipes] = useState<string[]>([]);
   const [plan, setPlan] = useState<EventPlan | null>(null);
   const [recipes, setRecipes] = useState<Map<string, RecipeData>>(new Map());
   const [pax, setPax] = useState<Record<string, string>>({});
@@ -83,6 +88,37 @@ export function PurchasePlanner({ companyId, companyName, events, supplierItems,
     return events.filter((e) => words.every((w) => norm(`${e.name} ${e.date}`).includes(w)));
   }, [events, eventSearch]);
 
+  const shownRecipes = useMemo(() => {
+    const words = norm(recipeSearch).split(" ").filter(Boolean);
+    return recipeOptions.filter((r) => r.hasIngredients && words.every((w) => norm(r.name).includes(w)));
+  }, [recipeOptions, recipeSearch]);
+
+  function startPlan(r: EventPlan) {
+    setPlan(r);
+    setRecipes(new Map(r.recipes.map((x) => [x.id, x])));
+    setPax(Object.fromEntries(r.sessions.map((s) => [s.id, s.pax !== null ? String(s.pax) : ""])));
+    setDishRecipe(Object.fromEntries(r.sessions.flatMap((s) => s.dishes.map((d) => [d.id, d.recipeId] as const))));
+    setRowState({});
+  }
+
+  async function readRecipes() {
+    setBusy(true);
+    setError(null);
+    setCreated(null);
+    try {
+      const r = await loadRecipePlan(companyId, pickedRecipes);
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      startPlan(r);
+    } catch (err) {
+      setError(errorMessage(err, "Could not read the recipes. Please try again."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function readMenus() {
     setBusy(true);
     setError(null);
@@ -93,11 +129,7 @@ export function PurchasePlanner({ companyId, companyName, events, supplierItems,
         setError(r.error);
         return;
       }
-      setPlan(r);
-      setRecipes(new Map(r.recipes.map((x) => [x.id, x])));
-      setPax(Object.fromEntries(r.sessions.map((s) => [s.id, s.pax !== null ? String(s.pax) : ""])));
-      setDishRecipe(Object.fromEntries(r.sessions.flatMap((s) => s.dishes.map((d) => [d.id, d.recipeId] as const))));
-      setRowState({});
+      startPlan(r);
     } catch (err) {
       setError(errorMessage(err, "Could not read the menu. Please try again."));
     } finally {
@@ -134,7 +166,7 @@ export function PurchasePlanner({ companyId, companyName, events, supplierItems,
     if (!plan) return null;
     const sessions: KSession[] = plan.sessions.map((s) => ({
       id: s.id,
-      name: `${s.eventName} · ${s.name}`,
+      name: s.eventName ? `${s.eventName} · ${s.name}` : s.name,
       pax: Number(pax[s.id]) > 0 ? Number(pax[s.id]) : null,
       paxSource: "event",
       items: s.dishes.map(
@@ -186,7 +218,9 @@ export function PurchasePlanner({ companyId, companyName, events, supplierItems,
     setBusy(true);
     setError(null);
     try {
-      const names = Array.from(new Set(plan.sessions.map((s) => `${s.eventName} (${s.eventDate})`))).join("; ");
+      const names = plan.sessions.some((s) => s.eventId)
+        ? Array.from(new Set(plan.sessions.map((s) => `${s.eventName} (${s.eventDate})`))).join("; ")
+        : `Recipes: ${plan.sessions.map((s) => s.name).join(", ")}`;
       const r = await createPlannedPurchaseOrders({ companyId, sourceEvents: names, orders: bySupplier.map((s) => ({ supplierId: s.supplierId, items: s.items })) });
       if (!r.ok) {
         setError(r.error);
@@ -226,27 +260,60 @@ export function PurchasePlanner({ companyId, companyName, events, supplierItems,
 
   return (
     <div className="flex flex-col gap-5">
-      {/* 1. events */}
+      {/* 1. where the purchase starts */}
       <section className="rounded-xl border border-border bg-surface p-5 shadow-sm">
-        <div className="text-[14.5px] font-extrabold text-text">1. Choose the event(s)</div>
-        <p className="mt-0.5 text-[12.5px] text-text-secondary">Search, then tick the events to buy for. Their menus and pax come from the event order.</p>
-        <input value={eventSearch} onChange={(e) => setEventSearch(e.target.value)} placeholder="Search event name or date..." className={`${inputClass} mt-3 max-w-md`} />
-        <div className="mt-2 max-h-56 overflow-y-auto rounded-lg border border-border">
-          {shownEvents.length === 0 && <div className="px-4 py-3 text-[13px] text-text-muted">No event found.</div>}
-          {shownEvents.map((e) => (
-            <label key={e.id} className="flex cursor-pointer items-center gap-3 border-b border-border px-4 py-2 text-[13px] last:border-b-0 hover:bg-surface-alt">
-              <input type="checkbox" checked={picked.includes(e.id)} onChange={(ev) => setPicked((p) => (ev.target.checked ? [...p, e.id] : p.filter((x) => x !== e.id)))} />
-              <span className="font-semibold text-text">{e.name}</span>
-              <span className="text-text-muted">{`${e.date}${e.pax ? ` · ${e.pax} pax` : ""} · ${e.status}`}</span>
-            </label>
+        <div className="flex flex-wrap gap-1.5">
+          {([["event", "By event menu"], ["recipes", "By recipes"]] as const).map(([key, label]) => (
+            <button key={key} type="button" onClick={() => setMode(key)} className={`rounded-full border px-3.5 py-1.5 text-[13px] font-semibold ${mode === key ? "border-primary bg-primary text-white" : "border-border-strong bg-surface text-text hover:bg-surface-alt"}`}>
+              {label}
+            </button>
           ))}
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <button type="button" disabled={busy || picked.length === 0} onClick={readMenus} className="rounded-lg bg-primary px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-50">
-            {busy && !plan ? "Reading..." : plan ? "Read the menus again" : "Read the menu of the selected events"}
-          </button>
-          <span className="text-[12.5px] text-text-muted">{`${picked.length} selected`}</span>
-        </div>
+
+        {mode === "event" ? (
+          <>
+            <div className="mt-4 text-[14.5px] font-extrabold text-text">1. Choose the event(s)</div>
+            <p className="mt-0.5 text-[12.5px] text-text-secondary">Search, then tick the events to buy for. Their menus and pax come from the event order.</p>
+            <input value={eventSearch} onChange={(e) => setEventSearch(e.target.value)} placeholder="Search event name or date..." className={`${inputClass} mt-3 max-w-md`} />
+            <div className="mt-2 max-h-56 overflow-y-auto rounded-lg border border-border">
+              {shownEvents.length === 0 && <div className="px-4 py-3 text-[13px] text-text-muted">No event found.</div>}
+              {shownEvents.map((e) => (
+                <label key={e.id} className="flex cursor-pointer items-center gap-3 border-b border-border px-4 py-2 text-[13px] last:border-b-0 hover:bg-surface-alt">
+                  <input type="checkbox" checked={picked.includes(e.id)} onChange={(ev) => setPicked((p) => (ev.target.checked ? [...p, e.id] : p.filter((x) => x !== e.id)))} />
+                  <span className="font-semibold text-text">{e.name}</span>
+                  <span className="text-text-muted">{`${e.date}${e.pax ? ` · ${e.pax} pax` : ""} · ${e.status}`}</span>
+                </label>
+              ))}
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button type="button" disabled={busy || picked.length === 0} onClick={readMenus} className="rounded-lg bg-primary px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-50">
+                {busy && !plan ? "Reading..." : plan ? "Read the menus again" : "Read the menu of the selected events"}
+              </button>
+              <span className="text-[12.5px] text-text-muted">{`${picked.length} selected`}</span>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="mt-4 text-[14.5px] font-extrabold text-text">1. Choose the recipes</div>
+            <p className="mt-0.5 text-[12.5px] text-text-secondary">Search, then tick the recipes to cook. You enter the pax of each one next; the ingredient list is worked out from the recipes only.</p>
+            <input value={recipeSearch} onChange={(e) => setRecipeSearch(e.target.value)} placeholder="Search recipe..." className={`${inputClass} mt-3 max-w-md`} />
+            <div className="mt-2 max-h-56 overflow-y-auto rounded-lg border border-border">
+              {shownRecipes.length === 0 && <div className="px-4 py-3 text-[13px] text-text-muted">No recipe found.</div>}
+              {shownRecipes.map((r) => (
+                <label key={r.id} className="flex cursor-pointer items-center gap-3 border-b border-border px-4 py-2 text-[13px] last:border-b-0 hover:bg-surface-alt">
+                  <input type="checkbox" checked={pickedRecipes.includes(r.id)} onChange={(ev) => setPickedRecipes((p) => (ev.target.checked ? [...p, r.id] : p.filter((x) => x !== r.id)))} />
+                  <span className="font-semibold text-text">{r.name}</span>
+                </label>
+              ))}
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button type="button" disabled={busy || pickedRecipes.length === 0} onClick={readRecipes} className="rounded-lg bg-primary px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-50">
+                {busy && !plan ? "Reading..." : "Generate the ingredient list"}
+              </button>
+              <span className="text-[12.5px] text-text-muted">{`${pickedRecipes.length} selected`}</span>
+            </div>
+          </>
+        )}
       </section>
 
       {error && <div role="alert" className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-[13px] text-danger">{error}</div>}
@@ -261,7 +328,7 @@ export function PurchasePlanner({ companyId, companyName, events, supplierItems,
               {plan.sessions.map((s) => (
                 <div key={s.id} className="rounded-lg border border-border p-3">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="text-[13.5px] font-bold text-text">{`${s.eventName} · ${s.name}`}</div>
+                    <div className="text-[13.5px] font-bold text-text">{s.eventName ? `${s.eventName} · ${s.name}` : s.name}</div>
                     <label className="flex items-center gap-2 text-[12.5px] font-semibold text-text-secondary">
                       Pax
                       <input type="number" min={1} value={pax[s.id] ?? ""} onChange={(e) => setPax((p) => ({ ...p, [s.id]: e.target.value }))} className="h-8 w-24 rounded-md border border-border-strong px-2 text-[13px]" />

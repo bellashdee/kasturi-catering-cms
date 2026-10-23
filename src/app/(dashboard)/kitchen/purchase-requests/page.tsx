@@ -69,7 +69,7 @@ export default async function PurchaseRequestsPage({
       <KitchenSubNav />
 
       <div className="rounded-xl border border-border bg-surface px-4 py-3 text-[14px] text-text-secondary shadow-sm">
-        <b className="text-text">From an event menu:</b> 1. Choose the event(s) · 2. The menu gives the ingredients and quantities (from the recipes and the pax) · 3. Choose the supplier item of each ingredient, at the latest price of that supplier · 4. One purchase order is made for each supplier.
+        <b className="text-text">From an event menu or from recipes:</b> 1. Choose the event(s), or choose the recipes and their pax · 2. The menu gives the ingredients and quantities (from the recipes and the pax) · 3. Choose the supplier item of each ingredient, at the latest price of that supplier · 4. One purchase order is made for each supplier.
       </div>
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">

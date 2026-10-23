@@ -71,6 +71,38 @@ export async function loadEventPlan(companyId: string, eventIds: string[]): Prom
   }, "Could not read the menu of the event. Please try again.");
 }
 
+/**
+ * A plan made from recipes chosen by hand (no event): every recipe is one line with its own pax, which starts as the yield of the recipe
+ * (so the quantities are the recipe as written) and can be changed. Nothing is written.
+ */
+export async function loadRecipePlan(companyId: string, recipeIds: string[]): Promise<ActionResult<EventPlan>> {
+  return runAction(async () => {
+    const ids = Array.from(new Set(recipeIds));
+    if (ids.length === 0) throw new Error("Choose at least one recipe.");
+    if (ids.length > 60) throw new Error("Choose 60 recipes or fewer at a time.");
+    const { supabase } = await requireUser();
+    const [refs, stock, data] = await Promise.all([loadRecipeRefs(supabase, companyId), loadStock(supabase, companyId), loadRecipeData(supabase, ids)]);
+    const known = new Set(refs.map((r) => r.id));
+    const sessions: PlanSession[] = [];
+    for (const id of ids) {
+      const recipe = data.get(id);
+      if (!recipe || !known.has(id)) throw new Error("A recipe was not found for this company.");
+      sessions.push({
+        id: `recipe:${id}`,
+        eventId: "",
+        eventName: "",
+        eventDate: "",
+        name: recipe.name,
+        pax: recipe.yieldPax > 0 ? recipe.yieldPax : null,
+        serviceTypes: [],
+        dishes: [{ id: `recipe:${id}:0`, name: recipe.name, recipeId: id, auto: false, candidates: [] }],
+      });
+    }
+    const stockList = Array.from(stock.byId.entries()).map(([id, s]) => ({ id, name: s.name, qty: s.qty, unit: s.unit }));
+    return { sessions, recipes: Array.from(data.values()), recipeRefs: refs, stock: stockList };
+  }, "Could not read the recipes. Please try again.");
+}
+
 /** The ingredient lines of recipes chosen later by hand. */
 export async function loadRecipes(ids: string[]): Promise<ActionResult<{ recipes: RecipeData[] }>> {
   return runAction(async () => {

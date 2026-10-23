@@ -8,6 +8,7 @@ import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { KitchenSubNav } from "@/components/kitchen/KitchenSubNav";
 import { PurchasePlanner } from "@/components/kitchen/PurchasePlanner";
 import { listPlannerEvents, loadSupplierItemOptions } from "@/lib/purchasePlanner/data";
+import { loadRecipeRefs } from "@/lib/kitchenAi/data";
 
 /**
  * Purchase Request from the menu of an event: choose the event(s), the menu gives the ingredients and their quantities (from the
@@ -34,7 +35,7 @@ export default async function PurchaseFromMenuPage({ searchParams }: { searchPar
       <div>
         <Link href={`/kitchen/purchase-requests${query}`} className="text-[12.5px] font-semibold text-text-secondary">← Back to Purchase Requests</Link>
         <h1 className="mt-1 text-[22px] font-extrabold text-text">Purchase Request from an event menu</h1>
-        <p className="mt-0.5 text-[13px] text-text-secondary">Choose the event, the menu gives the ingredients and quantities, then order them from the suppliers.</p>
+        <p className="mt-0.5 text-[13px] text-text-secondary">Choose the event (or the recipes), the ingredients and quantities are worked out, then order them from the suppliers.</p>
       </div>
 
       <KitchenSubNav />
@@ -55,6 +56,7 @@ export default async function PurchaseFromMenuPage({ searchParams }: { searchPar
           companyId={company.id}
           companyName={company.name}
           events={await listPlannerEvents(supabase, company.id, todayInMalaysia())}
+          recipeOptions={await loadRecipeRefs(supabase, company.id)}
           supplierItems={await loadSupplierItemOptions(supabase, company.id)}
           query={query}
         />
