@@ -3,13 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { correctAttendance } from "@/lib/driverAttendance/actions";
-
-function toLocalInputValue(iso: string | null): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
+import { fromMalaysiaInputValue, toMalaysiaInputValue } from "@/lib/format";
 
 export function AttendanceCorrectionAction({
   attendanceId,
@@ -24,8 +18,8 @@ export function AttendanceCorrectionAction({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [clockIn, setClockIn] = useState(toLocalInputValue(clockInTime));
-  const [clockOut, setClockOut] = useState(toLocalInputValue(clockOutTime));
+  const [clockIn, setClockIn] = useState(toMalaysiaInputValue(clockInTime));
+  const [clockOut, setClockOut] = useState(toMalaysiaInputValue(clockOutTime));
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,8 +43,8 @@ export function AttendanceCorrectionAction({
       await correctAttendance({
         attendanceId,
         companyId,
-        clockInTime: clockIn ? new Date(clockIn).toISOString() : null,
-        clockOutTime: clockOut ? new Date(clockOut).toISOString() : null,
+        clockInTime: clockIn ? fromMalaysiaInputValue(clockIn) : null,
+        clockOutTime: clockOut ? fromMalaysiaInputValue(clockOut) : null,
         reason,
       });
       router.refresh();
