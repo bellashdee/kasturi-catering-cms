@@ -5,6 +5,7 @@ import { getEmployee, getEmployeePrivateDetails } from "@/lib/hr/queries";
 import { canManageStaffPrivateDetails } from "@/lib/hr/constants";
 import { EmployeeForm } from "@/components/hr/EmployeeForm";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getHrAccess } from "@/lib/hr/access";
 
 export default async function EditEmployeePage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionContext();
@@ -19,6 +20,8 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
   } catch {
     notFound();
   }
+  const access = await getHrAccess(supabase, session, [employee.company_id]);
+  if (!access.isAdminOf(employee.company_id)) notFound();
 
   const { data: allCompanies } = await supabase.from("companies").select("id, name").order("name");
   // the companies where this person (same name) already has a staff record

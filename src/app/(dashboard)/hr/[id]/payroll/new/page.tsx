@@ -5,6 +5,7 @@ import { getSessionContext } from "@/lib/auth";
 import { getEmployee } from "@/lib/hr/queries";
 import { canUsePayrollCentre } from "@/lib/hr/payrollAccess";
 import { PayrollForm } from "@/components/hr/PayrollForm";
+import { getHrAccess } from "@/lib/hr/access";
 
 export default async function NewPayrollPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionContext();
@@ -20,6 +21,8 @@ export default async function NewPayrollPage({ params }: { params: Promise<{ id:
   } catch {
     notFound();
   }
+  const access = await getHrAccess(supabase, session, [employee.company_id]);
+  if (!access.isAdminOf(employee.company_id)) notFound();
 
   return (
     <div className="mx-auto max-w-xl">

@@ -27,6 +27,7 @@ import { shortNameOf } from "@/lib/hr/shortName";
 import { canUsePayrollCentre } from "@/lib/hr/payrollAccess";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SectionCard, EmptyRow, StatRow } from "@/components/dashboard/SectionCard";
+import { getHrAccess } from "@/lib/hr/access";
 
 const CERT_TONE: Record<string, "success" | "warning" | "danger" | "neutral"> = {
   no_expiry: "neutral",
@@ -64,6 +65,10 @@ export default async function EmployeeProfilePage({
   } catch {
     notFound();
   }
+
+  const access = await getHrAccess(supabase, session, [employee.company_id]);
+  // other staff's details are for the company admins only
+  if (!access.canSee(employee)) notFound();
 
   const canSeePrivate = canManageStaffPrivateDetails(session.role);
   const canSeePayroll = await canUsePayrollCentre(supabase);

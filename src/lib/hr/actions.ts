@@ -67,8 +67,15 @@ function personalColumns(input: Partial<EmployeeInput>) {
   return { date_of_birth: dob, nationality: text(input.nationality), gender, race: text(input.race), religion: text(input.religion), marital_status: text(input.maritalStatus), branch: text(input.branch), short_name: text(input.shortName)?.toUpperCase() ?? null };
 }
 
+/** The staff data of a company is for its admins: anyone else may only deal with their own record. */
+async function requireHrAdmin(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], companyId: string, message: string) {
+  const { data } = await supabase.rpc("user_is_company_admin", { target_company_id: companyId });
+  if (data !== true) throw new Error(message);
+}
+
 export async function createEmployee(input: EmployeeInput) {
   const { supabase } = await requireUser();
+  await requireHrAdmin(supabase, input.companyId, "Only an admin of the company can add staff.");
 
   const { data, error } = await supabase
     .from("employees")
@@ -121,6 +128,7 @@ export async function attachEmployeeToCompanies(employeeId: string, companyIds: 
   const { supabase } = await requireUser();
   const { data: source, error } = await supabase.from("employees").select("*").eq("id", employeeId).single();
   if (error) throw error;
+  await requireHrAdmin(supabase, source.company_id, "Only an admin of the company can add staff to other companies.");
   const { data: sourcePrivate } = await supabase.from("employee_private_details").select("*").eq("employee_id", employeeId).maybeSingle();
   const created: string[] = [];
   for (const companyId of Array.from(new Set(companyIds))) {
@@ -166,12 +174,10 @@ export async function attachEmployeeToCompanies(employeeId: string, companyIds: 
 export async function updateEmployee(employeeId: string, input: Partial<EmployeeInput>) {
   const { supabase } = await requireUser();
 
-  // Linking a login to a staff record is an admin-only change.
-  if (input.userId !== undefined) {
-    const { data: target } = await supabase.from("employees").select("company_id").eq("id", employeeId).single();
-    const { data: isAdmin } = target ? await supabase.rpc("user_is_company_admin", { target_company_id: target.company_id }) : { data: false };
-    if (isAdmin !== true) throw new Error("Only an admin can link a login account to a staff record.");
-  }
+  // Changing a staff record (and linking a login to it) is for the admins of the company.
+  const { data: target } = await supabase.from("employees").select("company_id").eq("id", employeeId).single();
+  if (!target) throw new Error("This staff record was not found.");
+  await requireHrAdmin(supabase, target.company_id, input.userId !== undefined ? "Only an admin of the company can link a login account to a staff record." : "Only an admin of the company can change staff details.");
 
   const { error } = await supabase
     .from("employees")
@@ -221,6 +227,7 @@ export type BulkEmployeeRow = {
 
 export async function bulkImportEmployees(companyId: string, rows: BulkEmployeeRow[]) {
   const { supabase } = await requireUser();
+  await requireHrAdmin(supabase, companyId, "Only an admin of the company can import staff.");
 
   const payload = rows
     .filter((r) => r.fullName?.trim())
@@ -277,6 +284,7 @@ export type CertificateInput = {
 
 export async function createCertificate(input: CertificateInput) {
   const { supabase, userId } = await requireUser();
+  await requireHrAdmin(supabase, input.companyId, "Only an admin of the company can add staff documents.");
 
   const { data, error } = await supabase
     .from("employee_certificates")
@@ -326,6 +334,8 @@ export type LeaveInput = {
 
 export async function requestLeave(input: LeaveInput) {
   const { supabase, userId } = await requireUser();
+  const { data: owns } = await supabase.rpc("user_owns_employee", { target_employee_id: input.employeeId });
+  if (owns !== true) await requireHrAdmin(supabase, input.companyId, "Only an admin of the company can request leave for other staff.");
 
   const { data: leave, error: leaveError } = await supabase
     .from("leave_requests")
@@ -379,10 +389,11 @@ export async function decideLeave(leaveRequestId: string, decision: "approved" |
 
   const { data: leave, error: fetchError } = await supabase
     .from("leave_requests")
-    .select("id, approval_id, employee_id")
+    .select("id, approval_id, employee_id, company_id")
     .eq("id", leaveRequestId)
     .single();
   if (fetchError) throw fetchError;
+  await requireHrAdmin(supabase, leave.company_id, "Only an admin of the company can approve or reject leave.");
 
   const { error: updateError } = await supabase
     .from("leave_requests")
@@ -449,6 +460,7 @@ export type CompanyDocumentInput = {
 /** Company-level licences and agreements (MBJB, Halal, tenancy) — separate from per-employee documents. */
 export async function createCompanyDocument(input: CompanyDocumentInput) {
   const { supabase, userId } = await requireUser();
+  await requireHrAdmin(supabase, input.companyId, "Only an admin of the company can add company documents.");
 
   const { data, error } = await supabase
     .from("company_documents")
@@ -487,6 +499,8 @@ export async function createCompanyDocument(input: CompanyDocumentInput) {
 
 export async function deleteCompanyDocument(id: string) {
   const { supabase } = await requireUser();
+  const { data: doc } = await supabase.from("company_documents").select("company_id").eq("id", id).maybeSingle();
+  if (doc) await requireHrAdmin(supabase, doc.company_id, "Only an admin of the company can delete company documents.");
   const { error } = await supabase.from("company_documents").delete().eq("id", id);
   if (error) throw error;
   revalidatePath("/hr/documents");

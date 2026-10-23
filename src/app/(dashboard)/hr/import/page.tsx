@@ -4,6 +4,7 @@ import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { ImportEmployeesFlow } from "@/components/hr/ImportEmployeesFlow";
 import { canManageStaffPrivateDetails } from "@/lib/hr/constants";
+import { getHrAccess } from "@/lib/hr/access";
 
 export default async function ImportEmployeesPage({
   searchParams,
@@ -19,6 +20,7 @@ export default async function ImportEmployeesPage({
 
   const { company: requestedId } = await searchParams;
   const { accessibleIds } = resolveCompanyScope(session, companies, requestedId);
+  if (!(await getHrAccess(supabase, session, accessibleIds)).adminAnywhere) redirect("/hr");
   const selectable = companies.filter((c) => accessibleIds.includes(c.id));
   const defaultCompanyId = requestedId && accessibleIds.includes(requestedId) ? requestedId : selectable[0]?.id;
 

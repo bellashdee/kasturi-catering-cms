@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { LeaveRowActions } from "@/components/hr/LeaveRowActions";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
+import { getHrAccess } from "@/lib/hr/access";
 
 export default async function LeavePage({
   searchParams,
@@ -29,13 +30,15 @@ export default async function LeavePage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const requests = await listLeaveForCompanies(supabase, targetCompanyIds);
+  const access = await getHrAccess(supabase, session, targetCompanyIds);
+  // an admin sees the leave of every employee; anyone else only their own
+  const requests = (await listLeaveForCompanies(supabase, targetCompanyIds)).filter((r) => access.isAdminOf(r.company_id) || access.ownEmployeeIds.has(r.employee_id));
 
   return (
     <div className="flex flex-col gap-5">
       <div>
         <h1 className="text-[22px] font-extrabold text-text">Leave Requests</h1>
-        <p className="mt-0.5 text-[13px] text-text-secondary">Across all employees you can access.</p>
+        <p className="mt-0.5 text-[13px] text-text-secondary">{access.adminAnywhere ? "Across all employees you can access." : "Your own leave requests."}</p>
       </div>
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">

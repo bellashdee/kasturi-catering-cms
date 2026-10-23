@@ -8,6 +8,7 @@ import { EMPLOYMENT_TYPE_LABEL, EMPLOYEE_STATUS_LABEL } from "@/lib/hr/constants
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SearchBox } from "@/components/SearchBox";
+import { getHrAccess } from "@/lib/hr/access";
 
 function statusTone(status: string): "success" | "danger" | "neutral" {
   if (status === "active") return "success";
@@ -36,7 +37,9 @@ export default async function HRPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const records = await listEmployees(supabase, targetCompanyIds, q);
+  const access = await getHrAccess(supabase, session, targetCompanyIds);
+  // an admin sees every employee of the company; anyone else only the staff record linked to their own login
+  const records = (await listEmployees(supabase, targetCompanyIds, q)).filter((e) => access.canSee(e));
 
   // The same person who works for several companies has one record per company (leave, payroll and OT stay separate per company).
   // The list shows each person once, with a link to the record of every company.
@@ -78,6 +81,8 @@ export default async function HRPage({
           >
             Overtime &amp; OT Form
           </Link>
+          {access.adminAnywhere && (
+            <>
           <Link
             href={`/hr/documents${query}`}
             className="flex items-center gap-2 rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text"
@@ -96,10 +101,18 @@ export default async function HRPage({
           >
             + Add Employee
           </Link>
+            </>
+          )}
         </div>
       </div>
 
-      <SearchBox placeholder="Search employees by name..." />
+      {!access.adminAnywhere && (
+        <div className="rounded-xl border border-border bg-surface px-4 py-3 text-[13px] text-text-secondary shadow-sm">
+          You can see your own HR record only. The details of other staff are visible to the company admins.
+        </div>
+      )}
+
+      {access.adminAnywhere && <SearchBox placeholder="Search employees by name..." />}
 
       {companies.length > 1 && (
         <div className="flex flex-wrap items-center gap-2">
@@ -125,7 +138,7 @@ export default async function HRPage({
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {employees.length === 0 ? (
-          <EmptyRow text="No employees yet. Add one manually or import an Excel/CSV list." />
+          <EmptyRow text={access.adminAnywhere ? "No employees yet. Add one manually or import an Excel/CSV list." : "No staff record is linked to your login yet. Ask an admin to link it."} />
         ) : (
           <div>
             <div className="grid grid-cols-[2fr_1.2fr_1.2fr_1fr_1fr_1fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">

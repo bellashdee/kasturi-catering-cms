@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { CompanyDocumentUploadReview } from "@/components/hr/CompanyDocumentUploadReview";
+import { getHrAccess } from "@/lib/hr/access";
 
 export default async function NewCompanyDocumentPage({
   searchParams,
@@ -18,6 +19,7 @@ export default async function NewCompanyDocumentPage({
 
   const { company: requestedId } = await searchParams;
   const { accessibleIds } = resolveCompanyScope(session, companies, requestedId);
+  if (!(await getHrAccess(supabase, session, accessibleIds)).adminAnywhere) redirect("/hr");
   const selectable = companies.filter((c) => accessibleIds.includes(c.id));
   const defaultCompanyId = requestedId && accessibleIds.includes(requestedId) ? requestedId : selectable[0]?.id;
   const query = requestedId ? `?company=${requestedId}` : "";

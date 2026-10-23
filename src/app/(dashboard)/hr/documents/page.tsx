@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 import { DeleteCompanyDocumentButton } from "@/components/hr/DeleteCompanyDocumentButton";
+import { getHrAccess } from "@/lib/hr/access";
 
 export default async function CompanyDocumentsPage({
   searchParams,
@@ -23,6 +24,7 @@ export default async function CompanyDocumentsPage({
 
   const { company: requestedId } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
+  if (!(await getHrAccess(supabase, session, targetCompanyIds)).adminAnywhere) redirect("/hr");
   const query = requestedId ? `?company=${requestedId}` : "";
 
   if (targetCompanyIds.length === 0) {

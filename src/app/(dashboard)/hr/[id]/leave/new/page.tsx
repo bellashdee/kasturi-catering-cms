@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { getEmployee } from "@/lib/hr/queries";
 import { LeaveRequestForm } from "@/components/hr/LeaveRequestForm";
+import { getHrAccess } from "@/lib/hr/access";
 
 export default async function NewLeavePage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionContext();
@@ -18,6 +19,8 @@ export default async function NewLeavePage({ params }: { params: Promise<{ id: s
   } catch {
     notFound();
   }
+  const access = await getHrAccess(supabase, session, [employee.company_id]);
+  if (!access.canSee(employee)) notFound();
 
   return (
     <div className="mx-auto max-w-xl">
