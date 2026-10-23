@@ -26,9 +26,21 @@ export function parseMenuText(text: string | null | undefined): string[] {
   return out;
 }
 
+/** Words that only describe how the food is served (pack food, dome set, buffet ...): such a line is a service type, not a dish. */
+const SERVICE_WORDS = new Set(["BUFFET", "PACK", "PACKED", "FOOD", "DOME", "DOMES", "SET", "VIP", "LIVE", "COOKING", "STATION", "COCKTAIL", "CANAPE", "PREPLATED", "PRE", "PLATED", "HIDANG", "SERVE", "SERVICE", "BOX", "LINE"]);
+export function isServiceTypeLine(line: string): boolean {
+  const words = line.toUpperCase().replace(/[^A-Z0-9]+/g, " ").split(" ").filter(Boolean).filter((w) => !/^\d+$/.test(w));
+  return words.length > 0 && words.every((w) => SERVICE_WORDS.has(w)) && words.some((w) => w !== "SET" && w !== "FOOD" && w !== "LINE" && w !== "VIP" && w !== "SERVICE");
+}
+
+/** The lines of a menu text split into the dishes and the service types written among them. */
+export function splitMenu(lines: string[]): { dishes: string[]; serviceTypes: string[] } {
+  return { dishes: lines.filter((l) => !isServiceTypeLine(l)), serviceTypes: lines.filter((l) => isServiceTypeLine(l)) };
+}
+
 const mealLabels = (types: string[] | null | undefined) => (types ?? []).map((t) => MEAL_TYPE_LABEL[t] ?? t).join(" + ");
 
-export type EventDraft = { ctx: EventContext; companyId: string; sessions: { name: string; pax: number | null; menu: string[] }[] };
+export type EventDraft = { ctx: EventContext; companyId: string; sessions: { name: string; pax: number | null; menu: string[]; serviceTypes: string[] }[] };
 
 /** The event order as the kitchen needs it: confirmed pax per session, the menu, and the preparation times. Nothing is written back. */
 export async function loadEventDraft(supabase: DB, eventId: string): Promise<EventDraft | null> {
@@ -51,12 +63,14 @@ export async function loadEventDraft(supabase: DB, eventId: string): Promise<Eve
     (days ?? []).forEach((d, i) => {
       const pax = (d.service_pax ?? 0) + (d.second_service_type ? d.second_service_pax ?? 0 : 0);
       const label = mealLabels(d.meal_types);
-      sessions.push({ name: `Day ${i + 1}${label ? ` · ${label}` : ""}`, pax: pax > 0 ? pax : null, menu: parseMenuText(d.menu_details || ev.menu_description) });
+      const split = splitMenu(parseMenuText(d.menu_details || ev.menu_description));
+      sessions.push({ name: `Day ${i + 1}${label ? ` · ${label}` : ""}`, pax: pax > 0 ? pax : null, menu: split.dishes, serviceTypes: split.serviceTypes });
     });
   } else {
     const pax = (ev.service_pax ?? ev.pax_count ?? 0) + (ev.second_service_type ? ev.second_service_pax ?? 0 : 0);
     const fromPackage = (pkgItems ?? []).map((p) => p.item_name).filter(Boolean);
-    sessions.push({ name: mealLabels(ev.meal_types) || "Menu", pax: pax > 0 ? pax : null, menu: [...parseMenuText(ev.menu_description), ...fromPackage] });
+    const split = splitMenu([...parseMenuText(ev.menu_description), ...fromPackage]);
+    sessions.push({ name: mealLabels(ev.meal_types) || "Menu", pax: pax > 0 ? pax : null, menu: split.dishes, serviceTypes: split.serviceTypes });
   }
 
   const ctx: EventContext = {

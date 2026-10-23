@@ -12,6 +12,7 @@ import { escapeHtml, sendNotificationEmail } from "@/lib/notify/email";
 import { recordCustomerPayment } from "@/lib/finance/actions";
 import {
   PAYMENT_METHOD_LABEL,
+  PAYMENT_REMARK_OPTIONS,
   PROOF_ALLOWED_EXTENSIONS,
   PROOF_MAX_BYTES,
   proofExtension,
@@ -63,21 +64,29 @@ export async function submitPaymentProof(companySlug: string, input: PaymentProo
     if (!invoiceNumber) throw new Error("Enter the invoice number.");
     const paymentDate = confirmedPaymentDate(input.paymentDate || undefined);
     if (!PAYMENT_METHOD_LABEL[input.paymentMethod]) throw new Error("Select how the customer paid.");
-    if (input.amount !== undefined && !(input.amount > 0)) throw new Error("The amount must be more than 0.");
-    if (!input.proofPath.startsWith(`${proofFolder(company.id)}/`) || input.proofPath.includes("..")) throw new Error("The proof file is not valid. Please upload it again.");
+    if (!(input.amount !== undefined && input.amount > 0)) throw new Error("Enter the amount paid (more than 0).");
+    const reference = clean(input.reference, 200);
+    if (!reference) throw new Error("Enter the reference / receipt number.");
+    const remarks = clean(input.remarks, 1000);
+    if (!remarks || !PAYMENT_REMARK_OPTIONS.includes(remarks)) throw new Error("Select Deposit or Full payment.");
 
     const admin = createAdminClient();
 
-    // the file must really be there, and not too big (the browser's word is not enough)
-    const folder = proofFolder(company.id);
-    const fileName = input.proofPath.slice(folder.length + 1);
-    const { data: found } = await admin.storage.from(BUCKET).list(folder, { search: fileName, limit: 5 });
-    const object = found?.find((f) => f.name === fileName);
-    if (!object) throw new Error("The proof file was not uploaded. Please choose it again.");
-    const size = Number((object.metadata as { size?: number } | null)?.size ?? 0);
-    if (size > PROOF_MAX_BYTES) {
-      await admin.storage.from(BUCKET).remove([input.proofPath]);
-      throw new Error("The proof file must be smaller than 10 MB.");
+    // the receipt / proof is optional; when there is one the file must really be there, and not too big (the browser's word is not enough)
+    let proofPath: string | null = null;
+    if (input.proofPath) {
+      if (!input.proofPath.startsWith(`${proofFolder(company.id)}/`) || input.proofPath.includes("..")) throw new Error("The proof file is not valid. Please upload it again.");
+      const folder = proofFolder(company.id);
+      const fileName = input.proofPath.slice(folder.length + 1);
+      const { data: found } = await admin.storage.from(BUCKET).list(folder, { search: fileName, limit: 5 });
+      const object = found?.find((f) => f.name === fileName);
+      if (!object) throw new Error("The proof file was not uploaded. Please choose it again.");
+      const size = Number((object.metadata as { size?: number } | null)?.size ?? 0);
+      if (size > PROOF_MAX_BYTES) {
+        await admin.storage.from(BUCKET).remove([input.proofPath]);
+        throw new Error("The proof file must be smaller than 10 MB.");
+      }
+      proofPath = input.proofPath;
     }
 
     const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
@@ -94,10 +103,10 @@ export async function submitPaymentProof(companySlug: string, input: PaymentProo
       customer_invoice_id: invoice?.id ?? null,
       payment_date: paymentDate,
       payment_method: input.paymentMethod,
-      amount: input.amount ?? null,
-      reference: clean(input.reference, 200),
-      remarks: clean(input.remarks, 1000),
-      proof_path: input.proofPath,
+      amount: input.amount,
+      reference,
+      remarks,
+      proof_path: proofPath,
       proof_filename: clean(input.proofFilename, 200),
       proof_mime: clean(input.proofMime, 100),
     });
@@ -111,7 +120,7 @@ export async function submitPaymentProof(companySlug: string, input: PaymentProo
       await sendNotificationEmail({
         to,
         subject: `Payment proof: ${invoiceNumber} (${input.salesAgent})`,
-        text: `${input.salesAgent} sent a customer payment proof (${company.name}).\nInvoice: ${invoiceNumber}\nDate: ${paymentDate}\nMethod: ${PAYMENT_METHOD_LABEL[input.paymentMethod]}\n\nReview it here: ${reviewUrl}\nNothing is recorded as a payment until you approve it.`,
+        text: `${input.salesAgent} sent a customer payment proof (${company.name}).\nInvoice: ${invoiceNumber}\nDate: ${paymentDate}\nMethod: ${PAYMENT_METHOD_LABEL[input.paymentMethod]}\nAmount: RM ${input.amount.toFixed(2)} (${remarks})\nReference: ${reference}\n\nReview it here: ${reviewUrl}\nNothing is recorded as a payment until you approve it.`,
         html: `<div style="font-family:Arial,sans-serif;font-size:14px"><h3 style="margin:0 0 8px">Payment proof from ${escapeHtml(input.salesAgent)}</h3><p>${escapeHtml(company.name)}<br>Invoice <b>${escapeHtml(invoiceNumber)}</b> · ${escapeHtml(paymentDate)} · ${escapeHtml(PAYMENT_METHOD_LABEL[input.paymentMethod])}</p><p><a href="${reviewUrl}">Review and approve</a></p><p style="color:#5a6577;font-size:12px">Nothing is recorded as a payment until you approve it.</p></div>`,
       });
     } catch {
@@ -207,6 +216,7 @@ export async function getPaymentProofUrl(proofId: string): Promise<{ ok: boolean
     const { supabase } = await requireUser();
     const { data: proof, error } = await supabase.from("payment_proof_submissions").select("proof_path").eq("id", proofId).single();
     if (error || !proof) throw new Error("This payment proof was not found.");
+    if (!proof.proof_path) throw new Error("No receipt or proof file was attached to this payment.");
     const { data, error: urlError } = await supabase.storage.from(BUCKET).createSignedUrl(proof.proof_path, 300);
     if (urlError || !data) throw new Error("Could not open the proof file.");
     // open the file through this site's own address too (supabase.co may not be reachable from every network)

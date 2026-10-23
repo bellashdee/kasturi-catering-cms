@@ -10,7 +10,7 @@ import { autoMatch, candidatesFor, type Candidate, type RecipeRef } from "@/lib/
 import type { RecipeData } from "@/lib/kitchenAi/types";
 
 export type PlanDish = { id: string; name: string; recipeId: string | null; auto: boolean; candidates: Candidate[] };
-export type PlanSession = { id: string; eventId: string; eventName: string; eventDate: string; name: string; pax: number | null; dishes: PlanDish[] };
+export type PlanSession = { id: string; eventId: string; eventName: string; eventDate: string; name: string; pax: number | null; serviceTypes: string[]; dishes: PlanDish[] };
 export type EventPlan = {
   sessions: PlanSession[];
   recipes: RecipeData[];
@@ -51,6 +51,7 @@ export async function loadEventPlan(companyId: string, eventIds: string[]): Prom
           eventDate: draft.ctx.date,
           name: s.name,
           pax: s.pax,
+          serviceTypes: s.serviceTypes,
           dishes: s.menu.map((name, di) => {
             const best = autoMatch(name, refs);
             return { id: `${eventId}:${si}:${di}`, name, recipeId: best?.recipeId ?? null, auto: !!best, candidates: candidatesFor(name, refs) };

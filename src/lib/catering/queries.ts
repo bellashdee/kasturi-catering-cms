@@ -7,7 +7,7 @@ type DB = SupabaseClient<Database>;
 export async function listEvents(supabase: DB, companyIds: string[], search?: string) {
   let query = supabase
     .from("catering_events")
-    .select("id, event_name, event_date, end_date, event_time, pax_count, event_type, status, total_amount, company_id, customers(name), companies(name)")
+    .select("id, event_name, event_date, end_date, event_time, setup_time, location, pax_count, second_service_type, event_type, status, total_amount, company_id, customers(name), companies(name), catering_event_days(id)")
     .in("company_id", companyIds)
     .order("event_date", { ascending: false });
 

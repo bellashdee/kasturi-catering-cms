@@ -11,6 +11,7 @@ export type InvoiceOption = { id: string; label: string; outstanding: number };
 export function PaymentProofReviewRow({
   proofId,
   matchedInvoiceId,
+  hasProof = true,
   options,
   defaultAmount,
   defaultDate,
@@ -18,6 +19,7 @@ export function PaymentProofReviewRow({
 }: {
   proofId: string;
   matchedInvoiceId: string | null;
+  hasProof?: boolean;
   options: InvoiceOption[];
   defaultAmount: number | null;
   defaultDate: string;
@@ -88,9 +90,11 @@ export function PaymentProofReviewRow({
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <button type="button" onClick={view} disabled={busy !== null} className="h-10 rounded-lg border border-border-strong bg-surface px-4 text-[14px] font-semibold text-text disabled:opacity-60">
-          {busy === "view" ? "Opening..." : "View proof"}
-        </button>
+        {hasProof && (
+          <button type="button" onClick={view} disabled={busy !== null} className="h-10 rounded-lg border border-border-strong bg-surface px-4 text-[14px] font-semibold text-text disabled:opacity-60">
+            {busy === "view" ? "Opening..." : "View proof"}
+          </button>
+        )}
         <button type="button" onClick={approve} disabled={busy !== null || !invoiceId || !(Number(amount) > 0)} className="h-10 rounded-lg bg-primary px-4 text-[14px] font-semibold text-white disabled:opacity-50">
           {busy === "approve" ? "Recording..." : "Approve & record payment"}
         </button>

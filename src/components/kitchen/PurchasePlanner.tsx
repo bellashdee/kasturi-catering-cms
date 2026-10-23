@@ -267,12 +267,24 @@ export function PurchasePlanner({ companyId, companyName, events, supplierItems,
                       <input type="number" min={1} value={pax[s.id] ?? ""} onChange={(e) => setPax((p) => ({ ...p, [s.id]: e.target.value }))} className="h-8 w-24 rounded-md border border-border-strong px-2 text-[13px]" />
                     </label>
                   </div>
+                  {s.serviceTypes.length > 0 && (
+                    <div className="mt-1.5 text-[12px] text-text-muted">{`Service type (not a menu item): ${s.serviceTypes.join(", ")}`}</div>
+                  )}
                   {s.dishes.length === 0 && <div className="mt-2 text-[12.5px] text-warning">This event has no menu written yet.</div>}
                   {s.dishes.map((d) => {
                     const chosen = dishRecipe[d.id];
                     return (
                       <div key={d.id} className="mt-2 grid items-center gap-2 sm:grid-cols-[1fr_1.2fr]">
-                        <div className="text-[13px] font-semibold text-text">{d.name}</div>
+                        <div>
+                          <div className="text-[13px] font-semibold text-text">{d.name}</div>
+                          <div className="text-[11.5px] text-text-muted">
+                            {chosen && recipes.get(chosen)
+                              ? `Recipe: ${recipes.get(chosen)!.name} · for ${recipes.get(chosen)!.yieldPax} pax · ${recipes.get(chosen)!.lines.length} ingredients`
+                              : chosen
+                                ? "Reading the recipe..."
+                                : "No recipe attached yet"}
+                          </div>
+                        </div>
                         <select value={chosen ?? ""} onChange={(e) => void chooseRecipe(d.id, e.target.value)} className={`${inputClass} ${chosen ? "" : "border-warning"}`}>
                           <option value="">No recipe chosen</option>
                           {d.candidates.length > 0 && (

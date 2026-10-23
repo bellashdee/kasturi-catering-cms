@@ -3609,7 +3609,7 @@ export type Database = {
           payment_method: string
           proof_filename: string | null
           proof_mime: string | null
-          proof_path: string
+          proof_path: string | null
           reference: string | null
           remarks: string | null
           review_note: string | null
@@ -3630,7 +3630,7 @@ export type Database = {
           payment_method: string
           proof_filename?: string | null
           proof_mime?: string | null
-          proof_path: string
+          proof_path?: string | null
           reference?: string | null
           remarks?: string | null
           review_note?: string | null

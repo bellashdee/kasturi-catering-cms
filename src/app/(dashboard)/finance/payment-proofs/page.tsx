@@ -98,6 +98,7 @@ export default async function PaymentProofsPage({ searchParams }: { searchParams
                   <PaymentProofReviewRow
                     proofId={p.id}
                     matchedInvoiceId={matched?.id ?? null}
+                    hasProof={!!p.proof_path}
                     options={options}
                     defaultAmount={p.amount !== null ? Number(p.amount) : matched ? outstandingOf(matched) : null}
                     defaultDate={p.payment_date}

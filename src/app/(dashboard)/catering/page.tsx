@@ -12,6 +12,8 @@ import { SearchBox } from "@/components/SearchBox";
 import { CopyLink } from "@/components/driver/CopyLink";
 import { INTAKE_COMPANIES } from "@/lib/catering/intake";
 import { CateringSubNav } from "@/components/catering/CateringSubNav";
+import { CalendarEntryActions } from "@/components/catering/CalendarEntryActions";
+import { CalendarUndoBanner } from "@/components/catering/CalendarUndoBanner";
 
 function statusTone(status: string): "success" | "warning" | "danger" | "info" | "neutral" {
   if (status === "completed" || status === "confirmed") return "success";
@@ -42,6 +44,13 @@ export default async function CateringPage({
   }
 
   const events = await listEvents(supabase, targetCompanyIds, q);
+  const adminFlags = await Promise.all(
+    targetCompanyIds.map(async (id) => {
+      const { data } = await supabase.rpc("user_is_company_admin", { target_company_id: id });
+      return [id, data === true] as const;
+    }),
+  );
+  const adminCompanyIds = new Set(adminFlags.filter(([, isAdmin]) => isAdmin).map(([id]) => id));
   const { count: pendingRequests } = await supabase
     .from("quotation_requests")
     .select("id", { count: "exact", head: true })
@@ -63,6 +72,8 @@ export default async function CateringPage({
       </div>
 
       <CateringSubNav />
+
+      <CalendarUndoBanner />
 
       {pendingRequests ? (
         <Link href={`/catering/quotation-requests${query}`} className="rounded-xl border border-info bg-info-bg px-4 py-3 text-[13px] font-semibold text-text hover:opacity-90">
@@ -101,10 +112,10 @@ export default async function CateringPage({
               <div>Status</div>
             </div>
             {events.map((e) => (
+              <div key={e.id} className="border-b border-border last:border-b-0">
               <Link
-                key={e.id}
                 href={`/catering/${e.id}${query}`}
-                className="grid grid-cols-[1.8fr_1.2fr_1fr_0.8fr_1fr_1fr_1fr] border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0 hover:bg-surface-alt"
+                className="grid grid-cols-[1.8fr_1.2fr_1fr_0.8fr_1fr_1fr_1fr] px-5 py-3.5 text-[13.5px] hover:bg-surface-alt"
               >
                 <div className="font-semibold text-text">
                   {e.event_name}
@@ -119,6 +130,16 @@ export default async function CateringPage({
                   <StatusBadge tone={statusTone(e.status)}>{EVENT_STATUS_LABEL[e.status] ?? e.status}</StatusBadge>
                 </div>
               </Link>
+              <div className="px-5 pb-3">
+                <CalendarEntryActions
+                  key={`${e.id}:${e.event_date}:${e.event_time}:${e.setup_time}:${e.pax_count}:${e.status}`}
+                  entry={{ kind: "event", eventId: e.id, requestId: null, dayId: null, status: e.status, eventName: e.event_name, date: e.event_date, eventTime: e.event_time ? e.event_time.slice(0, 5) : "", setupTime: e.setup_time ? e.setup_time.slice(0, 5) : "", venue: e.location, pax: e.pax_count ?? 0, twoServices: !!e.second_service_type }}
+                  canDelete={adminCompanyIds.has(e.company_id)}
+                  canQuickEdit={(e.catering_event_days ?? []).length === 0}
+                  query={query}
+                />
+              </div>
+              </div>
             ))}
           </div>
         )}

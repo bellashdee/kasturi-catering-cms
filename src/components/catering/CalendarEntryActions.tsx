@@ -29,7 +29,7 @@ const labelClass = "text-[11.5px] font-semibold text-text-secondary";
 const btn = "rounded-md border border-border-strong bg-white px-2.5 py-1 text-[12px] font-semibold text-text hover:border-primary hover:text-primary disabled:opacity-50";
 
 /** Edit (save / cancel), Cancel event (with Undo) and Delete of one calendar entry; Approve / Reject for a quotation request. */
-export function CalendarEntryActions({ entry, canDelete, query }: { entry: ActionEntry; canDelete: boolean; query: string }) {
+export function CalendarEntryActions({ entry, canDelete, query, canQuickEdit = true }: { entry: ActionEntry; canDelete: boolean; query: string; canQuickEdit?: boolean }) {
   const router = useRouter();
   const { t } = useI18n();
   const [editing, setEditing] = useState(false);
@@ -94,9 +94,15 @@ export function CalendarEntryActions({ entry, canDelete, query }: { entry: Actio
     <div className="mt-2 flex flex-col gap-2">
       {!editing && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <button type="button" disabled={busy} onClick={() => setEditing(true)} className={btn}>
-            Edit
-          </button>
+          {canQuickEdit ? (
+            <button type="button" disabled={busy} onClick={() => setEditing(true)} className={btn}>
+              Edit
+            </button>
+          ) : (
+            <Link href={fullEdit} className={btn}>
+              Edit
+            </Link>
+          )}
           {entry.status !== "cancelled" ? (
             <button
               type="button"

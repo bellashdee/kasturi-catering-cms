@@ -9,6 +9,16 @@ export const PAYMENT_METHOD_LABEL: Record<string, string> = {
   other: "Other",
 };
 
+/** The choices on the sales agent's form (the key is what is stored). */
+export const PUBLIC_PAYMENT_METHODS: { key: string; label: string }[] = [
+  { key: "cash", label: "Cash" },
+  { key: "bank_transfer", label: "Transfer" },
+  { key: "cheque", label: "Cheque" },
+];
+
+/** What the payment is for. */
+export const PAYMENT_REMARK_OPTIONS = ["Deposit", "Full payment"];
+
 /** The proof can be a photo, a screenshot or a PDF, up to this size. */
 export const PROOF_MAX_BYTES = 10 * 1024 * 1024;
 export const PROOF_ALLOWED_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "heic", "pdf"];
@@ -25,8 +35,9 @@ export type PaymentProofInput = {
   amount?: number;
   reference?: string;
   remarks?: string;
-  proofPath: string;
-  proofFilename: string;
+  /** the receipt / proof is optional */
+  proofPath?: string;
+  proofFilename?: string;
   proofMime?: string;
   /** Honeypot: real people leave it empty. */
   website?: string;
