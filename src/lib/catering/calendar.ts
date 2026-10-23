@@ -1,0 +1,200 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/supabase/types";
+
+type DB = SupabaseClient<Database>;
+
+export type CalendarView = "month" | "week" | "day" | "list";
+export const CALENDAR_VIEWS: CalendarView[] = ["month", "week", "day", "list"];
+
+/** How an event is shown: a tentative booking (enquiry / quoted), a confirmed one, a finished one, or a cancelled one. */
+export type EventPhase = "tentative" | "confirmed" | "finished" | "cancelled";
+
+export function phaseOf(status: string): EventPhase {
+  if (status === "cancelled") return "cancelled";
+  if (status === "confirmed" || status === "in_production") return "confirmed";
+  if (status === "delivered" || status === "completed") return "finished";
+  return "tentative";
+}
+
+export const PHASE_LABEL: Record<EventPhase, string> = {
+  tentative: "Tentative (enquiry / quoted)",
+  confirmed: "Confirmed",
+  finished: "Delivered / completed",
+  cancelled: "Cancelled",
+};
+
+export type CalendarEntry = {
+  /** event id + day, so an event with several days is several entries */
+  key: string;
+  eventId: string;
+  eventName: string;
+  status: string;
+  phase: EventPhase;
+  companyName: string;
+  date: string;
+  /** "HH:MM" or "" */
+  eventTime: string;
+  setupTime: string;
+  venue: string | null;
+  pic: string | null;
+  pax: number;
+  mealTypes: string[];
+  menu: string | null;
+  /** 1-based number of the day and the number of days of a multi-day event */
+  dayNumber: number | null;
+  dayCount: number;
+  /** An urgent preparation alert, when there is one. */
+  alert: string | null;
+};
+
+const hhmm = (t: string | null | undefined) => (t ? t.slice(0, 5) : "");
+
+// ---- dates (YYYY-MM-DD, all calculated in UTC so the device timezone never moves a day)
+export function addDays(iso: string, n: number): string {
+  return new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+}
+
+/** The Monday of the week of a date. */
+export function startOfWeek(iso: string): string {
+  const dow = new Date(`${iso}T00:00:00Z`).getUTCDay(); // 0 = Sunday
+  return addDays(iso, -((dow + 6) % 7));
+}
+
+export function monthStart(iso: string): string {
+  return `${iso.slice(0, 7)}-01`;
+}
+
+export function monthEnd(iso: string): string {
+  const [y, m] = iso.split("-").map(Number);
+  return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+}
+
+export function shiftMonth(iso: string, delta: number): string {
+  const [y, m] = iso.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + delta, 1));
+  return d.toISOString().slice(0, 10);
+}
+
+/** The weeks shown by the month grid (Monday first): every date from the Monday before the 1st to the Sunday after the last day. */
+export function monthGrid(iso: string): string[][] {
+  const first = startOfWeek(monthStart(iso));
+  const last = addDays(startOfWeek(monthEnd(iso)), 6);
+  const weeks: string[][] = [];
+  for (let d = first; d <= last; d = addDays(d, 7)) weeks.push(Array.from({ length: 7 }, (_, i) => addDays(d, i)));
+  return weeks;
+}
+
+/** The first and last date a view needs. */
+export function rangeOf(view: CalendarView, date: string): { start: string; end: string } {
+  if (view === "month") {
+    const grid = monthGrid(date);
+    return { start: grid[0][0], end: grid[grid.length - 1][6] };
+  }
+  if (view === "week") return { start: startOfWeek(date), end: addDays(startOfWeek(date), 6) };
+  if (view === "day") return { start: date, end: date };
+  return { start: date, end: addDays(date, 30) };
+}
+
+export function dateLabel(iso: string, opts: Intl.DateTimeFormatOptions): string {
+  return new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", ...opts }).format(new Date(`${iso}T00:00:00Z`));
+}
+
+/**
+ * The calendar entries of a date range. A multi-day event gives one entry per day (with that day's pax, meals and times);
+ * an event without separate days gives one entry on its date. Nothing is invented: a missing time or menu stays empty.
+ */
+export async function loadCalendarEntries(supabase: DB, companyIds: string[], start: string, end: string, today: string): Promise<CalendarEntry[]> {
+  if (companyIds.length === 0) return [];
+  const eventSelect = "id, event_name, status, location, pic_name, pax_count, event_date, event_time, setup_time, meal_types, menu_description, company_id, companies(name)";
+
+  const [{ data: inRange, error: e1 }, { data: dayRows, error: e2 }] = await Promise.all([
+    supabase.from("catering_events").select(eventSelect).in("company_id", companyIds).gte("event_date", start).lte("event_date", end),
+    supabase
+      .from("catering_event_days")
+      .select(`*, catering_events!inner(${eventSelect})`)
+      .in("company_id", companyIds)
+      .gte("day_date", start)
+      .lte("day_date", end),
+  ]);
+  if (e1) throw e1;
+  if (e2) throw e2;
+
+  // events that have separate days (those days are the entries); the others are shown on their own date
+  const candidateIds = (inRange ?? []).map((e) => e.id);
+  const { data: allDays } = candidateIds.length
+    ? await supabase.from("catering_event_days").select("catering_event_id").in("catering_event_id", candidateIds)
+    : { data: [] as { catering_event_id: string }[] };
+  const withDays = new Set((allDays ?? []).map((d) => d.catering_event_id));
+
+  const entries: CalendarEntry[] = [];
+  const countByEvent = new Map<string, number>();
+  if ((dayRows ?? []).length > 0) {
+    const ids = Array.from(new Set((dayRows ?? []).map((d) => d.catering_event_id)));
+    const { data: counts } = await supabase.from("catering_event_days").select("catering_event_id, day_date").in("catering_event_id", ids).order("day_date");
+    const order = new Map<string, string[]>();
+    for (const c of counts ?? []) order.set(c.catering_event_id, [...(order.get(c.catering_event_id) ?? []), c.day_date]);
+    for (const [id, dates] of order) countByEvent.set(id, dates.length);
+    for (const d of dayRows ?? []) {
+      const ev = d.catering_events;
+      if (!ev) continue;
+      const dates = order.get(d.catering_event_id) ?? [];
+      entries.push({
+        key: `${ev.id}:${d.day_date}`,
+        eventId: ev.id,
+        eventName: ev.event_name,
+        status: ev.status,
+        phase: phaseOf(ev.status),
+        companyName: ev.companies?.name ?? "",
+        date: d.day_date,
+        eventTime: hhmm(d.event_time),
+        setupTime: hhmm(d.setup_time),
+        venue: ev.location,
+        pic: ev.pic_name,
+        pax: (d.service_pax ?? 0) + (d.second_service_type ? d.second_service_pax ?? 0 : 0),
+        mealTypes: d.meal_types ?? [],
+        menu: d.menu_details || ev.menu_description,
+        dayNumber: dates.indexOf(d.day_date) + 1 || null,
+        dayCount: countByEvent.get(d.catering_event_id) ?? 1,
+        alert: null,
+      });
+    }
+  }
+  for (const ev of inRange ?? []) {
+    if (withDays.has(ev.id)) continue;
+    entries.push({
+      key: `${ev.id}:${ev.event_date}`,
+      eventId: ev.id,
+      eventName: ev.event_name,
+      status: ev.status,
+      phase: phaseOf(ev.status),
+      companyName: ev.companies?.name ?? "",
+      date: ev.event_date,
+      eventTime: hhmm(ev.event_time),
+      setupTime: hhmm(ev.setup_time),
+      venue: ev.location,
+      pic: ev.pic_name,
+      pax: ev.pax_count ?? 0,
+      mealTypes: ev.meal_types ?? [],
+      menu: ev.menu_description,
+      dayNumber: null,
+      dayCount: 1,
+      alert: null,
+    });
+  }
+
+  // urgent preparation alerts: a confirmed event in the next 3 days without a kitchen plan (production order) or without a time
+  const soon = addDays(today, 3);
+  const urgentIds = Array.from(new Set(entries.filter((e) => e.phase === "confirmed" && e.date >= today && e.date <= soon).map((e) => e.eventId)));
+  const planned = new Set<string>();
+  if (urgentIds.length > 0) {
+    const { data: orders } = await supabase.from("production_orders").select("catering_event_id").in("catering_event_id", urgentIds);
+    for (const o of orders ?? []) if (o.catering_event_id) planned.add(o.catering_event_id);
+  }
+  for (const e of entries) {
+    if (e.phase !== "confirmed" || e.date < today || e.date > soon) continue;
+    if (!planned.has(e.eventId)) e.alert = "No kitchen plan yet";
+    else if (!e.eventTime) e.alert = "Food-ready time missing";
+  }
+
+  return entries.sort((a, b) => a.date.localeCompare(b.date) || (a.eventTime || "99:99").localeCompare(b.eventTime || "99:99") || a.eventName.localeCompare(b.eventName));
+}
