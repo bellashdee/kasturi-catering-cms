@@ -8,6 +8,7 @@ import { errorMessage } from "@/lib/actionResult";
 import { todayInMalaysia } from "@/lib/format";
 import { createPettyCashEntry, updatePettyCashEntry } from "@/lib/operationPettyCash/actions";
 import { PETTY_CASH_CATEGORIES, type EntryType, type OperationPettyCashRow } from "@/lib/operationPettyCash/constants";
+import { DescriptionInput } from "@/components/DescriptionInput";
 
 type Company = { id: string; name: string };
 
@@ -106,8 +107,8 @@ export function OperationPettyCashForm({ companies, defaultCompanyId, editing, l
           </div>
         )}
         <div className={isSpent ? "" : "sm:col-span-2"}>
-          <label className={labelClass}>{isSpent ? "What was it spent on? *" : "Description (e.g. who gave the money)"}</label>
-          <input value={description} onChange={(e) => setDescription(e.target.value)} className={inputClass} placeholder={isSpent ? "e.g. Petrol for event delivery" : "e.g. Float from Ms. Penny"} />
+          <label className={labelClass}>{isSpent ? "What was it spent on?" : "Description (e.g. who gave the money)"}</label>
+          <DescriptionInput value={description} onChange={setDescription} companyId={companyId} className={inputClass} placeholder={isSpent ? "e.g. Petrol for event delivery" : "e.g. Float from Ms. Penny"} />
         </div>
       </div>
 

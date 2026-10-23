@@ -8,6 +8,8 @@ import { EXPENSE_CATEGORY_LABEL } from "@/lib/driver/constants";
 import { formatCurrency } from "@/lib/format";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { DriverLogisticsSubNav } from "@/components/driver/DriverLogisticsSubNav";
+import { OperationRowActions } from "@/components/driver/OperationRowActions";
+import { RecordUndoBanner } from "@/components/driver/RecordUndoBanner";
 
 export default async function DriverExpensesPage({
   searchParams,
@@ -47,6 +49,8 @@ export default async function DriverExpensesPage({
 
       <DriverLogisticsSubNav />
 
+      <RecordUndoBanner />
+
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {expenses.length === 0 ? (
           <EmptyRow text="No expenses recorded yet." />
@@ -60,12 +64,21 @@ export default async function DriverExpensesPage({
               <div>Company / Notes</div>
             </div>
             {expenses.map((e) => (
-              <div key={e.id} className="grid grid-cols-[1fr_1fr_1fr_1.4fr_1.6fr] border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0">
+              <div key={e.id} className="border-b border-border last:border-b-0">
+              <div className="grid grid-cols-[1fr_1fr_1fr_1.4fr_1.6fr] px-5 py-3.5 text-[13.5px]">
                 <div className="text-text-secondary">{e.expense_date}</div>
                 <div className="font-semibold text-text">{EXPENSE_CATEGORY_LABEL[e.category] ?? e.category}</div>
                 <div className="text-text-secondary">{formatCurrency(Number(e.amount))}</div>
                 <div className="text-text-secondary">{e.claimant?.full_name ?? e.employees?.full_name ?? "—"}</div>
                 <div className="truncate text-text-muted">{e.companies?.name}{e.notes ? ` · ${e.notes}` : ""}</div>
+              </div>
+              <div className="px-5 pb-3">
+                <OperationRowActions
+                  kind="expense"
+                  id={e.id}
+                  initial={{ expenseDate: e.expense_date, category: e.category, amount: String(e.amount), notes: e.notes ?? "" }}
+                />
+              </div>
               </div>
             ))}
           </div>

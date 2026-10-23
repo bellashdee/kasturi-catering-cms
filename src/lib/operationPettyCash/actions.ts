@@ -40,7 +40,6 @@ function validate(input: PettyCashEntryInput) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.entryDate)) throw new Error("Select the date.");
   if (input.entryDate > todayInMalaysia()) throw new Error("The date cannot be in the future.");
   if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("Enter an amount more than 0.");
-  if (input.entryType === "expense" && !input.description?.trim()) throw new Error("Write what the money was spent on.");
 }
 
 const label = (r: { entry_type: string; amount: number | string; entry_date: string; description: string | null }) =>

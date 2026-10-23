@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { formatMalaysiaDateTime } from "@/lib/format";
+import { formatMalaysiaDateTime, toMalaysiaInputValue } from "@/lib/format";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listDeliveries } from "@/lib/driver/queries";
@@ -9,6 +9,8 @@ import { DELIVERY_STATUS_LABEL } from "@/lib/driver/constants";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { DriverLogisticsSubNav } from "@/components/driver/DriverLogisticsSubNav";
+import { OperationRowActions } from "@/components/driver/OperationRowActions";
+import { RecordUndoBanner } from "@/components/driver/RecordUndoBanner";
 
 function statusTone(status: string): "success" | "warning" | "danger" | "info" {
   if (status === "delivered") return "success";
@@ -53,6 +55,8 @@ export default async function DriverLogisticsPage({
 
       <DriverLogisticsSubNav />
 
+      <RecordUndoBanner />
+
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {deliveries.length === 0 ? (
           <EmptyRow text="No deliveries yet. Confirming a catering event, or creating one manually, will list it here." />
@@ -67,10 +71,10 @@ export default async function DriverLogisticsPage({
               <div>Status</div>
             </div>
             {deliveries.map((d) => (
+              <div key={d.id} className="border-b border-border last:border-b-0">
               <Link
-                key={d.id}
                 href={`/driver-logistics/${d.id}${query}`}
-                className="grid grid-cols-[1.2fr_1.4fr_1fr_1fr_1fr_1fr] border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0 hover:bg-surface-alt"
+                className="grid grid-cols-[1.2fr_1.4fr_1fr_1fr_1fr_1fr] px-5 py-3.5 text-[13.5px] hover:bg-surface-alt"
               >
                 <div className="text-text-secondary">{formatMalaysiaDateTime(d.scheduled_time)}</div>
                 <div className="font-semibold text-text">{d.catering_events?.event_name ?? d.location ?? "—"}</div>
@@ -81,6 +85,15 @@ export default async function DriverLogisticsPage({
                   <StatusBadge tone={statusTone(d.status)}>{DELIVERY_STATUS_LABEL[d.status] ?? d.status}</StatusBadge>
                 </div>
               </Link>
+              <div className="px-5 pb-3">
+                <OperationRowActions
+                  kind="delivery"
+                  id={d.id}
+                  initial={{ scheduledTime: toMalaysiaInputValue(d.scheduled_time), location: d.location ?? "", itemsDescription: d.items_description ?? "", notes: d.notes ?? "" }}
+                  fullEditHref={`/driver-logistics/${d.id}${query}`}
+                />
+              </div>
+              </div>
             ))}
           </div>
         )}

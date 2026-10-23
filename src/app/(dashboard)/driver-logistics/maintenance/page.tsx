@@ -7,6 +7,8 @@ import { listMaintenanceForCompanies } from "@/lib/driver/queries";
 import { formatCurrency } from "@/lib/format";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { DriverLogisticsSubNav } from "@/components/driver/DriverLogisticsSubNav";
+import { OperationRowActions } from "@/components/driver/OperationRowActions";
+import { RecordUndoBanner } from "@/components/driver/RecordUndoBanner";
 
 export default async function MaintenancePage({
   searchParams,
@@ -44,6 +46,8 @@ export default async function MaintenancePage({
 
       <DriverLogisticsSubNav />
 
+      <RecordUndoBanner />
+
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {records.length === 0 ? (
           <EmptyRow text="No service records yet." />
@@ -57,12 +61,21 @@ export default async function MaintenancePage({
               <div>Company / Notes</div>
             </div>
             {records.map((m) => (
-              <div key={m.id} className="grid grid-cols-[1fr_1fr_1fr_1fr_1.4fr] border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0">
+              <div key={m.id} className="border-b border-border last:border-b-0">
+              <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1.4fr] px-5 py-3.5 text-[13.5px]">
                 <div className="font-semibold text-text">{m.vehicles?.plate_number ?? "—"}</div>
                 <div className="text-text-secondary">{m.service_date}</div>
                 <div className="text-text-secondary">{m.next_service_date ?? "—"}</div>
                 <div className="text-text-secondary">{formatCurrency(Number(m.cost))}</div>
                 <div className="truncate text-text-muted">{m.companies?.name}{m.notes ? ` · ${m.notes}` : ""}</div>
+              </div>
+              <div className="px-5 pb-3">
+                <OperationRowActions
+                  kind="maintenance"
+                  id={m.id}
+                  initial={{ serviceDate: m.service_date, nextServiceDate: m.next_service_date ?? "", cost: String(m.cost ?? 0), notes: m.notes ?? "" }}
+                />
+              </div>
               </div>
             ))}
           </div>

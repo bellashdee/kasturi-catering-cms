@@ -8,6 +8,8 @@ import { AVAILABILITY_LABEL, isExpiringSoon } from "@/lib/driver/constants";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { DriverLogisticsSubNav } from "@/components/driver/DriverLogisticsSubNav";
+import { OperationRowActions } from "@/components/driver/OperationRowActions";
+import { RecordUndoBanner } from "@/components/driver/RecordUndoBanner";
 
 function availabilityTone(status: string): "success" | "warning" | "neutral" | "info" {
   if (status === "available") return "success";
@@ -63,6 +65,8 @@ export default async function DriversPage({
 
       <DriverLogisticsSubNav />
 
+      <RecordUndoBanner />
+
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {drivers.length === 0 ? (
           <EmptyRow text="No drivers yet. Add one from an existing HR employee or create a new person." />
@@ -80,10 +84,10 @@ export default async function DriversPage({
               const expiry = group.map((g) => g.license_expiry).filter((v): v is string => !!v).sort()[0] ?? null;
               const statuses = Array.from(new Set(group.map((g) => g.availability_status)));
               return (
+                <div key={d.id} className="border-b border-border last:border-b-0">
                 <Link
-                  key={d.id}
                   href={`/driver-logistics/drivers/${d.id}${query}`}
-                  className="grid grid-cols-[1.6fr_1.2fr_1fr_1fr_1fr] border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0 hover:bg-surface-alt"
+                  className="grid grid-cols-[1.6fr_1.2fr_1fr_1fr_1fr] px-5 py-3.5 text-[13.5px] hover:bg-surface-alt"
                 >
                   <div className="font-semibold text-text">{d.employees?.full_name}</div>
                   <div className="text-text-secondary">{joined(group.map((g) => g.employees?.phone ?? g.employees?.email))}</div>
@@ -98,6 +102,10 @@ export default async function DriversPage({
                     ))}
                   </div>
                 </Link>
+                <div className="px-5 pb-3">
+                  <OperationRowActions kind="driver" ids={group.map((g) => g.id)} editHref={`/driver-logistics/drivers/${d.id}/edit${query}`} />
+                </div>
+                </div>
               );
             })}
           </div>

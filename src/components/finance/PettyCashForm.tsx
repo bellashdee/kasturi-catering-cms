@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/documents/upload";
 import { createPettyCashTransaction } from "@/lib/finance/actions";
+import { DescriptionInput } from "@/components/DescriptionInput";
 
 type Company = { id: string; name: string };
 
@@ -128,7 +129,7 @@ export function PettyCashForm({ companies, defaultCompanyId }: { companies: Comp
         </div>
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">{isClaim ? "Purpose / Description" : "Description"}</label>
-          <input value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]" placeholder={isClaim ? "e.g. Seafood purchase for event" : undefined} />
+          <DescriptionInput value={description} onChange={setDescription} companyId={companyId} className="mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]" placeholder={isClaim ? "e.g. Seafood purchase for event" : undefined} />
         </div>
       </div>
 

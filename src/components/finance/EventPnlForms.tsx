@@ -18,6 +18,7 @@ import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/docum
 import { requestExtraction } from "@/lib/importFlow/extractClient";
 import type { ExtractionReport } from "@/lib/extraction/types";
 import { ExtractionReportPanel } from "@/components/shared/import/ExtractionReportPanel";
+import { DescriptionInput } from "@/components/DescriptionInput";
 
 const input = "mt-1 h-10 w-full rounded-lg border border-border-strong px-3 text-[13px] outline-none focus:border-primary";
 const label = "text-[12px] font-semibold text-text-secondary";
@@ -103,7 +104,7 @@ export function RevenueForm({ eventId, entry, onDone }: { eventId: string; entry
         </div>
         <div>
           <label className={label}>Description</label>
-          <input value={description} onChange={(e) => setDescription(e.target.value)} className={input} />
+          <DescriptionInput value={description} onChange={setDescription} className={input} />
         </div>
       </div>
       <div>
@@ -358,7 +359,7 @@ export function CostForm({ eventId, companyId, entry, supplierInvoices = [], onD
         </div>
         <div>
           <label className={label}>Description</label>
-          <input value={description} onChange={(e) => setDescription(e.target.value)} className={input} />
+          <DescriptionInput value={description} onChange={setDescription} companyId={companyId} className={input} />
         </div>
       </div>
       <div>

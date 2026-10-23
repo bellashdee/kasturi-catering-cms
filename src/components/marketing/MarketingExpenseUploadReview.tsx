@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { uploadDocument, fileTypeFromMime, DOCUMENT_FILE_ACCEPT } from "@/lib/documents/upload";
 import { createMarketingExpense } from "@/lib/marketing/actions";
 import { requestExtraction } from "@/lib/importFlow/extractClient";
+import { DescriptionInput } from "@/components/DescriptionInput";
 
 type Tab = "manual" | "pdf" | "photo";
 type Campaign = { id: string; name: string; company_id: string };
@@ -93,8 +94,8 @@ export function MarketingExpenseUploadReview({
   }
 
   async function handleConfirm() {
-    if (!form.description || !form.amount || !form.expenseDate) {
-      setError("Description, amount and date are required.");
+    if (!form.amount || !form.expenseDate) {
+      setError("Amount and date are required.");
       return;
     }
     setSaving(true);
@@ -104,7 +105,7 @@ export function MarketingExpenseUploadReview({
         companyId,
         campaignId: campaignId || undefined,
         category: form.category,
-        description: form.description,
+        description: form.description.trim(),
         amount: Number(form.amount),
         expenseDate: form.expenseDate,
         documentId: documentId || undefined,
@@ -220,8 +221,8 @@ export function MarketingExpenseUploadReview({
             </div>
 
             <div>
-              <label className={labelClass}>Description *</label>
-              <input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className={inputClass} placeholder="e.g. Facebook Ads — Raya campaign" />
+              <label className={labelClass}>Description</label>
+              <DescriptionInput value={form.description} onChange={(v) => setForm((f) => ({ ...f, description: v }))} companyId={companyId} className={inputClass} placeholder="e.g. Facebook Ads — Raya campaign" />
             </div>
 
             <div>

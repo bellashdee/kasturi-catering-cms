@@ -244,7 +244,7 @@ export type MarketingExpenseInput = {
   companyId: string;
   campaignId?: string;
   category: string;
-  description: string;
+  description?: string;
   amount: number;
   expenseDate: string;
   documentId?: string;
@@ -259,7 +259,7 @@ export async function createMarketingExpense(input: MarketingExpenseInput) {
       company_id: input.companyId,
       campaign_id: input.campaignId || null,
       category: input.category,
-      description: input.description,
+      description: input.description?.trim() ?? "",
       amount: input.amount,
       expense_date: input.expenseDate,
       document_id: input.documentId || null,

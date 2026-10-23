@@ -6,6 +6,7 @@ import { uploadDocument, fileTypeFromMime, DOCUMENT_FILE_ACCEPT } from "@/lib/do
 import { createDriverExpense } from "@/lib/driver/actions";
 import { errorMessage } from "@/lib/actionResult";
 import { requestExtraction } from "@/lib/importFlow/extractClient";
+import { DescriptionInput } from "@/components/DescriptionInput";
 
 type Tab = "manual" | "pdf" | "photo";
 type Company = { id: string; name: string };
@@ -213,7 +214,7 @@ export function DriverExpenseUploadReview({
 
             <div>
               <label className={labelClass}>Description</label>
-              <input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className={inputClass} placeholder="e.g. Petronas — event trip to Cyberjaya" />
+              <DescriptionInput value={form.description} onChange={(v) => setForm((f) => ({ ...f, description: v }))} companyId={companyId} className={inputClass} placeholder="e.g. Petronas — event trip to Cyberjaya" />
             </div>
 
             <div>

@@ -8,6 +8,8 @@ import { VEHICLE_STATUS_LABEL, isExpiringSoon } from "@/lib/driver/constants";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { DriverLogisticsSubNav } from "@/components/driver/DriverLogisticsSubNav";
+import { OperationRowActions } from "@/components/driver/OperationRowActions";
+import { RecordUndoBanner } from "@/components/driver/RecordUndoBanner";
 
 function statusTone(status: string): "success" | "warning" | "neutral" | "danger" {
   if (status === "active") return "success";
@@ -71,6 +73,8 @@ export default async function VehiclesPage({
 
       <DriverLogisticsSubNav />
 
+      <RecordUndoBanner />
+
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {vehicles.length === 0 ? (
           <EmptyRow text="No vehicles yet. Add one manually or import from Excel/CSV." />
@@ -91,10 +95,10 @@ export default async function VehiclesPage({
               const roadTax = earliest(group.map((g) => g.road_tax_expiry));
               const statuses = Array.from(new Set(group.map((g) => g.status)));
               return (
+                <div key={v.id} className="border-b border-border last:border-b-0">
                 <Link
-                  key={v.id}
                   href={`/driver-logistics/vehicles/${v.id}${query}`}
-                  className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1fr] border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0 hover:bg-surface-alt"
+                  className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1fr] px-5 py-3.5 text-[13.5px] hover:bg-surface-alt"
                 >
                   <div className="font-semibold text-text">{v.plate_number}</div>
                   <div className="text-text-secondary">{joined(group.map((g) => g.vehicle_type))}</div>
@@ -113,6 +117,10 @@ export default async function VehiclesPage({
                     ))}
                   </div>
                 </Link>
+                <div className="px-5 pb-3">
+                  <OperationRowActions kind="vehicle" ids={group.map((g) => g.id)} editHref={`/driver-logistics/vehicles/${v.id}/edit${query}`} />
+                </div>
+                </div>
               );
             })}
           </div>

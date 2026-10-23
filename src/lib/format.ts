@@ -1,10 +1,13 @@
+/**
+ * An amount exactly as it is: whole ringgit when it has no sen (RM 1,015), with the sen when it has (RM 1,015.40).
+ * It is never rounded to a whole ringgit.
+ */
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-MY", {
-    style: "currency",
-    currency: "MYR",
-    maximumFractionDigits: 0,
-  })
-    .format(amount)
+  const n = Number(amount);
+  const hasSen = Number.isFinite(n) && Math.round(n * 100) % 100 !== 0;
+  const digits = hasSen ? 2 : 0;
+  return new Intl.NumberFormat("en-MY", { style: "currency", currency: "MYR", minimumFractionDigits: digits, maximumFractionDigits: digits })
+    .format(n)
     .replace("MYR", "RM");
 }
 

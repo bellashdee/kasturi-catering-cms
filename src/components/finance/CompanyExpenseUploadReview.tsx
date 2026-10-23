@@ -7,6 +7,7 @@ import { useDocumentUpload } from "@/lib/importFlow/useDocumentUpload";
 import { ImportTabs, FileDropZone, ExtractionNotice, FormError, ConfirmActions } from "@/components/shared/import/ImportFlowAtoms";
 import { createCompanyExpense } from "@/lib/finance/actions";
 import { DEPARTMENT_OPTIONS } from "@/lib/finance/constants";
+import { DescriptionInput } from "@/components/DescriptionInput";
 
 type Company = { id: string; name: string };
 type CostCategory = { id: string; name: string };
@@ -74,8 +75,8 @@ export function CompanyExpenseUploadReview({
   }
 
   async function handleConfirm() {
-    if (!form.description || !form.amount || !form.expenseDate) {
-      flow.setError("Description, amount and date are required.");
+    if (!form.amount || !form.expenseDate) {
+      flow.setError("Amount and date are required.");
       return;
     }
     try {
@@ -168,8 +169,8 @@ export function CompanyExpenseUploadReview({
             )}
 
             <div>
-              <label className={labelClass}>Description *</label>
-              <input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className={inputClass} placeholder="e.g. TNB electricity bill — September" />
+              <label className={labelClass}>Description</label>
+              <DescriptionInput value={form.description} onChange={(v) => setForm((f) => ({ ...f, description: v }))} companyId={companyId} className={inputClass} placeholder="e.g. TNB electricity bill — September" />
             </div>
 
             <div>
