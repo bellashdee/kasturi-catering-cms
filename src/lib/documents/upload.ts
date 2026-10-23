@@ -23,6 +23,8 @@ export async function uploadDocument(params: {
   module: string;
   fileType: DocumentFileType;
   file: File;
+  /** photos that are only read by the AI (not filed as records) skip the Markdown conversion, which only slows the upload */
+  skipMarkdown?: boolean;
 }): Promise<UploadedDocument> {
   const supabase = createClient();
   const {
@@ -53,10 +55,12 @@ export async function uploadDocument(params: {
   if (error) throw error;
 
   // Every uploaded file is converted to Markdown (MarkItDown) first. A conversion problem is recorded with its reason and never loses the upload.
-  try {
-    await generateDocumentMarkdown(data.id);
-  } catch {
-    /* the document is saved; the Markdown can be generated again later */
+  if (!params.skipMarkdown) {
+    try {
+      await generateDocumentMarkdown(data.id);
+    } catch {
+      /* the document is saved; the Markdown can be generated again later */
+    }
   }
   return data;
 }

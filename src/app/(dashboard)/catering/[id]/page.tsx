@@ -109,6 +109,9 @@ export default async function EventDetailPage({
         </div>
         <div className="flex items-center gap-2">
           <EventStatusSelect eventId={id} status={event.status} />
+          <Link href={`/ai-assistant?event=${id}`} className="rounded-lg border border-primary bg-surface px-4 py-2 text-[13px] font-semibold text-primary">
+            Ingredients (AI Assistant)
+          </Link>
           <Link href={`/catering/${id}/edit${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2 text-[13px] font-semibold text-text">
             Edit
           </Link>
