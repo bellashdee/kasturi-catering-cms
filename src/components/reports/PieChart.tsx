@@ -3,7 +3,7 @@ import { formatCurrency } from "@/lib/format";
 export type PieSlice = { label: string; value: number };
 
 /** Restrained, clearly different colours; the legend always names every slice, so colour is never the only clue. */
-const COLOURS = ["#1f4e79", "#2a9d8f", "#d4a017", "#c4622d", "#7b4b94", "#7a8b4a", "#4a90c2", "#c0527a", "#8b6b4a", "#64748b"];
+const COLOURS = ["#7f9a79", "#d98b97", "#c9a56a", "#a87372", "#a9bd9f", "#e9b3b8", "#8c6b52", "#c77086", "#7b9a91", "#a89a86"];
 const MAX_SLICES = 8;
 
 function arc(cx: number, cy: number, r: number, from: number, to: number) {
@@ -18,7 +18,7 @@ function arc(cx: number, cy: number, r: number, from: number, to: number) {
 /** The percentage written on a slice: white with a soft dark outline, so it reads on every slice colour. */
 function PercentLabel({ x, y, percent }: { x: number; y: number; percent: number }) {
   return (
-    <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fontSize="8.5" fontWeight="800" fill="#ffffff" stroke="#0f2438" strokeOpacity="0.55" strokeWidth="2.2" paintOrder="stroke" style={{ fontVariantNumeric: "tabular-nums" }}>
+    <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fontSize="8.5" fontWeight="800" fill="#ffffff" stroke="#3a2424" strokeOpacity="0.55" strokeWidth="2.2" paintOrder="stroke" style={{ fontVariantNumeric: "tabular-nums" }}>
       {percent.toFixed(percent >= 10 ? 0 : 1)}%
     </text>
   );

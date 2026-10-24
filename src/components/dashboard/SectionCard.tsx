@@ -8,7 +8,7 @@ export function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-surface shadow-sm">
+    <div className="rounded-3xl border border-border bg-surface shadow-sm">
       <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
         <div className="text-[15px] font-bold text-text">{title}</div>
         {action}

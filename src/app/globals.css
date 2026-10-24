@@ -1,27 +1,31 @@
 @import "tailwindcss";
 
 :root {
-  --color-bg: #f4f5f7;
-  --color-surface: #ffffff;
-  --color-surface-alt: #fafbfc;
-  --color-border: #dde1e8;
-  --color-border-strong: #c3cad5;
+  /* Blush and rose with sage and a little gold: the one palette of the whole system */
+  --color-bg: #fbf3f1;
+  --color-surface: #fffcfb;
+  --color-surface-alt: #fbf1ef;
+  --color-border: #ecd9d6;
+  --color-border-strong: #dcc3c0;
 
-  --color-navy-900: #0f2438;
-  --color-navy-800: #16324f;
-  --color-navy-700: #1d4e78;
+  --color-navy-900: #a87372;
+  --color-navy-800: #946261;
+  --color-navy-700: #c99a99;
 
-  --color-primary: #1f4e79;
-  --color-primary-hover: #163a5c;
-  --color-accent: #7a8b4a;
+  --color-sidebar: #b9c7af;
+  --color-sidebar-text: #2f3e2b;
 
-  --color-success: #16794b;
-  --color-success-bg: #e7f3eb;
-  --color-warning: #8a5a0b;
-  --color-warning-bg: #fbf0dd;
-  --color-danger: #c0362c;
-  --color-danger-bg: #fbeae9;
-  --color-info-bg: #eaf1f8;
+  --color-primary: #94605f;
+  --color-primary-hover: #7f5150;
+  --color-accent: #8fa58a;
+
+  --color-success: #3f6b43;
+  --color-success-bg: #e4eee2;
+  --color-warning: #85560c;
+  --color-warning-bg: #f8ecd6;
+  --color-danger: #b0382f;
+  --color-danger-bg: #fae6e4;
+  --color-info-bg: #f5e3e1;
 
   --color-text: #16212e;
   --color-text-secondary: #3f4b5b;
@@ -47,6 +51,9 @@
   --color-navy-800: var(--color-navy-800);
   --color-navy-700: var(--color-navy-700);
 
+  --color-sidebar: var(--color-sidebar);
+  --color-sidebar-text: var(--color-sidebar-text);
+
   --color-primary: var(--color-primary);
   --color-primary-hover: var(--color-primary-hover);
   --color-accent: var(--color-accent);
@@ -70,33 +77,16 @@
 }
 
 /*
- * Soft theme: blush and rose with a little sage and gold (Priority Centre, Bulletin Board, Reports). It only re-points the colour
- * tokens inside the wrapper, so every card, button and pill on those pages follows without being rewritten.
+ * Soft look: the colour tokens above are the whole system's palette. `.soft-theme` is the page wrapper of the pages with the
+ * banner (blush gradient, soft shadows on the cards).
  */
 .soft-theme {
-  --color-bg: #fbf3f1;
-  --color-surface: #fffcfb;
-  --color-surface-alt: #fbf1ef;
-  --color-border: #ecd9d6;
-  --color-border-strong: #dcc3c0;
-  --color-navy-900: #a87372;
-  --color-navy-800: #946261;
-  --color-navy-700: #c99a99;
-  --color-primary: #94605f;
-  --color-primary-hover: #7f5150;
-  --color-accent: #8fa58a;
-  --color-success: #3f6b43;
-  --color-success-bg: #e4eee2;
-  --color-warning: #85560c;
-  --color-warning-bg: #f8ecd6;
-  --color-danger: #b0382f;
-  --color-danger-bg: #fae6e4;
-  --color-info-bg: #f5e3e1;
   background: linear-gradient(180deg, #fdf7f5 0%, #f8ebe8 100%);
   color: var(--color-text);
 }
 .soft-theme :is(section, article) { box-shadow: 0 6px 22px rgba(168, 115, 114, 0.12); }
-.soft-serif { font-family: Georgia, "Times New Roman", "Noto Serif SC", serif; }
+/* Page titles are set in a serif face; the other scripts fall back to their own fonts */
+.soft-serif, main h1 { font-family: Georgia, "Times New Roman", "Noto Sans Myanmar", "Myanmar Text", "Padauk", "Noto Sans Bengali", "Nirmala UI", "Vrinda", "Noto Serif SC", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", serif; }
 @media print { .soft-theme { background: #ffffff; } }
 
 /* Burmese and Bangla letters have tall marks above and below the line: give them room so nothing is clipped */

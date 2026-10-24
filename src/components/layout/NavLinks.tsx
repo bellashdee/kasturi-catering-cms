@@ -125,8 +125,8 @@ function NavItem({ href, icon, label, matchPrefixes, badge }: { href: string; ic
       href={fullHref}
       className={`flex items-center gap-3 rounded-lg px-3 py-2 text-[13.5px] transition ${
         active
-          ? "border-l-[3px] border-primary bg-white/10 pl-[9px] font-semibold text-white"
-          : "font-medium text-white/65 hover:text-white/90"
+          ? "border-l-[3px] border-primary bg-white/60 pl-[9px] font-semibold text-sidebar-text shadow-sm"
+          : "font-medium text-sidebar-text/75 hover:bg-white/30 hover:text-sidebar-text"
       }`}
     >
       <Icon name={icon} />

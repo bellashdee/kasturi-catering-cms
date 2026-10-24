@@ -38,15 +38,15 @@ export function CompanySelector({ companies }: { companies: Company[] }) {
   }
 
   return (
-    <div className="border-b border-white/8 px-4 py-3.5">
-      <div className="mb-2 text-[11px] font-bold tracking-wide text-white/45">VIEWING</div>
+    <div className="border-b border-black/10 px-4 py-3.5">
+      <div className="mb-2 text-[11px] font-bold tracking-wide text-sidebar-text/60">VIEWING</div>
       <div className="relative">
         <button
           onClick={() => setOpen((v) => !v)}
-          className="flex w-full items-center gap-2.5 rounded-lg border border-white/14 bg-white/7 px-2.5 py-2.5 text-white"
+          className="flex w-full items-center gap-2.5 rounded-lg border border-black/15 bg-white/55 px-2.5 py-2.5 text-sidebar-text"
         >
           <span
-            className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md text-[10px] font-bold"
+            className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md text-[10px] font-bold text-white"
             style={{ background: current.colorVar }}
           >
             {current.short}
@@ -58,22 +58,22 @@ export function CompanySelector({ companies }: { companies: Company[] }) {
         </button>
 
         {open && (
-          <div className="absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-lg border border-white/14 bg-[#1B3A56] shadow-2xl">
+          <div className="absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-lg border border-border-strong bg-surface shadow-2xl">
             {options.map((opt) => (
               <button
                 key={opt.id}
                 onClick={() => select(opt.id)}
-                className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-white hover:bg-white/8"
+                className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-text hover:bg-surface-alt"
               >
                 <span
-                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[9px] font-bold"
+                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[9px] font-bold text-white"
                   style={{ background: opt.colorVar }}
                 >
                   {opt.short}
                 </span>
                 <span className="flex-1 text-[13px]">{opt.label}</span>
                 {opt.id === selectedId && (
-                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#7CC0FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#5f7a5a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M4 10l4 4 8-8" />
                   </svg>
                 )}
@@ -100,7 +100,7 @@ export function CompanyQuickLinks({ companies }: { companies: Company[] }) {
 
   return (
     <div className="flex flex-col gap-0.5">
-      <div className="px-3 pb-1.5 pt-3 text-[11px] font-bold tracking-wide text-white/35">
+      <div className="px-3 pb-1.5 pt-3 text-[11px] font-bold tracking-wide text-sidebar-text/55">
         COMPANIES
       </div>
       {companies.map((c) => {
@@ -110,7 +110,7 @@ export function CompanyQuickLinks({ companies }: { companies: Company[] }) {
             key={c.id}
             onClick={() => select(c.id)}
             className={`flex items-center gap-3 rounded-lg px-3 py-1.5 pl-6 text-left text-[13px] transition ${
-              selectedId === c.id ? "bg-white/10 text-white" : "text-white/60 hover:text-white/85"
+              selectedId === c.id ? "bg-white/55 text-sidebar-text" : "text-sidebar-text/70 hover:text-sidebar-text"
             }`}
           >
             <span

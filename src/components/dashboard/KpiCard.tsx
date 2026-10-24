@@ -71,10 +71,10 @@ export function KpiCard({
   }[iconTone];
 
   return (
-    <div className="min-w-0 rounded-xl border border-border bg-surface p-5 shadow-sm transition-shadow hover:shadow-md">
+    <div className="min-w-0 rounded-3xl border border-border bg-surface p-5 shadow-sm transition-shadow hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
         <div className="text-[12.5px] font-bold uppercase tracking-wide text-text-secondary">{label}</div>
-        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${iconStyle}`} aria-hidden="true">
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-[1.5px] border-[#cfae67] ${iconStyle}`} aria-hidden="true">
           {icon && (
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               {ICON_PATH[icon]}
