@@ -357,6 +357,7 @@ const dictionary: Record<string, string> = {
  "Actual costs": "အမှန်တကယ် ကုန်ကျစရိတ်",
  "Actual figures only; estimated costs and budgets are not included": "အမှန်တကယ် ကိန်းဂဏန်းများသာ၊ ခန့်မှန်းကုန်ကျစရိတ်များနှင့် ဘတ်ဂျက်များ မပါဝင်ပါ",
  "Actual or estimated *": "အမှန်တကယ် သို့မဟုတ် ခန့်မှန်း *",
+ "Actual payment date": "အမှန်တကယ် ငွေပေးချေသည့်ရက်",
  "Actual Payment Date": "အမှန်တကယ် ငွေပေးချေသည့်ရက်",
  "Actual Payment Date *": "အမှန်တကယ် ငွေပေးချေသည့်ရက် *",
  "Actual profit": "အမှန်တကယ် အမြတ်",

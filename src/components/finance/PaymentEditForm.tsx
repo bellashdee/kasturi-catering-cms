@@ -26,9 +26,14 @@ type Initial = {
   amount: string;
   voucherNumber: string;
   remarks: string;
+  /** "paid" shows the Actual Payment Date box */
+  status: string;
+  paidDate: string;
   utilityProvider: string;
   utilityLocation: string;
 };
+
+const todayIso = () => new Date(Date.now() + 8 * 3_600_000).toISOString().slice(0, 10);
 
 /** Edit a saved payment. Every change (and any bank detail change) is recorded in the audit trail. */
 export function PaymentEditForm({ paymentId, initial, redirectTo }: { paymentId: string; initial: Initial; redirectTo: string }) {
@@ -65,6 +70,7 @@ export function PaymentEditForm({ paymentId, initial, redirectTo }: { paymentId:
         amount: Number(form.amount),
         voucherNumber: form.voucherNumber || undefined,
         remarks: form.remarks || undefined,
+        paidDate: form.status === "paid" ? form.paidDate : undefined,
       };
       const result = await updatePayment(paymentId, payload);
       if ("duplicates" in result) {
@@ -161,6 +167,15 @@ export function PaymentEditForm({ paymentId, initial, redirectTo }: { paymentId:
           <input value={form.remarks} onChange={(e) => set("remarks", e.target.value)} className={inputClass} />
         </div>
       </div>
+
+      {form.status === "paid" && (
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={labelClass}>Actual Payment Date *</label>
+            <input type="date" required max={todayIso()} value={form.paidDate} onChange={(e) => set("paidDate", e.target.value)} className={inputClass} />
+          </div>
+        </div>
+      )}
 
       {duplicates && duplicates.length > 0 && (
         <div className="rounded-lg border border-danger/30 bg-danger-bg p-3">

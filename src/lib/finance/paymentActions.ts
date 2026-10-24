@@ -59,12 +59,16 @@ export type PaymentInput = {
   voucherNumber?: string;
   documentId?: string;
   remarks?: string;
+  /** The actual payment date of a payment that is already paid (YYYY-MM-DD); ignored for a payment that is not paid yet. */
+  paidDate?: string;
 };
 
 function validate(input: PaymentInput) {
   if (!input.payeeName?.trim()) throw new Error("Enter the payee / supplier name.");
   if (!/^\d{4}-\d{2}-01$/.test(input.periodMonth)) throw new Error("Select the payment month.");
   if (input.dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(input.dueDate)) throw new Error("Enter a valid due date.");
+  if (input.paidDate !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(input.paidDate)) throw new Error("Enter the actual payment date.");
+  if (input.paidDate && input.paidDate > todayInMalaysia()) throw new Error("The payment date cannot be in the future.");
   if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("Enter the amount to pay (it must be more than 0).");
 }
 
@@ -201,6 +205,7 @@ const EDITABLE: EditableField[] = [
   { key: "dueDate", column: "due_date", label: "Due date" },
   { key: "priority", column: "priority", label: "Priority" },
   { key: "amount", column: "amount", label: "Amount" },
+  { key: "paidDate", column: "paid_date", label: "Actual payment date" },
   { key: "voucherNumber", column: "voucher_number", label: "Voucher no." },
   { key: "remarks", column: "remarks", label: "Remarks" },
 ];
@@ -232,6 +237,8 @@ export async function updatePayment(paymentId: string, input: PaymentInput): Pro
     voucher_number: input.voucherNumber?.trim() || null,
     remarks: input.remarks?.trim() || null,
     ...(input.documentId ? { document_id: input.documentId } : {}),
+    // the actual payment date can be corrected once the payment is paid
+    ...(current.status === "paid" && input.paidDate ? { paid_date: input.paidDate } : {}),
   };
 
   const changes: string[] = [];

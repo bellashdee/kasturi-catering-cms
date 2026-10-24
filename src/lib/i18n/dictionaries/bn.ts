@@ -358,6 +358,7 @@ const dictionary: Record<string, string> = {
  "Actual costs": "প্রকৃত খরচ",
  "Actual figures only; estimated costs and budgets are not included": "শুধু প্রকৃত হিসাব; আনুমানিক খরচ ও বাজেট ধরা হয়নি",
  "Actual or estimated *": "প্রকৃত না আনুমানিক *",
+ "Actual payment date": "প্রকৃত পেমেন্টের তারিখ",
  "Actual Payment Date": "প্রকৃত পেমেন্টের তারিখ",
  "Actual Payment Date *": "প্রকৃত পেমেন্টের তারিখ *",
  "Actual profit": "প্রকৃত লাভ",

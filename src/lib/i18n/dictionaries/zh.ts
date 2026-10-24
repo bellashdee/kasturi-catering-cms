@@ -358,6 +358,7 @@ const dictionary: Record<string, string> = {
  "Actual costs": "实际成本",
  "Actual figures only; estimated costs and budgets are not included": "仅限实际数字；不包含预估成本和预算",
  "Actual or estimated *": "实际或预估 *",
+ "Actual payment date": "实际付款日期",
  "Actual Payment Date": "实际付款日期",
  "Actual Payment Date *": "实际付款日期 *",
  "Actual profit": "实际利润",

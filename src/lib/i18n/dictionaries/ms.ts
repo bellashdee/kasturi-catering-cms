@@ -355,6 +355,7 @@ const dictionary: Record<string, string> = {
  "Actual costs": "Kos sebenar",
  "Actual figures only; estimated costs and budgets are not included": "Angka sebenar sahaja; anggaran kos dan bajet tidak disertakan",
  "Actual or estimated *": "Sebenar atau anggaran *",
+ "Actual payment date": "Tarikh pembayaran sebenar",
  "Actual Payment Date": "Tarikh Pembayaran Sebenar",
  "Actual Payment Date *": "Tarikh Pembayaran Sebenar *",
  "Actual profit": "Keuntungan sebenar",

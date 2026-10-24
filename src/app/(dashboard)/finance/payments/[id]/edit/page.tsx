@@ -45,6 +45,8 @@ export default async function EditPaymentPage({ params }: { params: Promise<{ id
             amount: String(payment.amount),
             voucherNumber: payment.voucher_number ?? "",
             remarks: payment.remarks ?? "",
+            status: payment.status,
+            paidDate: payment.paid_date ?? "",
             utilityProvider: payment.utility_provider ?? "",
             utilityLocation: payment.utility_location ?? "",
           }}
