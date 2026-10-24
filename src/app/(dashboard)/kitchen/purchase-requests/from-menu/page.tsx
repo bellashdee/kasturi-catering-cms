@@ -9,6 +9,7 @@ import { KitchenSubNav } from "@/components/kitchen/KitchenSubNav";
 import { PurchasePlanner } from "@/components/kitchen/PurchasePlanner";
 import { listPlannerEvents, loadSupplierItemOptions } from "@/lib/purchasePlanner/data";
 import { loadRecipeRefs } from "@/lib/kitchenAi/data";
+import { loadSavedMatches } from "@/lib/purchasePlanner/matches";
 
 /**
  * Purchase Request from the menu of an event: choose the event(s), the menu gives the ingredients and their quantities (from the
@@ -58,6 +59,7 @@ export default async function PurchaseFromMenuPage({ searchParams }: { searchPar
           events={await listPlannerEvents(supabase, company.id, todayInMalaysia())}
           recipeOptions={await loadRecipeRefs(supabase, company.id)}
           supplierItems={await loadSupplierItemOptions(supabase, company.id)}
+          savedMatches={Object.fromEntries(await loadSavedMatches(supabase, company.id))}
           query={query}
         />
       )}

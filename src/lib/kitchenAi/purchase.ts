@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { loadSupplierItemOptions } from "@/lib/purchasePlanner/data";
-import { quantityInUom, rankSupplierItems, type SupplierItemOption } from "@/lib/purchasePlanner/shared";
+import { loadSavedMatches } from "@/lib/purchasePlanner/matches";
+import { bestSupplierItem, quantityInUom, type SupplierItemOption } from "@/lib/purchasePlanner/shared";
 import { display, formatQty, type Base } from "./units";
 import type { ConsolRow, Lang } from "./types";
 
@@ -35,7 +36,7 @@ const T = {
  * purchase listings: unit of measure and latest price as on the invoice). The quantity is converted to the supplier's unit only when
  * the conversion is exact; nothing is invented, an ingredient with no matching item is listed apart.
  */
-export function buildPurchasePlan(rows: ConsolRow[], items: SupplierItemOption[], useStock: boolean, lang: Lang = "en"): PurchasePlan {
+export function buildPurchasePlan(rows: ConsolRow[], items: SupplierItemOption[], useStock: boolean, lang: Lang = "en", saved?: Map<string, string>): PurchasePlan {
   const L = T[lang];
   const groups = new Map<string, PurchaseGroup>();
   const unassigned: PurchasePlan["unassigned"] = [];
@@ -49,7 +50,7 @@ export function buildPurchasePlan(rows: ConsolRow[], items: SupplierItemOption[]
       unassigned.push({ ingredient: row.name, needed: neededText, reason: L.enough });
       continue;
     }
-    const best = rankSupplierItems(row.name, items, 1)[0]?.option;
+    const best = bestSupplierItem(row.name, items, saved);
     if (!best) {
       unassigned.push({ ingredient: row.name, needed: neededText, reason: L.noItem });
       continue;
@@ -66,7 +67,8 @@ export function buildPurchasePlan(rows: ConsolRow[], items: SupplierItemOption[]
 }
 
 export async function loadPurchasePlan(supabase: DB, companyId: string, rows: ConsolRow[], useStock: boolean, lang: Lang): Promise<PurchasePlan> {
-  return buildPurchasePlan(rows, await loadSupplierItemOptions(supabase, companyId), useStock, lang);
+  const [items, saved] = await Promise.all([loadSupplierItemOptions(supabase, companyId), loadSavedMatches(supabase, companyId)]);
+  return buildPurchasePlan(rows, items, useStock, lang, saved);
 }
 
 const esc = (s: string) => s.replace(/\|/g, "/").replace(/\n/g, " ");

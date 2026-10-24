@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 const TABS = [
   { href: "/supplier-procurement", label: "Suppliers", match: (p: string) => p === "/supplier-procurement" || /^\/supplier-procurement\/[0-9a-f-]{36}/.test(p) },
   { href: "/supplier-procurement/items", label: "Items & Prices", match: (p: string) => p.startsWith("/supplier-procurement/items") },
+  { href: "/supplier-procurement/ingredient-matching", label: "Ingredient Matching", match: (p: string) => p.startsWith("/supplier-procurement/ingredient-matching") },
   { href: "/supplier-procurement/requests", label: "Purchase Requests", match: (p: string) => p.startsWith("/supplier-procurement/requests") },
   { href: "/supplier-procurement/orders", label: "Purchase Orders", match: (p: string) => p.startsWith("/supplier-procurement/orders") },
   { href: "/supplier-procurement/invoices", label: "Invoices", match: (p: string) => p.startsWith("/supplier-procurement/invoices") },

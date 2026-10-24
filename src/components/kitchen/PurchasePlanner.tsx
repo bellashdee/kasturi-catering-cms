@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { errorMessage } from "@/lib/actionResult";
@@ -10,7 +10,9 @@ import type { KItem, KSession, KState, RecipeData } from "@/lib/kitchenAi/types"
 import { loadEventPlan, loadRecipePlan, loadRecipes, createPlannedPurchaseOrders, type EventPlan } from "@/lib/purchasePlanner/actions";
 import type { RecipeRef } from "@/lib/kitchenAi/match";
 import { SIDE_LABEL, sideOf, type KitchenSide } from "@/lib/kitchen/side";
-import { quantityInUom, rankSupplierItems, type SupplierItemOption } from "@/lib/purchasePlanner/shared";
+import { bestSupplierItem, ingredientKey, quantityInUom, rankSupplierItems, type SupplierItemOption } from "@/lib/purchasePlanner/shared";
+import { saveIngredientMatch } from "@/lib/purchasePlanner/matchActions";
+import { SupplierItemPicker } from "@/components/procurement/SupplierItemPicker";
 import type { PlannerEvent } from "@/lib/purchasePlanner/data";
 import { formatPrice, formatCurrency } from "@/lib/format";
 
@@ -20,51 +22,6 @@ const norm = (s: string) => s.trim().replace(/\s+/g, " ").toUpperCase();
 type RowState = { optionKey?: string; qty?: string; price?: string; skip?: boolean };
 
 type Created = { id: string; poNumber: string; supplierName: string; total: number; items: number }[];
-
-/** Searchable pick of a supplier item: the ingredient's likely matches first, or type to search every item of every supplier. */
-function ItemPicker({ ingredient, selected, suggestions, all, onPick }: { ingredient: string; selected: SupplierItemOption | null; suggestions: SupplierItemOption[]; all: SupplierItemOption[]; onPick: (key: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const [typed, setTyped] = useState("");
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const list = useMemo(() => {
-    const words = norm(typed).split(" ").filter(Boolean);
-    if (words.length === 0) return suggestions;
-    return all.filter((o) => words.every((w) => norm(`${o.description} ${o.supplierName}`).includes(w))).slice(0, 60);
-  }, [typed, suggestions, all]);
-
-  return (
-    <div className="relative">
-      <button type="button" onClick={() => setOpen((o) => !o)} className={`${inputClass} flex items-center justify-between gap-2 text-left`} aria-label={`Supplier item for ${ingredient}`}>
-        <span className="truncate">{selected ? `${selected.description} · ${selected.supplierName}` : <span className="text-text-muted">Search and choose the supplier item</span>}</span>
-        <span aria-hidden="true" className="text-text-muted">▾</span>
-      </button>
-      {open && (
-        <div className="absolute left-0 top-full z-30 mt-1 w-[26rem] max-w-[90vw] rounded-lg border border-border-strong bg-surface p-2 shadow-lg" onBlur={() => { closeTimer.current = setTimeout(() => setOpen(false), 150); }} onFocus={() => { if (closeTimer.current) clearTimeout(closeTimer.current); }}>
-          <input autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Search item or supplier..." className={inputClass} />
-          <ul className="mt-1.5 max-h-64 overflow-y-auto">
-            {list.length === 0 && <li className="px-2 py-2 text-[12.5px] text-text-muted">No supplier item found.</li>}
-            {list.map((o) => (
-              <li
-                key={o.key}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  onPick(o.key);
-                  setOpen(false);
-                  setTyped("");
-                }}
-                className={`cursor-pointer rounded-md px-2 py-1.5 hover:bg-info-bg ${selected?.key === o.key ? "bg-info-bg" : ""}`}
-              >
-                <div className="text-[13px] font-semibold text-text">{o.description}</div>
-                <div className="text-[11.5px] text-text-muted">{`${o.supplierName} · ${o.uom || "unit"} · ${formatPrice(o.price)}`}</div>
-              </li>
-            ))}
-          </ul>
-          {typed === "" && <div className="mt-1 px-1 text-[11px] text-text-muted">{suggestions.length > 0 ? "Likely matches. Type to search all items." : "No likely match. Type to search all items."}</div>}
-        </div>
-      )}
-    </div>
-  );
-}
 
 /** The chosen items together (so many can be chosen while searching), each one removable. */
 function ChosenChips({ items, onRemove, onClear }: { items: { id: string; label: string }[]; onRemove: (id: string) => void; onClear: () => void }) {
@@ -86,13 +43,15 @@ function ChosenChips({ items, onRemove, onClear }: { items: { id: string; label:
   );
 }
 
-export function PurchasePlanner({ companyId, companyName, events, recipeOptions, supplierItems, query }: { companyId: string; companyName: string; events: PlannerEvent[]; recipeOptions: RecipeRef[]; supplierItems: SupplierItemOption[]; query: string }) {
+export function PurchasePlanner({ companyId, companyName, events, recipeOptions, supplierItems, savedMatches, query }: { companyId: string; companyName: string; events: PlannerEvent[]; recipeOptions: RecipeRef[]; supplierItems: SupplierItemOption[]; savedMatches: Record<string, string>; query: string }) {
   const router = useRouter();
   const [eventSearch, setEventSearch] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   // where the purchase starts: the menu of an event, or recipes chosen by hand
   const [mode, setMode] = useState<"event" | "recipes">("event");
   const [recipeSearch, setRecipeSearch] = useState("");
+  // the supplier item each ingredient was bought as before (saved by a person); a new pick is saved too
+  const [saved, setSaved] = useState<Map<string, string>>(() => new Map(Object.entries(savedMatches)));
   const [recipeSide, setRecipeSide] = useState<"all" | KitchenSide>("all");
   const [pickedRecipes, setPickedRecipes] = useState<string[]>([]);
   const [plan, setPlan] = useState<EventPlan | null>(null);
@@ -207,14 +166,14 @@ export function PurchasePlanner({ companyId, companyName, events, recipeOptions,
       const known = deduct && row.stock?.known;
       const needQty = known ? row.shortage ?? 0 : row.qty;
       const need: Base = { ...base, qty: needQty };
-      const ranked = rankSupplierItems(row.name, supplierItems);
-      return { key, row, need, enough: known && needQty <= 1e-9, ranked };
+      const ranked = rankSupplierItems(row.name, supplierItems, 8, saved);
+      return { key, row, need, enough: known && needQty <= 1e-9, ranked, auto: bestSupplierItem(row.name, supplierItems, saved) };
     });
-  }, [calc, supplierItems, deduct]);
+  }, [calc, supplierItems, deduct, saved]);
 
   const resolved = lines.map((l) => {
     const st = rowState[l.key] ?? {};
-    const option = st.optionKey !== undefined ? (supplierItems.find((o) => o.key === st.optionKey) ?? null) : (l.ranked[0]?.option ?? null);
+    const option = st.optionKey !== undefined ? (supplierItems.find((o) => o.key === st.optionKey) ?? null) : l.auto;
     const auto = option ? quantityInUom(l.need, option.uom) : { qty: null as number | null };
     const qty = st.qty !== undefined ? Number(st.qty) : auto.qty;
     const price = st.price !== undefined ? Number(st.price) : (option?.price ?? null);
@@ -480,12 +439,20 @@ export function PurchasePlanner({ companyId, companyName, events, recipeOptions,
                             {deduct && r.row.stock && !r.row.stock.known && <div className="text-[11px] text-text-muted">stock not recorded</div>}
                           </td>
                           <td className="py-2 pr-3">
-                            <ItemPicker
+                            <SupplierItemPicker
                               ingredient={r.row.name}
                               selected={r.option}
                               suggestions={r.ranked.map((x) => x.option)}
                               all={supplierItems}
-                              onPick={(key) => setRowState((s) => ({ ...s, [r.key]: { ...s[r.key], optionKey: key, qty: undefined, price: undefined } }))}
+                              onPick={(key) => {
+                                setRowState((s) => ({ ...s, [r.key]: { ...s[r.key], optionKey: key, qty: undefined, price: undefined } }));
+                                const picked = supplierItems.find((o) => o.key === key);
+                                if (picked) {
+                                  // remembered for the next purchase list (a failure here never stops the list)
+                                  setSaved((m) => new Map(m).set(ingredientKey(r.row.name), key));
+                                  void saveIngredientMatch(companyId, { ingredient: r.row.name, supplierId: picked.supplierId, description: picked.description, uom: picked.uom }).catch(() => undefined);
+                                }
+                              }}
                             />
                             {r.option && <div className="mt-0.5 text-[11px] text-text-muted">{`${r.option.uom || "unit"} · last bought ${r.option.date}`}</div>}
                             {!r.option && <div className="mt-0.5 text-[11px] text-warning">No supplier item matched: search for it.</div>}

@@ -4598,6 +4598,45 @@ export type Database = {
           },
         ]
       }
+      ingredient_supplier_matches: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          ingredient_key: string
+          ingredient_name: string
+          item_description: string
+          supplier_id: string
+          uom: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          ingredient_key: string
+          ingredient_name: string
+          item_description: string
+          supplier_id: string
+          uom?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          ingredient_key?: string
+          ingredient_name?: string
+          item_description?: string
+          supplier_id?: string
+          uom?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       purchase_orders: {
         Row: {
           company_id: string
