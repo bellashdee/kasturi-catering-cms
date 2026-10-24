@@ -17,24 +17,45 @@ function arc(cx: number, cy: number, r: number, from: number, to: number) {
 
 const CX = 60;
 const CY = 60;
-const R = 50;
-const LABEL_R = 60;
+const R = 46;
+const LABEL_R = 56;
+const NAME_MAX = 22;
+const CHAR_W = 4.3; // width of one character of the name (name font size 7.6)
+const LINE_H = 18; // percentage line + name line
 
-/** The percentage written outside the slice it belongs to, with a short tick in the slice colour (the full list is under the chart). */
-function PercentLabel({ mid, percent, colour }: { mid: number; percent: number; colour: string }) {
+const shorten = (name: string) => (name.length > NAME_MAX ? `${name.slice(0, NAME_MAX - 1).trimEnd()}…` : name);
+
+type Placed = { x1: number; x2: number; y1: number; y2: number };
+
+/** Where the label of a slice goes (outside the pie) and the box it takes, so labels can be kept from covering each other. */
+function labelBox(mid: number, name: string, percentText: string) {
   const sin = Math.sin(mid);
   const cos = Math.cos(mid);
   const x = CX + LABEL_R * sin;
   const y = CY - LABEL_R * cos;
-  const anchor = sin > 0.25 ? "start" : sin < -0.25 ? "end" : "middle";
-  // the text sits a little further out horizontally, and above / below the tick at the top and bottom of the pie
-  const tx = x + (anchor === "start" ? 1.5 : anchor === "end" ? -1.5 : 0);
-  const ty = y + (cos > 0.7 ? -3 : cos < -0.7 ? 4 : 0);
+  const anchor: "start" | "end" | "middle" = sin > 0.25 ? "start" : sin < -0.25 ? "end" : "middle";
+  const width = Math.max(shorten(name).length * CHAR_W, percentText.length * 5.4);
+  const tx = x + (anchor === "start" ? 2 : anchor === "end" ? -2 : 0);
+  // centre of the two lines: level with the tick on the sides, above / below it at the top and bottom of the pie
+  const cy = cos > 0.7 ? y - LINE_H / 2 - 1 : cos < -0.7 ? y + LINE_H / 2 + 1 : y;
+  const x1 = anchor === "start" ? tx : anchor === "end" ? tx - width : tx - width / 2;
+  const box: Placed = { x1, x2: x1 + width, y1: cy - LINE_H / 2, y2: cy + LINE_H / 2 };
+  return { sin, cos, anchor, tx, cy, box };
+}
+
+const overlaps = (a: Placed, b: Placed) => a.x1 < b.x2 + 1 && b.x1 < a.x2 + 1 && a.y1 < b.y2 + 1 && b.y1 < a.y2 + 1;
+
+/** The percentage and the name of the slice, written outside the pie next to it with a short tick in the slice colour. */
+function SliceLabel({ mid, name, percentText, colour }: { mid: number; name: string; percentText: string; colour: string }) {
+  const { sin, cos, anchor, tx, cy } = labelBox(mid, name, percentText);
   return (
     <>
       <line x1={CX + (R - 2) * sin} y1={CY - (R - 2) * cos} x2={CX + (LABEL_R - 3) * sin} y2={CY - (LABEL_R - 3) * cos} style={{ stroke: colour }} strokeWidth="1.4" strokeLinecap="round" />
-      <text x={tx} y={ty} textAnchor={anchor} dominantBaseline="central" fontSize="9.5" fontWeight="700" style={{ fill: "var(--color-text)", fontVariantNumeric: "tabular-nums" }}>
-        {percent.toFixed(percent >= 10 ? 0 : 1)}%
+      <text x={tx} y={cy - 4} textAnchor={anchor} dominantBaseline="central" fontSize="9.5" fontWeight="700" style={{ fill: "var(--color-text)", fontVariantNumeric: "tabular-nums" }}>
+        {percentText}
+      </text>
+      <text x={tx} y={cy + 5.5} textAnchor={anchor} dominantBaseline="central" fontSize="7.6" fontWeight="500" style={{ fill: "var(--color-text-secondary)" }}>
+        {shorten(name)}
       </text>
     </>
   );
@@ -58,33 +79,36 @@ export function PieChart({ title, slices, format = formatCurrency }: { title: st
         <div className="py-8 text-center text-[14px] text-text-secondary">No figures to show for this period.</div>
       ) : (
         <div className="mt-3 flex flex-col items-center gap-4">
-          <svg viewBox="-36 -14 192 148" role="img" aria-label={`${title}: ${shown.map((s) => `${s.label} ${((s.value / total) * 100).toFixed(0)}%`).join(", ")}`} className="w-full max-w-[300px] shrink-0">
+          <svg viewBox="-80 -20 280 160" role="img" aria-label={`${title}: ${shown.map((s) => `${s.label} ${((s.value / total) * 100).toFixed(0)}%`).join(", ")}`} className="w-full max-w-[460px] shrink-0">
             {shown.length === 1 ? (
               <>
                 <circle cx={CX} cy={CY} r={R} style={{ fill: COLOURS[0] }} />
-                <text x={CX} y={CY - R - 6} textAnchor="middle" dominantBaseline="central" fontSize="9.5" fontWeight="700" style={{ fill: "var(--color-text)" }}>
+                <text x={CX} y={CY - R - 14} textAnchor="middle" dominantBaseline="central" fontSize="9.5" fontWeight="700" style={{ fill: "var(--color-text)" }}>
                   100%
+                </text>
+                <text x={CX} y={CY - R - 5} textAnchor="middle" dominantBaseline="central" fontSize="7.6" fontWeight="500" style={{ fill: "var(--color-text-secondary)" }}>
+                  {shorten(shown[0].label)}
                 </text>
               </>
             ) : (
               (() => {
                 let angle = 0;
-                const placed: { x: number; y: number }[] = [];
+                const placed: Placed[] = [];
                 return shown.map((s, i) => {
                   const start = angle;
                   const sweep = (s.value / total) * Math.PI * 2;
                   angle += sweep;
                   const mid = start + sweep / 2;
                   const percent = (s.value / total) * 100;
-                  // a label that would sit on top of the one before it is left out (the list under the chart has every value)
-                  const px = CX + LABEL_R * Math.sin(mid);
-                  const py = CY - LABEL_R * Math.cos(mid);
-                  const clear = percent >= 2 && placed.every((q) => Math.hypot(q.x - px, q.y - py) > 11);
-                  if (clear) placed.push({ x: px, y: py });
+                  const percentText = `${percent.toFixed(percent >= 10 ? 0 : 1)}%`;
+                  // a label that would cover another one is left out (the list under the chart has every slice with its value)
+                  const { box } = labelBox(mid, s.label, percentText);
+                  const clear = percent >= 2 && placed.every((q) => !overlaps(q, box));
+                  if (clear) placed.push(box);
                   return (
                     <g key={s.label}>
                       <path d={arc(CX, CY, R, start, angle)} style={{ fill: COLOURS[i % COLOURS.length] }} stroke="#ffffff" strokeWidth="1.5" />
-                      {clear && <PercentLabel mid={mid} percent={percent} colour={COLOURS[i % COLOURS.length]} />}
+                      {clear && <SliceLabel mid={mid} name={s.label} percentText={percentText} colour={COLOURS[i % COLOURS.length]} />}
                     </g>
                   );
                 });
