@@ -69,6 +69,36 @@
   --color-company-o2life: var(--color-company-o2life);
 }
 
+/*
+ * Soft theme: blush and rose with a little sage and gold (Priority Centre, Bulletin Board, Reports). It only re-points the colour
+ * tokens inside the wrapper, so every card, button and pill on those pages follows without being rewritten.
+ */
+.soft-theme {
+  --color-bg: #fbf3f1;
+  --color-surface: #fffcfb;
+  --color-surface-alt: #fbf1ef;
+  --color-border: #ecd9d6;
+  --color-border-strong: #dcc3c0;
+  --color-navy-900: #a87372;
+  --color-navy-800: #946261;
+  --color-navy-700: #c99a99;
+  --color-primary: #94605f;
+  --color-primary-hover: #7f5150;
+  --color-accent: #8fa58a;
+  --color-success: #3f6b43;
+  --color-success-bg: #e4eee2;
+  --color-warning: #85560c;
+  --color-warning-bg: #f8ecd6;
+  --color-danger: #b0382f;
+  --color-danger-bg: #fae6e4;
+  --color-info-bg: #f5e3e1;
+  background: linear-gradient(180deg, #fdf7f5 0%, #f8ebe8 100%);
+  color: var(--color-text);
+}
+.soft-theme :is(section, article) { box-shadow: 0 6px 22px rgba(168, 115, 114, 0.12); }
+.soft-serif { font-family: Georgia, "Times New Roman", "Noto Serif SC", serif; }
+@media print { .soft-theme { background: #ffffff; } }
+
 /* Burmese and Bangla letters have tall marks above and below the line: give them room so nothing is clipped */
 html[lang="my"] body { line-height: 1.75; }
 html[lang="bn"] body { line-height: 1.6; }

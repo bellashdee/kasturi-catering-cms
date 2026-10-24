@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionContext } from "@/lib/auth";
+import { SoftHeader, SoftPage } from "@/components/ui/Soft";
 
 const REPORTS = [
   { href: "/reports/monthly-costing", title: "Monthly Costing Report", description: "Every cost across Catering, Kitchen, Supplier, Driver, Marketing and HR, grouped by category." },
@@ -29,24 +30,21 @@ export default async function ReportsHubPage({
   const query = requestedId ? `?company=${requestedId}` : "";
 
   return (
-    <div className="flex flex-col gap-5">
-      <div>
-        <h1 className="text-[22px] font-extrabold text-text">Reports</h1>
-        <p className="mt-0.5 text-[13px] text-text-secondary">Real, live figures from every module — nothing here is hardcoded.</p>
-      </div>
+    <SoftPage>
+      <SoftHeader title="Reports" subtitle="Real, live figures from every module — nothing here is hardcoded." />
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {REPORTS.map((r) => (
           <Link
             key={r.href}
             href={`${r.href}${query}`}
-            className="flex flex-col gap-1.5 rounded-xl border border-border bg-surface p-5 shadow-sm hover:border-primary"
+            className="flex flex-col gap-1.5 rounded-3xl border border-border bg-surface p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-primary"
           >
             <div className="text-[14.5px] font-bold text-text">{r.title}</div>
             <div className="text-[12.5px] text-text-secondary">{r.description}</div>
           </Link>
         ))}
       </div>
-    </div>
+    </SoftPage>
   );
 }

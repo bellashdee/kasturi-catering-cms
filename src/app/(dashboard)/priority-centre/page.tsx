@@ -24,6 +24,7 @@ import { TaskBoard, type TaskCard } from "@/components/priority/TaskBoard";
 import { PayablesTable } from "@/components/priority/PayablesTable";
 import { ApprovalList, BriefingTaskCheck, NotificationList, ReminderSettingsForm, type ApprovalItem } from "@/components/priority/ReminderPanels";
 import { Pill, FIELD, LABEL, BTN, BTN_GHOST } from "@/components/priority/ui";
+import { GoldBadge, SoftGreeting, SoftHeader, SoftPage } from "@/components/ui/Soft";
 import type { EventOption } from "@/components/priority/PayableManager";
 
 type Params = Record<string, string | undefined>;
@@ -41,7 +42,7 @@ function Hidden({ params, keys }: { params: Params; keys: string[] }) {
 
 function SectionBox({ id, title, subtitle, children }: { id: string; title: string; subtitle?: string; children: React.ReactNode }) {
   return (
-    <section id={id} className="scroll-mt-4 rounded-2xl border border-border bg-surface shadow-sm">
+    <section id={id} className="scroll-mt-4 rounded-3xl border border-border bg-surface shadow-sm">
       <div className="border-b border-border px-5 py-4">
         <h2 className="text-[18px] font-extrabold text-text">{title}</h2>
         {subtitle && <p className="mt-0.5 text-[13.5px] text-text-secondary">{subtitle}</p>}
@@ -51,12 +52,17 @@ function SectionBox({ id, title, subtitle, children }: { id: string; title: stri
   );
 }
 
-function StatCard({ label, value, sub, tone }: { label: string; value: React.ReactNode; sub?: React.ReactNode; tone?: "danger" | "warning" | "success" }) {
+function StatCard({ label, value, sub, tone, icon }: { label: string; value: React.ReactNode; sub?: React.ReactNode; tone?: "danger" | "warning" | "success"; icon?: string }) {
   const colour = tone === "danger" ? "text-danger" : tone === "warning" ? "text-warning" : tone === "success" ? "text-success" : "text-text";
   return (
-    <div className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
-      <div className="text-[12px] font-bold uppercase tracking-wide text-text-muted">{label}</div>
-      <div className={`mt-1.5 text-[28px] font-extrabold leading-none tabular-nums ${colour}`}>{value}</div>
+    <div className="rounded-3xl border border-border bg-surface p-4 shadow-sm">
+      <div className="flex items-start gap-3">
+        {icon && <GoldBadge>{icon}</GoldBadge>}
+        <div className="min-w-0">
+          <div className="text-[12px] font-bold uppercase tracking-wide text-text-muted">{label}</div>
+          <div className={`mt-1.5 text-[28px] font-extrabold leading-none tabular-nums ${colour}`}>{value}</div>
+        </div>
+      </div>
       {sub && <div className="mt-2 text-[12.5px] leading-snug text-text-secondary">{sub}</div>}
     </div>
   );
@@ -219,21 +225,18 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
   const paysFiltered = PAY_KEYS.some((k) => params[k]);
 
   return (
-    <div className="mx-auto flex max-w-[1500px] flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-[26px] font-extrabold tracking-tight text-text">{access.canSeePayments ? "Madam Penny's Priority Centre" : "My Tasks"}</h1>
-          <p className="mt-1 text-[14px] text-text-secondary">{formatMalaysiaLongDate(now)} · Malaysia time (UTC+8)</p>
-        </div>
+    <SoftPage>
+      <SoftHeader title={access.canSeePayments ? "Madam Penny's Priority Centre" : "My Tasks"} subtitle="Plan · Organize · Stay on top of what matters">
         <nav aria-label="Sections" className="flex flex-wrap gap-2 text-[13.5px] font-semibold">
           <a href="#tasks" className={BTN_GHOST}>{access.canSeePayments ? "To-Do Checklist" : "My Tasks"}</a>
           {access.canSeePayments && <a href="#payments" className={BTN_GHOST}>Urgent Supplier Payments</a>}
           <a href="#approvals" className={BTN_GHOST}>{access.canSeePayments ? "Reminders & Pending Approvals" : "My Reminders"}</a>
         </nav>
-      </div>
+      </SoftHeader>
+      <SoftGreeting name={session.fullName.split(" ")[0] ?? session.fullName} line="A better day is built by the small steps you take." dateLabel={`${formatMalaysiaLongDate(now)} · Malaysia time (UTC+8)`} />
 
       {/* ───────── daily briefing ───────── */}
-      <section aria-labelledby="briefing" className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
+      <section aria-labelledby="briefing" className="overflow-hidden rounded-3xl border border-border bg-surface shadow-sm">
         <div className="bg-navy-900 px-5 py-4 text-white">
           <h2 id="briefing" className="text-[18px] font-extrabold">{access.canSeePayments ? "Madam Penny's Daily Briefing" : "My Day"}</h2>
           <p className="mt-0.5 text-[13.5px] text-white/75">Today&apos;s priorities, taken from the records in the system.</p>
@@ -344,12 +347,13 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
 
       {/* ───────── summary ───────── */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
-        <StatCard label="My tasks due today" value={taskSummary.dueToday} tone={taskSummary.dueToday > 0 ? "warning" : undefined} />
-        <StatCard label="My overdue tasks" value={taskSummary.overdue} tone={taskSummary.overdue > 0 ? "danger" : undefined} />
+        <StatCard icon="☀" label="My tasks due today" value={taskSummary.dueToday} tone={taskSummary.dueToday > 0 ? "warning" : undefined} />
+        <StatCard icon="⚠" label="My overdue tasks" value={taskSummary.overdue} tone={taskSummary.overdue > 0 ? "danger" : undefined} />
         {access.canSeePayments && (
           <>
-            <StatCard label="Urgent supplier payments" value={paySummary.urgentCount} tone={paySummary.urgentCount > 0 ? "danger" : undefined} />
+            <StatCard icon="❗" label="Urgent supplier payments" value={paySummary.urgentCount} tone={paySummary.urgentCount > 0 ? "danger" : undefined} />
             <StatCard
+              icon="RM"
               label="Confirmed outstanding supplier balance"
               value={<span className="text-[24px]">{formatPrice(paySummary.confirmedOutstanding)}</span>}
               sub={
@@ -360,10 +364,10 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
                 </>
               }
             />
-            <StatCard label="Payments awaiting Madam Penny" value={paySummary.awaitingApprovalCount} sub={paySummary.awaitingApprovalCount > 0 ? formatPrice(paySummary.awaitingApprovalAmount) : undefined} tone={paySummary.awaitingApprovalCount > 0 ? "warning" : undefined} />
+            <StatCard icon="✎" label="Payments awaiting Madam Penny" value={paySummary.awaitingApprovalCount} sub={paySummary.awaitingApprovalCount > 0 ? formatPrice(paySummary.awaitingApprovalAmount) : undefined} tone={paySummary.awaitingApprovalCount > 0 ? "warning" : undefined} />
           </>
         )}
-        <StatCard label="My tasks completed this week" value={taskSummary.completedThisWeek} tone="success" />
+        <StatCard icon="✓" label="My tasks completed this week" value={taskSummary.completedThisWeek} tone="success" />
       </div>
 
       {/* ───────── to-do checklist ───────── */}
@@ -552,6 +556,6 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
           </div>
         </div>
       </SectionBox>
-    </div>
+    </SoftPage>
   );
 }

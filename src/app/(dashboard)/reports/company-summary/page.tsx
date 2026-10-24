@@ -11,6 +11,7 @@ import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { PrintButton } from "@/components/reports/PrintButton";
 import { SectionCard, EmptyRow, StatRow } from "@/components/dashboard/SectionCard";
 import { SummaryInfographic } from "@/components/reports/SummaryInfographic";
+import { SoftPage } from "@/components/ui/Soft";
 
 function currentYearMonth() {
   return malaysiaYearMonth();
@@ -48,7 +49,7 @@ export default async function CompanySummaryReportPage({
   const periodLabel = range ? `${range.start} – ${range.end}` : `${MONTH_LABEL[month - 1]} ${year}`;
 
   return (
-    <div className="flex flex-col gap-5">
+    <SoftPage>
       <div>
         <Link href={`/reports${query}`} className="text-[12.5px] font-semibold text-text-secondary">← Back to Reports</Link>
         <h1 className="mt-2 text-[22px] font-extrabold text-text">Company Summary — {viewLabel}</h1>
@@ -89,6 +90,6 @@ export default async function CompanySummaryReportPage({
           summary.bySource.map((s) => <StatRow key={s.source} label={s.source} value={formatCurrency(s.amount)} />)
         )}
       </SectionCard>
-    </div>
+    </SoftPage>
   );
 }
