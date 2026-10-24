@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
-import { formatMalaysiaDateTime, formatMalaysiaLongDate, formatPrice, malaysiaDateOf, todayInMalaysia } from "@/lib/format";
+import { formatMalaysiaDateTime, formatPrice, malaysiaDateOf, todayInMalaysia } from "@/lib/format";
 import { getPriorityAccess } from "@/lib/priority/access";
 import { loadEventsNeedingDecision, loadOtherPendingApprovals, loadPayables, loadPeople, loadTasks, type PriorityTask } from "@/lib/priority/queries";
 import {
@@ -24,7 +24,9 @@ import { TaskBoard, type TaskCard } from "@/components/priority/TaskBoard";
 import { PayablesTable } from "@/components/priority/PayablesTable";
 import { ApprovalList, BriefingTaskCheck, NotificationList, ReminderSettingsForm, type ApprovalItem } from "@/components/priority/ReminderPanels";
 import { Pill, FIELD, LABEL, BTN, BTN_GHOST } from "@/components/priority/ui";
-import { GoldBadge, SoftGreeting, SoftHeader, SoftPage } from "@/components/ui/Soft";
+import { SoftPage, shortName } from "@/components/ui/Soft";
+import { CheerCard, DashGreeting, MonthCalendar, ProgressList, StatTile, TopTasks, UpcomingReminders, WeekChart, type ReminderRow, type TopTask } from "@/components/priority/PriorityDashboard";
+import { MONTH_LABEL } from "@/lib/finance/constants";
 import type { EventOption } from "@/components/priority/PayableManager";
 
 type Params = Record<string, string | undefined>;
@@ -49,22 +51,6 @@ function SectionBox({ id, title, subtitle, children }: { id: string; title: stri
       </div>
       <div className="p-4 sm:p-5">{children}</div>
     </section>
-  );
-}
-
-function StatCard({ label, value, sub, tone, icon }: { label: string; value: React.ReactNode; sub?: React.ReactNode; tone?: "danger" | "warning" | "success"; icon?: string }) {
-  const colour = tone === "danger" ? "text-danger" : tone === "warning" ? "text-warning" : tone === "success" ? "text-success" : "text-text";
-  return (
-    <div className="rounded-3xl border border-border bg-surface p-4 shadow-sm">
-      <div className="flex items-start gap-3">
-        {icon && <GoldBadge>{icon}</GoldBadge>}
-        <div className="min-w-0">
-          <div className="text-[12px] font-bold uppercase tracking-wide text-text-muted">{label}</div>
-          <div className={`mt-1.5 text-[28px] font-extrabold leading-none tabular-nums ${colour}`}>{value}</div>
-        </div>
-      </div>
-      {sub && <div className="mt-2 text-[12.5px] leading-snug text-text-secondary">{sub}</div>}
-    </div>
   );
 }
 
@@ -224,16 +210,103 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
   const tasksFiltered = TASK_KEYS.some((k) => params[k]);
   const paysFiltered = PAY_KEYS.some((k) => params[k]);
 
+  // ───────── the dashboard at the top (all from the records above) ─────────
+  const hour = new Date(now + 8 * 3_600_000).getUTCHours();
+  const [todayY, todayM, todayD] = today.split("-").map(Number);
+  const dayAgo = (n: number) => new Date(Date.parse(`${today}T00:00:00Z`) - n * 86_400_000).toISOString().slice(0, 10);
+  const weekDays = [6, 5, 4, 3, 2, 1, 0].map((n) => {
+    const date = dayAgo(n);
+    const label = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][new Date(`${date}T00:00:00Z`).getUTCDay()];
+    return { label, value: myTasks.filter((t) => t.status === "completed" && t.completed_at && malaysiaDateOf(t.completed_at) === date).length };
+  });
+  const monthPrefix = today.slice(0, 7);
+  const marks: Record<number, { tasks: number; payments: number }> = {};
+  const mark = (date: string | null | undefined, kind: "tasks" | "payments") => {
+    if (!date || !date.startsWith(monthPrefix)) return;
+    const day = Number(date.slice(8, 10));
+    marks[day] = { tasks: marks[day]?.tasks ?? 0, payments: marks[day]?.payments ?? 0, [kind]: (marks[day]?.[kind] ?? 0) + 1 };
+  };
+  for (const t of myTasks) if (isOpenStatus(t.status) && t.due_at) mark(malaysiaDateOf(t.due_at), "tasks");
+  for (const p of payables) if (p.outstanding > 0) mark(p.dueDate, "payments");
+
+  const deptMap = new Map<string, { done: number; total: number }>();
+  for (const t of tasks) {
+    if (t.status === "cancelled") continue;
+    const name = t.department?.trim() || "General";
+    const cur = deptMap.get(name) ?? { done: 0, total: 0 };
+    cur.total += 1;
+    if (t.status === "completed") cur.done += 1;
+    deptMap.set(name, cur);
+  }
+  const deptRows = Array.from(deptMap, ([name, v]) => ({ name, ...v })).sort((a, b) => b.total - a.total || a.name.localeCompare(b.name)).slice(0, 4);
+
+  const topTasks: TopTask[] = sortTasks(myTasks.filter((t) => isOpenStatus(t.status)))
+    .slice(0, 5)
+    .map((t) => {
+      const c = toCard(t);
+      return { id: c.id, title: c.title, priority: c.priority, priorityLabel: TASK_PRIORITY_LABEL[c.priority], dueLabel: c.dueAt ? formatDue(c.dueAt) : "No due date", canComplete: c.perm.status };
+    });
+
+  const reminderRows: (ReminderRow & { at: number })[] = [
+    ...myTasks
+      .filter((t) => isOpenStatus(t.status) && t.due_at && Date.parse(t.due_at) >= now)
+      .map((t) => ({ key: `t${t.id}`, icon: "🔔", title: t.title, when: formatDue(t.due_at), at: Date.parse(t.due_at as string) })),
+    ...payables
+      .filter((p) => p.outstanding > 0 && p.dueDate && p.dueDate >= today)
+      .map((p) => ({ key: `p${p.type}${p.id}`, icon: "💳", title: p.supplierName, when: `Due ${p.dueDate!.split("-").reverse().join("/")}`, amount: formatPrice(p.outstanding), at: Date.parse(`${p.dueDate}T00:00:00+08:00`) })),
+  ]
+    .sort((a, b) => a.at - b.at)
+    .slice(0, 5);
+
   return (
     <SoftPage>
-      <SoftHeader title={access.canSeePayments ? "Madam Penny's Priority Centre" : "My Tasks"} subtitle="Plan · Organize · Stay on top of what matters">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <DashGreeting name={shortName(session.fullName)} hour={hour} />
         <nav aria-label="Sections" className="flex flex-wrap gap-2 text-[13.5px] font-semibold">
           <a href="#tasks" className={BTN_GHOST}>{access.canSeePayments ? "To-Do Checklist" : "My Tasks"}</a>
           {access.canSeePayments && <a href="#payments" className={BTN_GHOST}>Urgent Supplier Payments</a>}
           <a href="#approvals" className={BTN_GHOST}>{access.canSeePayments ? "Reminders & Pending Approvals" : "My Reminders"}</a>
         </nav>
-      </SoftHeader>
-      <SoftGreeting fullName={session.fullName} line="A better day is built by the small steps you take." dateLabel={`${formatMalaysiaLongDate(now)} · Malaysia time (UTC+8)`} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <StatTile tint="lavender" icon="📋" label="My tasks due today" value={taskSummary.dueToday} />
+        <StatTile tint="pink" icon="⏰" label="My overdue tasks" value={taskSummary.overdue} />
+        {access.canSeePayments && (
+          <>
+            <StatTile tint="peach" icon="🚩" label="Urgent supplier payments" value={paySummary.urgentCount} />
+            <StatTile
+              tint="yellow"
+              icon="💰"
+              label="Confirmed outstanding supplier balance"
+              value={<span className="text-[22px]">{formatPrice(paySummary.confirmedOutstanding)}</span>}
+              sub={
+                <>
+                  {paySummary.pendingVerificationCount > 0 && <span className="block">+ {formatPrice(paySummary.pendingVerification)} Pending Verification ({paySummary.pendingVerificationCount})</span>}
+                  {paySummary.onHoldCount > 0 && <span className="block">{formatPrice(paySummary.onHold)} disputed / on hold ({paySummary.onHoldCount})</span>}
+                  {paySummary.pendingVerificationCount === 0 && paySummary.onHoldCount === 0 && <span>{paySummary.confirmedCount} verified payable(s)</span>}
+                </>
+              }
+            />
+            <StatTile tint="sky" icon="✍️" label="Payments awaiting Madam Penny" value={paySummary.awaitingApprovalCount} sub={paySummary.awaitingApprovalCount > 0 ? formatPrice(paySummary.awaitingApprovalAmount) : undefined} />
+          </>
+        )}
+        <StatTile tint="green" icon="⭐" label="My tasks completed this week" value={taskSummary.completedThisWeek} />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.7fr_1fr]">
+        <WeekChart title="Tasks finished this week" days={weekDays} />
+        <MonthCalendar title={`${MONTH_LABEL[todayM - 1]} ${todayY}`} year={todayY} month={todayM} todayDay={todayD} marks={marks} />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-[1fr_1.1fr_1fr]">
+        <ProgressList title="Progress by department" rows={deptRows} empty="No task yet." />
+        <TopTasks title="Top tasks" tasks={topTasks} empty="No open task right now." />
+        <div className="flex flex-col gap-4">
+          <UpcomingReminders title="Upcoming reminders" rows={reminderRows} empty="Nothing is due soon." />
+          <CheerCard name={shortName(session.fullName)} />
+        </div>
+      </div>
 
       {/* ───────── daily briefing ───────── */}
       <section aria-labelledby="briefing" className="overflow-hidden rounded-3xl border border-border bg-surface shadow-sm">
@@ -344,31 +417,6 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
           {access.isApprover && <a href="#approvals" className={BTN_GHOST}>Approve / Reject ({approvalItems.length})</a>}
         </div>
       </section>
-
-      {/* ───────── summary ───────── */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
-        <StatCard icon="☀" label="My tasks due today" value={taskSummary.dueToday} tone={taskSummary.dueToday > 0 ? "warning" : undefined} />
-        <StatCard icon="⚠" label="My overdue tasks" value={taskSummary.overdue} tone={taskSummary.overdue > 0 ? "danger" : undefined} />
-        {access.canSeePayments && (
-          <>
-            <StatCard icon="❗" label="Urgent supplier payments" value={paySummary.urgentCount} tone={paySummary.urgentCount > 0 ? "danger" : undefined} />
-            <StatCard
-              icon="RM"
-              label="Confirmed outstanding supplier balance"
-              value={<span className="text-[24px]">{formatPrice(paySummary.confirmedOutstanding)}</span>}
-              sub={
-                <>
-                  {paySummary.pendingVerificationCount > 0 && <span className="block">+ {formatPrice(paySummary.pendingVerification)} Pending Verification ({paySummary.pendingVerificationCount})</span>}
-                  {paySummary.onHoldCount > 0 && <span className="block">{formatPrice(paySummary.onHold)} disputed / on hold ({paySummary.onHoldCount})</span>}
-                  {paySummary.pendingVerificationCount === 0 && paySummary.onHoldCount === 0 && <span>{paySummary.confirmedCount} verified payable(s)</span>}
-                </>
-              }
-            />
-            <StatCard icon="✎" label="Payments awaiting Madam Penny" value={paySummary.awaitingApprovalCount} sub={paySummary.awaitingApprovalCount > 0 ? formatPrice(paySummary.awaitingApprovalAmount) : undefined} tone={paySummary.awaitingApprovalCount > 0 ? "warning" : undefined} />
-          </>
-        )}
-        <StatCard icon="✓" label="My tasks completed this week" value={taskSummary.completedThisWeek} tone="success" />
-      </div>
 
       {/* ───────── to-do checklist ───────── */}
       <SectionBox id="tasks" title={access.canSeePayments ? "To-Do Checklist" : "My To-Do List"} subtitle={access.adminCompanyIds.length > 0 ? "Every task of the companies you manage, and the tasks assigned to you." : "The tasks assigned to you or created by you."}>
