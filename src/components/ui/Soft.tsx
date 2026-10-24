@@ -38,9 +38,19 @@ export function SoftHeader({ title, subtitle, children }: { title: string; subti
   );
 }
 
-/** "Hello there, name": a round initial, a friendly line and today's date. */
-export function SoftGreeting({ name, line, dateLabel }: { name: string; line: string; dateLabel: string }) {
-  const initial = name.trim().charAt(0).toUpperCase() || "•";
+const TITLES = new Set(["MS", "MR", "MRS", "MISS", "MADAM", "MDM", "DR", "PROF", "ENCIK", "EN", "PUAN", "PN", "CIK", "DATO", "DATUK", "DATIN", "TAN", "SRI", "TUN", "TOH", "HAJI", "HJ", "HAJAH", "HJH", "SIR"]);
+
+/** The name a person is called by: the first word of the full name once titles such as "MS." or "Encik" are set aside ("MS. PENNY" gives "Penny"). */
+export function shortName(fullName: string): string {
+  const words = fullName.trim().split(/\s+/).filter(Boolean);
+  const word = words.find((w) => !TITLES.has(w.replace(/\./g, "").toUpperCase())) ?? words[0] ?? "";
+  return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+}
+
+/** "Hello, name": a round initial, a friendly line and today's date. The name is shortened (see shortName). */
+export function SoftGreeting({ fullName, line, dateLabel }: { fullName: string; line: string; dateLabel: string }) {
+  const name = shortName(fullName);
+  const initial = name.charAt(0).toUpperCase() || "•";
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface px-5 py-3.5">
       <div className="flex items-center gap-3.5">

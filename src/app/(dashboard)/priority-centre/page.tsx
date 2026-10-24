@@ -233,7 +233,7 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
           <a href="#approvals" className={BTN_GHOST}>{access.canSeePayments ? "Reminders & Pending Approvals" : "My Reminders"}</a>
         </nav>
       </SoftHeader>
-      <SoftGreeting name={session.fullName.split(" ")[0] ?? session.fullName} line="A better day is built by the small steps you take." dateLabel={`${formatMalaysiaLongDate(now)} · Malaysia time (UTC+8)`} />
+      <SoftGreeting fullName={session.fullName} line="A better day is built by the small steps you take." dateLabel={`${formatMalaysiaLongDate(now)} · Malaysia time (UTC+8)`} />
 
       {/* ───────── daily briefing ───────── */}
       <section aria-labelledby="briefing" className="overflow-hidden rounded-3xl border border-border bg-surface shadow-sm">

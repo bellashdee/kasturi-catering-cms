@@ -44,7 +44,7 @@ export default async function BulletinPage({ searchParams }: { searchParams: Pro
   return (
     <SoftPage>
       <SoftHeader title="Bulletin Board" subtitle="News about the company and the work, for every staff member." />
-      <SoftGreeting name={session.fullName.split(" ")[0] ?? session.fullName} line="Stay in the know: the latest news is right here." dateLabel={formatMalaysiaLongDate()} />
+      <SoftGreeting fullName={session.fullName} line="Stay in the know: the latest news is right here." dateLabel={formatMalaysiaLongDate()} />
       <BulletinBoard
         posts={posts}
         postable={companies.filter((c) => postableIds.includes(c.id)).map((c) => ({ id: c.id, name: c.name }))}
