@@ -14,6 +14,32 @@
 
   --color-sidebar: #b9c7af;
   --color-sidebar-text: #2f3e2b;
+  --color-sidebar-line: rgba(0, 0, 0, 0.1);
+  --color-sidebar-field: rgba(255, 255, 255, 0.55);
+  --color-sidebar-active: rgba(255, 255, 255, 0.6);
+  --color-sidebar-active-text: #2f3e2b;
+
+  /* the soft banner, greeting avatar, page wash, card shadow, leaf and chart colours */
+  --soft-a: #f6e4e1;
+  --soft-b: #fbeeea;
+  --soft-c: #eef2ea;
+  --soft-page-a: #fdf7f5;
+  --soft-page-b: #f8ebe8;
+  --soft-avatar-a: #c99a99;
+  --soft-avatar-b: #a87372;
+  --soft-shadow: rgba(168, 115, 114, 0.12);
+  --soft-leaf: #a87372;
+  --soft-label: #b98483;
+  --chart-1: #7f9a79;
+  --chart-2: #d98b97;
+  --chart-3: #c9a56a;
+  --chart-4: #a87372;
+  --chart-5: #a9bd9f;
+  --chart-6: #e9b3b8;
+  --chart-7: #8c6b52;
+  --chart-8: #c77086;
+  --chart-9: #7b9a91;
+  --chart-10: #a89a86;
 
   --color-primary: #94605f;
   --color-primary-hover: #7f5150;
@@ -37,6 +63,141 @@
   --color-company-o2life: #c4622d;
 }
 
+
+/*
+ * One look per company, chosen by the company being viewed (the page sets data-theme on <html>):
+ *   Kasturi Indah: mint and teal, white cards, light sidebar   O2 Life: warm cream, dusty pink and brown
+ *   Signature Solution: navy and indigo blue with a navy sidebar   (all companies together keeps the blush and sage look above)
+ */
+html[data-theme="kasturi"] {
+  --color-bg: #eff8f6;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f5fbf9;
+  --color-border: #d3e8e2;
+  --color-border-strong: #b3d4cb;
+  --color-navy-900: #11796b;
+  --color-navy-800: #0e675b;
+  --color-navy-700: #3fb7a2;
+  --color-sidebar: #fbfefd;
+  --color-sidebar-text: #1f4d47;
+  --color-sidebar-line: #d3e8e2;
+  --color-sidebar-field: #eef8f5;
+  --color-sidebar-active: #d3efe8;
+  --color-sidebar-active-text: #0e675b;
+  --color-primary: #14806f;
+  --color-primary-hover: #0f6a5c;
+  --color-accent: #4fc3ad;
+  --color-success: #1f7a4d;
+  --color-success-bg: #dff3e8;
+  --color-info-bg: #dff3ee;
+  --soft-a: #dcf2ec;
+  --soft-b: #eaf7f4;
+  --soft-c: #f1f8e9;
+  --soft-page-a: #f6fcfa;
+  --soft-page-b: #e6f4f0;
+  --soft-avatar-a: #5fcfba;
+  --soft-avatar-b: #14806f;
+  --soft-shadow: rgba(20, 128, 111, 0.12);
+  --soft-leaf: #14806f;
+  --soft-label: #3f8c80;
+  --chart-1: #14806f;
+  --chart-2: #4fc3ad;
+  --chart-3: #8fd9c8;
+  --chart-4: #2f9e8a;
+  --chart-5: #b6e5da;
+  --chart-6: #6fb3d9;
+  --chart-7: #d6c47a;
+  --chart-8: #7aa08f;
+  --chart-9: #a8d0c5;
+  --chart-10: #5f8f87;
+}
+
+html[data-theme="o2life"] {
+  --color-bg: #fbf5ee;
+  --color-surface: #fffdf9;
+  --color-surface-alt: #fbf3ea;
+  --color-border: #eadccb;
+  --color-border-strong: #d8c3ab;
+  --color-navy-900: #8a6a52;
+  --color-navy-800: #755a46;
+  --color-navy-700: #c4a58b;
+  --color-sidebar: #efe2d2;
+  --color-sidebar-text: #4a3a2c;
+  --color-sidebar-line: #d9c6b0;
+  --color-sidebar-field: #f8efe3;
+  --color-sidebar-active: #fffaf3;
+  --color-sidebar-active-text: #5b4332;
+  --color-primary: #8a6048;
+  --color-primary-hover: #744f3b;
+  --color-accent: #d99a9a;
+  --color-success: #4d6f43;
+  --color-success-bg: #e9efdf;
+  --color-info-bg: #f6e8dc;
+  --soft-a: #f6e6dc;
+  --soft-b: #fbefe6;
+  --soft-c: #f3ede0;
+  --soft-page-a: #fdf8f2;
+  --soft-page-b: #f6eadd;
+  --soft-avatar-a: #d9a5a5;
+  --soft-avatar-b: #8a6048;
+  --soft-shadow: rgba(138, 96, 72, 0.12);
+  --soft-leaf: #8a6a52;
+  --soft-label: #a98062;
+  --chart-1: #8a6048;
+  --chart-2: #d99a9a;
+  --chart-3: #c4a58b;
+  --chart-4: #b0786a;
+  --chart-5: #e8c4b8;
+  --chart-6: #a39270;
+  --chart-7: #c98f6f;
+  --chart-8: #d4b5a0;
+  --chart-9: #9c7b6b;
+  --chart-10: #8c8c76;
+}
+
+html[data-theme="signature"] {
+  --color-bg: #f2f5fb;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f6f8fd;
+  --color-border: #d6dfee;
+  --color-border-strong: #b9c6de;
+  --color-navy-900: #123a7a;
+  --color-navy-800: #0e2f66;
+  --color-navy-700: #3a5fb8;
+  --color-sidebar: #12306a;
+  --color-sidebar-text: #eef3ff;
+  --color-sidebar-line: #2b4a8c;
+  --color-sidebar-field: #1d3f80;
+  --color-sidebar-active: #ffffff;
+  --color-sidebar-active-text: #12306a;
+  --color-primary: #2a55c4;
+  --color-primary-hover: #2144a3;
+  --color-accent: #4f8ef0;
+  --color-success: #167a4a;
+  --color-success-bg: #def3e8;
+  --color-info-bg: #e3ebfa;
+  --soft-a: #e0e9fa;
+  --soft-b: #edf2fc;
+  --soft-c: #e6f3f1;
+  --soft-page-a: #f6f8fd;
+  --soft-page-b: #e7edf9;
+  --soft-avatar-a: #5b84e6;
+  --soft-avatar-b: #2a55c4;
+  --soft-shadow: rgba(42, 85, 196, 0.12);
+  --soft-leaf: #2a55c4;
+  --soft-label: #5876b8;
+  --chart-1: #2a55c4;
+  --chart-2: #4f8ef0;
+  --chart-3: #14a38b;
+  --chart-4: #f0a23b;
+  --chart-5: #7a5fd1;
+  --chart-6: #e5604a;
+  --chart-7: #8fb3f2;
+  --chart-8: #5cc0b0;
+  --chart-9: #b9a6ee;
+  --chart-10: #9aa9c4;
+}
+
 @theme inline {
   /* Manrope covers Latin; the rest of the list covers Chinese, Myanmar and Bangla on Windows, macOS, iOS and Android */
   --font-sans: var(--font-manrope), "Noto Sans Myanmar", "Myanmar Text", "Padauk", "Noto Sans Bengali", "Nirmala UI", "Vrinda", "Kohinoor Bangla", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Heiti SC", system-ui, sans-serif;
@@ -53,6 +214,10 @@
 
   --color-sidebar: var(--color-sidebar);
   --color-sidebar-text: var(--color-sidebar-text);
+  --color-sidebar-line: var(--color-sidebar-line);
+  --color-sidebar-field: var(--color-sidebar-field);
+  --color-sidebar-active: var(--color-sidebar-active);
+  --color-sidebar-active-text: var(--color-sidebar-active-text);
 
   --color-primary: var(--color-primary);
   --color-primary-hover: var(--color-primary-hover);
@@ -81,10 +246,10 @@
  * banner (blush gradient, soft shadows on the cards).
  */
 .soft-theme {
-  background: linear-gradient(180deg, #fdf7f5 0%, #f8ebe8 100%);
+  background: linear-gradient(180deg, var(--soft-page-a) 0%, var(--soft-page-b) 100%);
   color: var(--color-text);
 }
-.soft-theme :is(section, article) { box-shadow: 0 6px 22px rgba(168, 115, 114, 0.12); }
+.soft-theme :is(section, article) { box-shadow: 0 6px 22px var(--soft-shadow); }
 /* Page titles are set in a serif face; the other scripts fall back to their own fonts */
 .soft-serif, main h1 { font-family: Georgia, "Times New Roman", "Noto Sans Myanmar", "Myanmar Text", "Padauk", "Noto Sans Bengali", "Nirmala UI", "Vrinda", "Noto Serif SC", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", serif; }
 @media print { .soft-theme { background: #ffffff; } }

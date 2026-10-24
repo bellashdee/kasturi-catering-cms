@@ -3,7 +3,7 @@ import { formatCurrency } from "@/lib/format";
 export type PieSlice = { label: string; value: number };
 
 /** Restrained, clearly different colours; the legend always names every slice, so colour is never the only clue. */
-const COLOURS = ["#7f9a79", "#d98b97", "#c9a56a", "#a87372", "#a9bd9f", "#e9b3b8", "#8c6b52", "#c77086", "#7b9a91", "#a89a86"];
+const COLOURS = Array.from({ length: 10 }, (_, i) => `var(--chart-${i + 1})`);
 const MAX_SLICES = 8;
 
 function arc(cx: number, cy: number, r: number, from: number, to: number) {
@@ -45,7 +45,7 @@ export function PieChart({ title, slices, format = formatCurrency }: { title: st
           <svg viewBox="0 0 120 120" width="220" height="220" role="img" aria-label={`${title}: ${shown.map((s) => `${s.label} ${((s.value / total) * 100).toFixed(0)}%`).join(", ")}`} className="max-w-full shrink-0">
             {shown.length === 1 ? (
               <>
-                <circle cx="60" cy="60" r="56" fill={COLOURS[0]} />
+                <circle cx="60" cy="60" r="56" style={{ fill: COLOURS[0] }} />
                 <PercentLabel x={60} y={60} percent={100} />
               </>
             ) : (
@@ -59,7 +59,7 @@ export function PieChart({ title, slices, format = formatCurrency }: { title: st
                   const percent = (s.value / total) * 100;
                   return (
                     <g key={s.label}>
-                      <path d={arc(60, 60, 56, start, angle)} fill={COLOURS[i % COLOURS.length]} stroke="#ffffff" strokeWidth="1.5" />
+                      <path d={arc(60, 60, 56, start, angle)} style={{ fill: COLOURS[i % COLOURS.length] }} stroke="#ffffff" strokeWidth="1.5" />
                       {percent >= 7 && <PercentLabel x={60 + 36 * Math.sin(mid)} y={60 - 36 * Math.cos(mid)} percent={percent} />}
                     </g>
                   );

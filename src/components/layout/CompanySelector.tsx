@@ -38,12 +38,12 @@ export function CompanySelector({ companies }: { companies: Company[] }) {
   }
 
   return (
-    <div className="border-b border-black/10 px-4 py-3.5">
+    <div className="border-b border-sidebar-line px-4 py-3.5">
       <div className="mb-2 text-[11px] font-bold tracking-wide text-sidebar-text/60">VIEWING</div>
       <div className="relative">
         <button
           onClick={() => setOpen((v) => !v)}
-          className="flex w-full items-center gap-2.5 rounded-lg border border-black/15 bg-white/55 px-2.5 py-2.5 text-sidebar-text"
+          className="flex w-full items-center gap-2.5 rounded-lg border border-sidebar-line bg-sidebar-field px-2.5 py-2.5 text-sidebar-text"
         >
           <span
             className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md text-[10px] font-bold text-white"
@@ -73,7 +73,7 @@ export function CompanySelector({ companies }: { companies: Company[] }) {
                 </span>
                 <span className="flex-1 text-[13px]">{opt.label}</span>
                 {opt.id === selectedId && (
-                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#5f7a5a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" className="text-primary" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M4 10l4 4 8-8" />
                   </svg>
                 )}
@@ -110,7 +110,7 @@ export function CompanyQuickLinks({ companies }: { companies: Company[] }) {
             key={c.id}
             onClick={() => select(c.id)}
             className={`flex items-center gap-3 rounded-lg px-3 py-1.5 pl-6 text-left text-[13px] transition ${
-              selectedId === c.id ? "bg-white/55 text-sidebar-text" : "text-sidebar-text/70 hover:text-sidebar-text"
+              selectedId === c.id ? "bg-sidebar-active text-sidebar-active-text" : "text-sidebar-text/70 hover:text-sidebar-text"
             }`}
           >
             <span

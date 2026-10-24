@@ -13,7 +13,7 @@ export function SoftPage({ children, className = "" }: { children: ReactNode; cl
 /** A small leaf drawn in the title corner. */
 function Leaf() {
   return (
-    <svg width="46" height="62" viewBox="0 0 46 62" fill="none" stroke="#a87372" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0 opacity-80">
+    <svg width="46" height="62" viewBox="0 0 46 62" fill="none" stroke="var(--soft-leaf)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0 opacity-80">
       <path d="M23 60C23 40 23 24 23 4" />
       <path d="M23 46C14 44 8 38 8 28c9 1 15 7 15 18Z" />
       <path d="M23 34C32 32 38 26 38 16c-9 1-15 7-15 18Z" />
@@ -25,7 +25,7 @@ function Leaf() {
 /** The page banner: serif title, a line under it, and room on the right for buttons or a date. */
 export function SoftHeader({ title, subtitle, children }: { title: string; subtitle?: string; children?: ReactNode }) {
   return (
-    <header className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-border px-6 py-5" style={{ background: "linear-gradient(100deg, #f6e4e1 0%, #fbeeea 55%, #eef2ea 100%)" }}>
+    <header className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-border px-6 py-5" style={{ background: "linear-gradient(100deg, var(--soft-a) 0%, var(--soft-b) 55%, var(--soft-c) 100%)" }}>
       <div className="flex items-center gap-4">
         <Leaf />
         <div>
@@ -54,7 +54,7 @@ export function SoftGreeting({ fullName, line, dateLabel }: { fullName: string; 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface px-5 py-3.5">
       <div className="flex items-center gap-3.5">
-        <span className="flex h-11 w-11 items-center justify-center rounded-full text-[18px] font-extrabold text-white" style={{ background: "linear-gradient(135deg, #c99a99, #a87372)" }} aria-hidden="true">
+        <span className="flex h-11 w-11 items-center justify-center rounded-full text-[18px] font-extrabold text-white" style={{ background: "linear-gradient(135deg, var(--soft-avatar-a), var(--soft-avatar-b))" }} aria-hidden="true">
           {initial}
         </span>
         <div>

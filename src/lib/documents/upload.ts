@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { generateDocumentMarkdown } from "@/lib/documents/actions";
 
-export type DocumentFileType = "pdf" | "excel" | "csv" | "photo" | "screenshot";
+export type DocumentFileType = "pdf" | "excel" | "csv" | "photo" | "screenshot" | "word" | "powerpoint" | "text" | "other";
 
 /** What the "document" file picker accepts everywhere; photos/screenshots use "image/*". */
 export const DOCUMENT_FILE_ACCEPT = "application/pdf,.xlsx,.xls,.csv";
@@ -65,8 +65,14 @@ export async function uploadDocument(params: {
   return data;
 }
 
+/** Files the AI Assistant can read besides photos and PDFs: Word, Excel, CSV, PowerPoint, text. */
+export const ASSISTANT_FILE_ACCEPT = "image/*,application/pdf,.docx,.doc,.xlsx,.xls,.csv,.pptx,.txt,.md,.json,.rtf,.html";
+
 export function fileTypeFromMime(file: File): DocumentFileType {
   if (file.type === "application/pdf") return "pdf";
+  if (file.name.match(/\.(docx?|rtf)$/i) || file.type.includes("wordprocessingml") || file.type === "application/msword") return "word";
+  if (file.name.match(/\.pptx?$/i) || file.type.includes("presentationml")) return "powerpoint";
+  if (file.name.match(/\.(txt|md|json|html?)$/i) || file.type.startsWith("text/") && file.type !== "text/csv") return "text";
   if (file.type.includes("sheet") || file.name.match(/\.(xlsx|xls)$/i)) return "excel";
   if (file.type === "text/csv" || file.name.match(/\.csv$/i)) return "csv";
   return "photo";

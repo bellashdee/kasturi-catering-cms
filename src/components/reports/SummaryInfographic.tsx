@@ -6,9 +6,9 @@ import { formatCurrency } from "@/lib/format";
  * Plain server-rendered SVG / HTML, so it prints exactly as it looks (backgrounds are kept in the print).
  */
 
-const ROSE = "#c99a99";
-const ROSE_DARK = "#a87372";
-const ROSE_PALE = "#f1dcdb";
+const ROSE = "var(--color-navy-700)";
+const ROSE_DARK = "var(--color-navy-900)";
+const ROSE_PALE = "var(--color-info-bg)";
 
 type Series = number[];
 
@@ -49,16 +49,16 @@ function MonthBars({ values, label, current, tone }: { values: Series; label: st
         const x = i * (bw + gap);
         return (
           <g key={i}>
-            <rect x={x} y={H - h} width={bw} height={h} rx="1.5" fill={fill} opacity={i + 1 === current ? 1 : 0.78}>
+            <rect x={x} y={H - h} width={bw} height={h} rx="1.5" style={{ fill }} opacity={i + 1 === current ? 1 : 0.78}>
               <title>{`${i + 1}: ${formatCurrency(v)}`}</title>
             </rect>
-            <text x={x + bw / 2} y={H + 12} textAnchor="middle" fontSize="8.5" fill={tone === "light" ? "#ffffff" : ROSE_DARK} fontWeight={i + 1 === current ? 800 : 500}>
+            <text x={x + bw / 2} y={H + 12} textAnchor="middle" fontSize="8.5" style={{ fill: tone === "light" ? "#ffffff" : ROSE_DARK }} fontWeight={i + 1 === current ? 800 : 500}>
               {i + 1}
             </text>
           </g>
         );
       })}
-      <line x1="0" x2={W} y1={H} y2={H} stroke={fill} strokeOpacity="0.35" strokeWidth="1" />
+      <line x1="0" x2={W} y1={H} y2={H} style={{ stroke: fill }} strokeOpacity="0.35" strokeWidth="1" />
     </svg>
   );
 }
@@ -70,7 +70,7 @@ function Ring({ percent }: { percent: number }) {
   const p = Math.min(Math.max(percent, 0), 100);
   return (
     <svg viewBox="0 0 140 140" className="mx-auto w-full max-w-[210px]" role="img" aria-label={`${p.toFixed(0)}%`}>
-      <circle cx="70" cy="70" r={r} fill="none" stroke={ROSE_DARK} strokeOpacity="0.55" strokeWidth="16" />
+      <circle cx="70" cy="70" r={r} fill="none" style={{ stroke: ROSE_DARK }} strokeOpacity="0.55" strokeWidth="16" />
       <circle cx="70" cy="70" r={r} fill="none" stroke="#ffffff" strokeWidth="16" strokeDasharray={`${(p / 100) * c} ${c}`} transform="rotate(-90 70 70)" />
     </svg>
   );
@@ -79,7 +79,7 @@ function Ring({ percent }: { percent: number }) {
 function Tile({ value, label, tone }: { value: string; label: string; tone?: "bad" }) {
   return (
     <div className="border-b border-white/40 px-1 py-3.5 last:border-b-0">
-      <div className={`text-[26px] font-extrabold leading-tight ${tone === "bad" ? "text-[#7a1f1f]" : "text-white"}`}>{value}</div>
+      <div className={`text-[26px] font-extrabold leading-tight ${tone === "bad" ? "text-[#6e1414]" : "text-white"}`}>{value}</div>
       <div className="mt-0.5 text-[11.5px] font-semibold uppercase tracking-wider text-white/90">{label}</div>
     </div>
   );
@@ -88,7 +88,7 @@ function Tile({ value, label, tone }: { value: string; label: string; tone?: "ba
 function Pill({ value, label }: { value: string | number; label: string }) {
   return (
     <div className="text-center">
-      <div className="text-[12px] font-bold uppercase tracking-wider text-[#b98483]">{label}</div>
+      <div className="text-[12px] font-bold uppercase tracking-wider text-[color:var(--soft-label)]">{label}</div>
       <div className="mt-1.5 rounded-2xl px-4 py-3 text-[28px] font-extrabold leading-none text-white" style={{ background: ROSE }}>
         {value}
       </div>
@@ -168,7 +168,7 @@ export function SummaryInfographic(p: SummaryPictureProps) {
           </div>
 
           <div>
-            <div className="text-[12.5px] font-bold uppercase tracking-wider text-[#b98483]">Cost by module</div>
+            <div className="text-[12.5px] font-bold uppercase tracking-wider text-[color:var(--soft-label)]">Cost by module</div>
             {p.bySource.length === 0 ? (
               <div className="py-6 text-[13px] text-text-secondary">No costs recorded for this period.</div>
             ) : (

@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { resolvePageContext } from "@/lib/assistant/pageContext";
-import { uploadDocument } from "@/lib/documents/upload";
-import { prepareMenuFile } from "@/lib/kitchenAi/clientImage";
+import { ASSISTANT_FILE_ACCEPT, uploadDocument } from "@/lib/documents/upload";
+import { prepareAssistantFile } from "@/lib/kitchenAi/clientImage";
 import { exportKitchenList } from "@/lib/kitchenAi/exportXlsx";
 import type { PurchasePlan } from "@/lib/kitchenAi/purchase";
 import type { RecipeRef } from "@/lib/kitchenAi/match";
@@ -53,6 +53,9 @@ export function AssistantChat({ variant = "widget" }: { variant?: "widget" | "pa
   const [kitchen, setKitchen] = useState<KitchenData | null>(null);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [companyId, setCompanyId] = useState("");
+  // files attached to the question (up to 4): they stay with the chat, so follow-up questions are about them too
+  const [attached, setAttached] = useState<{ id: string; name: string; visual: boolean }[]>([]);
+  const [webSearch, setWebSearch] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const camRef = useRef<HTMLInputElement>(null);
@@ -126,6 +129,7 @@ export function AssistantChat({ variant = "widget" }: { variant?: "widget" | "pa
     setConversationId(null);
     setMessages([]);
     setKitchen(null);
+    setAttached([]);
     setError(null);
     setShowHistory(false);
   }
@@ -162,17 +166,18 @@ export function AssistantChat({ variant = "widget" }: { variant?: "widget" | "pa
   }
 
   /** A photo or PDF that is not (or not only) a menu: read it and answer, like a general assistant. */
-  async function askAboutFiles(documentIds: string[], text: string) {
+  async function askAboutFiles(documentIds: string[], text: string, names?: string) {
     setLoading(true);
     setError(null);
     setWorking("Reading the file…");
-    const shown = text.trim() ? `📎 ${text.trim()}` : `📎 ${documentIds.length > 1 ? `${documentIds.length} files` : "File"}`;
+    const label = names || (documentIds.length > 1 ? `${documentIds.length} files` : "File");
+    const shown = text.trim() ? `📎 ${label}\n${text.trim()}` : `📎 ${label}`;
     setMessages((prev) => [...prev, { id: nextLocalId("local"), role: "user", content: shown }]);
     try {
       const res = await fetch("/api/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text.trim(), documentIds, conversationId, pageLabel, pageModule, companyParam }),
+        body: JSON.stringify({ message: text.trim(), documentIds, conversationId, pageLabel, pageModule, companyParam, webSearch }),
         signal: AbortSignal.timeout(90_000),
       });
       const data = await res.json().catch(() => null);
@@ -188,6 +193,10 @@ export function AssistantChat({ variant = "widget" }: { variant?: "widget" | "pa
   }
 
   async function startKitchen(documentIds: string[], eventId?: string, userText?: string) {
+    if (!companyId) {
+      setError("Choose the company first (its recipes are used for the quantities).");
+      return;
+    }
     setLoading(true);
     setError(null);
     setWorking(documentIds.length > 0 ? "Reading the menu photo… this can take up to a minute" : "Preparing the event menu…");
@@ -207,39 +216,52 @@ export function AssistantChat({ variant = "widget" }: { variant?: "widget" | "pa
   }
 
   async function handleFiles(list: FileList | null) {
-    const files = Array.from(list ?? []).slice(0, 4);
+    const picked = Array.from(list ?? []).slice(0, 4);
     if (fileRef.current) fileRef.current.value = "";
     if (camRef.current) camRef.current.value = "";
-    if (files.length === 0 || loading) return;
-    const typed = input.trim();
-    const general = !kitchen && typed.length > 0;
-    if (!companyId && !general) {
-      setError("Choose the company first (its recipes are used for the quantities).");
+    if (picked.length === 0 || loading) return;
+    if (!kitchen && attached.length + picked.length > 4) {
+      setError("You can attach up to 4 files at a time.");
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      const ids: string[] = [];
-      for (const [i, f] of files.entries()) {
-        setWorking(`Preparing photo ${i + 1} of ${files.length}…`);
-        const prepared = await prepareMenuFile(f);
-        setWorking(`Uploading photo ${i + 1} of ${files.length}…`);
+      const done: { id: string; name: string; visual: boolean }[] = [];
+      for (const [i, f] of picked.entries()) {
+        setWorking(`Preparing file ${i + 1} of ${picked.length}…`);
+        const prepared = await prepareAssistantFile(f);
+        setWorking(`Uploading file ${i + 1} of ${picked.length}…`);
         const doc = await uploadDocument({ companyId: companyId || meta?.companies[0]?.id || "", module: "kitchen", fileType: prepared.type, file: prepared.file, skipMarkdown: true });
-        ids.push(doc.id);
+        done.push({ id: doc.id, name: prepared.file.name, visual: prepared.type === "photo" || prepared.type === "pdf" || prepared.type === "screenshot" });
       }
+      setWorking(null);
       setLoading(false);
-      if (general) {
-        setInput("");
-        await askAboutFiles(ids, typed);
+      if (kitchen) {
+        // a menu is already open: more menu photos are added to it
+        await startKitchen(done.map((d) => d.id), undefined, `📷 Menu photo${done.length > 1 ? `s (${done.length})` : ""}`);
         return;
       }
-      await startKitchen(ids, meta?.event?.id && !kitchen ? meta.event.id : undefined, `📷 Menu photo${ids.length > 1 ? `s (${ids.length})` : ""}`);
+      setAttached((prev) => [...prev, ...done]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "The photo could not be uploaded.");
+      setError(err instanceof Error ? err.message : "The file could not be uploaded.");
       setWorking(null);
       setLoading(false);
     }
+  }
+
+  /** The question with the attached files: answered like a general assistant, or (nothing typed, only photos / PDFs) read as a menu first. */
+  async function sendWithFiles(text: string) {
+    const ids = attached.map((a) => a.id);
+    const names = attached.map((a) => a.name).join(", ");
+    const typed = text.trim();
+    setInput("");
+    if (!typed && companyId && attached.every((a) => a.visual)) {
+      await startKitchen(ids, undefined, `📷 ${names}`);
+      setAttached([]);
+      return;
+    }
+    await askAboutFiles(ids, typed, names);
   }
 
   /** The result as a PDF to save or to print (it includes the by-supplier purchase list). */
@@ -293,7 +315,12 @@ export function AssistantChat({ variant = "widget" }: { variant?: "widget" | "pa
 
   async function send(text: string) {
     const trimmed = text.trim();
-    if (!trimmed || loading) return;
+    if (loading) return;
+    if (!kitchen && attached.length > 0) {
+      await sendWithFiles(trimmed);
+      return;
+    }
+    if (!trimmed) return;
 
     const optimisticUser: Message = { id: nextLocalId("local"), role: "user", content: trimmed };
     setMessages((prev) => [...prev, optimisticUser]);
@@ -325,6 +352,7 @@ export function AssistantChat({ variant = "widget" }: { variant?: "widget" | "pa
           pageLabel,
           pageModule,
           companyParam,
+          webSearch,
         }),
       });
 
@@ -428,8 +456,8 @@ export function AssistantChat({ variant = "widget" }: { variant?: "widget" | "pa
         {messages.length === 0 && (
           <div className="flex flex-col gap-3">
             <p className="text-[13px] text-text-secondary">
-              🤖 Hi! I&apos;m your AI Assistant. I can explain how to use this system, walk you through tutorials, and
-              look up authorized data you have access to. Try one of these:
+              🤖 Hi! I&apos;m your AI Assistant. Ask me anything, like ChatGPT: how to use this system, your own data, general questions, writing, translation or calculations.
+              Attach (📎) or snap (📷) a photo, PDF, Word, Excel or other file and ask about it. Turn on 🌐 to search the web. Try one of these:
             </p>
             <div className="flex flex-wrap gap-1.5">
               {SUGGESTED_PROMPTS.map((p) => (
@@ -444,7 +472,7 @@ export function AssistantChat({ variant = "widget" }: { variant?: "widget" | "pa
             </div>
             <div className="rounded-xl border border-border bg-bg px-3 py-2.5 text-[12.5px] text-text-secondary">
               <div className="font-bold text-text">🍳 Kitchen: ingredients from a menu photo</div>
-              <p className="mt-1">Upload (📎) or take (📷) a photo of a printed or handwritten menu. I read the dishes, ask for the pax only if it is not on the menu, and work out the ingredients from your approved recipes.</p>
+              <p className="mt-1">One of the things I can do with a photo: attach (📎) or take (📷) a photo of a printed or handwritten menu and send it without a question. I read the dishes, ask for the pax only if it is not on the menu, and work out the ingredients from your approved recipes.</p>
             </div>
             {showEventBanner && meta?.event && (
               <div className="rounded-xl border border-primary/40 bg-white px-3 py-2.5 text-[12.5px]">
@@ -520,6 +548,31 @@ export function AssistantChat({ variant = "widget" }: { variant?: "widget" | "pa
         </div>
       )}
 
+      {!kitchen && attached.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 border-t border-border px-3 pt-2">
+          {attached.map((a) => (
+            <span key={a.id} className="inline-flex max-w-[12rem] items-center gap-1.5 rounded-full border border-border bg-white px-2.5 py-1 text-[11.5px] text-text">
+              <span className="truncate">{`${a.visual ? "🖼️" : "📄"} ${a.name}`}</span>
+              <button type="button" aria-label="Remove file" onClick={() => setAttached((prev) => prev.filter((x) => x.id !== a.id))} className="text-text-muted hover:text-danger">
+                ×
+              </button>
+            </span>
+          ))}
+          {attached.some((a) => a.visual) && (
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => {
+                void startKitchen(attached.map((a) => a.id), undefined, `📷 ${attached.map((a) => a.name).join(", ")}`).then(() => setAttached([]));
+              }}
+              className="rounded-full border border-primary/50 bg-info-bg px-2.5 py-1 text-[11.5px] font-semibold text-primary hover:bg-white disabled:opacity-40"
+            >
+              🍳 Ingredient list from this menu
+            </button>
+          )}
+        </div>
+      )}
+
       {!kitchen && meta && meta.companies.length > 1 && (
         <div className="flex items-center gap-2 border-t border-border px-3 pt-2 text-[12px] text-text-secondary">
           <label htmlFor="kitchen-company" className="font-semibold">Recipes of</label>
@@ -539,23 +592,33 @@ export function AssistantChat({ variant = "widget" }: { variant?: "widget" | "pa
         }}
         className="flex items-center gap-2 border-t border-border px-3 py-2.5"
       >
-        <input ref={fileRef} type="file" accept="image/*,application/pdf" multiple hidden onChange={(e) => handleFiles(e.target.files)} />
+        <input ref={fileRef} type="file" accept={ASSISTANT_FILE_ACCEPT} multiple hidden onChange={(e) => handleFiles(e.target.files)} />
         <input ref={camRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => handleFiles(e.target.files)} />
-        <button type="button" onClick={() => fileRef.current?.click()} disabled={loading} aria-label="Upload a menu photo or PDF" title="Upload a menu photo or PDF" className={iconBtn}>
+        <button type="button" onClick={() => fileRef.current?.click()} disabled={loading} aria-label="Attach a photo or file" title="Attach a photo or file (PDF, Word, Excel, text)" className={iconBtn}>
           📎
         </button>
-        <button type="button" onClick={() => camRef.current?.click()} disabled={loading} aria-label="Take a photo of the menu" title="Take a photo of the menu" className={iconBtn}>
+        <button type="button" onClick={() => camRef.current?.click()} disabled={loading} aria-label="Take a photo" title="Take a photo" className={iconBtn}>
           📷
+        </button>
+        <button
+          type="button"
+          onClick={() => setWebSearch((v) => !v)}
+          aria-pressed={webSearch}
+          aria-label="Search the web"
+          title={webSearch ? "Web search is on" : "Search the web"}
+          className={`${iconBtn} ${webSearch ? "border-primary bg-info-bg" : ""}`}
+        >
+          🌐
         </button>
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={kitchen ? "e.g. Change the pax to 300 · Remove the soup · Shopping list" : "Ask a question… (English or Bahasa Melayu)"}
+          placeholder={kitchen ? "e.g. Change the pax to 300 · Remove the soup · Shopping list" : attached.length > 0 ? "Ask about the file… (or send it without a question)" : "Ask anything… (English or Bahasa Melayu)"}
           className="min-w-0 flex-1 rounded-lg border border-border px-3 py-2 text-[13px] outline-none focus:border-primary"
         />
         <button
           type="submit"
-          disabled={loading || !input.trim()}
+          disabled={loading || (!input.trim() && (!!kitchen || attached.length === 0))}
           className="rounded-lg bg-primary px-3.5 py-2 text-[13px] font-semibold text-white disabled:opacity-40"
         >
           Send

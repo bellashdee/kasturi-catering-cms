@@ -1,5 +1,7 @@
 "use client";
 
+import { fileTypeFromMime, type DocumentFileType } from "@/lib/documents/upload";
+
 export const MAX_UPLOAD_BYTES = 12 * 1024 * 1024;
 
 /**
@@ -44,4 +46,14 @@ export async function prepareMenuFile(file: File): Promise<{ file: File; type: "
   if (!blob) throw new Error("The photo could not be prepared for upload.");
   const name = file.name.replace(/\.[^.]+$/, "") || "menu";
   return { file: new File([blob], `${name}.jpg`, { type: "image/jpeg" }), type: "photo" };
+}
+
+/**
+ * A file attached in the AI Assistant: photos are scaled down (see prepareMenuFile); PDFs, Word, Excel, CSV, PowerPoint and text
+ * files go up as they are (they are read as text on the server).
+ */
+export async function prepareAssistantFile(file: File): Promise<{ file: File; type: DocumentFileType }> {
+  if (file.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif|gif)$/i.test(file.name)) return prepareMenuFile(file);
+  if (file.size > MAX_UPLOAD_BYTES) throw new Error(`"${file.name}" is larger than 12 MB. Upload a smaller copy.`);
+  return { file, type: fileTypeFromMime(file) };
 }

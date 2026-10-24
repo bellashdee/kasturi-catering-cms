@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { geminiGenerate, getAiProvider, type GeminiPart } from "@/lib/ai/gemini";
+import { geminiGenerateWithSources, getAiProvider, type GeminiPart } from "@/lib/ai/gemini";
+import { ensureDocumentMarkdown } from "@/lib/documents/markdown";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext, ROLE_LABEL } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
@@ -27,25 +28,42 @@ const MAX_IMAGES = 4;
 const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
 
 type Attachment = { mime: string; data: Buffer };
+type TextFile = { name: string; text: string };
 
-/** Downloads the photos / PDFs the person uploaded for this question (only their own files). */
-async function loadAttachments(supabase: Awaited<ReturnType<typeof createClient>>, userId: string, documentIds: string[]): Promise<{ files: Attachment[]; problem: string | null }> {
-  if (documentIds.length === 0) return { files: [], problem: null };
+const MAX_TEXT_CHARS = 60_000;
+/** Words that show the question needs today's facts from the web (the person can also turn the web search on by hand). */
+const WEB_HINT = /\b(latest|news|current|currently|today|tonight|this week|this month|right now|price of|prices|weather|exchange rate|stock price|who won|score|search|google|online|terkini|berita|harga|cuaca|semasa|hari ini|kadar tukaran|carian|cari di internet)\b/i;
+
+/**
+ * Downloads the files the person attached for this question (only their own files). Photos and PDFs go to the AI as they are;
+ * Word, Excel, CSV, PowerPoint and text files are converted to text first (MarkItDown) and sent as text.
+ */
+async function loadAttachments(supabase: Awaited<ReturnType<typeof createClient>>, userId: string, documentIds: string[]): Promise<{ files: Attachment[]; texts: TextFile[]; problem: string | null }> {
+  if (documentIds.length === 0) return { files: [], texts: [], problem: null };
+  const none = { files: [] as Attachment[], texts: [] as TextFile[] };
   const { data: docs } = await supabase.from("documents").select("id, uploaded_by, file_type, storage_path, original_filename").in("id", documentIds);
-  if (!docs || docs.length !== documentIds.length) return { files: [], problem: "A file could not be found. Please upload it again." };
+  if (!docs || docs.length !== documentIds.length) return { ...none, problem: "A file could not be found. Please upload it again." };
   const files: Attachment[] = [];
+  const texts: TextFile[] = [];
   for (const d of docs) {
-    if (d.uploaded_by !== userId) return { files: [], problem: "You can only use files you uploaded yourself." };
+    if (d.uploaded_by !== userId) return { ...none, problem: "You can only use files you uploaded yourself." };
     const name = (d.original_filename ?? "").toLowerCase();
-    const mime = d.file_type === "pdf" || name.endsWith(".pdf") ? "application/pdf" : name.endsWith(".png") ? "image/png" : name.endsWith(".webp") ? "image/webp" : "image/jpeg";
-    if (!["photo", "screenshot", "pdf"].includes(d.file_type)) return { files: [], problem: "Only photos, screenshots and PDFs can be read." };
-    const { data: blob, error } = await supabase.storage.from("documents").download(d.storage_path);
-    if (error || !blob) return { files: [], problem: "A file could not be retrieved. Please upload it again." };
-    const buffer = Buffer.from(await blob.arrayBuffer());
-    if (buffer.byteLength > MAX_IMAGE_BYTES) return { files: [], problem: "A file is larger than 12 MB. Please upload a smaller copy." };
-    files.push({ mime, data: buffer });
+    if (["photo", "screenshot", "pdf"].includes(d.file_type)) {
+      const mime = d.file_type === "pdf" || name.endsWith(".pdf") ? "application/pdf" : name.endsWith(".png") ? "image/png" : name.endsWith(".webp") ? "image/webp" : "image/jpeg";
+      const { data: blob, error } = await supabase.storage.from("documents").download(d.storage_path);
+      if (error || !blob) return { ...none, problem: "A file could not be retrieved. Please upload it again." };
+      const buffer = Buffer.from(await blob.arrayBuffer());
+      if (buffer.byteLength > MAX_IMAGE_BYTES) return { ...none, problem: "A file is larger than 12 MB. Please upload a smaller copy." };
+      files.push({ mime, data: buffer });
+      continue;
+    }
+    const outcome = await ensureDocumentMarkdown(supabase, d.id);
+    if (outcome.status !== "done" || !outcome.markdown?.trim()) {
+      return { ...none, problem: `"${d.original_filename}" could not be turned into text${outcome.note ? ` (${outcome.note.replace(/^Markdown conversion failed: /, "")})` : ""}. Try a PDF or a photo of it instead.` };
+    }
+    texts.push({ name: d.original_filename ?? "file", text: outcome.markdown.length > MAX_TEXT_CHARS ? `${outcome.markdown.slice(0, MAX_TEXT_CHARS)}\n\n[the file is longer: only the first ${MAX_TEXT_CHARS.toLocaleString("en")} characters are shown]` : outcome.markdown });
   }
-  return { files, problem: null };
+  return { files, texts, problem: null };
 }
 
 /**
@@ -97,6 +115,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const documentIds: string[] = Array.isArray(body?.documentIds) ? body.documentIds.filter((x: unknown): x is string => typeof x === "string").slice(0, MAX_IMAGES) : [];
   const message: string = (body?.message ?? "").trim() || (documentIds.length > 0 ? "Please read this and tell me what it is and what is important in it." : "");
+  const webSearch: boolean = body?.webSearch === true;
   const pageLabel: string = body?.pageLabel ?? "Main Dashboard";
   const pageModule: ModuleKey | "general" = body?.pageModule ?? "general";
   const companyParam: string | undefined = body?.companyParam;
@@ -152,8 +171,8 @@ export async function POST(request: Request) {
     const messageId = await saveMessage(supabase, conversationId, "assistant", attachments.problem, pageLabel);
     return NextResponse.json({ conversationId, reply: attachments.problem, messageId });
   }
-  if (attachments.files.length > 0 && !provider) {
-    const noAi = "Reading photos needs the AI service, which is not set up on this server yet.";
+  if ((attachments.files.length > 0 || attachments.texts.length > 0) && !provider) {
+    const noAi = "Reading files needs the AI service, which is not set up on this server yet.";
     const messageId = await saveMessage(supabase, conversationId, "assistant", noAi, pageLabel);
     return NextResponse.json({ conversationId, reply: noAi, messageId });
   }
@@ -177,19 +196,38 @@ export async function POST(request: Request) {
       });
 
       if (provider === "gemini") {
-        const text = await geminiGenerate({
-          system: systemPrompt,
-          turns: [
-            ...history.map((m) => ({ role: m.role === "assistant" ? ("model" as const) : ("user" as const), parts: [{ text: m.content }] })),
-            { role: "user", parts: [...attachments.files.map((f): GeminiPart => ({ inline_data: { mime_type: f.mime, data: f.data.toString("base64") } })), { text: message }] },
-          ],
-          maxOutputTokens: MAX_ANSWER_TOKENS,
-          // a model that is slow to start is dropped after a few seconds (a photo needs longer)
-          attemptCapMs: attachments.files.length > 0 ? 25_000 : 9_000,
-          // total time for the answer: after this the written help for the question is shown instead of waiting longer
-          budgetMs: attachments.files.length > 0 ? 55_000 : 25_000,
-        });
-        reply = text.trim() || kbOnlyReply(kbEntries);
+        const fileText = attachments.texts.map((t) => `--- File: ${t.name} ---\n${t.text}`).join("\n\n");
+        const userText = fileText ? `${fileText}\n\n--- Question ---\n${message}` : message;
+        const hasFiles = attachments.files.length > 0 || attachments.texts.length > 0;
+        const useSearch = (webSearch || WEB_HINT.test(message)) && attachments.files.length === 0;
+        const turns = [
+          ...history.map((m) => ({ role: m.role === "assistant" ? ("model" as const) : ("user" as const), parts: [{ text: m.content }] })),
+          { role: "user" as const, parts: [...attachments.files.map((f): GeminiPart => ({ inline_data: { mime_type: f.mime, data: f.data.toString("base64") } })), { text: userText }] },
+        ];
+        const ask = (search: boolean) =>
+          geminiGenerateWithSources({
+            system: systemPrompt,
+            turns,
+            maxOutputTokens: MAX_ANSWER_TOKENS,
+            search,
+            // a model that is slow to start is dropped after a few seconds (a photo or a long file needs longer, a web search a little)
+            attemptCapMs: hasFiles ? 25_000 : search ? 16_000 : 9_000,
+            // total time for the answer: after this the written help for the question is shown instead of waiting longer
+            budgetMs: hasFiles ? 55_000 : search ? 40_000 : 25_000,
+          });
+        let searchFailed = false;
+        let result: { text: string; sources: { title: string; url: string }[] } | null = null;
+        if (useSearch) {
+          try {
+            result = await ask(true);
+          } catch {
+            searchFailed = true; // the web is not available (for example the AI plan has no search): answer without it
+          }
+        }
+        if (!result) result = await ask(false);
+        reply = result.text.trim() || kbOnlyReply(kbEntries);
+        if (searchFailed) reply += "\n\n_Web search is not available on the current AI plan, so this answer comes from my own knowledge and may not be up to date._";
+        if (result.sources.length > 0) reply += `\n\n**Sources**\n${result.sources.map((x, i) => `${i + 1}. [${x.title || new URL(x.url).hostname}](${x.url})`).join("\n")}`;
       } else {
         const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
         const response = await anthropic.messages.create({
@@ -206,7 +244,7 @@ export async function POST(request: Request) {
                     ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: f.data.toString("base64") } }
                     : { type: "image", source: { type: "base64", media_type: f.mime as "image/jpeg" | "image/png" | "image/webp", data: f.data.toString("base64") } },
                 ),
-                { type: "text", text: message },
+                { type: "text", text: attachments.texts.length > 0 ? `${attachments.texts.map((t) => `--- File: ${t.name} ---\n${t.text}`).join("\n\n")}\n\n--- Question ---\n${message}` : message },
               ],
             },
           ],
@@ -215,7 +253,7 @@ export async function POST(request: Request) {
         reply = textBlock && "text" in textBlock ? textBlock.text : kbOnlyReply(kbEntries);
       }
     } catch {
-      if (attachments.files.length > 0) {
+      if (attachments.files.length > 0 || attachments.texts.length > 0) {
         reply = "I could not read the file just now (the AI service may be busy). Please try again in a moment, or send a clearer photo.";
       } else {
         reply = kbOnlyReply(kbEntries);

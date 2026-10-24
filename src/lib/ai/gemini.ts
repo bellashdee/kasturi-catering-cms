@@ -27,7 +27,7 @@ export class GeminiError extends Error {
   }
 }
 
-export type GeminiResult = { text: string; finishReason: string | null; model: string };
+export type GeminiResult = { text: string; finishReason: string | null; model: string; sources?: { title: string; url: string }[] };
 
 /**
  * Models tried in order. The preferred model is often "experiencing high demand" (HTTP 503) on the free tier, so rather
@@ -53,7 +53,7 @@ export function isLightModel(model: string | null): boolean {
 
 type RawResponse = {
   error?: { message?: string };
-  candidates?: { finishReason?: string; content?: { parts?: { text?: string; thought?: boolean }[] } }[];
+  candidates?: { finishReason?: string; content?: { parts?: { text?: string; thought?: boolean }[] }; groundingMetadata?: { groundingChunks?: { web?: { uri?: string; title?: string } }[] } }[];
   promptFeedback?: { blockReason?: string };
 };
 
@@ -62,6 +62,7 @@ export async function geminiGenerateDetailed({
   turns,
   maxOutputTokens,
   json,
+  search,
   budgetMs = 52_000,
   attemptCapMs,
 }: {
@@ -69,6 +70,8 @@ export async function geminiGenerateDetailed({
   turns: GeminiTurn[];
   maxOutputTokens: number;
   json?: boolean;
+  /** Let the model look things up on the web (Google Search) and return the pages it used. Not combined with json. */
+  search?: boolean;
   /** Total time allowed across all models/attempts (the serverless function itself is limited to 60s). */
   budgetMs?: number;
   /** A model that has not answered after this long is given up on (the next model is tried): for quick chat answers. */
@@ -97,6 +100,7 @@ export async function geminiGenerateDetailed({
       ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
       contents: turns,
       generationConfig,
+      ...(search && !json ? { tools: [{ google_search: {} }] } : {}),
     });
 
     let res: Response;
@@ -124,13 +128,19 @@ export async function geminiGenerateDetailed({
       if (!text && data?.promptFeedback?.blockReason) {
         throw new GeminiError(`The AI service refused to read this file (${data.promptFeedback.blockReason}).`, "blocked", 200);
       }
-      return { text, finishReason: candidate?.finishReason ?? null, model };
+      const seen = new Set<string>();
+      const sources = (candidate?.groundingMetadata?.groundingChunks ?? [])
+        .map((c) => ({ title: (c.web?.title ?? "").trim(), url: c.web?.uri ?? "" }))
+        .filter((c) => /^https?:\/\//.test(c.url) && !seen.has(c.url) && seen.add(c.url))
+        .slice(0, 5);
+      return { text, finishReason: candidate?.finishReason ?? null, model, ...(sources.length > 0 ? { sources } : {}) };
     }
 
     if (res.status === 429 || res.status === 503 || res.status === 500) overloadedAt.set(model, Date.now());
+    if (res.status === 429 && search) throw new GeminiError("Web search is not available on this AI plan.", "rate_limit", 429);
     if (res.status === 429) lastError = new GeminiError("The AI service is busy or the free daily limit was reached.", "rate_limit", 429);
     else if (res.status === 503 || res.status === 500) lastError = new GeminiError("The AI service is temporarily overloaded.", "busy", res.status);
-    else if (res.status === 404 || (res.status === 400 && /thinking/i.test(data?.error?.message ?? ""))) {
+    else if (res.status === 404 || (res.status === 400 && /thinking|tool|search|grounding/i.test(data?.error?.message ?? ""))) {
       lastError = new GeminiError(data?.error?.message ?? `Model ${model} is not usable.`, "other", res.status);
     } else {
       throw new GeminiError(data?.error?.message ?? `AI request failed (${res.status}).`, "bad_request", res.status);
@@ -150,6 +160,27 @@ export async function geminiGenerate(params: {
 }): Promise<string> {
   try {
     return (await geminiGenerateDetailed(params)).text;
+  } catch (err) {
+    if (err instanceof GeminiError) {
+      if (err.kind === "rate_limit") throw new Error("The AI service is busy or the free daily limit was reached. Wait a minute and try again.");
+      if (err.kind === "busy" || err.kind === "timeout") throw new Error("The AI service is temporarily overloaded. Try again shortly.");
+    }
+    throw err;
+  }
+}
+
+/** Like geminiGenerate, but also returns the web pages used when `search` was on. */
+export async function geminiGenerateWithSources(params: {
+  system?: string;
+  turns: GeminiTurn[];
+  maxOutputTokens: number;
+  search?: boolean;
+  budgetMs?: number;
+  attemptCapMs?: number;
+}): Promise<{ text: string; sources: { title: string; url: string }[] }> {
+  try {
+    const r = await geminiGenerateDetailed(params);
+    return { text: r.text, sources: r.sources ?? [] };
   } catch (err) {
     if (err instanceof GeminiError) {
       if (err.kind === "rate_limit") throw new Error("The AI service is busy or the free daily limit was reached. Wait a minute and try again.");

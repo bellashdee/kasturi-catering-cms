@@ -2,9 +2,11 @@ import type { ReactNode } from "react";
 
 /** **bold** and _italic_ inside a line (plain React text nodes: nothing is ever interpreted as HTML). */
 function inline(text: string): ReactNode[] {
-  return text.split(/(\*\*[^*]+\*\*|_[^_]+_)/g).map((part, i) => {
+  return text.split(/(\*\*[^*]+\*\*|_[^_]+_|\[[^\]]+\]\(https?:\/\/[^)\s]+\))/g).map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**") && part.length > 4) return <strong key={i}>{part.slice(2, -2)}</strong>;
     if (part.startsWith("_") && part.endsWith("_") && part.length > 2) return <em key={i}>{part.slice(1, -1)}</em>;
+    const link = part.match(/^\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)$/);
+    if (link) return <a key={i} href={link[2]} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline">{link[1]}</a>;
     return part;
   });
 }
