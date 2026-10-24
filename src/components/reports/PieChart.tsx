@@ -18,7 +18,7 @@ function arc(cx: number, cy: number, r: number, from: number, to: number) {
 /** The percentage written on a slice: white with a soft dark outline, so it reads on every slice colour. */
 function PercentLabel({ x, y, percent }: { x: number; y: number; percent: number }) {
   return (
-    <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fontSize="8.5" fontWeight="800" fill="#ffffff" stroke="#3a2424" strokeOpacity="0.55" strokeWidth="2.2" paintOrder="stroke" style={{ fontVariantNumeric: "tabular-nums" }}>
+    <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fontSize="6" fontWeight="700" fill="#ffffff" stroke="#3a2424" strokeOpacity="0.5" strokeWidth="1.5" paintOrder="stroke" style={{ fontVariantNumeric: "tabular-nums" }}>
       {percent.toFixed(percent >= 10 ? 0 : 1)}%
     </text>
   );
