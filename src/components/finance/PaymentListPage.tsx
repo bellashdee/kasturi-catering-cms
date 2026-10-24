@@ -59,9 +59,11 @@ export async function PaymentListPage({ category, searchParams }: { category: Pa
 
   const now = malaysiaMonthNow();
   const year = Number(sp.year) || now.year;
-  const month = Number(sp.month) || now.month;
+  // "all" = every month of the year
+  const allMonths = sp.month === "all";
+  const month = allMonths ? 0 : Number(sp.month) || now.month;
   const today = todayInMalaysia();
-  const monthLabel = `${MONTH_LABEL[month - 1]} ${year}`;
+  const monthLabel = allMonths ? `All months ${year}` : `${MONTH_LABEL[month - 1]} ${year}`;
   const title = PAYMENT_CATEGORY_LABEL[category];
 
   const header = (
@@ -76,7 +78,7 @@ export async function PaymentListPage({ category, searchParams }: { category: Pa
             <Link href={`/finance/payment-accounts?category=${category}${query ? `&${query}` : ""}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text">
               Manage {category === "supplier" ? "Suppliers" : category === "rental" ? "Rental Payees" : "Utility Accounts"}
             </Link>
-            <Link href={`${PATH[category]}/new?year=${year}&month=${month}${query ? `&${query}` : ""}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
+            <Link href={`${PATH[category]}/new?year=${year}&month=${month || now.month}${query ? `&${query}` : ""}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
               + New {title}
             </Link>
           </div>
@@ -104,7 +106,8 @@ export async function PaymentListPage({ category, searchParams }: { category: Pa
   const summary = summarizePayments(payments, today);
 
   const paidAccountIds = new Set(payments.map((p) => p.account_id).filter((id): id is string => !!id));
-  const notEntered = category === "supplier" ? [] : accounts.filter((a) => !paidAccountIds.has(a.id));
+  // the reference accounts without an amount only make sense for one month
+  const notEntered = category === "supplier" || allMonths ? [] : accounts.filter((a) => !paidAccountIds.has(a.id));
 
   const columns = [
     {
@@ -165,7 +168,8 @@ export async function PaymentListPage({ category, searchParams }: { category: Pa
         </div>
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Month</label>
-          <select name="month" defaultValue={month} className="mt-1 h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
+          <select name="month" defaultValue={allMonths ? "all" : month} className="mt-1 h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
+            <option value="all">All months</option>
             {MONTH_LABEL.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
           </select>
         </div>
@@ -200,10 +204,10 @@ export async function PaymentListPage({ category, searchParams }: { category: Pa
 
       <SectionCard title={`${monthLabel} – ${title}`}>
         {rows.length === 0 ? (
-          <EmptyRow text="No payments recorded for this month and filter." />
+          <EmptyRow text={allMonths ? "No payments recorded for this year and filter." : "No payments recorded for this month and filter."} />
         ) : (
           <div className="-mx-5 -mb-5">
-            <ReportTable filenameBase={`${category}-payments-${year}-${month}`} headers={headers} rows={tableRows} />
+            <ReportTable filenameBase={`${category}-payments-${year}-${allMonths ? "all" : month}`} headers={headers} rows={tableRows} />
           </div>
         )}
       </SectionCard>

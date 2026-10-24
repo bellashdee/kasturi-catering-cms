@@ -30,16 +30,19 @@ export type PaymentFilters = {
   payee?: string;
 };
 
-/** All payments of the month (by payment month), newest due date first. Status filtering is done by the caller (urgency is date based). */
+/**
+ * All payments of the month (by payment month), earliest due date first. `month` 0 means every month of the year.
+ * Status filtering is done by the caller (urgency is date based).
+ */
 export async function listPaymentsForMonth(supabase: DB, companyIds: string[], year: number, month: number, filters: PaymentFilters = {}) {
   let query = supabase
     .from("finance_payments")
     .select("*, companies(name)")
     .in("company_id", companyIds)
-    .eq("period_month", periodStart(year, month))
     .neq("status", "cancelled")
     .order("due_date", { ascending: true })
     .order("payee_name");
+  query = month === 0 ? query.gte("period_month", periodStart(year, 1)).lte("period_month", periodStart(year, 12)) : query.eq("period_month", periodStart(year, month));
   if (filters.category) query = query.eq("category", filters.category);
   if (filters.provider) query = query.eq("utility_provider", filters.provider);
   if (filters.payee) query = query.ilike("payee_name", `%${filters.payee}%`);
