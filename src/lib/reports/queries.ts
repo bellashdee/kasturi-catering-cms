@@ -94,6 +94,18 @@ export async function getMarketingReportRows(supabase: DB, companyIds: string[],
  * Main Dashboard shows "for now", but for any past month/year the user picks.
  * Reuses Finance's own aggregation rather than re-deriving totals a second way.
  */
+/** Revenue and total cost of every month of a year (index 0 = January), for the summary picture. Months with no figures are 0. */
+export async function getYearMonthlySeries(supabase: DB, companyIds: string[], year: number) {
+  const months = Array.from({ length: 12 }, (_, i) => i + 1);
+  const rows = await Promise.all(
+    months.map(async (m) => {
+      const [revenue, cost] = await Promise.all([getMonthlyRevenue(supabase, companyIds, year, m), getMonthlyCostBreakdown(supabase, companyIds, year, m)]);
+      return { revenue, cost: cost.reduce((t, r) => t + r.amount, 0) };
+    }),
+  );
+  return { revenue: rows.map((r) => r.revenue), cost: rows.map((r) => r.cost) };
+}
+
 export async function getCompanySummary(supabase: DB, companyIds: string[], year: number, month: number, range?: DateRange) {
   const { start, end } = resolvePeriod(year, month, range);
 
