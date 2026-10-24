@@ -161,6 +161,7 @@ export default async function DashboardPage({
             <StatRow label="🔴 Overdue" value={`${data.financePayments.overdueCount} · ${formatCurrency(data.financePayments.overdueAmount)}`} />
             <StatRow label="🟠 Due today" value={`${data.financePayments.dueTodayCount} · ${formatCurrency(data.financePayments.dueTodayAmount)}`} />
             <StatRow label="🟡 Due soon" value={`${data.financePayments.dueSoonCount} · ${formatCurrency(data.financePayments.dueSoonAmount)}`} />
+            <StatRow label="🟢 Paid this month" value={`${data.financePayments.paidCount} · ${formatCurrency(data.financePayments.paidAmount)}`} />
           </SectionCard>
         )}
 

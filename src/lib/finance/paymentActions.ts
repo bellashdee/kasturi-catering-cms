@@ -218,7 +218,7 @@ const EDITABLE: EditableField[] = [
 ];
 
 /** Edit a payment. Every changed field is recorded in the audit trail; bank details are logged masked. */
-export async function updatePayment(paymentId: string, input: PaymentInput): Promise<{ id: string } | { duplicates: DuplicateHit[] }> {
+export async function updatePayment(paymentId: string, input: PaymentInput, options: { allowDuplicate?: boolean } = {}): Promise<{ id: string } | { duplicates: DuplicateHit[] }> {
   const { supabase } = await requireUser();
   validate(input);
 
@@ -227,7 +227,8 @@ export async function updatePayment(paymentId: string, input: PaymentInput): Pro
   await requireFinanceAdmin(supabase, current.company_id);
   if (input.companyId !== current.company_id || input.category !== current.category) throw new Error("The company and category of a payment cannot be changed.");
 
-  const duplicates = await findDuplicatePayments(input, paymentId);
+  // a payment of the same supplier and amount can be a separate invoice: the person may save it anyway
+  const duplicates = options.allowDuplicate ? [] : await findDuplicatePayments(input, paymentId);
   if (duplicates.length > 0) return { duplicates };
 
   const next = {

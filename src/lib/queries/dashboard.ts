@@ -88,12 +88,38 @@ export async function getFinancialOverview(supabase: DB, companyIds: string[]) {
   };
 }
 
+/**
+ * What was paid this month on Finance payments: payments marked as paid with a payment date in the month, plus the part payments
+ * (supplier payment ledger) made in the month. A payment that has ledger rows is counted through them only, never twice.
+ * Only payments the signed-in person may read are included (the tables enforce it).
+ */
+async function financePaidThisMonth(supabase: DB, companyIds: string[], category?: "supplier") {
+  const monthStart = monthStartIso();
+  let direct = supabase.from("finance_payments").select("id, amount").in("company_id", companyIds).eq("status", "paid").gte("paid_date", monthStart).lte("paid_date", todayIso());
+  if (category) direct = direct.eq("category", category);
+  const [{ data: paidRows }, { data: ledgerRows }] = await Promise.all([
+    direct,
+    supabase.from("supplier_payments").select("amount, finance_payment_id").in("company_id", companyIds).eq("status", "paid").not("finance_payment_id", "is", null).gte("payment_date", monthStart),
+  ]);
+  const ids = (paidRows ?? []).map((r) => r.id);
+  // payments that were settled through the ledger: their amounts come from the ledger rows
+  const { data: linked } = ids.length > 0 ? await supabase.from("supplier_payments").select("finance_payment_id").in("finance_payment_id", ids) : { data: [] as { finance_payment_id: string | null }[] };
+  const viaLedger = new Set((linked ?? []).map((l) => l.finance_payment_id));
+  const directOnly = (paidRows ?? []).filter((r) => !viaLedger.has(r.id));
+  return {
+    count: directOnly.length + (ledgerRows ?? []).length,
+    amount: sum(directOnly) + sum(ledgerRows),
+    /** only the ledger rows (they are already inside the supplier payments total) */
+    directAmount: sum(directOnly),
+  };
+}
+
 export async function getSupplierPayments(supabase: DB, companyIds: string[]) {
   const today = todayIso();
   const weekAhead = daysFromNowIso(7);
   const monthStart = monthStartIso();
 
-  const [{ data: openInvoices }, { data: paidThisMonthRows }] = await Promise.all([
+  const [{ data: openInvoices }, { data: paidThisMonthRows }, financePaid] = await Promise.all([
     supabase
       .from("supplier_invoices")
       .select("amount, due_date, status")
@@ -105,6 +131,7 @@ export async function getSupplierPayments(supabase: DB, companyIds: string[]) {
       .in("company_id", companyIds)
       .eq("status", "paid")
       .gte("payment_date", monthStart),
+    financePaidThisMonth(supabase, companyIds, "supplier"),
   ]);
 
   const rows = openInvoices ?? [];
@@ -113,7 +140,8 @@ export async function getSupplierPayments(supabase: DB, companyIds: string[]) {
   const dueTodayCount = rows.filter((r) => r.due_date === today).length;
   const dueThisWeekCount = rows.filter((r) => r.due_date > today && r.due_date <= weekAhead).length;
   const upcomingCount = rows.filter((r) => r.due_date > weekAhead).length;
-  const paidThisMonth = sum(paidThisMonthRows);
+  // the supplier payments recorded in the ledger, plus the Finance supplier payments marked as paid this month
+  const paidThisMonth = sum(paidThisMonthRows) + financePaid.directAmount;
 
   return { outstanding, overdueCount, dueTodayCount, dueThisWeekCount, upcomingCount, paidThisMonth, openCount: rows.length };
 }
@@ -583,7 +611,7 @@ export function buildAlerts(input: {
  * Only Finance / Admin users can read these records, so `accessible` is false for everyone else and the card stays hidden.
  */
 export async function getFinancePaymentsSummary(supabase: DB, companyIds: string[]) {
-  const empty = { accessible: false, unpaidTotal: 0, overdueCount: 0, overdueAmount: 0, dueTodayCount: 0, dueTodayAmount: 0, dueSoonCount: 0, dueSoonAmount: 0 };
+  const empty = { accessible: false, unpaidTotal: 0, overdueCount: 0, overdueAmount: 0, dueTodayCount: 0, dueTodayAmount: 0, dueSoonCount: 0, dueSoonAmount: 0, paidCount: 0, paidAmount: 0 };
   const adminFlags = await Promise.all(companyIds.map(async (id) => (await supabase.rpc("user_is_company_admin", { target_company_id: id })).data === true));
   const adminIds = companyIds.filter((_, i) => adminFlags[i]);
   if (adminIds.length === 0) return empty;
@@ -591,6 +619,9 @@ export async function getFinancePaymentsSummary(supabase: DB, companyIds: string
   const { data } = await supabase.from("finance_payments").select("id, amount, due_date, status").in("company_id", adminIds).not("status", "in", "(paid,cancelled)");
   const today = todayIso();
   const summary = { ...empty, accessible: true };
+  const paidNow = await financePaidThisMonth(supabase, adminIds);
+  summary.paidCount = paidNow.count;
+  summary.paidAmount = paidNow.amount;
   // a part-paid payment counts only its balance
   const paid = await paidSoFar(supabase, (data ?? []).map((p) => p.id));
   for (const p of data ?? []) {

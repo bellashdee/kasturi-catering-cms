@@ -49,7 +49,7 @@ export function PaymentEditForm({ paymentId, initial, redirectTo }: { paymentId:
     setDuplicates(null);
   }
 
-  async function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent, allowDuplicate = false) {
     e.preventDefault();
     setSaving(true);
     setError(null);
@@ -74,7 +74,7 @@ export function PaymentEditForm({ paymentId, initial, redirectTo }: { paymentId:
         paidDate: form.status === "paid" ? form.paidDate : undefined,
         paymentReference: form.status === "paid" ? form.paymentReference : undefined,
       };
-      const result = await updatePayment(paymentId, payload);
+      const result = await updatePayment(paymentId, payload, { allowDuplicate });
       if ("duplicates" in result) {
         setDuplicates(result.duplicates);
         setSaving(false);
@@ -187,6 +187,12 @@ export function PaymentEditForm({ paymentId, initial, redirectTo }: { paymentId:
         <div className="rounded-lg border border-danger/30 bg-danger-bg p-3">
           <div className="text-[13px] font-bold text-danger">These changes would duplicate an existing payment:</div>
           {duplicates.map((d) => <div key={d.id} className="mt-1 text-xs text-danger">{d.label}</div>)}
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-text-secondary">
+            <button type="button" disabled={saving} onClick={(e) => void submit(e, true)} className="rounded-lg border border-danger px-3 py-1.5 text-[12.5px] font-bold text-danger disabled:opacity-60">
+              Save anyway (it is a separate invoice)
+            </button>
+            <span>Only when it really is a different invoice of the same supplier.</span>
+          </div>
         </div>
       )}
 
