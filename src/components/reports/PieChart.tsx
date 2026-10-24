@@ -15,12 +15,28 @@ function arc(cx: number, cy: number, r: number, from: number, to: number) {
   return `M ${cx} ${cy} L ${x1.toFixed(3)} ${y1.toFixed(3)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(3)} ${y2.toFixed(3)} Z`;
 }
 
-/** The percentage written on a slice: white with a soft dark outline, so it reads on every slice colour. */
-function PercentLabel({ x, y, percent }: { x: number; y: number; percent: number }) {
+const CX = 60;
+const CY = 60;
+const R = 50;
+const LABEL_R = 60;
+
+/** The percentage written outside the slice it belongs to, with a short tick in the slice colour (the full list is under the chart). */
+function PercentLabel({ mid, percent, colour }: { mid: number; percent: number; colour: string }) {
+  const sin = Math.sin(mid);
+  const cos = Math.cos(mid);
+  const x = CX + LABEL_R * sin;
+  const y = CY - LABEL_R * cos;
+  const anchor = sin > 0.25 ? "start" : sin < -0.25 ? "end" : "middle";
+  // the text sits a little further out horizontally, and above / below the tick at the top and bottom of the pie
+  const tx = x + (anchor === "start" ? 1.5 : anchor === "end" ? -1.5 : 0);
+  const ty = y + (cos > 0.7 ? -3 : cos < -0.7 ? 4 : 0);
   return (
-    <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fontSize="4.6" fontWeight="600" fill="#ffffff" stroke="#3a2424" strokeOpacity="0.5" strokeWidth="1.1" paintOrder="stroke" style={{ fontVariantNumeric: "tabular-nums" }}>
-      {percent.toFixed(percent >= 10 ? 0 : 1)}%
-    </text>
+    <>
+      <line x1={CX + (R - 2) * sin} y1={CY - (R - 2) * cos} x2={CX + (LABEL_R - 3) * sin} y2={CY - (LABEL_R - 3) * cos} style={{ stroke: colour }} strokeWidth="1.4" strokeLinecap="round" />
+      <text x={tx} y={ty} textAnchor={anchor} dominantBaseline="central" fontSize="9.5" fontWeight="700" style={{ fill: "var(--color-text)", fontVariantNumeric: "tabular-nums" }}>
+        {percent.toFixed(percent >= 10 ? 0 : 1)}%
+      </text>
+    </>
   );
 }
 
@@ -42,25 +58,33 @@ export function PieChart({ title, slices, format = formatCurrency }: { title: st
         <div className="py-8 text-center text-[14px] text-text-secondary">No figures to show for this period.</div>
       ) : (
         <div className="mt-3 flex flex-col items-center gap-4">
-          <svg viewBox="0 0 120 120" width="220" height="220" role="img" aria-label={`${title}: ${shown.map((s) => `${s.label} ${((s.value / total) * 100).toFixed(0)}%`).join(", ")}`} className="max-w-full shrink-0">
+          <svg viewBox="-36 -14 192 148" role="img" aria-label={`${title}: ${shown.map((s) => `${s.label} ${((s.value / total) * 100).toFixed(0)}%`).join(", ")}`} className="w-full max-w-[300px] shrink-0">
             {shown.length === 1 ? (
               <>
-                <circle cx="60" cy="60" r="56" style={{ fill: COLOURS[0] }} />
-                <PercentLabel x={60} y={60} percent={100} />
+                <circle cx={CX} cy={CY} r={R} style={{ fill: COLOURS[0] }} />
+                <text x={CX} y={CY - R - 6} textAnchor="middle" dominantBaseline="central" fontSize="9.5" fontWeight="700" style={{ fill: "var(--color-text)" }}>
+                  100%
+                </text>
               </>
             ) : (
               (() => {
                 let angle = 0;
+                const placed: { x: number; y: number }[] = [];
                 return shown.map((s, i) => {
                   const start = angle;
                   const sweep = (s.value / total) * Math.PI * 2;
                   angle += sweep;
                   const mid = start + sweep / 2;
                   const percent = (s.value / total) * 100;
+                  // a label that would sit on top of the one before it is left out (the list under the chart has every value)
+                  const px = CX + LABEL_R * Math.sin(mid);
+                  const py = CY - LABEL_R * Math.cos(mid);
+                  const clear = percent >= 2 && placed.every((q) => Math.hypot(q.x - px, q.y - py) > 11);
+                  if (clear) placed.push({ x: px, y: py });
                   return (
                     <g key={s.label}>
-                      <path d={arc(60, 60, 56, start, angle)} style={{ fill: COLOURS[i % COLOURS.length] }} stroke="#ffffff" strokeWidth="1.5" />
-                      {percent >= 7 && <PercentLabel x={60 + 36 * Math.sin(mid)} y={60 - 36 * Math.cos(mid)} percent={percent} />}
+                      <path d={arc(CX, CY, R, start, angle)} style={{ fill: COLOURS[i % COLOURS.length] }} stroke="#ffffff" strokeWidth="1.5" />
+                      {clear && <PercentLabel mid={mid} percent={percent} colour={COLOURS[i % COLOURS.length]} />}
                     </g>
                   );
                 });
