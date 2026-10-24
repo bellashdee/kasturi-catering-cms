@@ -21,6 +21,7 @@ import { SectionCard } from "@/components/dashboard/SectionCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 import { MarkPaidForm, VoucherUpload } from "@/components/finance/PaymentActionsPanel";
+import { PaymentRowActions } from "@/components/finance/PaymentRowActions";
 
 const PATH: Record<PaymentCategory, string> = {
   supplier: "/finance/supplier-payment",
@@ -34,6 +35,7 @@ const AUDIT_LABEL: Record<string, string> = {
   payment_paid: "Marked as paid",
   voucher_uploaded: "Payment voucher uploaded",
   bank_changed: "Bank details changed",
+  restored: "Payment put back (undo of a delete)",
 };
 
 function date(value: string | null): string {
@@ -99,7 +101,7 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
           </div>
           <div className="flex items-center gap-3">
             <StatusBadge tone={URGENCY_TONE[urgency]}>{urgency === "pending" ? URGENCY_LABEL[urgency] : URGENCY_REMINDER[urgency]}</StatusBadge>
-            <Link href={`/finance/payments/${id}/edit`} className="rounded-lg border border-border-strong px-3.5 py-2 text-[13px] font-semibold text-text">Edit</Link>
+            <PaymentRowActions id={id} after={backHref} />
           </div>
         </div>
       </div>

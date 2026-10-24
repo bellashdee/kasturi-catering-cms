@@ -29,6 +29,7 @@ type Initial = {
   /** "paid" shows the Actual Payment Date box */
   status: string;
   paidDate: string;
+  paymentReference: string;
   utilityProvider: string;
   utilityLocation: string;
 };
@@ -71,6 +72,7 @@ export function PaymentEditForm({ paymentId, initial, redirectTo }: { paymentId:
         voucherNumber: form.voucherNumber || undefined,
         remarks: form.remarks || undefined,
         paidDate: form.status === "paid" ? form.paidDate : undefined,
+        paymentReference: form.status === "paid" ? form.paymentReference : undefined,
       };
       const result = await updatePayment(paymentId, payload);
       if ("duplicates" in result) {
@@ -173,6 +175,10 @@ export function PaymentEditForm({ paymentId, initial, redirectTo }: { paymentId:
           <div>
             <label className={labelClass}>Actual Payment Date *</label>
             <input type="date" required max={todayIso()} value={form.paidDate} onChange={(e) => set("paidDate", e.target.value)} className={inputClass} />
+          </div>
+          <div>
+            <label className={labelClass}>Payment Reference</label>
+            <input value={form.paymentReference} maxLength={200} onChange={(e) => set("paymentReference", e.target.value)} className={inputClass} />
           </div>
         </div>
       )}

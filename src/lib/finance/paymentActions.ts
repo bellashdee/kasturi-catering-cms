@@ -2,6 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { recordAudit } from "@/lib/audit";
+import { runAction, type ActionResult } from "@/lib/actionResult";
+import type { Database } from "@/lib/supabase/types";
 import { logTaskAudit } from "@/lib/taskProofs/actions";
 import { todayInMalaysia } from "@/lib/driverAttendance/date";
 import {
@@ -61,6 +65,8 @@ export type PaymentInput = {
   remarks?: string;
   /** The actual payment date of a payment that is already paid (YYYY-MM-DD); ignored for a payment that is not paid yet. */
   paidDate?: string;
+  /** The payment reference of a payment that is already paid; ignored for a payment that is not paid yet. */
+  paymentReference?: string;
 };
 
 function validate(input: PaymentInput) {
@@ -206,6 +212,7 @@ const EDITABLE: EditableField[] = [
   { key: "priority", column: "priority", label: "Priority" },
   { key: "amount", column: "amount", label: "Amount" },
   { key: "paidDate", column: "paid_date", label: "Actual payment date" },
+  { key: "paymentReference", column: "payment_reference", label: "Payment reference" },
   { key: "voucherNumber", column: "voucher_number", label: "Voucher no." },
   { key: "remarks", column: "remarks", label: "Remarks" },
 ];
@@ -239,6 +246,8 @@ export async function updatePayment(paymentId: string, input: PaymentInput): Pro
     ...(input.documentId ? { document_id: input.documentId } : {}),
     // the actual payment date can be corrected once the payment is paid
     ...(current.status === "paid" && input.paidDate ? { paid_date: input.paidDate } : {}),
+    // ... and so can the payment reference (it may be cleared)
+    ...(current.status === "paid" && input.paymentReference !== undefined ? { payment_reference: input.paymentReference.trim().slice(0, 200) || null } : {}),
   };
 
   const changes: string[] = [];
@@ -404,4 +413,47 @@ export async function setPaymentProgress(paymentId: string, progress: "pending" 
   await logTaskAudit({ companyId: current.company_id, relatedTable: "finance_payments", relatedId: paymentId, action: "payment_progress", previousValue: current.status, newValue: progress });
   revalidatePaymentPaths(paymentId);
   revalidatePath("/finance/payments/checklist");
+}
+
+// ---- delete and undo
+
+/** What an Undo needs to put a deleted payment back (the row as it was, with the same id). */
+export type PaymentUndo = { label: string; row: Record<string, unknown> };
+
+/**
+ * Deletes a payment (Finance / Admin of its company). There is no delete policy for payments, so the permission is checked first and
+ * the delete uses the service role. A payment that a supplier payment request points to is kept: that request must go first.
+ */
+export async function deletePayment(paymentId: string): Promise<ActionResult<{ undo: PaymentUndo }>> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { data: row } = await supabase.from("finance_payments").select("*").eq("id", paymentId).maybeSingle();
+    if (!row) throw new Error("This payment was not found (it may already be deleted).");
+    await requireFinanceAdmin(supabase, row.company_id);
+    const { count: linked } = await supabase.from("supplier_payments").select("id", { count: "exact", head: true }).eq("finance_payment_id", paymentId);
+    if ((linked ?? 0) > 0) throw new Error("A supplier payment request is linked to this payment, so it cannot be deleted.");
+    const { error } = await createAdminClient().from("finance_payments").delete().eq("id", paymentId).eq("company_id", row.company_id);
+    if (error) throw new Error("The payment could not be deleted.");
+    await recordAudit({ companyId: row.company_id, relatedTable: "finance_payments", relatedId: paymentId, action: "deleted", previousValue: `${row.payee_name} · RM ${Number(row.amount).toFixed(2)} · ${row.period_month}` });
+    revalidatePaymentPaths(paymentId);
+    return { undo: { label: `${row.payee_name} (RM ${Number(row.amount).toFixed(2)})`, row } };
+  }, "Could not delete the payment. Please try again.");
+}
+
+/** Puts a deleted payment back with the same id (the insert policy keeps this inside the person's companies). */
+export async function restorePayment(undo: PaymentUndo): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const row = undo.row as Database["public"]["Tables"]["finance_payments"]["Insert"];
+    if (!row?.id || !row.company_id) throw new Error("There is nothing to put back.");
+    await requireFinanceAdmin(supabase, row.company_id);
+    const { error } = await supabase.from("finance_payments").insert(row);
+    if (error) {
+      if (error.code === "23505") throw new Error("This payment was already put back.");
+      throw error;
+    }
+    await recordAudit({ companyId: row.company_id, relatedTable: "finance_payments", relatedId: row.id, action: "restored", newValue: undo.label });
+    revalidatePaymentPaths(row.id);
+    return {};
+  }, "Could not undo. Please try again.");
 }

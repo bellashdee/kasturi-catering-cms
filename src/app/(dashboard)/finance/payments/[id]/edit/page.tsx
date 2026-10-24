@@ -47,6 +47,7 @@ export default async function EditPaymentPage({ params }: { params: Promise<{ id
             remarks: payment.remarks ?? "",
             status: payment.status,
             paidDate: payment.paid_date ?? "",
+            paymentReference: payment.payment_reference ?? "",
             utilityProvider: payment.utility_provider ?? "",
             utilityLocation: payment.utility_location ?? "",
           }}

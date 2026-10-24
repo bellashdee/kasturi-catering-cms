@@ -29,6 +29,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ReportTable } from "@/components/reports/ReportTable";
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { PaymentSummaryCards } from "@/components/finance/PaymentSummaryCards";
+import { PaymentRowActions, PaymentUndoBanner } from "@/components/finance/PaymentRowActions";
 
 type SearchParams = { company?: string; year?: string; month?: string; status?: string; payee?: string; provider?: string; saved?: string };
 
@@ -110,7 +111,12 @@ export async function PaymentListPage({ category, searchParams }: { category: Pa
       key: "payee",
       label: category === "utility" ? "Location" : category === "rental" ? "Rental / Payee" : "Supplier",
       exportValue: (r: (typeof rows)[number]) => r.payee_name,
-      display: (r: (typeof rows)[number]) => <Link href={`/finance/payments/${r.id}`} className="font-semibold text-text hover:text-primary">{r.payee_name}</Link>,
+      display: (r: (typeof rows)[number]) => (
+        <div className="flex flex-col gap-1.5">
+          <Link href={`/finance/payments/${r.id}`} className="font-semibold text-text hover:text-primary">{r.payee_name}</Link>
+          <PaymentRowActions id={r.id} />
+        </div>
+      ),
     },
     ...(category === "utility"
       ? [
@@ -146,6 +152,8 @@ export async function PaymentListPage({ category, searchParams }: { category: Pa
   return (
     <div className="flex flex-col gap-5">
       {header}
+
+      <PaymentUndoBanner />
 
       {sp.saved && <div className="rounded-lg border border-success/30 bg-success-bg px-3 py-2 text-[13px] font-semibold text-success">Payment saved.</div>}
 
