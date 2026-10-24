@@ -76,19 +76,6 @@ export async function getHRReportRows(supabase: DB, companyIds: string[], year: 
   return data;
 }
 
-export async function getMarketingReportRows(supabase: DB, companyIds: string[], year: number, month: number, range?: DateRange) {
-  const { start, end } = resolvePeriod(year, month, range);
-  const { data, error } = await supabase
-    .from("campaigns")
-    .select("id, name, channel, status, start_date, end_date, budget, company_id, companies(name)")
-    .in("company_id", companyIds)
-    .gte("start_date", start)
-    .lte("start_date", end)
-    .order("start_date", { ascending: false });
-  if (error) throw error;
-  return data;
-}
-
 /**
  * A single-company, single-month printable rollup — the same live figures the
  * Main Dashboard shows "for now", but for any past month/year the user picks.
