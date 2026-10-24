@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PackageNameInput } from "@/components/kitchen/PackageNameInput";
 import { createPackageMenu, type PackageMenuInput } from "@/lib/kitchen/packages/actions";
 import { PACKAGE_MEAL_TYPE_LABEL } from "@/lib/kitchen/constants";
 
@@ -17,7 +18,7 @@ function emptyItem(): Item {
   return { mealType: "breakfast", itemName: "" };
 }
 
-export function PackageMenuForm({ companies, defaultCompanyId }: { companies: Company[]; defaultCompanyId?: string }) {
+export function PackageMenuForm({ companies, defaultCompanyId, existing }: { companies: Company[]; defaultCompanyId?: string; existing: { companyId: string; name: string }[] }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +29,11 @@ export function PackageMenuForm({ companies, defaultCompanyId }: { companies: Co
   const [includedItems, setIncludedItems] = useState("");
   const [specialRequirements, setSpecialRequirements] = useState("");
   const [items, setItems] = useState<Item[]>([emptyItem()]);
+  const companyNames = useMemo(() => existing.filter((e) => e.companyId === companyId).map((e) => e.name), [existing, companyId]);
+  const exists = useMemo(() => {
+    const n = name.trim().replace(/\s+/g, " ").toUpperCase();
+    return n !== "" && companyNames.some((x) => x.trim().replace(/\s+/g, " ").toUpperCase() === n);
+  }, [name, companyNames]);
 
   function updateItem(index: number, field: keyof Item, value: string) {
     setItems((prev) => {
@@ -73,7 +79,8 @@ export function PackageMenuForm({ companies, defaultCompanyId }: { companies: Co
         </div>
         <div>
           <label className={labelClass}>Package Name *</label>
-          <input required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="e.g. Package A" />
+          <PackageNameInput required value={name} onChange={setName} names={companyNames} className={inputClass} placeholder="Search or type a package name" />
+          {exists && <div className="mt-1 text-[12px] font-semibold text-warning">A package with this name already exists. Check the list before creating another.</div>}
         </div>
       </div>
 

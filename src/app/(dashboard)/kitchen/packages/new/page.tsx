@@ -21,11 +21,14 @@ export default async function NewPackageMenuPage({
   const selectable = companies.filter((c) => accessibleIds.includes(c.id));
   const defaultCompanyId = requestedId && accessibleIds.includes(requestedId) ? requestedId : selectable[0]?.id;
 
+  const { data: packages } = await supabase.from("package_menus").select("company_id, name").in("company_id", selectable.map((c) => c.id)).order("name");
+  const existing = (packages ?? []).map((p) => ({ companyId: p.company_id, name: p.name }));
+
   return (
     <div className="mx-auto max-w-2xl">
       <h1 className="text-[22px] font-extrabold text-text">New Package Menu</h1>
       <div className="mt-5 rounded-xl border border-border bg-surface p-6 shadow-sm">
-        <PackageMenuForm companies={selectable} defaultCompanyId={defaultCompanyId} />
+        <PackageMenuForm companies={selectable} defaultCompanyId={defaultCompanyId} existing={existing} />
       </div>
     </div>
   );
