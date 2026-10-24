@@ -1,3 +1,4 @@
+import { paidSoFar } from "@/lib/finance/paymentQueries";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { getMonthlyCostBreakdown } from "@/lib/finance/queries";
@@ -587,11 +588,13 @@ export async function getFinancePaymentsSummary(supabase: DB, companyIds: string
   const adminIds = companyIds.filter((_, i) => adminFlags[i]);
   if (adminIds.length === 0) return empty;
 
-  const { data } = await supabase.from("finance_payments").select("amount, due_date, status").in("company_id", adminIds).not("status", "in", "(paid,cancelled)");
+  const { data } = await supabase.from("finance_payments").select("id, amount, due_date, status").in("company_id", adminIds).not("status", "in", "(paid,cancelled)");
   const today = todayIso();
   const summary = { ...empty, accessible: true };
+  // a part-paid payment counts only its balance
+  const paid = await paidSoFar(supabase, (data ?? []).map((p) => p.id));
   for (const p of data ?? []) {
-    const amount = Number(p.amount);
+    const amount = Math.max(Number(p.amount) - (paid.get(p.id) ?? 0), 0);
     summary.unpaidTotal += amount;
     const urgency = paymentUrgency(p.status, p.due_date, today);
     if (urgency === "overdue") { summary.overdueCount += 1; summary.overdueAmount += amount; }

@@ -139,10 +139,16 @@ export async function PaymentListPage({ category, searchParams }: { category: Pa
     {
       key: "status",
       label: "Status",
-      exportValue: (r: (typeof rows)[number]) => URGENCY_LABEL[paymentUrgency(r.status, r.due_date, today)],
+      exportValue: (r: (typeof rows)[number]) => `${URGENCY_LABEL[paymentUrgency(r.status, r.due_date, today)]}${r.status !== "paid" && r.paid_so_far > 0 ? ` (part paid ${formatRM(r.paid_so_far)}, balance ${formatRM(Math.max(Number(r.amount) - r.paid_so_far, 0))})` : ""}`,
       display: (r: (typeof rows)[number]) => {
         const u = paymentUrgency(r.status, r.due_date, today);
-        return <StatusBadge tone={URGENCY_TONE[u]}>{u === "pending" ? URGENCY_LABEL[u] : URGENCY_REMINDER[u]}</StatusBadge>;
+        const part = r.status !== "paid" && r.paid_so_far > 0;
+        return (
+          <span className="flex flex-col items-start gap-1">
+            <StatusBadge tone={URGENCY_TONE[u]}>{u === "pending" ? URGENCY_LABEL[u] : URGENCY_REMINDER[u]}</StatusBadge>
+            {part && <span className="text-[11px] font-semibold text-warning">{`Part paid: ${formatRM(r.paid_so_far)} · balance ${formatRM(Math.max(Number(r.amount) - r.paid_so_far, 0))}`}</span>}
+          </span>
+        );
       },
     },
     { key: "paid", label: "Paid Date", exportValue: (r: (typeof rows)[number]) => dateOrDash(r.paid_date) },

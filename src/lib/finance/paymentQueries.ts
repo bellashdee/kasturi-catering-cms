@@ -24,6 +24,41 @@ export async function listPaymentAccounts(supabase: DB, companyIds: string[], ca
   return data;
 }
 
+const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+
+/**
+ * What has been paid so far on each payment: the supplier payment ledger (part payments recorded in Finance, and payments
+ * confirmed in the Priority Centre). A payment that is not in the ledger has nothing paid yet.
+ */
+export async function paidSoFar(supabase: DB, paymentIds: string[]): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  for (let i = 0; i < paymentIds.length; i += 200) {
+    const { data } = await supabase.from("supplier_payments").select("finance_payment_id, amount").eq("status", "paid").in("finance_payment_id", paymentIds.slice(i, i + 200));
+    for (const r of data ?? []) if (r.finance_payment_id) map.set(r.finance_payment_id, round2((map.get(r.finance_payment_id) ?? 0) + Number(r.amount)));
+  }
+  return map;
+}
+
+/** The rows with `paid_so_far` added (only payments that are not fully paid can have a balance). */
+async function withPaid<T extends { id: string; status: string }>(supabase: DB, rows: T[]) {
+  const unpaid = rows.filter((r) => r.status !== "paid").map((r) => r.id);
+  const paid = unpaid.length > 0 ? await paidSoFar(supabase, unpaid) : new Map<string, number>();
+  return rows.map((r) => ({ ...r, paid_so_far: paid.get(r.id) ?? 0 }));
+}
+
+/** The part payments (and the final one) made on one payment, oldest first. */
+export async function listPartPayments(supabase: DB, paymentId: string) {
+  const { data, error } = await supabase
+    .from("supplier_payments")
+    .select("id, amount, payment_date, reference_number, notes, receipt_document_id, created_at")
+    .eq("finance_payment_id", paymentId)
+    .eq("status", "paid")
+    .order("payment_date", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
 export type PaymentFilters = {
   category?: PaymentCategory;
   provider?: string;
@@ -48,7 +83,7 @@ export async function listPaymentsForMonth(supabase: DB, companyIds: string[], y
   if (filters.payee) query = query.ilike("payee_name", `%${filters.payee}%`);
   const { data, error } = await query;
   if (error) throw error;
-  return data;
+  return withPaid(supabase, data ?? []);
 }
 
 export async function getPayment(supabase: DB, id: string) {
@@ -95,5 +130,5 @@ export async function listPaymentsForChecklist(supabase: DB, companyIds: string[
   if (filters.category) query = query.eq("category", filters.category);
   const { data, error } = await query;
   if (error) throw error;
-  return data;
+  return withPaid(supabase, data ?? []);
 }

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
-import { getPayment, listFinanceAudit } from "@/lib/finance/paymentQueries";
+import { getPayment, listFinanceAudit, listPartPayments } from "@/lib/finance/paymentQueries";
 import {
   PAYMENT_CATEGORY_LABEL,
   URGENCY_REMINDER,
@@ -35,6 +35,7 @@ const AUDIT_LABEL: Record<string, string> = {
   payment_paid: "Marked as paid",
   voucher_uploaded: "Payment voucher uploaded",
   bank_changed: "Bank details changed",
+  payment_part_paid: "Part payment recorded",
   restored: "Payment put back (undo of a delete)",
 };
 
@@ -56,12 +57,16 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
     notFound();
   }
 
-  const [audit, approver] = await Promise.all([
+  const [audit, parts, approver] = await Promise.all([
     listFinanceAudit(supabase, "finance_payments", id),
+    listPartPayments(supabase, id),
     payment.approved_by ? supabase.from("profiles").select("full_name").eq("id", payment.approved_by).maybeSingle() : Promise.resolve({ data: null }),
   ]);
 
   const today = todayInMalaysia();
+  const totalAmount = Number(payment.amount);
+  const paidSoFar = Math.round(parts.reduce((t, x) => t + Number(x.amount), 0) * 100) / 100;
+  const balance = payment.status === "paid" ? 0 : Math.round(Math.max(totalAmount - paidSoFar, 0) * 100) / 100;
   const urgency = paymentUrgency(payment.status, payment.due_date, today);
   const category = payment.category as PaymentCategory;
   const month = new Date(`${payment.period_month}T12:00:00+08:00`).toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "Asia/Kuala_Lumpur" });
@@ -100,6 +105,7 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
             <p className="mt-0.5 text-[13px] text-text-secondary">{PAYMENT_CATEGORY_LABEL[category]} · {month} · {payment.companies?.name}</p>
           </div>
           <div className="flex items-center gap-3">
+            {payment.status !== "paid" && paidSoFar > 0 && <StatusBadge tone="warning">Part paid</StatusBadge>}
             <StatusBadge tone={URGENCY_TONE[urgency]}>{urgency === "pending" ? URGENCY_LABEL[urgency] : URGENCY_REMINDER[urgency]}</StatusBadge>
             <PaymentRowActions id={id} after={backHref} />
           </div>
@@ -108,7 +114,7 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
 
       {urgency !== "paid" && (
         <div className={`rounded-xl border px-4 py-3 text-[13.5px] font-bold ${urgency === "overdue" ? "border-danger/40 bg-danger-bg text-danger" : "border-warning/40 bg-warning-bg text-warning"}`}>
-          {URGENCY_REMINDER[urgency] === "PENDING" ? "Payment pending" : URGENCY_REMINDER[urgency]} — {formatRM(Number(payment.amount))} still to be paid (due {date(payment.due_date)}).
+          {URGENCY_REMINDER[urgency] === "PENDING" ? "Payment pending" : URGENCY_REMINDER[urgency]} — {formatRM(balance)} still to be paid (due {date(payment.due_date)}).{paidSoFar > 0 ? ` Paid so far ${formatRM(paidSoFar)} of ${formatRM(totalAmount)}.` : ""}
         </div>
       )}
 
@@ -130,7 +136,7 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
           </div>
           <div>
             <dt className={labelClass}>Payment Reference</dt>
-            <dd className="mt-0.5 font-semibold text-text">{payment.payment_reference ?? "—"}</dd>
+            <dd className="mt-0.5 font-semibold text-text">{payment.status === "paid" ? (payment.payment_reference ?? "—") : parts.length > 0 ? parts.map((x) => x.reference_number).filter(Boolean).join(", ") || "—" : "—"}</dd>
           </div>
           <div className="col-span-2">
             <dt className={labelClass}>Remarks</dt>
@@ -138,6 +144,40 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
           </div>
         </dl>
       </SectionCard>
+
+      {parts.length > 0 && (
+        <SectionCard title="Payments made">
+          <div className="-mx-5 -mt-1 overflow-x-auto">
+            <table className="w-full min-w-[520px] text-left text-[13px]">
+              <thead>
+                <tr className="text-[11px] font-bold uppercase tracking-wide text-text-muted">
+                  <th className="px-5 py-1.5">Date</th>
+                  <th className="px-2 py-1.5 text-right">Amount</th>
+                  <th className="px-2 py-1.5">Reference</th>
+                  <th className="px-2 py-1.5">Note</th>
+                  <th className="px-5 py-1.5">Receipt</th>
+                </tr>
+              </thead>
+              <tbody>
+                {parts.map((x) => (
+                  <tr key={x.id} className="border-t border-border align-top">
+                    <td className="px-5 py-2">{date(x.payment_date)}</td>
+                    <td className="px-2 py-2 text-right font-semibold tabular-nums">{formatRM(Number(x.amount))}</td>
+                    <td className="px-2 py-2">{x.reference_number ?? "—"}</td>
+                    <td className="px-2 py-2 text-text-secondary">{x.notes || "—"}</td>
+                    <td className="px-5 py-2">{x.receipt_document_id ? <DocumentViewLink documentId={x.receipt_document_id} /> : <span className="text-text-muted">None</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-[13px]">
+            <span>Amount to pay: <strong>{formatRM(totalAmount)}</strong></span>
+            <span>Paid so far: <strong>{formatRM(payment.status === "paid" ? totalAmount : paidSoFar)}</strong></span>
+            <span className={balance > 0 ? "font-bold text-danger" : "font-bold text-success"}>Balance to pay: {formatRM(balance)}</span>
+          </div>
+        </SectionCard>
+      )}
 
       <SectionCard title="Documents">
         <dl className="grid grid-cols-3 gap-x-6 gap-y-3 text-[13px]">
@@ -157,8 +197,8 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
       </SectionCard>
 
       {(payment.status !== "paid" || payment.paid_details_pending) && (
-        <SectionCard title={payment.paid_details_pending ? "Add Payment Date & Reference (marked as paid in the checklist)" : "Mark as Paid"}>
-          <MarkPaidForm paymentId={id} companyId={payment.company_id} maxDate={today} />
+        <SectionCard title={payment.paid_details_pending ? "Add Amount Paid, Payment Date & Reference (marked as paid in the checklist)" : "Mark as Paid / Part Payment"}>
+          <MarkPaidForm paymentId={id} companyId={payment.company_id} maxDate={today} total={totalAmount} paidSoFar={paidSoFar} detailsPending={payment.status === "paid" && payment.paid_details_pending} />
         </SectionCard>
       )}
 

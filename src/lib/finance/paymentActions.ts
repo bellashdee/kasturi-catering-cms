@@ -457,3 +457,92 @@ export async function restorePayment(undo: PaymentUndo): Promise<ActionResult> {
     return {};
   }, "Could not undo. Please try again.");
 }
+
+// ---- part payments
+
+/**
+ * Records a payment that has really been made, in full or in part: amount, actual date, reference, the receipt and a note.
+ * A part payment is kept in the supplier payment ledger (so the Priority Centre sees the same balance) and the payment stays
+ * unpaid until the part payments cover the whole amount; then it becomes Paid. The first and only payment of the whole amount
+ * is the usual Mark as Paid.
+ */
+export async function recordPayment(
+  paymentId: string,
+  input: { amount: number; paidDate: string; paymentReference: string; note?: string; proofDocumentId?: string },
+): Promise<ActionResult<{ settled: boolean; balance: number }>> {
+  return runAction(async () => {
+    const { supabase, userId } = await requireUser();
+    const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+    const amount = round2(Number(input.amount));
+    if (!Number.isFinite(amount) || amount <= 0) throw new Error("Enter the amount paid (more than 0).");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.paidDate)) throw new Error("Enter the actual payment date.");
+    if (input.paidDate > todayInMalaysia()) throw new Error("The payment date cannot be in the future.");
+    const reference = input.paymentReference?.trim();
+    if (!reference) throw new Error("Enter the payment reference.");
+
+    const { data: current } = await supabase.from("finance_payments").select("company_id, status, amount, payee_name, paid_details_pending").eq("id", paymentId).maybeSingle();
+    if (!current) throw new Error("Payment not found.");
+    await requireFinanceAdmin(supabase, current.company_id);
+    // a payment ticked as paid in the checklist (details pending) still needs its amount, date and reference
+    if (current.status === "paid" && !current.paid_details_pending) throw new Error("This payment is already marked as paid.");
+
+    const { data: ledger } = await supabase.from("supplier_payments").select("amount, reference_number").eq("finance_payment_id", paymentId).eq("status", "paid");
+    const paid = round2((ledger ?? []).reduce((t, l) => t + Number(l.amount), 0));
+    const total = Number(current.amount);
+    const balance = round2(Math.max(total - paid, 0));
+    if (amount > balance + 0.004) throw new Error(`The amount cannot be more than the balance (RM ${balance.toFixed(2)}).`);
+    const full = amount >= balance - 0.004;
+
+    // the whole amount in one go, with nothing paid before: the usual Mark as Paid
+    if (full && (ledger ?? []).length === 0) {
+      await markPaymentPaid(paymentId, { paidDate: input.paidDate, paymentReference: reference, proofDocumentId: input.proofDocumentId });
+      return { settled: true, balance: 0 };
+    }
+
+    const { data: same } = await supabase.from("supplier_payments").select("id").eq("company_id", current.company_id).eq("status", "paid").ilike("reference_number", reference).eq("amount", amount).eq("payment_date", input.paidDate);
+    if ((same ?? []).length > 0) throw new Error("A payment with the same reference, amount and date is already recorded. Check that this is not a duplicate entry.");
+
+    const { error } = await supabase.from("supplier_payments").insert({
+      company_id: current.company_id,
+      finance_payment_id: paymentId,
+      amount,
+      status: "paid",
+      payment_date: input.paidDate,
+      reference_number: reference,
+      receipt_document_id: input.proofDocumentId ?? null,
+      notes: input.note?.trim().slice(0, 500) || null,
+      requested_by: userId,
+      confirmed_by: userId,
+      confirmed_at: new Date().toISOString(),
+    });
+    if (error) {
+      if (error.code === "23505") throw new Error("This reference is already recorded against this payment (duplicate entry).");
+      throw error;
+    }
+
+    const left = round2(balance - amount);
+    if (!full && current.status === "paid") {
+      // it was ticked as paid, but less than the whole amount was paid: it goes back to unpaid with the balance still to pay
+      const { error: be } = await supabase.from("finance_payments").update({ status: "pending", paid_details_pending: false, paid_date: null, payment_reference: null }).eq("id", paymentId);
+      if (be) throw be;
+    }
+    if (full) {
+      const refs = [...(ledger ?? []).map((l) => l.reference_number).filter((x): x is string => !!x), reference].join(", ");
+      const { error: fe } = await supabase
+        .from("finance_payments")
+        .update({ status: "paid", paid_details_pending: false, paid_date: input.paidDate, payment_reference: refs, ...(input.proofDocumentId ? { proof_document_id: input.proofDocumentId } : {}) })
+        .eq("id", paymentId);
+      if (fe) throw fe;
+    }
+    await logTaskAudit({
+      companyId: current.company_id,
+      relatedTable: "finance_payments",
+      relatedId: paymentId,
+      action: full ? "payment_paid" : "payment_part_paid",
+      previousValue: `balance RM ${balance.toFixed(2)}`,
+      newValue: `RM ${amount.toFixed(2)} on ${input.paidDate} · ref ${reference}${full ? " · paid in full" : ` · balance RM ${left.toFixed(2)}`}${input.note?.trim() ? ` · ${input.note.trim().slice(0, 120)}` : ""}`,
+    });
+    revalidatePaymentPaths(paymentId);
+    return { settled: full, balance: left };
+  }, "Could not record the payment. Please try again.");
+}

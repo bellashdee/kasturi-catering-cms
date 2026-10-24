@@ -104,7 +104,7 @@ export function formatRM(amount: number): string {
   return `RM ${amount.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-export type PaymentLike = { amount: number | string; status: string; due_date: string | null };
+export type PaymentLike = { amount: number | string; status: string; due_date: string | null; /** what was paid so far on a payment that is not fully paid (part payments) */ paid_so_far?: number | null };
 
 export type PaymentSummary = {
   count: number;
@@ -124,8 +124,12 @@ export function summarizePayments(rows: PaymentLike[], today: string): PaymentSu
       s.paid += amount;
       continue;
     }
-    s.pending += amount;
-    if (paymentUrgency(r.status, r.due_date, today) === "overdue") s.overdue += amount;
+    // a part-paid payment counts what was paid as paid and only the balance as still to pay
+    const part = Math.min(Math.max(Number(r.paid_so_far ?? 0), 0), amount);
+    const left = amount - part;
+    s.paid += part;
+    s.pending += left;
+    if (paymentUrgency(r.status, r.due_date, today) === "overdue") s.overdue += left;
   }
   return s;
 }
