@@ -7,7 +7,7 @@ import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/docum
 import { createPettyCashTransaction } from "@/lib/finance/actions";
 import { DescriptionInput } from "@/components/DescriptionInput";
 import { SearchSelect } from "@/components/ui/SearchSelect";
-import { positionOptions, type PersonOption } from "@/lib/pettyCash/people";
+import { holdersOnly, positionOptions, type PersonOption } from "@/lib/pettyCash/people";
 
 type Company = { id: string; name: string };
 
@@ -32,6 +32,8 @@ export function PettyCashForm({ companies, defaultCompanyId, people }: { compani
   const [error, setError] = useState<string | null>(null);
 
   const isClaim = type === "expense";
+  // the claimant can be any staff member; the money is given only to local staff, who hold the petty cash
+  const holders = holdersOnly(people);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -147,10 +149,10 @@ export function PettyCashForm({ companies, defaultCompanyId, people }: { compani
             <SearchSelect
               value={personName}
               onChange={setPersonName}
-              options={people.map((p) => p.name)}
+              options={holders.map((p) => p.name)}
               onPick={(name) => {
                 // the position the person holds is filled in (it can still be changed)
-                const found = people.find((p) => p.name === name);
+                const found = holders.find((p) => p.name === name);
                 if (found?.position) setPersonPosition(found.position);
               }}
               placeholder="Search or type a name"
@@ -159,7 +161,7 @@ export function PettyCashForm({ companies, defaultCompanyId, people }: { compani
           </div>
           <div>
             <label className="text-[12px] font-semibold text-text-secondary">Position that holds the petty cash</label>
-            <SearchSelect value={personPosition} onChange={setPersonPosition} options={positionOptions(people)} placeholder="Search or type a position" className="mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]" />
+            <SearchSelect value={personPosition} onChange={setPersonPosition} options={positionOptions(holders)} placeholder="Search or type a position" className="mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]" />
           </div>
         </div>
       )}

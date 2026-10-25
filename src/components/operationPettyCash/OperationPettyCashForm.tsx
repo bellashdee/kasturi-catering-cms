@@ -10,7 +10,7 @@ import { createPettyCashEntry, updatePettyCashEntry } from "@/lib/operationPetty
 import { PETTY_CASH_CATEGORIES, type EntryType, type OperationPettyCashRow } from "@/lib/operationPettyCash/constants";
 import { DescriptionInput } from "@/components/DescriptionInput";
 import { SearchSelect } from "@/components/ui/SearchSelect";
-import { positionOptions, type PersonOption } from "@/lib/pettyCash/people";
+import { holdersOnly, positionOptions, type PersonOption } from "@/lib/pettyCash/people";
 
 type Company = { id: string; name: string };
 
@@ -33,6 +33,8 @@ export function OperationPettyCashForm({ companies, defaultCompanyId, editing, l
   const [error, setError] = useState<string | null>(null);
 
   const isSpent = type === "expense";
+  // only local staff hold the petty cash
+  const holders = holdersOnly(people);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -124,10 +126,10 @@ export function OperationPettyCashForm({ companies, defaultCompanyId, editing, l
           <SearchSelect
             value={personName}
             onChange={setPersonName}
-            options={people.map((p) => p.name)}
+            options={holders.map((p) => p.name)}
             onPick={(name) => {
               // the position the person holds is filled in (it can still be changed)
-              const found = people.find((p) => p.name === name);
+              const found = holders.find((p) => p.name === name);
               if (found?.position) setPersonPosition(found.position);
             }}
             className={inputClass}
@@ -136,7 +138,7 @@ export function OperationPettyCashForm({ companies, defaultCompanyId, editing, l
         </div>
         <div>
           <label className={labelClass}>Position that holds the petty cash</label>
-          <SearchSelect value={personPosition} onChange={setPersonPosition} options={positionOptions(people)} className={inputClass} placeholder="Search or type a position" />
+          <SearchSelect value={personPosition} onChange={setPersonPosition} options={positionOptions(holders)} className={inputClass} placeholder="Search or type a position" />
         </div>
       </div>
 
