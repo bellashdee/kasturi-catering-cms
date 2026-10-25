@@ -3765,7 +3765,8 @@ const dictionary: Record<string, string> = {
  "Show this petty cash": "এই পেটি ক্যাশ দেখান",
  "Show everyone's petty cash": "সবার পেটি ক্যাশ দেখান",
  "Everyone's balance": "সবার ব্যালেন্স",
- "You can only record and change your own petty cash.": "আপনি শুধু আপনার নিজের পেটি ক্যাশ লিখতে ও বদলাতে পারবেন।"
+ "You can only record and change your own petty cash.": "আপনি শুধু আপনার নিজের পেটি ক্যাশ লিখতে ও বদলাতে পারবেন।",
+ "← HR": "← HR"
 };
 
 export default dictionary;

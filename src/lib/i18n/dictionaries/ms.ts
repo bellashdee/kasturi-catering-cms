@@ -3702,7 +3702,8 @@ const dictionary: Record<string, string> = {
  "Show this petty cash": "Papar petty cash ini",
  "Show everyone's petty cash": "Papar petty cash semua orang",
  "Everyone's balance": "Baki semua orang",
- "You can only record and change your own petty cash.": "Anda hanya boleh merekod dan mengubah petty cash anda sendiri."
+ "You can only record and change your own petty cash.": "Anda hanya boleh merekod dan mengubah petty cash anda sendiri.",
+ "← HR": "← HR"
 };
 
 export default dictionary;

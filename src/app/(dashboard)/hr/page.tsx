@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SearchBox } from "@/components/SearchBox";
 import { getHrAccess } from "@/lib/hr/access";
+import { canUsePayrollCentre } from "@/lib/hr/payrollAccess";
 
 function statusTone(status: string): "success" | "danger" | "neutral" {
   if (status === "active") return "success";
@@ -38,6 +39,8 @@ export default async function HRPage({
   }
 
   const access = await getHrAccess(supabase, session, targetCompanyIds);
+  // the Payroll Centre belongs to HR; only the Director of Finance and her personal assistant see its button
+  const showPayroll = await canUsePayrollCentre(supabase);
   // an admin sees every employee of the company; anyone else only the staff record linked to their own login
   const records = (await listEmployees(supabase, targetCompanyIds, q)).filter((e) => access.canSee(e));
 
@@ -69,6 +72,14 @@ export default async function HRPage({
           >
             🎂 Birthday Calendar
           </Link>
+          {showPayroll && (
+            <Link
+              href={`/payroll-centre${query}`}
+              className="flex items-center gap-2 rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text"
+            >
+              Payroll Centre
+            </Link>
+          )}
           <Link
             href={`/hr/leave${query}`}
             className="flex items-center gap-2 rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text"

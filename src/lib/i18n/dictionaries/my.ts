@@ -3759,7 +3759,8 @@ const dictionary: Record<string, string> = {
  "Show this petty cash": "ဤ ငွေသားအသေးစားကို ပြရန်",
  "Show everyone's petty cash": "လူတိုင်း၏ ငွေသားအသေးစားကို ပြရန်",
  "Everyone's balance": "လူတိုင်း၏ လက်ကျန်",
- "You can only record and change your own petty cash.": "သင့်ကိုယ်ပိုင် ငွေသားအသေးစားကိုသာ မှတ်တမ်းတင်ပြီး ပြောင်းလဲနိုင်ပါသည်။"
+ "You can only record and change your own petty cash.": "သင့်ကိုယ်ပိုင် ငွေသားအသေးစားကိုသာ မှတ်တမ်းတင်ပြီး ပြောင်းလဲနိုင်ပါသည်။",
+ "← HR": "← HR"
 };
 
 export default dictionary;

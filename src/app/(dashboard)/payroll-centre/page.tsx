@@ -53,6 +53,9 @@ export default async function PayrollCentrePage({ searchParams }: { searchParams
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
+          <Link href={`/hr${requestedId ? `?company=${requestedId}` : ""}`} className="text-[12.5px] font-semibold text-text-secondary hover:text-text print:hidden">
+            ← HR
+          </Link>
           <h1 className="text-[22px] font-extrabold text-text">Payroll Centre</h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">
             {`Staff salary payment for the Director of Finance — ${MONTH_NAMES[m - 1]} ${y}`}

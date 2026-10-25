@@ -14,7 +14,7 @@ export type ModuleKey =
   | "settings";
 
 export const MODULES: { key: ModuleKey; label: string; href: string; matchPrefixes?: string[] }[] = [
-  { key: "hr", label: "HR", href: "/hr" },
+  { key: "hr", label: "HR", href: "/hr", matchPrefixes: ["/hr", "/payroll-centre"] },
   { key: "marketing", label: "Marketing", href: "/marketing" },
   { key: "catering", label: "Catering", href: "/catering" },
   { key: "driver-logistics", label: "Operation Management", href: "/driver-logistics", matchPrefixes: ["/driver-logistics"] },

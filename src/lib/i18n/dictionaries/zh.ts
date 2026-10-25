@@ -3773,7 +3773,8 @@ const dictionary: Record<string, string> = {
  "Show this petty cash": "显示此备用金",
  "Show everyone's petty cash": "显示所有人的备用金",
  "Everyone's balance": "所有人的余额",
- "You can only record and change your own petty cash.": "你只能记录和修改自己的备用金。"
+ "You can only record and change your own petty cash.": "你只能记录和修改自己的备用金。",
+ "← HR": "← 人力资源"
 };
 
 export default dictionary;

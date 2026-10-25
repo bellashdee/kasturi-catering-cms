@@ -159,21 +159,19 @@ export function BulletinLink() {
   return <NavItem href="/bulletin" icon="bulletin" label="Bulletin Board" />;
 }
 
-export function PayrollCentreLink() {
-  return <NavItem href="/payroll-centre" icon="payroll" label="Payroll Centre" />;
-}
-
 export function SpendingLink() {
   return <NavItem href="/spending" icon="petty-cash" label="Company Spending" matchPrefixes={["/spending"]} />;
 }
 
-export function ModuleLinks({ allowedModules, badges = {} }: { allowedModules: string[] | null; badges?: Record<string, number> }) {
+/** The Payroll Centre is part of HR (a button on the HR page); only a payroll user who has no HR access gets its own entry. */
+export function ModuleLinks({ allowedModules, badges = {}, showPayroll = false }: { allowedModules: string[] | null; badges?: Record<string, number>; showPayroll?: boolean }) {
   const show = (key: string) => !allowedModules || allowedModules.includes(key);
   return (
     <>
       {MODULES.filter((m) => m.key !== "reports" && m.key !== "ai-assistant" && m.key !== "marketing" && show(m.key)).map((m) => (
         <NavItem key={m.key} href={m.href} icon={m.key} label={m.label} matchPrefixes={m.matchPrefixes} badge={badges[m.key]} />
       ))}
+      {!show("hr") && showPayroll && <NavItem href="/payroll-centre" icon="payroll" label="Payroll Centre" />}
       {!show("hr") && show("overtime") && <NavItem href="/hr/overtime" icon="hr" label="Overtime (OT)" />}
       {show("reports") && <NavItem href="/reports" icon="reports" label="Reports" />}
       {show("ai-assistant") && <NavItem href="/ai-assistant" icon="ai-assistant" label="🤖 AI Assistant" />}
