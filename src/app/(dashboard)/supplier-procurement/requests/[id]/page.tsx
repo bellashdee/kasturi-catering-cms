@@ -42,8 +42,8 @@ export default async function ProcurementRequestDetailPage({
     <div className="flex flex-col gap-5">
       <div className="flex items-start justify-between">
         <div>
-          <Link href={`/supplier-procurement/requests${query}`} className="text-[12.5px] font-semibold text-text-secondary">
-            ← Back to Purchase Requests
+          <Link href={`/supplier-procurement/orders${query}`} className="text-[12.5px] font-semibold text-text-secondary">
+            ← Back to Purchase Orders
           </Link>
           <div className="mt-2 text-[20px] font-extrabold text-text">{request.item_name}</div>
           <div className="text-[13px] text-text-secondary">

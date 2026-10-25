@@ -231,6 +231,56 @@ export async function createPurchaseOrder(input: PurchaseOrderInput) {
   return po;
 }
 
+export type PurchaseOrderEdit = {
+  orderDate: string;
+  /** names (and dates) of the events the order is for */
+  sourceEvents: string;
+  items: { itemName: string; quantity: number; unit?: string; unitPrice: number }[];
+};
+
+/** Changes the date, the events and the items of an order (the items are replaced as they are on the screen). */
+export async function updatePurchaseOrder(poId: string, input: PurchaseOrderEdit): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.orderDate)) throw new Error("Choose the order date.");
+    const items = input.items.filter((i) => i.itemName.trim());
+    if (items.length === 0) throw new Error("An order needs at least one item.");
+    for (const i of items) {
+      if (!Number.isFinite(i.quantity) || i.quantity <= 0) throw new Error(`Enter a quantity more than 0 for ${i.itemName.trim()}.`);
+      if (!Number.isFinite(i.unitPrice) || i.unitPrice < 0) throw new Error(`Enter the price of ${i.itemName.trim()} (0 if it is not known yet).`);
+    }
+    const { data: before, error: readError } = await supabase.from("purchase_orders").select("*, purchase_order_items(*)").eq("id", poId).maybeSingle();
+    if (readError || !before) throw new Error("This purchase order was not found (it may have been deleted).");
+
+    const total = Math.round(items.reduce((t, i) => t + i.quantity * i.unitPrice, 0) * 100) / 100;
+    const { error: poError } = await supabase.from("purchase_orders").update({ order_date: input.orderDate, source_events: input.sourceEvents.trim().slice(0, 500) || null, total_amount: total }).eq("id", poId);
+    if (poError) throw poError;
+    const { error: deleteError } = await supabase.from("purchase_order_items").delete().eq("purchase_order_id", poId);
+    if (deleteError) throw deleteError;
+    const { error: insertError } = await supabase.from("purchase_order_items").insert(
+      items.map((i) => ({ purchase_order_id: poId, item_name: i.itemName.trim(), quantity: i.quantity, unit: i.unit?.trim() || null, unit_price: i.unitPrice, line_total: Math.round(i.quantity * i.unitPrice * 100) / 100 })),
+    );
+    if (insertError) {
+      // the old items are put back so the order is never left empty
+      await supabase.from("purchase_order_items").insert(before.purchase_order_items);
+      throw insertError;
+    }
+    const line = (list: { item_name: string; quantity: number }[]) => list.map((i) => `${i.item_name} ${i.quantity}`).join("; ").slice(0, 700);
+    await recordAudit({
+      companyId: before.company_id,
+      relatedTable: "purchase_orders",
+      relatedId: poId,
+      action: "edited",
+      previousValue: `${before.order_date} · ${before.source_events ?? "no event"} · ${line(before.purchase_order_items)}`,
+      newValue: `${input.orderDate} · ${input.sourceEvents.trim() || "no event"} · ${line(items.map((i) => ({ item_name: i.itemName.trim(), quantity: i.quantity })))}`,
+    });
+    revalidatePath("/supplier-procurement/orders");
+    revalidatePath(`/supplier-procurement/orders/${poId}`);
+    revalidatePath("/kitchen/purchase-requests");
+    return {};
+  }, "Could not save the purchase order. Please try again.");
+}
+
 export async function updatePurchaseOrderStatus(poId: string, status: string) {
   const { supabase } = await requireUser();
   const { data: before } = await supabase.from("purchase_orders").select("company_id, status").eq("id", poId).single();
@@ -247,12 +297,19 @@ export async function updatePurchaseOrderStatus(poId: string, status: string) {
  * again. The deletion is written to the audit log with the order's details. The message is returned, not thrown, so it is
  * always shown to the person.
  */
-export async function deletePurchaseOrder(poId: string): Promise<{ ok: boolean; error?: string }> {
+export type PurchaseOrderSnapshot = {
+  po: Database["public"]["Tables"]["purchase_orders"]["Row"];
+  items: Database["public"]["Tables"]["purchase_order_items"]["Row"][];
+  requestIds: string[];
+  listItemIds: string[];
+};
+
+export async function deletePurchaseOrder(poId: string): Promise<{ ok: boolean; error?: string; restore?: PurchaseOrderSnapshot }> {
   try {
     const { supabase } = await requireUser();
     const { data: po, error: readError } = await supabase
       .from("purchase_orders")
-      .select("id, company_id, po_number, status, total_amount, order_date, suppliers(name), purchase_order_items(item_name, quantity, unit_price)")
+      .select("*, suppliers(name), purchase_order_items(*)")
       .eq("id", poId)
       .single();
     if (readError || !po) return { ok: false, error: "This purchase order was not found (it may already be deleted)." };
@@ -268,6 +325,7 @@ export async function deletePurchaseOrder(poId: string): Promise<{ ok: boolean; 
     const summary = `${po.po_number} · ${po.suppliers?.name ?? "supplier"} · RM ${Number(po.total_amount ?? 0).toFixed(2)} · order date ${po.order_date} · status ${po.status} · ${po.purchase_order_items.length} item(s): ${po.purchase_order_items.map((i) => `${i.item_name} ${i.quantity} x ${i.unit_price}`).join("; ")}`.slice(0, 1500);
 
     const { data: requests } = await supabase.from("procurement_requests").select("id").eq("purchase_order_id", poId);
+    const { data: listItems } = await supabase.from("purchase_list_items").select("id").eq("purchase_order_id", poId);
 
     const { error: itemsError } = await supabase.from("purchase_order_items").delete().eq("purchase_order_id", poId);
     if (itemsError) return { ok: false, error: itemsError.message };
@@ -280,10 +338,38 @@ export async function deletePurchaseOrder(poId: string): Promise<{ ok: boolean; 
 
     revalidatePath("/supplier-procurement/orders");
     revalidatePath("/supplier-procurement/requests");
-    return { ok: true };
+    revalidatePath("/kitchen/purchase-requests");
+    const { suppliers: _supplier, purchase_order_items: items, ...row } = po;
+    void _supplier;
+    return { ok: true, restore: { po: row, items, requestIds: (requests ?? []).map((r) => r.id), listItemIds: (listItems ?? []).map((l) => l.id) } };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Could not delete the purchase order." };
   }
+}
+
+/** Undo of a delete: the order comes back with the same items, and the menu lines and requests that pointed to it point to it again. */
+export async function restorePurchaseOrder(snapshot: PurchaseOrderSnapshot): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { po, items } = snapshot;
+    if (!po?.id || !po.company_id || !Array.isArray(items)) throw new Error("There is nothing to put back.");
+    const { error } = await supabase.from("purchase_orders").insert(po);
+    if (error) throw error;
+    if (items.length > 0) {
+      const { error: itemsError } = await supabase.from("purchase_order_items").insert(items.map((i) => ({ ...i, purchase_order_id: po.id })));
+      if (itemsError) {
+        await supabase.from("purchase_orders").delete().eq("id", po.id);
+        throw itemsError;
+      }
+    }
+    if (snapshot.requestIds?.length) await supabase.from("procurement_requests").update({ status: "converted", purchase_order_id: po.id }).in("id", snapshot.requestIds);
+    if (snapshot.listItemIds?.length) await supabase.from("purchase_list_items").update({ purchase_order_id: po.id }).in("id", snapshot.listItemIds);
+    await recordAudit({ companyId: po.company_id, relatedTable: "purchase_orders", relatedId: po.id, action: "restored", newValue: `${po.po_number} put back after it was deleted` });
+    revalidatePath("/supplier-procurement/orders");
+    revalidatePath("/supplier-procurement/requests");
+    revalidatePath("/kitchen/purchase-requests");
+    return {};
+  }, "Could not put the purchase order back.");
 }
 
 export type SupplierInvoiceInput = {

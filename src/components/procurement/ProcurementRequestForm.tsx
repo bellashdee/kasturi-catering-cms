@@ -35,7 +35,7 @@ export function ProcurementRequestForm({ companies, defaultCompanyId }: { compan
     };
     try {
       await createProcurementRequest(payload);
-      router.push("/supplier-procurement/requests");
+      router.push("/supplier-procurement/orders");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");

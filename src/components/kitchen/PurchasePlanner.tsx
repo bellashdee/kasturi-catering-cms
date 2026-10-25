@@ -239,7 +239,10 @@ export function PurchasePlanner({ companyId, companyName, events, recipeOptions,
           ))}
         </div>
         <div className="flex gap-2">
-          <Link href={`/kitchen/purchase-requests${query}`} className="rounded-lg bg-primary px-4 py-2 text-[13px] font-semibold text-white">
+          <Link href={`/supplier-procurement/orders${query}`} className="rounded-lg bg-primary px-4 py-2 text-[13px] font-semibold text-white">
+            Check the orders and send them to the suppliers
+          </Link>
+          <Link href={`/kitchen/purchase-requests${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2 text-[13px] font-semibold text-text">
             Back to Purchase Requests
           </Link>
         </div>

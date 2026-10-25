@@ -7,7 +7,7 @@ const PAGE_CONTEXT_MAP: PageContextEntry[] = [
   { prefix: "/supplier-procurement/payments", label: "Supplier & Procurement → Payment Dashboard", module: "supplier-procurement" },
   { prefix: "/supplier-procurement/invoices", label: "Supplier & Procurement → Supplier Invoices", module: "supplier-procurement" },
   { prefix: "/supplier-procurement/orders", label: "Supplier & Procurement → Purchase Orders", module: "supplier-procurement" },
-  { prefix: "/supplier-procurement/requests", label: "Supplier & Procurement → Purchase Requests", module: "supplier-procurement" },
+  { prefix: "/supplier-procurement/requests", label: "Supplier & Procurement → Purchase Orders (item requests)", module: "supplier-procurement" },
   { prefix: "/supplier-procurement", label: "Supplier & Procurement", module: "supplier-procurement" },
   { prefix: "/hr/leave", label: "HR → Leave", module: "hr" },
   { prefix: "/hr/overtime", label: "HR → Overtime", module: "hr" },
