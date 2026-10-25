@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/documents/upload";
 import { createPettyCashTransaction } from "@/lib/finance/actions";
 import { DescriptionInput } from "@/components/DescriptionInput";
+import { SearchSelect } from "@/components/ui/SearchSelect";
+import { positionOptions, type PersonOption } from "@/lib/pettyCash/people";
 
 type Company = { id: string; name: string };
 
@@ -13,12 +15,14 @@ function todayIso(): string {
   return todayInMalaysia();
 }
 
-export function PettyCashForm({ companies, defaultCompanyId }: { companies: Company[]; defaultCompanyId?: string }) {
+export function PettyCashForm({ companies, defaultCompanyId, people }: { companies: Company[]; defaultCompanyId?: string; people: PersonOption[] }) {
   const router = useRouter();
   const [companyId, setCompanyId] = useState(defaultCompanyId ?? companies[0]?.id ?? "");
   const [type, setType] = useState<"top_up" | "expense">("expense");
   const [claimantName, setClaimantName] = useState("");
   const [claimantDepartment, setClaimantDepartment] = useState("");
+  const [personName, setPersonName] = useState("");
+  const [personPosition, setPersonPosition] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
@@ -47,7 +51,7 @@ export function PettyCashForm({ companies, defaultCompanyId }: { companies: Comp
         const doc = await uploadDocument({ companyId, module: "finance", fileType: fileTypeFromMime(receipt), file: receipt });
         documentId = doc.id;
       }
-      await createPettyCashTransaction({
+      const result = await createPettyCashTransaction({
         companyId,
         type,
         claimantName: isClaim ? claimantName.trim() : undefined,
@@ -57,7 +61,15 @@ export function PettyCashForm({ companies, defaultCompanyId }: { companies: Comp
         amount: Number(amount),
         transactionDate,
         documentId,
+        personName: !isClaim ? personName.trim() || undefined : undefined,
+        personPosition: !isClaim ? personPosition.trim() || undefined : undefined,
       });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setPersonName("");
+      setPersonPosition("");
       setClaimantName("");
       setClaimantDepartment("");
       setCategory("");
@@ -103,10 +115,16 @@ export function PettyCashForm({ companies, defaultCompanyId }: { companies: Comp
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-[12px] font-semibold text-text-secondary">Claimant / Requested By *</label>
-            <input
+            <SearchSelect
               value={claimantName}
-              onChange={(e) => setClaimantName(e.target.value)}
-              placeholder="Type the staff member's name"
+              onChange={setClaimantName}
+              options={people.map((p) => p.name)}
+              onPick={(name) => {
+                // the department of the person is filled in (it can still be changed)
+                const found = people.find((p) => p.name === name);
+                if (found?.department) setClaimantDepartment(found.department);
+              }}
+              placeholder="Search or type the staff member's name"
               className="mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]"
             />
           </div>
@@ -118,6 +136,30 @@ export function PettyCashForm({ companies, defaultCompanyId }: { companies: Comp
               placeholder="e.g. Kitchen, Sales"
               className="mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]"
             />
+          </div>
+        </div>
+      )}
+
+      {!isClaim && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-[12px] font-semibold text-text-secondary">Received by (choose the name)</label>
+            <SearchSelect
+              value={personName}
+              onChange={setPersonName}
+              options={people.map((p) => p.name)}
+              onPick={(name) => {
+                // the position the person holds is filled in (it can still be changed)
+                const found = people.find((p) => p.name === name);
+                if (found?.position) setPersonPosition(found.position);
+              }}
+              placeholder="Search or type a name"
+              className="mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]"
+            />
+          </div>
+          <div>
+            <label className="text-[12px] font-semibold text-text-secondary">Position that holds the petty cash</label>
+            <SearchSelect value={personPosition} onChange={setPersonPosition} options={positionOptions(people)} placeholder="Search or type a position" className="mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]" />
           </div>
         </div>
       )}

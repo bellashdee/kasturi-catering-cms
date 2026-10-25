@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logTaskAudit } from "@/lib/taskProofs/actions";
 import { recordAudit } from "@/lib/audit";
+import { runAction, type ActionResult } from "@/lib/actionResult";
 import { confirmedPaymentDate, todayInMalaysia } from "@/lib/format";
 import { DUPLICATE_INVOICE_MESSAGE } from "@/lib/finance/constants";
 import type { Database } from "@/lib/supabase/types";
@@ -246,10 +247,16 @@ export type PettyCashInput = {
   amount: number;
   transactionDate: string;
   documentId?: string;
+  /** who received the money (a top-up) and the position that holds the petty cash */
+  personName?: string;
+  personPosition?: string;
 };
 
-export async function createPettyCashTransaction(input: PettyCashInput) {
+export async function createPettyCashTransaction(input: PettyCashInput): Promise<ActionResult> {
+  return runAction(async () => {
   const { supabase, userId } = await requireUser();
+  if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("Enter an amount more than 0.");
+  if (input.type === "expense" && !input.claimantName?.trim()) throw new Error("Enter who is claiming this petty cash.");
   const { data: created, error } = await supabase.from("petty_cash_transactions").insert({
     company_id: input.companyId,
     type: input.type,
@@ -262,6 +269,8 @@ export async function createPettyCashTransaction(input: PettyCashInput) {
     // the claim date: today (Malaysia) unless a date is given; the payment date is recorded separately when it is paid
     transaction_date: input.transactionDate || todayInMalaysia(),
     document_id: input.documentId || null,
+    person_name: input.personName?.trim().slice(0, 200) || null,
+    person_position: input.personPosition?.trim().slice(0, 200) || null,
     created_by: userId,
   }).select("id").single();
   if (error) throw error;
@@ -270,11 +279,13 @@ export async function createPettyCashTransaction(input: PettyCashInput) {
     relatedTable: "petty_cash_transactions",
     relatedId: created.id,
     action: input.type === "expense" ? "claim_submitted" : "top_up_recorded",
-    newValue: `RM ${Number(input.amount).toFixed(2)}${input.claimantName ? ` · ${input.claimantName}` : ""}`,
+    newValue: `RM ${Number(input.amount).toFixed(2)}${input.claimantName ? ` · ${input.claimantName}` : ""}${input.personName ? ` · ${input.personName}` : ""}`,
   });
   revalidatePath("/finance/petty-cash");
   revalidatePath("/admin");
   revalidatePath("/");
+  return {};
+  }, "Could not save. Please try again.");
 }
 
 export type MarkPettyCashPaidInput = {

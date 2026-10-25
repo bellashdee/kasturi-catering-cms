@@ -3288,6 +3288,8 @@ export type Database = {
           entry_date: string
           entry_type: string
           id: string
+          person_name: string | null
+          person_position: string | null
           updated_at: string
         }
         Insert: {
@@ -3301,6 +3303,8 @@ export type Database = {
           entry_date: string
           entry_type: string
           id?: string
+          person_name?: string | null
+          person_position?: string | null
           updated_at?: string
         }
         Update: {
@@ -3314,6 +3318,8 @@ export type Database = {
           entry_date?: string
           entry_type?: string
           id?: string
+          person_name?: string | null
+          person_position?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -3837,6 +3843,8 @@ export type Database = {
           payment_status: string
           transaction_date: string
           type: string
+          person_name: string | null
+          person_position: string | null
           updated_at: string
         }
         Insert: {
@@ -3858,6 +3866,8 @@ export type Database = {
           payment_status?: string
           transaction_date: string
           type: string
+          person_name?: string | null
+          person_position?: string | null
           updated_at?: string
         }
         Update: {
@@ -3879,6 +3889,8 @@ export type Database = {
           payment_status?: string
           transaction_date?: string
           type?: string
+          person_name?: string | null
+          person_position?: string | null
           updated_at?: string
         }
         Relationships: [

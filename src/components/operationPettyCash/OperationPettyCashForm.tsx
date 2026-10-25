@@ -9,6 +9,8 @@ import { todayInMalaysia } from "@/lib/format";
 import { createPettyCashEntry, updatePettyCashEntry } from "@/lib/operationPettyCash/actions";
 import { PETTY_CASH_CATEGORIES, type EntryType, type OperationPettyCashRow } from "@/lib/operationPettyCash/constants";
 import { DescriptionInput } from "@/components/DescriptionInput";
+import { SearchSelect } from "@/components/ui/SearchSelect";
+import { positionOptions, type PersonOption } from "@/lib/pettyCash/people";
 
 type Company = { id: string; name: string };
 
@@ -16,7 +18,7 @@ const inputClass = "mt-1 h-9 w-full rounded-lg border border-border-strong px-2 
 const labelClass = "text-[12px] font-semibold text-text-secondary";
 
 /** Record money received (top-up) or spent (with the receipt); also used to edit an entry. */
-export function OperationPettyCashForm({ companies, defaultCompanyId, editing, listHref }: { companies: Company[]; defaultCompanyId?: string; editing?: OperationPettyCashRow; listHref: string }) {
+export function OperationPettyCashForm({ companies, defaultCompanyId, editing, listHref, people }: { companies: Company[]; defaultCompanyId?: string; editing?: OperationPettyCashRow; listHref: string; people: PersonOption[] }) {
   const router = useRouter();
   const [companyId, setCompanyId] = useState(editing?.company_id ?? defaultCompanyId ?? companies[0]?.id ?? "");
   const [type, setType] = useState<EntryType>(editing?.entry_type ?? "expense");
@@ -24,6 +26,8 @@ export function OperationPettyCashForm({ companies, defaultCompanyId, editing, l
   const [amount, setAmount] = useState(editing ? String(editing.amount) : "");
   const [category, setCategory] = useState(editing?.category ?? "");
   const [description, setDescription] = useState(editing?.description ?? "");
+  const [personName, setPersonName] = useState(editing?.person_name ?? "");
+  const [personPosition, setPersonPosition] = useState(editing?.person_position ?? "");
   const [receipt, setReceipt] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +44,7 @@ export function OperationPettyCashForm({ companies, defaultCompanyId, editing, l
         const doc = await uploadDocument({ companyId, module: "driver-logistics", fileType: fileTypeFromMime(receipt), file: receipt, skipMarkdown: true });
         documentId = doc.id;
       }
-      const input = { companyId, entryType: type, entryDate: date, category: category || undefined, description: description || undefined, amount: Number(amount), documentId };
+      const input = { companyId, entryType: type, entryDate: date, category: category || undefined, description: description || undefined, amount: Number(amount), documentId, personName: personName || undefined, personPosition: personPosition || undefined };
       const result = editing ? await updatePettyCashEntry(editing.id, input) : await createPettyCashEntry(input);
       if (!result.ok) {
         setError(result.error);
@@ -52,6 +56,8 @@ export function OperationPettyCashForm({ companies, defaultCompanyId, editing, l
         setAmount("");
         setCategory("");
         setDescription("");
+        setPersonName("");
+        setPersonPosition("");
         setReceipt(null);
         (e.target as HTMLFormElement).reset();
       }
@@ -109,6 +115,28 @@ export function OperationPettyCashForm({ companies, defaultCompanyId, editing, l
         <div className={isSpent ? "" : "sm:col-span-2"}>
           <label className={labelClass}>{isSpent ? "What was it spent on?" : "Description (e.g. who gave the money)"}</label>
           <DescriptionInput value={description} onChange={setDescription} companyId={companyId} className={inputClass} placeholder={isSpent ? "e.g. Petrol for event delivery" : "e.g. Float from Ms. Penny"} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+          <label className={labelClass}>{isSpent ? "Spent by (choose the name)" : "Received by (choose the name)"}</label>
+          <SearchSelect
+            value={personName}
+            onChange={setPersonName}
+            options={people.map((p) => p.name)}
+            onPick={(name) => {
+              // the position the person holds is filled in (it can still be changed)
+              const found = people.find((p) => p.name === name);
+              if (found?.position) setPersonPosition(found.position);
+            }}
+            className={inputClass}
+            placeholder="Search or type a name"
+          />
+        </div>
+        <div>
+          <label className={labelClass}>Position that holds the petty cash</label>
+          <SearchSelect value={personPosition} onChange={setPersonPosition} options={positionOptions(people)} className={inputClass} placeholder="Search or type a position" />
         </div>
       </div>
 

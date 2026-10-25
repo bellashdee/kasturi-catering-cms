@@ -13,16 +13,20 @@ import {
 } from "@/lib/finance/constants";
 import { formatCurrency } from "@/lib/format";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
-import { KpiCard } from "@/components/dashboard/KpiCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { PettyCashForm } from "@/components/finance/PettyCashForm";
 import { PettyCashPaymentAction } from "@/components/finance/PettyCashPaymentAction";
+import { SoftHeader, SoftPage } from "@/components/ui/Soft";
+import { PettyCashOverview } from "@/components/pettyCash/PettyCashOverview";
+import { buildOverview } from "@/lib/pettyCash/overview";
+import { loadPersonOptions } from "@/lib/pettyCash/people";
+import { todayInMalaysia } from "@/lib/format";
 
 export default async function PettyCashPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; status?: string }>;
+  searchParams: Promise<{ company?: string; status?: string; month?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -31,7 +35,7 @@ export default async function PettyCashPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name").order("name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, status: statusParam } = await searchParams;
+  const { company: requestedId, status: statusParam, month: monthParam } = await searchParams;
   const { accessibleIds, targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const selectable = companies.filter((c) => accessibleIds.includes(c.id));
   const defaultCompanyId = requestedId && accessibleIds.includes(requestedId) ? requestedId : selectable[0]?.id;
@@ -41,21 +45,31 @@ export default async function PettyCashPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const transactions = await listPettyCashTransactions(supabase, targetCompanyIds);
+  const [transactions, people] = await Promise.all([listPettyCashTransactions(supabase, targetCompanyIds), loadPersonOptions(supabase)]);
+
+  // the month shown (this month unless another is chosen, or all time)
+  const thisMonth = todayInMalaysia().slice(0, 7);
+  const months = Array.from(new Set([thisMonth, ...transactions.map((t) => t.transaction_date.slice(0, 7))])).sort().reverse();
+  const month = monthParam === "all" ? "all" : monthParam && /^\d{4}-\d{2}$/.test(monthParam) ? monthParam : thisMonth;
+  const overview = buildOverview(
+    transactions.map((t) => ({ date: t.transaction_date, kind: t.type === "top_up" ? ("in" as const) : ("out" as const), amount: Number(t.amount), category: t.category })),
+    month,
+    thisMonth,
+  );
+  const inPeriod = (date: string) => month === "all" || date.startsWith(month);
 
   const balance = transactions.reduce((t, tx) => t + (tx.type === "top_up" ? Number(tx.amount) : -Number(tx.amount)), 0);
-  const topUps = transactions.filter((t) => t.type === "top_up");
-  const allClaims = transactions.filter((t) => t.type === "expense");
+  const topUps = transactions.filter((t) => t.type === "top_up" && inPeriod(t.transaction_date));
+  const allClaims = transactions.filter((t) => t.type === "expense" && inPeriod(t.transaction_date));
   const summary = summarizePettyCashClaims(allClaims);
   const claims = statusParam ? allClaims.filter((c) => c.payment_status === statusParam) : allClaims;
   const overdueClaims = allClaims.filter((c) => isPettyCashOverdue(c.transaction_date, c.payment_status));
 
+  const monthQuery = `${query}${query ? "&" : "?"}month=${month}`;
+
   return (
-    <div className="flex flex-col gap-5">
-      <div>
-        <h1 className="text-[22px] font-extrabold text-text">Admin &amp; Finance</h1>
-        <p className="mt-0.5 text-[13px] text-text-secondary">Petty Cash</p>
-      </div>
+    <SoftPage>
+      <SoftHeader title="Admin & Finance" subtitle="Petty Cash: money received, what was claimed and spent, and what is left" />
 
       <FinanceAdminSubNav />
 
@@ -68,39 +82,47 @@ export default async function PettyCashPage({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-        <KpiCard label="Total Claims" value={String(summary.totalClaims)} />
-        <KpiCard label="Pending Payment" value={String(summary.pendingCount)} tone={summary.pendingCount > 0 ? "warning" : "neutral"} iconTone="warning" />
-        <KpiCard label="Paid" value={String(summary.paidCount)} tone="success" iconTone="success" />
-        <KpiCard label="Total Pending Amount" value={formatCurrency(summary.totalPendingAmount)} tone={summary.totalPendingAmount > 0 ? "warning" : "neutral"} iconTone="warning" />
-        <KpiCard label="Total Paid Amount" value={formatCurrency(summary.totalPaidAmount)} tone="success" iconTone="success" />
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface px-5 py-3">
+        <form method="get" className="flex flex-wrap items-center gap-2">
+          {requestedId && <input type="hidden" name="company" value={requestedId} />}
+          {statusParam && <input type="hidden" name="status" value={statusParam} />}
+          <label className="text-[12.5px] font-bold uppercase tracking-wide text-text-muted" htmlFor="pc-month">Month</label>
+          <select id="pc-month" name="month" defaultValue={month} className="h-9 rounded-lg border border-border-strong bg-surface px-3 text-[14px] font-semibold">
+            {months.map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+            <option value="all">All</option>
+          </select>
+          <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Show</button>
+        </form>
+        <div className="text-[13px] text-text-secondary">
+          Float balance (all time): <strong className={balance >= 0 ? "text-text" : "text-danger"}>{formatCurrency(balance)}</strong>
+          {summary.pendingCount > 0 && <span>{` · claims still to be paid: ${summary.pendingCount} (${formatCurrency(summary.totalPendingAmount)})`}</span>}
+        </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
-        <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Current Float Balance</div>
-        <div className={`mt-1 text-2xl font-extrabold ${balance >= 0 ? "text-text" : "text-danger"}`}>{formatCurrency(balance)}</div>
-      </div>
+      <PettyCashOverview overview={overview} periodLabel={month === "all" ? "All time" : month} />
 
-      <PettyCashForm companies={selectable} defaultCompanyId={defaultCompanyId} />
+      <PettyCashForm companies={selectable} defaultCompanyId={defaultCompanyId} people={people} />
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
           <div className="text-[15px] font-bold text-text">Petty Cash Claims</div>
           <div className="flex gap-1">
             <Link
-              href={`/finance/petty-cash${query}`}
+              href={`/finance/petty-cash${monthQuery}`}
               className={`rounded-md px-2.5 py-1 text-[12px] font-semibold ${!statusParam ? "bg-primary text-white" : "text-text-secondary hover:bg-bg"}`}
             >
               All
             </Link>
             <Link
-              href={`/finance/petty-cash${query}${query ? "&" : "?"}status=pending_payment`}
+              href={`/finance/petty-cash${monthQuery}&status=pending_payment`}
               className={`rounded-md px-2.5 py-1 text-[12px] font-semibold ${statusParam === "pending_payment" ? "bg-primary text-white" : "text-text-secondary hover:bg-bg"}`}
             >
               Pending Payment
             </Link>
             <Link
-              href={`/finance/petty-cash${query}${query ? "&" : "?"}status=paid`}
+              href={`/finance/petty-cash${monthQuery}&status=paid`}
               className={`rounded-md px-2.5 py-1 text-[12px] font-semibold ${statusParam === "paid" ? "bg-primary text-white" : "text-text-secondary hover:bg-bg"}`}
             >
               Paid
@@ -167,19 +189,22 @@ export default async function PettyCashPage({
               <div>Date</div>
               <div>Type</div>
               <div>Amount</div>
-              <div>Company / Description</div>
+              <div>Received by / Company / Description</div>
             </div>
             {topUps.map((t) => (
               <div key={t.id} className="grid grid-cols-[1fr_1fr_1fr_1.4fr] border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0">
                 <div className="text-text-secondary">{t.transaction_date}</div>
                 <div className="font-semibold text-text">{PETTY_CASH_TYPE_LABEL[t.type] ?? t.type}</div>
                 <div className="text-success">+{formatCurrency(Number(t.amount))}</div>
-                <div className="truncate text-text-muted">{t.companies?.name}{t.description ? ` · ${t.description}` : ""}</div>
+                <div className="text-text-muted">
+                  {(t.person_name || t.person_position) && <div className="font-semibold text-text-secondary">{[t.person_name, t.person_position].filter(Boolean).join(" · ")}</div>}
+                  <div className="truncate">{t.companies?.name}{t.description ? ` · ${t.description}` : ""}</div>
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
-    </div>
+    </SoftPage>
   );
 }

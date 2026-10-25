@@ -5,13 +5,16 @@ import { resolveCompanyScope } from "@/lib/companyScope";
 import { formatPrice, formatMalaysiaDate, todayInMalaysia } from "@/lib/format";
 import { ENTRY_TYPE_LABEL, type EntryType, type OperationPettyCashRow } from "@/lib/operationPettyCash/constants";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
-import { KpiCard } from "@/components/dashboard/KpiCard";
 import { DriverLogisticsSubNav } from "@/components/driver/DriverLogisticsSubNav";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 import { ExportListButtons } from "@/components/procurement/ExportListButtons";
 import { OperationPettyCashForm } from "@/components/operationPettyCash/OperationPettyCashForm";
 import { OperationPettyCashRowActions } from "@/components/operationPettyCash/OperationPettyCashRowActions";
 import { UndoBanner } from "@/components/operationPettyCash/UndoBanner";
+import { SoftHeader, SoftPage } from "@/components/ui/Soft";
+import { PettyCashOverview } from "@/components/pettyCash/PettyCashOverview";
+import { buildOverview } from "@/lib/pettyCash/overview";
+import { loadPersonOptions } from "@/lib/pettyCash/people";
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
 const dayLabel = (iso: string) => formatMalaysiaDate(`${iso}T12:00:00+08:00`);
@@ -31,16 +34,13 @@ export default async function OperationPettyCashPage({ searchParams }: { searchP
 
   if (allowed !== true) {
     return (
-      <div className="flex flex-col gap-5">
-        <div>
-          <h1 className="text-[22px] font-extrabold text-text">Operation Management</h1>
-          <p className="mt-0.5 text-[13px] text-text-secondary">Petty Cash</p>
-        </div>
+      <SoftPage>
+        <SoftHeader title="Operation Management" subtitle="Petty Cash" />
         <DriverLogisticsSubNav />
         <div className="rounded-xl border border-border bg-surface px-5 py-10 text-center text-[14px] text-text-secondary">
           The Operation petty cash is private. Only the person who holds it and the Director of Finance can open it.
         </div>
-      </div>
+      </SoftPage>
     );
   }
 
@@ -59,6 +59,7 @@ export default async function OperationPettyCashPage({ searchParams }: { searchP
     .order("created_at", { ascending: true });
   if (error) throw error;
   const entries = data ?? [];
+  const people = await loadPersonOptions(supabase);
 
   // balance after each entry, per company (the float of each company is kept apart)
   const running = new Map<string, number>();
@@ -74,35 +75,50 @@ export default async function OperationPettyCashPage({ searchParams }: { searchP
   const months = Array.from(new Set([thisMonth, ...entries.map((e) => e.entry_date.slice(0, 7))])).sort().reverse();
   const month = sp.month === "all" ? "all" : sp.month && MONTH_RE.test(sp.month) ? sp.month : thisMonth;
   const shown = withBalance.filter((e) => month === "all" || e.entry_date.startsWith(month)).reverse();
-  const received = shown.filter((e) => e.entry_type === "top_up").reduce((t, e) => t + Number(e.amount), 0);
-  const spent = shown.filter((e) => e.entry_type === "expense").reduce((t, e) => t + Number(e.amount), 0);
+  const overview = buildOverview(
+    entries.map((e) => ({ date: e.entry_date, kind: e.entry_type === "top_up" ? ("in" as const) : ("out" as const), amount: Number(e.amount), category: e.category })),
+    month,
+    thisMonth,
+  );
 
   const editing = sp.edit ? withBalance.find((e) => e.id === sp.edit) : undefined;
   const editingRow: OperationPettyCashRow | undefined = editing
-    ? { id: editing.id, company_id: editing.company_id, entry_type: editing.entry_type as EntryType, entry_date: editing.entry_date, category: editing.category, description: editing.description, amount: Number(editing.amount), document_id: editing.document_id, created_by: editing.created_by }
+    ? { id: editing.id, company_id: editing.company_id, entry_type: editing.entry_type as EntryType, entry_date: editing.entry_date, category: editing.category, description: editing.description, amount: Number(editing.amount), document_id: editing.document_id, created_by: editing.created_by, person_name: editing.person_name, person_position: editing.person_position }
     : undefined;
 
   const listHref = `/driver-logistics/petty-cash${query}${query ? "&" : "?"}month=${month}`;
   const editHref = (id: string) => `${listHref}&edit=${id}`;
-  const exportHeaders = ["Date", "Company", "Type", "Category", "Description", "Received (RM)", "Spent (RM)", "Balance (RM)"];
-  const exportRows = [...shown].reverse().map((e): (string | number)[] => [e.entry_date, e.companies?.name ?? "", ENTRY_TYPE_LABEL[e.entry_type as EntryType] ?? e.entry_type, e.category ?? "", e.description ?? "", e.entry_type === "top_up" ? Number(e.amount) : "", e.entry_type === "expense" ? Number(e.amount) : "", e.balance]);
+  const exportHeaders = ["Date", "Company", "Type", "Category", "Description", "Name", "Position", "Received (RM)", "Spent (RM)", "Balance (RM)"];
+  const exportRows = [...shown].reverse().map((e): (string | number)[] => [e.entry_date, e.companies?.name ?? "", ENTRY_TYPE_LABEL[e.entry_type as EntryType] ?? e.entry_type, e.category ?? "", e.description ?? "", e.person_name ?? "", e.person_position ?? "", e.entry_type === "top_up" ? Number(e.amount) : "", e.entry_type === "expense" ? Number(e.amount) : "", e.balance]);
+
+  const periodLabel = month === "all" ? "All time" : month;
 
   return (
-    <div className="flex flex-col gap-5">
-      <div>
-        <h1 className="text-[22px] font-extrabold text-text">Operation Management</h1>
-        <p className="mt-0.5 text-[13px] text-text-secondary">Petty Cash — the Operation float: money received and what was spent, with the receipts</p>
-      </div>
+    <SoftPage>
+      <SoftHeader title="Operation Management" subtitle="Petty Cash: the Operation float, money received and what was spent, with the receipts" />
 
       <DriverLogisticsSubNav />
       <UndoBanner />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Float Balance" value={formatPrice(totalBalance)} tone={totalBalance < 0 ? "warning" : "neutral"} iconTone={totalBalance < 0 ? "warning" : "success"} />
-        <KpiCard label={month === "all" ? "Received (all time)" : "Received this month"} value={formatPrice(received)} tone="success" iconTone="success" />
-        <KpiCard label={month === "all" ? "Spent (all time)" : "Spent this month"} value={formatPrice(spent)} tone="neutral" iconTone="warning" />
-        <KpiCard label="Entries" value={String(shown.length)} />
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface px-5 py-3">
+        <form method="get" className="flex flex-wrap items-center gap-2">
+          {sp.company && <input type="hidden" name="company" value={sp.company} />}
+          <label className="text-[12.5px] font-bold uppercase tracking-wide text-text-muted" htmlFor="opc-month-top">Month</label>
+          <select id="opc-month-top" name="month" defaultValue={month} className="h-9 rounded-lg border border-border-strong bg-surface px-3 text-[14px] font-semibold">
+            {months.map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+            <option value="all">All</option>
+          </select>
+          <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Show</button>
+        </form>
+        <div className="text-[13px] text-text-secondary">
+          Float balance (all time): <strong className={totalBalance < 0 ? "text-danger" : "text-text"}>{formatPrice(totalBalance)}</strong>
+        </div>
       </div>
+
+      <PettyCashOverview overview={overview} periodLabel={periodLabel} />
+
       {balanceByCompany.length > 1 && (
         <div className="flex flex-wrap gap-x-5 gap-y-1 text-[12.5px] text-text-secondary">
           {balanceByCompany.map((b) => (
@@ -113,7 +129,7 @@ export default async function OperationPettyCashPage({ searchParams }: { searchP
         </div>
       )}
 
-      <OperationPettyCashForm key={editing?.id ?? "new"} companies={selectable} defaultCompanyId={defaultCompanyId} editing={editingRow} listHref={listHref} />
+      <OperationPettyCashForm key={editing?.id ?? "new"} companies={selectable} defaultCompanyId={defaultCompanyId} editing={editingRow} listHref={listHref} people={people} />
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5">
@@ -159,6 +175,9 @@ export default async function OperationPettyCashPage({ searchParams }: { searchP
                     <td className="px-4 py-2.5">
                       <div className="font-semibold text-text">{e.description || (e.entry_type === "top_up" ? ENTRY_TYPE_LABEL.top_up : "—")}</div>
                       {e.category && <div className="text-[11.5px] text-text-muted">{e.category}</div>}
+                      {(e.person_name || e.person_position) && (
+                        <div className="text-[11.5px] text-text-secondary">{`${e.entry_type === "top_up" ? "Received by" : "Spent by"}: ${[e.person_name, e.person_position].filter(Boolean).join(" · ")}`}</div>
+                      )}
                     </td>
                     <td className="px-4 py-2.5 text-right font-semibold text-success">{e.entry_type === "top_up" ? formatPrice(Number(e.amount)) : ""}</td>
                     <td className="px-4 py-2.5 text-right font-semibold text-text">{e.entry_type === "expense" ? formatPrice(Number(e.amount)) : ""}</td>
@@ -174,6 +193,6 @@ export default async function OperationPettyCashPage({ searchParams }: { searchP
           </div>
         )}
       </div>
-    </div>
+    </SoftPage>
   );
 }
