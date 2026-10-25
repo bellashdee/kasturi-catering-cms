@@ -5,13 +5,12 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 const TABS = [
   { href: "/spending/expenses", label: "Company Expenses", finance: true, match: (p: string) => p.startsWith("/spending/expenses") },
-  { href: "/spending/petty-cash", label: "Petty Cash", finance: false, match: (p: string) => p === "/spending/petty-cash" },
-  { href: "/spending/petty-cash/claims", label: "Petty Cash Claims", finance: false, match: (p: string) => p.startsWith("/spending/petty-cash/claims") },
+  { href: "/spending/petty-cash", label: "Petty Cash", finance: false, match: (p: string) => p.startsWith("/spending/petty-cash") },
   { href: "/spending/budgets", label: "Budgets", finance: true, match: (p: string) => p.startsWith("/spending/budgets") },
 ];
 
 /**
- * Company Spending: Company Expenses, Petty Cash (the cash book and the claims) and Budgets in one place. A person who only holds a
+ * Company Spending: Company Expenses, Petty Cash (money received, spent and the staff claims, all in one page) and Budgets in one place. A person who only holds a
  * petty cash (no Admin & Finance access) sees just the petty cash tabs.
  */
 export function SpendingSubNav({ hideFinance = false }: { hideFinance?: boolean }) {

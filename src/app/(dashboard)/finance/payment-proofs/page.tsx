@@ -8,6 +8,7 @@ import { PAYMENT_METHOD_LABEL } from "@/lib/finance/paymentProof";
 import { formatMalaysiaDate, formatPrice, todayInMalaysia } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
+import { CopyLink } from "@/components/driver/CopyLink";
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { PaymentProofReviewRow, type InvoiceOption } from "@/components/finance/PaymentProofReviewRow";
 
@@ -64,11 +65,12 @@ export default async function PaymentProofsPage({ searchParams }: { searchParams
       {links.length > 0 && (
         <div className="rounded-xl border border-border bg-surface px-4 py-3 text-[14px] text-text-secondary shadow-sm">
           <b className="text-text">Link for sales agents (no login needed):</b>
-          <ul className="mt-1">
+          <p className="mt-0.5 text-[12.5px]">Press Copy link, then paste it in WhatsApp for the sales agent.</p>
+          <div className="mt-2 flex flex-col gap-2">
             {links.map(([slug, c]) => (
-              <li key={slug}>{c.name}: <span className="font-mono text-[13px] text-text">/payment-proof-form/{slug}</span></li>
+              <CopyLink key={slug} path={`/payment-proof-form/${slug}`} label={c.name} />
             ))}
-          </ul>
+          </div>
         </div>
       )}
 

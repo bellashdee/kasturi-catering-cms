@@ -1,43 +1,68 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
+import { canAccessModule } from "@/lib/modules";
 import { formatPrice, formatMalaysiaDate, todayInMalaysia } from "@/lib/format";
+import { listPettyCashTransactions, summarizePettyCashClaims } from "@/lib/finance/queries";
+import { PETTY_CASH_OVERDUE_DAYS, PETTY_CASH_PAYMENT_STATUS_LABEL, isPettyCashOverdue, pettyCashDaysPending } from "@/lib/finance/constants";
 import { ENTRY_TYPE_LABEL, type EntryType, type OperationPettyCashRow } from "@/lib/operationPettyCash/constants";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
+import { StatusBadge } from "@/components/StatusBadge";
 import { SpendingSubNav } from "@/components/spending/SpendingSubNav";
-import { canAccessModule } from "@/lib/modules";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 import { ExportListButtons } from "@/components/procurement/ExportListButtons";
-import { OperationPettyCashForm } from "@/components/operationPettyCash/OperationPettyCashForm";
+import { PettyCashEntryForm } from "@/components/pettyCash/PettyCashEntryForm";
+import { PettyCashHolderBar } from "@/components/pettyCash/PettyCashHolderBar";
+import { PettyCashOverview } from "@/components/pettyCash/PettyCashOverview";
 import { OperationPettyCashRowActions } from "@/components/operationPettyCash/OperationPettyCashRowActions";
+import { PettyCashPaymentAction } from "@/components/finance/PettyCashPaymentAction";
 import { UndoBanner } from "@/components/operationPettyCash/UndoBanner";
 import { SoftHeader, SoftPage } from "@/components/ui/Soft";
-import { PettyCashOverview } from "@/components/pettyCash/PettyCashOverview";
 import { buildOverview } from "@/lib/pettyCash/overview";
 import { chosenHolder, holdersOnly, likeExact, loadPersonOptions } from "@/lib/pettyCash/people";
-import { PettyCashHolderBar } from "@/components/pettyCash/PettyCashHolderBar";
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
 const dayLabel = (iso: string) => formatMalaysiaDate(`${iso}T12:00:00+08:00`);
 
+type Row = {
+  key: string;
+  source: "book" | "claim" | "topup";
+  date: string;
+  created: string;
+  companyId: string;
+  companyName: string;
+  kind: "in" | "out";
+  amount: number;
+  title: string;
+  category: string | null;
+  person: string;
+  documentId: string | null;
+  bookId?: string;
+  claim?: { id: string; status: string; paymentDate: string | null; claimant: string | null; department: string | null };
+};
+
 /**
- * The Operation petty cash: money received by the holder (Mr. Reza) and what was spent, with the receipt. Private: only the
- * holder and the Director of Finance (and her assistant) can open it; the database enforces the same.
+ * Petty Cash: one place for the money received, the money spent (with the receipts) and the staff claims, for ONE person's petty cash:
+ * the name and the position are chosen at the top and nothing of anyone else's is mixed in. The cash book is private to the people who
+ * hold a petty cash (and the Director of Finance); the claims follow Admin & Finance access.
  */
-export default async function OperationPettyCashPage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string; edit?: string; holder?: string; position?: string }> }) {
+export default async function PettyCashPage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string; edit?: string; holder?: string; position?: string; status?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
   const supabase = await createClient();
   const { data: allowed } = await supabase.rpc("user_can_use_operation_petty_cash");
+  const isHolder = allowed === true;
+  const canClaims = canAccessModule(session.allowedModules, "finance-admin");
   const sp = await searchParams;
 
-  if (allowed !== true) {
+  if (!isHolder && !canClaims) {
     return (
       <SoftPage>
         <SoftHeader title="Petty Cash" subtitle="Cash book" />
-        <SpendingSubNav hideFinance={!canAccessModule(session.allowedModules, "finance-admin")} />
+        <SpendingSubNav hideFinance />
         <div className="rounded-xl border border-border bg-surface px-5 py-10 text-center text-[14px] text-text-secondary">
           The petty cash cash book is private. Only the person who holds it and the Director of Finance can open it.
         </div>
@@ -54,71 +79,129 @@ export default async function OperationPettyCashPage({ searchParams }: { searchP
 
   const people = await loadPersonOptions(supabase);
   const holders = holdersOnly(people);
-  // whose petty cash this is: only that person's entries are read, so nobody else's is ever mixed in
+  // whose petty cash this is: only that person's money, spending and claims are read, so nobody else's is ever mixed in
   const who = chosenHolder(sp, holders, session.userId);
-  const { data, error } = who.name
-    ? await supabase
-        .from("operation_petty_cash")
-        .select("*, companies(name)")
-        .in("company_id", targetCompanyIds)
-        .ilike("person_name", likeExact(who.name))
-        .order("entry_date", { ascending: true })
-        .order("created_at", { ascending: true })
-    : { data: [], error: null };
-  if (error) throw error;
-  const entries = data ?? [];
+  const pattern = who.name ? likeExact(who.name) : "";
 
-  // balance after each entry, per company (the float of each company is kept apart)
+  let book: Awaited<ReturnType<typeof readBook>> = [];
+  let transactions: Awaited<ReturnType<typeof listPettyCashTransactions>> = [];
+  if (who.name) {
+    [book, transactions] = await Promise.all([isHolder ? readBook(supabase, targetCompanyIds, pattern) : Promise.resolve([]), canClaims ? listPettyCashTransactions(supabase, targetCompanyIds, pattern) : Promise.resolve([])]);
+  }
+
+  // one list, oldest first, so the balance can run down it
+  const rows: Row[] = [
+    ...book.map<Row>((e) => ({
+      key: `b${e.id}`,
+      source: "book",
+      date: e.entry_date,
+      created: e.created_at,
+      companyId: e.company_id,
+      companyName: e.companies?.name ?? "",
+      kind: e.entry_type === "top_up" ? "in" : "out",
+      amount: Number(e.amount),
+      title: e.description || (e.entry_type === "top_up" ? ENTRY_TYPE_LABEL.top_up : "—"),
+      category: e.category,
+      person: [e.person_name, e.person_position].filter(Boolean).join(" · "),
+      documentId: e.document_id,
+      bookId: e.id,
+    })),
+    ...transactions.map<Row>((t) => ({
+      key: `t${t.id}`,
+      source: t.type === "expense" ? "claim" : "topup",
+      date: t.transaction_date,
+      created: t.created_at,
+      companyId: t.company_id,
+      companyName: t.companies?.name ?? "",
+      kind: t.type === "top_up" ? "in" : "out",
+      amount: Number(t.amount),
+      title: t.description || (t.type === "top_up" ? ENTRY_TYPE_LABEL.top_up : "—"),
+      category: t.category,
+      person: [t.person_name, t.person_position].filter(Boolean).join(" · "),
+      documentId: t.document_id,
+      claim: t.type === "expense" ? { id: t.id, status: t.payment_status, paymentDate: t.payment_date, claimant: t.claimant_name, department: t.claimant_department } : undefined,
+    })),
+  ].sort((a, b) => a.date.localeCompare(b.date) || a.created.localeCompare(b.created));
+
+  // balance after each row, per company (the money of each company is kept apart)
   const running = new Map<string, number>();
-  const withBalance = entries.map((e) => {
-    const next = (running.get(e.company_id) ?? 0) + (e.entry_type === "top_up" ? Number(e.amount) : -Number(e.amount));
-    running.set(e.company_id, next);
-    return { ...e, balance: next };
+  const withBalance = rows.map((r) => {
+    const next = (running.get(r.companyId) ?? 0) + (r.kind === "in" ? r.amount : -r.amount);
+    running.set(r.companyId, next);
+    return { ...r, balance: next };
   });
   const balanceByCompany = companies.filter((c) => running.has(c.id)).map((c) => ({ name: c.name, balance: running.get(c.id) ?? 0 }));
   const totalBalance = Array.from(running.values()).reduce((t, v) => t + v, 0);
 
   const thisMonth = todayInMalaysia().slice(0, 7);
-  const months = Array.from(new Set([thisMonth, ...entries.map((e) => e.entry_date.slice(0, 7))])).sort().reverse();
+  const months = Array.from(new Set([thisMonth, ...rows.map((r) => r.date.slice(0, 7))])).sort().reverse();
   const month = sp.month === "all" ? "all" : sp.month && MONTH_RE.test(sp.month) ? sp.month : thisMonth;
-  const shown = withBalance.filter((e) => month === "all" || e.entry_date.startsWith(month)).reverse();
+  const inMonth = withBalance.filter((r) => month === "all" || r.date.startsWith(month));
+  const claimsInMonth = inMonth.filter((r) => r.source === "claim" && r.claim);
+  const summary = summarizePettyCashClaims(claimsInMonth.map((r) => ({ amount: r.amount, payment_status: r.claim!.status })));
+  const overdueCount = claimsInMonth.filter((r) => isPettyCashOverdue(r.date, r.claim!.status)).length;
+  const statusParam = sp.status === "pending_payment" || sp.status === "paid" ? sp.status : undefined;
+  const shown = (statusParam ? inMonth.filter((r) => r.claim?.status === statusParam) : inMonth).slice().reverse();
+
   const overview = buildOverview(
-    entries.map((e) => ({ date: e.entry_date, kind: e.entry_type === "top_up" ? ("in" as const) : ("out" as const), amount: Number(e.amount), category: e.category })),
+    rows.map((r) => ({ date: r.date, kind: r.kind, amount: r.amount, category: r.category })),
     month,
     thisMonth,
   );
 
-  const editing = sp.edit ? withBalance.find((e) => e.id === sp.edit) : undefined;
+  const editing = sp.edit ? book.find((e) => e.id === sp.edit) : undefined;
   const editingRow: OperationPettyCashRow | undefined = editing
     ? { id: editing.id, company_id: editing.company_id, entry_type: editing.entry_type as EntryType, entry_date: editing.entry_date, category: editing.category, description: editing.description, amount: Number(editing.amount), document_id: editing.document_id, created_by: editing.created_by, person_name: editing.person_name, person_position: editing.person_position }
     : undefined;
 
   const keep = new URLSearchParams({ ...(sp.company ? { company: sp.company } : {}), holder: who.name, position: who.position, month });
   const listHref = `/spending/petty-cash?${keep.toString()}`;
-  const editHref = (id: string) => `${listHref}&edit=${id}`;
-  const exportHeaders = ["Date", "Company", "Type", "Category", "Description", "Name", "Position", "Received (RM)", "Spent (RM)", "Balance (RM)"];
-  const exportRows = [...shown].reverse().map((e): (string | number)[] => [e.entry_date, e.companies?.name ?? "", ENTRY_TYPE_LABEL[e.entry_type as EntryType] ?? e.entry_type, e.category ?? "", e.description ?? "", e.person_name ?? "", e.person_position ?? "", e.entry_type === "top_up" ? Number(e.amount) : "", e.entry_type === "expense" ? Number(e.amount) : "", e.balance]);
+  const editHref = (id: string) => `${listHref}${statusParam ? `&status=${statusParam}` : ""}&edit=${id}`;
+  const statusHref = (status?: string) => `${listHref}${status ? `&status=${status}` : ""}`;
 
-  const periodLabel = month === "all" ? "All time" : month;
+  const exportHeaders = ["Date", "Company", "Kind", "Category", "Details", "Name / position", "Claimant", "Claim status", "Received (RM)", "Spent (RM)", "Balance (RM)"];
+  const exportRows = [...shown].reverse().map((r): (string | number)[] => [
+    r.date,
+    r.companyName,
+    r.source === "claim" ? "Staff claim" : r.kind === "in" ? "Received" : "Spent",
+    r.category ?? "",
+    r.title,
+    r.person,
+    r.claim?.claimant ?? "",
+    r.claim ? (PETTY_CASH_PAYMENT_STATUS_LABEL[r.claim.status] ?? r.claim.status) : "",
+    r.kind === "in" ? r.amount : "",
+    r.kind === "out" ? r.amount : "",
+    r.balance,
+  ]);
 
   return (
     <SoftPage>
-      <SoftHeader title="Petty Cash" subtitle="Cash book: money received and what was spent, with the receipts" />
+      <SoftHeader title="Petty Cash" subtitle="Money received, what was spent and what staff claimed, for one person's petty cash" />
 
-      <SpendingSubNav hideFinance={!canAccessModule(session.allowedModules, "finance-admin")} />
+      <SpendingSubNav hideFinance={!canClaims} />
       <UndoBanner />
 
-      <PettyCashHolderBar holders={holders} holder={who.name} position={who.position} month={month} months={months} hidden={{ company: sp.company ?? "" }}>
+      {overdueCount > 0 && (
+        <div className="flex items-center gap-3 rounded-xl border border-danger/30 bg-danger-bg px-4 py-3">
+          <span className="text-lg">🔴</span>
+          <div className="text-[13px] font-semibold text-danger">
+            {`Petty cash claims overdue for payment: ${overdueCount} (pending more than ${PETTY_CASH_OVERDUE_DAYS} days) — please review and pay.`}
+          </div>
+        </div>
+      )}
+
+      <PettyCashHolderBar holders={holders} holder={who.name} position={who.position} month={month} months={months} hidden={{ company: sp.company ?? "", status: statusParam ?? "" }}>
         {who.name && (
           <span>
             Balance of {who.name}: <strong className={totalBalance < 0 ? "text-danger" : "text-text"}>{formatPrice(totalBalance)}</strong>
+            {summary.pendingCount > 0 && <span>{` · claims still to be paid: ${summary.pendingCount} (${formatPrice(summary.totalPendingAmount)})`}</span>}
           </span>
         )}
       </PettyCashHolderBar>
 
       {!who.name && <EmptyRow text="Choose your name and position above to see your own petty cash." />}
 
-      {who.name && <PettyCashOverview overview={overview} periodLabel={periodLabel} />}
+      {who.name && <PettyCashOverview overview={overview} periodLabel={month === "all" ? "All time" : month} />}
 
       {who.name && balanceByCompany.length > 1 && (
         <div className="flex flex-wrap gap-x-5 gap-y-1 text-[12.5px] text-text-secondary">
@@ -130,61 +213,120 @@ export default async function OperationPettyCashPage({ searchParams }: { searchP
         </div>
       )}
 
-      {who.name && <OperationPettyCashForm key={editing?.id ?? "new"} companies={selectable} defaultCompanyId={defaultCompanyId} editing={editingRow} listHref={listHref} people={people} holderName={who.name} holderPosition={who.position} />}
+      {who.name && (
+        <PettyCashEntryForm
+          key={editing?.id ?? "new"}
+          companies={selectable}
+          defaultCompanyId={defaultCompanyId}
+          editing={editingRow}
+          listHref={listHref}
+          people={people}
+          holderName={who.name}
+          holderPosition={who.position}
+          allowBook={isHolder}
+          allowClaim={canClaims && !editing}
+        />
+      )}
 
       {who.name && (
-      <div className="rounded-xl border border-border bg-surface shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5">
-          <div className="text-[15px] font-bold text-text">Petty cash records</div>
-          <div className="flex flex-wrap items-center gap-3">
-            <ExportListButtons filenameBase={`operation-petty-cash-${month}`} headers={exportHeaders} rows={exportRows} />
+        <div className="rounded-xl border border-border bg-surface shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5">
+            <div className="text-[15px] font-bold text-text">Petty cash records</div>
+            <div className="flex flex-wrap items-center gap-3">
+              {canClaims && (
+                <div className="flex gap-1">
+                  <Link href={statusHref()} className={`rounded-md px-2.5 py-1 text-[12px] font-semibold ${!statusParam ? "bg-primary text-white" : "text-text-secondary hover:bg-bg"}`}>
+                    All
+                  </Link>
+                  <Link href={statusHref("pending_payment")} className={`rounded-md px-2.5 py-1 text-[12px] font-semibold ${statusParam === "pending_payment" ? "bg-primary text-white" : "text-text-secondary hover:bg-bg"}`}>
+                    Claims pending payment
+                  </Link>
+                  <Link href={statusHref("paid")} className={`rounded-md px-2.5 py-1 text-[12px] font-semibold ${statusParam === "paid" ? "bg-primary text-white" : "text-text-secondary hover:bg-bg"}`}>
+                    Claims paid
+                  </Link>
+                </div>
+              )}
+              <ExportListButtons filenameBase={`petty-cash-${month}`} headers={exportHeaders} rows={exportRows} />
+            </div>
           </div>
-        </div>
 
-        {shown.length === 0 ? (
-          <EmptyRow text="No petty cash records for this month yet." />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[820px] border-collapse text-left">
-              <thead className="bg-surface-alt">
-                <tr className="text-[11px] font-bold uppercase tracking-wide text-text-muted">
-                  <th className="px-4 py-2.5">Date</th>
-                  <th className="px-4 py-2.5">Company</th>
-                  <th className="px-4 py-2.5">Details</th>
-                  <th className="px-4 py-2.5 text-right">Received</th>
-                  <th className="px-4 py-2.5 text-right">Spent</th>
-                  <th className="px-4 py-2.5 text-right">Balance</th>
-                  <th className="px-4 py-2.5">Receipt</th>
-                  <th className="px-4 py-2.5">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {shown.map((e) => (
-                  <tr key={e.id} className="border-t border-border text-[13px]">
-                    <td className="px-4 py-2.5 text-text-secondary">{dayLabel(e.entry_date)}</td>
-                    <td className="px-4 py-2.5 text-text-secondary">{e.companies?.name}</td>
-                    <td className="px-4 py-2.5">
-                      <div className="font-semibold text-text">{e.description || (e.entry_type === "top_up" ? ENTRY_TYPE_LABEL.top_up : "—")}</div>
-                      {e.category && <div className="text-[11.5px] text-text-muted">{e.category}</div>}
-                      {(e.person_name || e.person_position) && (
-                        <div className="text-[11.5px] text-text-secondary">{`${e.entry_type === "top_up" ? "Received by" : "Spent by"}: ${[e.person_name, e.person_position].filter(Boolean).join(" · ")}`}</div>
-                      )}
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-semibold text-success">{e.entry_type === "top_up" ? formatPrice(Number(e.amount)) : ""}</td>
-                    <td className="px-4 py-2.5 text-right font-semibold text-text">{e.entry_type === "expense" ? formatPrice(Number(e.amount)) : ""}</td>
-                    <td className={`px-4 py-2.5 text-right ${e.balance < 0 ? "font-semibold text-danger" : "text-text-secondary"}`}>{formatPrice(e.balance)}</td>
-                    <td className="px-4 py-2.5">{e.document_id ? <DocumentViewLink documentId={e.document_id} /> : <span className="text-text-muted">—</span>}</td>
-                    <td className="px-4 py-2.5">
-                      <OperationPettyCashRowActions id={e.id} editHref={editHref(e.id)} />
-                    </td>
+          {shown.length === 0 ? (
+            <EmptyRow text="No petty cash records for this month yet." />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[900px] border-collapse text-left">
+                <thead className="bg-surface-alt">
+                  <tr className="text-[11px] font-bold uppercase tracking-wide text-text-muted">
+                    <th className="px-4 py-2.5">Date</th>
+                    <th className="px-4 py-2.5">Company</th>
+                    <th className="px-4 py-2.5">Details</th>
+                    <th className="px-4 py-2.5 text-right">Received</th>
+                    <th className="px-4 py-2.5 text-right">Spent</th>
+                    <th className="px-4 py-2.5 text-right">Balance</th>
+                    <th className="px-4 py-2.5">Claim status</th>
+                    <th className="px-4 py-2.5">Receipt</th>
+                    <th className="px-4 py-2.5">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                </thead>
+                <tbody>
+                  {shown.map((r) => {
+                    const overdue = r.claim ? isPettyCashOverdue(r.date, r.claim.status) : false;
+                    const days = r.claim?.status === "pending_payment" ? pettyCashDaysPending(r.date) : null;
+                    return (
+                      <tr key={r.key} className="border-t border-border align-top text-[13px]">
+                        <td className="px-4 py-2.5 text-text-secondary">{dayLabel(r.date)}</td>
+                        <td className="px-4 py-2.5 text-text-secondary">{r.companyName}</td>
+                        <td className="px-4 py-2.5">
+                          <div className="font-semibold text-text">{r.title}</div>
+                          {r.category && <div className="text-[11.5px] text-text-muted">{r.category}</div>}
+                          {r.claim && (
+                            <div className="text-[11.5px] text-text-secondary">{`Claimed by: ${[r.claim.claimant, r.claim.department].filter(Boolean).join(" · ") || "—"}`}</div>
+                          )}
+                          {r.person && <div className="text-[11.5px] text-text-secondary">{`${r.kind === "in" ? "Received by" : r.claim ? "Paid from the petty cash of" : "Spent by"}: ${r.person}`}</div>}
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-semibold text-success">{r.kind === "in" ? formatPrice(r.amount) : ""}</td>
+                        <td className="px-4 py-2.5 text-right font-semibold text-text">{r.kind === "out" ? formatPrice(r.amount) : ""}</td>
+                        <td className={`px-4 py-2.5 text-right ${r.balance < 0 ? "font-semibold text-danger" : "text-text-secondary"}`}>{formatPrice(r.balance)}</td>
+                        <td className="px-4 py-2.5">
+                          {r.claim ? (
+                            <>
+                              <StatusBadge tone={r.claim.status === "paid" ? "success" : overdue ? "danger" : "warning"}>
+                                {overdue ? "🔴 " : r.claim.status === "paid" ? "🟢 " : "🟡 "}
+                                {PETTY_CASH_PAYMENT_STATUS_LABEL[r.claim.status] ?? r.claim.status}
+                              </StatusBadge>
+                              {days !== null && <div className={`mt-1 text-[11px] ${overdue ? "font-semibold text-danger" : "text-text-muted"}`}>{days} day{days === 1 ? "" : "s"} pending</div>}
+                              {r.claim.paymentDate && <div className="mt-1 text-[11px] text-text-muted">{dayLabel(r.claim.paymentDate)}</div>}
+                            </>
+                          ) : (
+                            <span className="text-text-muted">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5">{r.documentId ? <DocumentViewLink documentId={r.documentId} /> : <span className="text-text-muted">—</span>}</td>
+                        <td className="px-4 py-2.5">
+                          {r.bookId ? <OperationPettyCashRowActions id={r.bookId} editHref={editHref(r.bookId)} /> : r.claim ? <PettyCashPaymentAction transactionId={r.claim.id} paymentStatus={r.claim.status} /> : null}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       )}
     </SoftPage>
   );
+}
+
+/** The cash book entries of one person (read only for the people who hold a petty cash; the database enforces it too). */
+async function readBook(supabase: Awaited<ReturnType<typeof createClient>>, companyIds: string[], pattern: string) {
+  const { data, error } = await supabase
+    .from("operation_petty_cash")
+    .select("*, companies(name)")
+    .in("company_id", companyIds)
+    .ilike("person_name", pattern)
+    .order("entry_date", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return data ?? [];
 }

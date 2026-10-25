@@ -282,7 +282,7 @@ export async function createPettyCashTransaction(input: PettyCashInput): Promise
     action: input.type === "expense" ? "claim_submitted" : "top_up_recorded",
     newValue: `RM ${Number(input.amount).toFixed(2)}${input.claimantName ? ` · ${input.claimantName}` : ""}${input.personName ? ` · ${input.personName}` : ""}`,
   });
-  revalidatePath("/spending/petty-cash/claims");
+  revalidatePath("/spending/petty-cash");
   revalidatePath("/admin");
   revalidatePath("/");
   return {};
@@ -321,7 +321,7 @@ export async function markPettyCashPaid(input: MarkPettyCashPaidInput) {
       newValue: `Paid ${paymentDate} · RM ${Number(before.amount).toFixed(2)}`,
     });
   }
-  revalidatePath("/spending/petty-cash/claims");
+  revalidatePath("/spending/petty-cash");
   revalidatePath("/admin");
   revalidatePath("/");
 }

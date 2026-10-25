@@ -11,7 +11,8 @@ const nextConfig: NextConfig = {
       { source: "/ingredient-calculator", destination: "/kitchen", permanent: false },
       // Company Expenses, Petty Cash and Budgets moved out of Operation Management and Admin & Finance into Company Spending
       { source: "/driver-logistics/petty-cash", destination: "/spending/petty-cash", permanent: false },
-      { source: "/finance/petty-cash", destination: "/spending/petty-cash/claims", permanent: false },
+      { source: "/finance/petty-cash", destination: "/spending/petty-cash", permanent: false },
+      { source: "/spending/petty-cash/claims", destination: "/spending/petty-cash", permanent: false },
       { source: "/finance/expenses/:path*", destination: "/spending/expenses/:path*", permanent: false },
       { source: "/finance/expenses", destination: "/spending/expenses", permanent: false },
       { source: "/admin/budgets/:path*", destination: "/spending/budgets/:path*", permanent: false },
