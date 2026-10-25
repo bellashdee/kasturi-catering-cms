@@ -15,14 +15,14 @@ function todayIso(): string {
   return todayInMalaysia();
 }
 
-export function PettyCashForm({ companies, defaultCompanyId, people }: { companies: Company[]; defaultCompanyId?: string; people: PersonOption[] }) {
+export function PettyCashForm({ companies, defaultCompanyId, people, holderName = "", holderPosition = "" }: { companies: Company[]; defaultCompanyId?: string; people: PersonOption[]; holderName?: string; holderPosition?: string }) {
   const router = useRouter();
   const [companyId, setCompanyId] = useState(defaultCompanyId ?? companies[0]?.id ?? "");
   const [type, setType] = useState<"top_up" | "expense">("expense");
   const [claimantName, setClaimantName] = useState("");
   const [claimantDepartment, setClaimantDepartment] = useState("");
-  const [personName, setPersonName] = useState("");
-  const [personPosition, setPersonPosition] = useState("");
+  const [personName, setPersonName] = useState(holderName);
+  const [personPosition, setPersonPosition] = useState(holderPosition);
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
@@ -39,6 +39,10 @@ export function PettyCashForm({ companies, defaultCompanyId, people }: { compani
     e.preventDefault();
     if (!amount) {
       setError("Amount is required.");
+      return;
+    }
+    if (!personName.trim() || !personPosition.trim()) {
+      setError("Choose whose petty cash this is: the name and the position.");
       return;
     }
     if (isClaim && !claimantName.trim()) {
@@ -63,15 +67,15 @@ export function PettyCashForm({ companies, defaultCompanyId, people }: { compani
         amount: Number(amount),
         transactionDate,
         documentId,
-        personName: !isClaim ? personName.trim() || undefined : undefined,
-        personPosition: !isClaim ? personPosition.trim() || undefined : undefined,
+        personName: personName.trim(),
+        personPosition: personPosition.trim(),
       });
       if (!result.ok) {
         setError(result.error);
         return;
       }
-      setPersonName("");
-      setPersonPosition("");
+      setPersonName(holderName);
+      setPersonPosition(holderPosition);
       setClaimantName("");
       setClaimantDepartment("");
       setCategory("");
@@ -142,10 +146,10 @@ export function PettyCashForm({ companies, defaultCompanyId, people }: { compani
         </div>
       )}
 
-      {!isClaim && (
+      {(
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-[12px] font-semibold text-text-secondary">Received by (choose the name)</label>
+            <label className="text-[12px] font-semibold text-text-secondary">{isClaim ? "Paid from the petty cash of (choose the name) *" : "Received by (choose the name) *"}</label>
             <SearchSelect
               value={personName}
               onChange={setPersonName}
@@ -160,7 +164,7 @@ export function PettyCashForm({ companies, defaultCompanyId, people }: { compani
             />
           </div>
           <div>
-            <label className="text-[12px] font-semibold text-text-secondary">Position that holds the petty cash</label>
+            <label className="text-[12px] font-semibold text-text-secondary">Position that holds the petty cash *</label>
             <SearchSelect value={personPosition} onChange={setPersonPosition} options={positionOptions(holders)} placeholder="Search or type a position" className="mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]" />
           </div>
         </div>

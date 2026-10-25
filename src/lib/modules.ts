@@ -10,6 +10,9 @@ const PATH_MODULE: [string, ModuleKey][] = [
   ["/supplier-procurement", "supplier-procurement"],
   ["/admin", "finance-admin"],
   ["/finance", "finance-admin"],
+  // Company Spending: expenses and budgets are Admin & Finance; the petty cash pages are open to its holders (the database decides who sees what)
+  ["/spending/expenses", "finance-admin"],
+  ["/spending/budgets", "finance-admin"],
   ["/reports", "reports"],
   ["/ai-assistant", "ai-assistant"],
 ];

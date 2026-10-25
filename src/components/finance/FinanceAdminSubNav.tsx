@@ -15,10 +15,6 @@ const TABS = [
   { href: "/finance/rental-payment", label: "Rental Payment", match: (p: string) => p.startsWith("/finance/rental-payment") },
   { href: "/finance/utilities-payment", label: "Utilities Payment", match: (p: string) => p.startsWith("/finance/utilities-payment") },
   { href: "/supplier-procurement/payments", label: "Procurement Payments", match: (p: string) => p.startsWith("/supplier-procurement/payments") },
-  { href: "/finance/expenses", label: "Company Expenses", match: (p: string) => p.startsWith("/finance/expenses") },
-  { href: "/finance/petty-cash", label: "Petty Cash", match: (p: string) => p.startsWith("/finance/petty-cash") },
-  { href: "/admin/budgets", label: "Budgets", match: (p: string) => p.startsWith("/admin/budgets") },
-  { href: "/admin/categories", label: "Categories", match: (p: string) => p.startsWith("/admin/categories") },
 ];
 
 export function FinanceAdminSubNav() {

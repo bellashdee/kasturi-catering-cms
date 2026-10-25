@@ -222,7 +222,7 @@ export const KNOWLEDGE_BASE: KBEntry[] = [
     title: "Logging a petty cash transaction",
     keywords: ["petty cash"],
     content:
-      "📌 How to Log a Petty Cash Transaction\n1. Go to Admin & Finance → Petty Cash.\n2. Click + New Transaction.\n3. Choose in/out, enter the amount and reason.\n4. Click Confirm & Save.",
+      "📌 How to Log a Petty Cash Transaction\n1. Open Company Spending in the side bar, then the Petty Cash tab.\n2. In the Cash Book, choose Received or Spent, the name, the amount and the receipt, then Save. Staff claims are in the Claims tab.\n3. The month, income, expenses and what is left are at the top.",
   },
   {
     id: "tut-duplicate-check",

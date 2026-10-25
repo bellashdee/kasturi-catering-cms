@@ -18,6 +18,7 @@ export function SearchSelect({
   className,
   required,
   id,
+  name,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -27,6 +28,7 @@ export function SearchSelect({
   className?: string;
   required?: boolean;
   id?: string;
+  name?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
@@ -51,6 +53,7 @@ export function SearchSelect({
     <div className="relative">
       <input
         id={id}
+        name={name}
         required={required}
         value={value}
         onChange={(e) => {

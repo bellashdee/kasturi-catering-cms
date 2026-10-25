@@ -44,7 +44,7 @@ export default async function NewCompanyExpensePage({
           defaultCompanyId={defaultCompanyId}
           categories={categories}
           utilityAccounts={utilityAccounts}
-          redirectTo={`/finance/expenses${query}`}
+          redirectTo={`/spending/expenses${query}`}
         />
       </div>
     </div>

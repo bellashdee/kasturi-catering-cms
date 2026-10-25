@@ -5,7 +5,8 @@ import { resolveCompanyScope } from "@/lib/companyScope";
 import { formatPrice, formatMalaysiaDate, todayInMalaysia } from "@/lib/format";
 import { ENTRY_TYPE_LABEL, type EntryType, type OperationPettyCashRow } from "@/lib/operationPettyCash/constants";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
-import { DriverLogisticsSubNav } from "@/components/driver/DriverLogisticsSubNav";
+import { SpendingSubNav } from "@/components/spending/SpendingSubNav";
+import { canAccessModule } from "@/lib/modules";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 import { ExportListButtons } from "@/components/procurement/ExportListButtons";
 import { OperationPettyCashForm } from "@/components/operationPettyCash/OperationPettyCashForm";
@@ -14,7 +15,8 @@ import { UndoBanner } from "@/components/operationPettyCash/UndoBanner";
 import { SoftHeader, SoftPage } from "@/components/ui/Soft";
 import { PettyCashOverview } from "@/components/pettyCash/PettyCashOverview";
 import { buildOverview } from "@/lib/pettyCash/overview";
-import { loadPersonOptions } from "@/lib/pettyCash/people";
+import { chosenHolder, holdersOnly, likeExact, loadPersonOptions } from "@/lib/pettyCash/people";
+import { PettyCashHolderBar } from "@/components/pettyCash/PettyCashHolderBar";
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
 const dayLabel = (iso: string) => formatMalaysiaDate(`${iso}T12:00:00+08:00`);
@@ -23,22 +25,21 @@ const dayLabel = (iso: string) => formatMalaysiaDate(`${iso}T12:00:00+08:00`);
  * The Operation petty cash: money received by the holder (Mr. Reza) and what was spent, with the receipt. Private: only the
  * holder and the Director of Finance (and her assistant) can open it; the database enforces the same.
  */
-export default async function OperationPettyCashPage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string; edit?: string }> }) {
+export default async function OperationPettyCashPage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string; edit?: string; holder?: string; position?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
   const supabase = await createClient();
   const { data: allowed } = await supabase.rpc("user_can_use_operation_petty_cash");
   const sp = await searchParams;
-  const query = sp.company ? `?company=${sp.company}` : "";
 
   if (allowed !== true) {
     return (
       <SoftPage>
-        <SoftHeader title="Operation Management" subtitle="Petty Cash" />
-        <DriverLogisticsSubNav />
+        <SoftHeader title="Petty Cash" subtitle="Cash book" />
+        <SpendingSubNav hideFinance={!canAccessModule(session.allowedModules, "finance-admin")} />
         <div className="rounded-xl border border-border bg-surface px-5 py-10 text-center text-[14px] text-text-secondary">
-          The Operation petty cash is private. Only the person who holds it and the Director of Finance can open it.
+          The petty cash cash book is private. Only the person who holds it and the Director of Finance can open it.
         </div>
       </SoftPage>
     );
@@ -51,15 +52,21 @@ export default async function OperationPettyCashPage({ searchParams }: { searchP
   if (targetCompanyIds.length === 0) return <EmptyRow text="You don't have access to any company yet." />;
   const defaultCompanyId = sp.company && accessibleIds.includes(sp.company) ? sp.company : selectable[0]?.id;
 
-  const { data, error } = await supabase
-    .from("operation_petty_cash")
-    .select("*, companies(name)")
-    .in("company_id", targetCompanyIds)
-    .order("entry_date", { ascending: true })
-    .order("created_at", { ascending: true });
+  const people = await loadPersonOptions(supabase);
+  const holders = holdersOnly(people);
+  // whose petty cash this is: only that person's entries are read, so nobody else's is ever mixed in
+  const who = chosenHolder(sp, holders, session.userId);
+  const { data, error } = who.name
+    ? await supabase
+        .from("operation_petty_cash")
+        .select("*, companies(name)")
+        .in("company_id", targetCompanyIds)
+        .ilike("person_name", likeExact(who.name))
+        .order("entry_date", { ascending: true })
+        .order("created_at", { ascending: true })
+    : { data: [], error: null };
   if (error) throw error;
   const entries = data ?? [];
-  const people = await loadPersonOptions(supabase);
 
   // balance after each entry, per company (the float of each company is kept apart)
   const running = new Map<string, number>();
@@ -86,7 +93,8 @@ export default async function OperationPettyCashPage({ searchParams }: { searchP
     ? { id: editing.id, company_id: editing.company_id, entry_type: editing.entry_type as EntryType, entry_date: editing.entry_date, category: editing.category, description: editing.description, amount: Number(editing.amount), document_id: editing.document_id, created_by: editing.created_by, person_name: editing.person_name, person_position: editing.person_position }
     : undefined;
 
-  const listHref = `/driver-logistics/petty-cash${query}${query ? "&" : "?"}month=${month}`;
+  const keep = new URLSearchParams({ ...(sp.company ? { company: sp.company } : {}), holder: who.name, position: who.position, month });
+  const listHref = `/spending/petty-cash?${keep.toString()}`;
   const editHref = (id: string) => `${listHref}&edit=${id}`;
   const exportHeaders = ["Date", "Company", "Type", "Category", "Description", "Name", "Position", "Received (RM)", "Spent (RM)", "Balance (RM)"];
   const exportRows = [...shown].reverse().map((e): (string | number)[] => [e.entry_date, e.companies?.name ?? "", ENTRY_TYPE_LABEL[e.entry_type as EntryType] ?? e.entry_type, e.category ?? "", e.description ?? "", e.person_name ?? "", e.person_position ?? "", e.entry_type === "top_up" ? Number(e.amount) : "", e.entry_type === "expense" ? Number(e.amount) : "", e.balance]);
@@ -95,31 +103,24 @@ export default async function OperationPettyCashPage({ searchParams }: { searchP
 
   return (
     <SoftPage>
-      <SoftHeader title="Operation Management" subtitle="Petty Cash: the Operation float, money received and what was spent, with the receipts" />
+      <SoftHeader title="Petty Cash" subtitle="Cash book: money received and what was spent, with the receipts" />
 
-      <DriverLogisticsSubNav />
+      <SpendingSubNav hideFinance={!canAccessModule(session.allowedModules, "finance-admin")} />
       <UndoBanner />
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface px-5 py-3">
-        <form method="get" className="flex flex-wrap items-center gap-2">
-          {sp.company && <input type="hidden" name="company" value={sp.company} />}
-          <label className="text-[12.5px] font-bold uppercase tracking-wide text-text-muted" htmlFor="opc-month-top">Month</label>
-          <select id="opc-month-top" name="month" defaultValue={month} className="h-9 rounded-lg border border-border-strong bg-surface px-3 text-[14px] font-semibold">
-            {months.map((m) => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-            <option value="all">All</option>
-          </select>
-          <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Show</button>
-        </form>
-        <div className="text-[13px] text-text-secondary">
-          Float balance (all time): <strong className={totalBalance < 0 ? "text-danger" : "text-text"}>{formatPrice(totalBalance)}</strong>
-        </div>
-      </div>
+      <PettyCashHolderBar holders={holders} holder={who.name} position={who.position} month={month} months={months} hidden={{ company: sp.company ?? "" }}>
+        {who.name && (
+          <span>
+            Balance of {who.name}: <strong className={totalBalance < 0 ? "text-danger" : "text-text"}>{formatPrice(totalBalance)}</strong>
+          </span>
+        )}
+      </PettyCashHolderBar>
 
-      <PettyCashOverview overview={overview} periodLabel={periodLabel} />
+      {!who.name && <EmptyRow text="Choose your name and position above to see your own petty cash." />}
 
-      {balanceByCompany.length > 1 && (
+      {who.name && <PettyCashOverview overview={overview} periodLabel={periodLabel} />}
+
+      {who.name && balanceByCompany.length > 1 && (
         <div className="flex flex-wrap gap-x-5 gap-y-1 text-[12.5px] text-text-secondary">
           {balanceByCompany.map((b) => (
             <span key={b.name}>
@@ -129,23 +130,13 @@ export default async function OperationPettyCashPage({ searchParams }: { searchP
         </div>
       )}
 
-      <OperationPettyCashForm key={editing?.id ?? "new"} companies={selectable} defaultCompanyId={defaultCompanyId} editing={editingRow} listHref={listHref} people={people} />
+      {who.name && <OperationPettyCashForm key={editing?.id ?? "new"} companies={selectable} defaultCompanyId={defaultCompanyId} editing={editingRow} listHref={listHref} people={people} holderName={who.name} holderPosition={who.position} />}
 
+      {who.name && (
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5">
           <div className="text-[15px] font-bold text-text">Petty cash records</div>
           <div className="flex flex-wrap items-center gap-3">
-            <form method="get" className="flex items-center gap-2">
-              {sp.company && <input type="hidden" name="company" value={sp.company} />}
-              <label className="text-[12px] font-semibold text-text-secondary" htmlFor="opc-month">Month</label>
-              <select id="opc-month" name="month" defaultValue={month} className="h-8 rounded-md border border-border-strong bg-surface px-2 text-[12.5px]">
-                {months.map((m) => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-                <option value="all">All</option>
-              </select>
-              <button type="submit" className="h-8 rounded-md border border-border-strong bg-surface px-3 text-[12.5px] font-semibold text-text">Show</button>
-            </form>
             <ExportListButtons filenameBase={`operation-petty-cash-${month}`} headers={exportHeaders} rows={exportRows} />
           </div>
         </div>
@@ -193,6 +184,7 @@ export default async function OperationPettyCashPage({ searchParams }: { searchP
           </div>
         )}
       </div>
+      )}
     </SoftPage>
   );
 }

@@ -33,6 +33,13 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M6 12.5h3" />
     </>
   ),
+  "petty-cash": (
+    <>
+      <path d="M3 6.5h12.5a1.5 1.5 0 0 1 1.5 1.5v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 15V6.5Z" />
+      <path d="M3 6.5 13 3.2v3.3" />
+      <circle cx="13.2" cy="11.5" r="1.1" />
+    </>
+  ),
   hr: (
     <>
       <circle cx="10" cy="7" r="3" />
@@ -154,6 +161,10 @@ export function BulletinLink() {
 
 export function PayrollCentreLink() {
   return <NavItem href="/payroll-centre" icon="payroll" label="Payroll Centre" />;
+}
+
+export function SpendingLink() {
+  return <NavItem href="/spending" icon="petty-cash" label="Company Spending" matchPrefixes={["/spending"]} />;
 }
 
 export function ModuleLinks({ allowedModules, badges = {} }: { allowedModules: string[] | null; badges?: Record<string, number> }) {

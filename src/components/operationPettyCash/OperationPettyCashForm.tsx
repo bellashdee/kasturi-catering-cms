@@ -18,7 +18,7 @@ const inputClass = "mt-1 h-9 w-full rounded-lg border border-border-strong px-2 
 const labelClass = "text-[12px] font-semibold text-text-secondary";
 
 /** Record money received (top-up) or spent (with the receipt); also used to edit an entry. */
-export function OperationPettyCashForm({ companies, defaultCompanyId, editing, listHref, people }: { companies: Company[]; defaultCompanyId?: string; editing?: OperationPettyCashRow; listHref: string; people: PersonOption[] }) {
+export function OperationPettyCashForm({ companies, defaultCompanyId, editing, listHref, people, holderName = "", holderPosition = "" }: { companies: Company[]; defaultCompanyId?: string; editing?: OperationPettyCashRow; listHref: string; people: PersonOption[]; holderName?: string; holderPosition?: string }) {
   const router = useRouter();
   const [companyId, setCompanyId] = useState(editing?.company_id ?? defaultCompanyId ?? companies[0]?.id ?? "");
   const [type, setType] = useState<EntryType>(editing?.entry_type ?? "expense");
@@ -26,8 +26,8 @@ export function OperationPettyCashForm({ companies, defaultCompanyId, editing, l
   const [amount, setAmount] = useState(editing ? String(editing.amount) : "");
   const [category, setCategory] = useState(editing?.category ?? "");
   const [description, setDescription] = useState(editing?.description ?? "");
-  const [personName, setPersonName] = useState(editing?.person_name ?? "");
-  const [personPosition, setPersonPosition] = useState(editing?.person_position ?? "");
+  const [personName, setPersonName] = useState(editing?.person_name ?? holderName);
+  const [personPosition, setPersonPosition] = useState(editing?.person_position ?? holderPosition);
   const [receipt, setReceipt] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +38,10 @@ export function OperationPettyCashForm({ companies, defaultCompanyId, editing, l
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!personName.trim() || !personPosition.trim()) {
+      setError("Choose whose petty cash this is: the name and the position.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -58,8 +62,8 @@ export function OperationPettyCashForm({ companies, defaultCompanyId, editing, l
         setAmount("");
         setCategory("");
         setDescription("");
-        setPersonName("");
-        setPersonPosition("");
+        setPersonName(holderName);
+        setPersonPosition(holderPosition);
         setReceipt(null);
         (e.target as HTMLFormElement).reset();
       }
@@ -122,7 +126,7 @@ export function OperationPettyCashForm({ companies, defaultCompanyId, editing, l
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label className={labelClass}>{isSpent ? "Spent by (choose the name)" : "Received by (choose the name)"}</label>
+          <label className={labelClass}>{isSpent ? "Spent by (choose the name) *" : "Received by (choose the name) *"}</label>
           <SearchSelect
             value={personName}
             onChange={setPersonName}
@@ -137,7 +141,7 @@ export function OperationPettyCashForm({ companies, defaultCompanyId, editing, l
           />
         </div>
         <div>
-          <label className={labelClass}>Position that holds the petty cash</label>
+          <label className={labelClass}>Position that holds the petty cash *</label>
           <SearchSelect value={personPosition} onChange={setPersonPosition} options={positionOptions(holders)} className={inputClass} placeholder="Search or type a position" />
         </div>
       </div>

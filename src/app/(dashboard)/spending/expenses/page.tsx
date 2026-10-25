@@ -6,7 +6,7 @@ import { resolveCompanyScope } from "@/lib/companyScope";
 import { listCompanyExpenses, listCostCategories, uniqueCategories } from "@/lib/finance/queries";
 import { formatCurrency } from "@/lib/format";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
-import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
+import { SpendingSubNav } from "@/components/spending/SpendingSubNav";
 import { CompanyExpenseTable } from "@/components/finance/CompanyExpenseTable";
 
 export default async function CompanyExpensesPage({
@@ -36,7 +36,7 @@ export default async function CompanyExpensesPage({
   const pages = Math.max(1, Math.ceil(expenses.length / PAGE_SIZE));
   const page = Math.min(pages, Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1));
   const shown = expenses.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const pageHref = (n: number) => `/finance/expenses?${new URLSearchParams({ ...(requestedId ? { company: requestedId } : {}), ...(n > 1 ? { page: String(n) } : {}) }).toString()}`;
+  const pageHref = (n: number) => `/spending/expenses?${new URLSearchParams({ ...(requestedId ? { company: requestedId } : {}), ...(n > 1 ? { page: String(n) } : {}) }).toString()}`;
 
   return (
     <div className="flex flex-col gap-5">
@@ -45,12 +45,12 @@ export default async function CompanyExpensesPage({
           <h1 className="text-[22px] font-extrabold text-text">Admin &amp; Finance</h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">{expenses.length} expense{expenses.length === 1 ? "" : "s"} · {formatCurrency(total)} total</p>
         </div>
-        <Link href={`/finance/expenses/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
+        <Link href={`/spending/expenses/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
           + New Expense
         </Link>
       </div>
 
-      <FinanceAdminSubNav />
+      <SpendingSubNav />
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {expenses.length === 0 ? (

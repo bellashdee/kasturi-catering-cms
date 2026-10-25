@@ -9,7 +9,7 @@ import { formatCurrency } from "@/lib/format";
 import { BudgetRowActions } from "@/components/finance/BudgetRowActions";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
-import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
+import { SpendingSubNav } from "@/components/spending/SpendingSubNav";
 
 export default async function BudgetsPage({
   searchParams,
@@ -54,12 +54,12 @@ export default async function BudgetsPage({
           <h1 className="text-[22px] font-extrabold text-text">Admin &amp; Finance</h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">{budgets.length} budget{budgets.length === 1 ? "" : "s"}</p>
         </div>
-        <Link href={`/admin/budgets/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
+        <Link href={`/spending/budgets/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
           + New Budget
         </Link>
       </div>
 
-      <FinanceAdminSubNav />
+      <SpendingSubNav />
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {budgets.length === 0 ? (

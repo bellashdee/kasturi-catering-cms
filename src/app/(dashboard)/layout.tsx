@@ -35,6 +35,9 @@ export default async function DashboardLayout({
   const isAdmin = session.role === "super_admin" || session.role === "company_admin";
   const showPayroll = await canUsePayrollCentre(supabase);
   const taskLabel = isAdmin ? "Priority Centre" : "My Tasks";
+  // Company Spending (Company Expenses, Petty Cash, Budgets) has its own place in the side bar: for Finance & Admin users and for the people who hold a petty cash
+  const { data: holder } = await supabase.rpc("user_can_use_operation_petty_cash");
+  const showSpending = canAccessModule(session.allowedModules, "finance-admin") || holder === true;
 
   return (
     <MobileNavProvider>
@@ -44,7 +47,7 @@ export default async function DashboardLayout({
         <CompanyTheme companies={companies ?? []} />
       </Suspense>
       <div className="flex h-screen overflow-hidden bg-bg print:block print:h-auto print:overflow-visible">
-        <Sidebar companies={companies ?? []} allowedModules={session.allowedModules} badges={{ catering: pendingCatering }} taskLinkLabel={taskLabel} showPayroll={showPayroll} />
+        <Sidebar companies={companies ?? []} allowedModules={session.allowedModules} badges={{ catering: pendingCatering }} taskLinkLabel={taskLabel} showPayroll={showPayroll} showSpending={showSpending} />
         <div className="flex min-w-0 flex-1 flex-col print:block">
           <Topbar session={session} companies={companies ?? []} priorityTitle={taskLabel} />
           <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-7 print:overflow-visible print:p-0">{children}</main>

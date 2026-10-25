@@ -3,18 +3,18 @@ import type { Database } from "@/lib/supabase/types";
 
 type DB = SupabaseClient<Database>;
 
-export type PersonOption = { name: string; position: string; department: string; /** a Malaysian (local) staff member: only local staff hold the petty cash */ local: boolean };
+export type PersonOption = { name: string; position: string; department: string; userId: string | null; /** a Malaysian (local) staff member: only local staff hold the petty cash */ local: boolean };
 
 /** The active staff with their position, department and whether they are local (what the signed-in person may read; A to Z). */
 export async function loadPersonOptions(supabase: DB): Promise<PersonOption[]> {
-  const { data } = await supabase.from("employees").select("full_name, position, department, nationality").eq("status", "active").order("full_name").limit(1000);
+  const { data } = await supabase.from("employees").select("full_name, position, department, nationality, user_id").eq("status", "active").order("full_name").limit(1000);
   const seen = new Set<string>();
   const list: PersonOption[] = [];
   for (const e of data ?? []) {
     const name = e.full_name?.trim();
     if (!name || seen.has(name.toUpperCase())) continue;
     seen.add(name.toUpperCase());
-    list.push({ name, position: e.position?.trim() ?? "", department: e.department?.trim() ?? "", local: /^malay/i.test(e.nationality?.trim() ?? "") });
+    list.push({ name, position: e.position?.trim() ?? "", department: e.department?.trim() ?? "", userId: e.user_id ?? null, local: /^malay/i.test(e.nationality?.trim() ?? "") });
   }
   return list;
 }
@@ -26,3 +26,16 @@ export function positionOptions(people: PersonOption[]): string[] {
 
 /** The people who may hold the petty cash: local staff only. */
 export const holdersOnly = (people: PersonOption[]) => people.filter((p) => p.local);
+
+/** The petty cash holder that belongs to the signed-in person (their own staff record), when they are one of the holders. */
+export const ownHolder = (holders: PersonOption[], userId: string) => holders.find((p) => p.userId === userId);
+
+/** A name as a pattern for a case-insensitive "equals" (ilike), so a name with % or _ in it is not read as a pattern. */
+export const likeExact = (name: string) => name.trim().replace(/[\\%_]/g, "\\$&");
+
+/** Whose petty cash is shown: the name and position chosen above the page (the signed-in person's own when nothing is chosen). */
+export function chosenHolder(sp: { holder?: string; position?: string }, holders: PersonOption[], userId: string): { name: string; position: string } {
+  if (sp.holder !== undefined) return { name: sp.holder.trim(), position: (sp.position ?? "").trim() };
+  const own = ownHolder(holders, userId);
+  return { name: own?.name ?? "", position: own?.position ?? "" };
+}

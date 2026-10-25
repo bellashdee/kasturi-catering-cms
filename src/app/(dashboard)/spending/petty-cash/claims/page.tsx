@@ -14,19 +14,21 @@ import {
 import { formatCurrency } from "@/lib/format";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { StatusBadge } from "@/components/StatusBadge";
-import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
+import { SpendingSubNav } from "@/components/spending/SpendingSubNav";
+import { canAccessModule } from "@/lib/modules";
 import { PettyCashForm } from "@/components/finance/PettyCashForm";
 import { PettyCashPaymentAction } from "@/components/finance/PettyCashPaymentAction";
 import { SoftHeader, SoftPage } from "@/components/ui/Soft";
 import { PettyCashOverview } from "@/components/pettyCash/PettyCashOverview";
 import { buildOverview } from "@/lib/pettyCash/overview";
-import { loadPersonOptions } from "@/lib/pettyCash/people";
+import { chosenHolder, holdersOnly, likeExact, loadPersonOptions } from "@/lib/pettyCash/people";
+import { PettyCashHolderBar } from "@/components/pettyCash/PettyCashHolderBar";
 import { todayInMalaysia } from "@/lib/format";
 
 export default async function PettyCashPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; status?: string; month?: string }>;
+  searchParams: Promise<{ company?: string; status?: string; month?: string; holder?: string; position?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -35,17 +37,21 @@ export default async function PettyCashPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name").order("name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, status: statusParam, month: monthParam } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, status: statusParam, month: monthParam } = sp;
   const { accessibleIds, targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const selectable = companies.filter((c) => accessibleIds.includes(c.id));
   const defaultCompanyId = requestedId && accessibleIds.includes(requestedId) ? requestedId : selectable[0]?.id;
-  const query = requestedId ? `?company=${requestedId}` : "";
 
   if (targetCompanyIds.length === 0) {
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const [transactions, people] = await Promise.all([listPettyCashTransactions(supabase, targetCompanyIds), loadPersonOptions(supabase)]);
+  const people = await loadPersonOptions(supabase);
+  const holders = holdersOnly(people);
+  // whose petty cash this is: only that person's money and claims are read, so nobody else's is mixed in
+  const who = chosenHolder(sp, holders, session.userId);
+  const transactions = who.name ? await listPettyCashTransactions(supabase, targetCompanyIds, likeExact(who.name)) : [];
 
   // the month shown (this month unless another is chosen, or all time)
   const thisMonth = todayInMalaysia().slice(0, 7);
@@ -65,13 +71,14 @@ export default async function PettyCashPage({
   const claims = statusParam ? allClaims.filter((c) => c.payment_status === statusParam) : allClaims;
   const overdueClaims = allClaims.filter((c) => isPettyCashOverdue(c.transaction_date, c.payment_status));
 
-  const monthQuery = `${query}${query ? "&" : "?"}month=${month}`;
+  const keep = new URLSearchParams({ ...(requestedId ? { company: requestedId } : {}), holder: who.name, position: who.position, month });
+  const monthQuery = `?${keep.toString()}`;
 
   return (
     <SoftPage>
-      <SoftHeader title="Admin & Finance" subtitle="Petty Cash: money received, what was claimed and spent, and what is left" />
+      <SoftHeader title="Petty Cash" subtitle="Claims: money received, what staff claimed, and what is left" />
 
-      <FinanceAdminSubNav />
+      <SpendingSubNav hideFinance={!canAccessModule(session.allowedModules, "finance-admin")} />
 
       {overdueClaims.length > 0 && (
         <div className="flex items-center gap-3 rounded-xl border border-danger/30 bg-danger-bg px-4 py-3">
@@ -82,47 +89,39 @@ export default async function PettyCashPage({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface px-5 py-3">
-        <form method="get" className="flex flex-wrap items-center gap-2">
-          {requestedId && <input type="hidden" name="company" value={requestedId} />}
-          {statusParam && <input type="hidden" name="status" value={statusParam} />}
-          <label className="text-[12.5px] font-bold uppercase tracking-wide text-text-muted" htmlFor="pc-month">Month</label>
-          <select id="pc-month" name="month" defaultValue={month} className="h-9 rounded-lg border border-border-strong bg-surface px-3 text-[14px] font-semibold">
-            {months.map((m) => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-            <option value="all">All</option>
-          </select>
-          <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Show</button>
-        </form>
-        <div className="text-[13px] text-text-secondary">
-          Float balance (all time): <strong className={balance >= 0 ? "text-text" : "text-danger"}>{formatCurrency(balance)}</strong>
-          {summary.pendingCount > 0 && <span>{` · claims still to be paid: ${summary.pendingCount} (${formatCurrency(summary.totalPendingAmount)})`}</span>}
-        </div>
-      </div>
+      <PettyCashHolderBar holders={holders} holder={who.name} position={who.position} month={month} months={months} hidden={{ company: requestedId ?? "", status: statusParam ?? "" }}>
+        {who.name && (
+          <span>
+            Balance of {who.name}: <strong className={balance >= 0 ? "text-text" : "text-danger"}>{formatCurrency(balance)}</strong>
+            {summary.pendingCount > 0 && <span>{` · claims still to be paid: ${summary.pendingCount} (${formatCurrency(summary.totalPendingAmount)})`}</span>}
+          </span>
+        )}
+      </PettyCashHolderBar>
 
-      <PettyCashOverview overview={overview} periodLabel={month === "all" ? "All time" : month} />
+      {!who.name && <EmptyRow text="Choose your name and position above to see your own petty cash." />}
 
-      <PettyCashForm companies={selectable} defaultCompanyId={defaultCompanyId} people={people} />
+      {who.name && <PettyCashOverview overview={overview} periodLabel={month === "all" ? "All time" : month} />}
+
+      {who.name && <PettyCashForm companies={selectable} defaultCompanyId={defaultCompanyId} people={people} holderName={who.name} holderPosition={who.position} />}
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
           <div className="text-[15px] font-bold text-text">Petty Cash Claims</div>
           <div className="flex gap-1">
             <Link
-              href={`/finance/petty-cash${monthQuery}`}
+              href={`/spending/petty-cash/claims${monthQuery}`}
               className={`rounded-md px-2.5 py-1 text-[12px] font-semibold ${!statusParam ? "bg-primary text-white" : "text-text-secondary hover:bg-bg"}`}
             >
               All
             </Link>
             <Link
-              href={`/finance/petty-cash${monthQuery}&status=pending_payment`}
+              href={`/spending/petty-cash/claims${monthQuery}&status=pending_payment`}
               className={`rounded-md px-2.5 py-1 text-[12px] font-semibold ${statusParam === "pending_payment" ? "bg-primary text-white" : "text-text-secondary hover:bg-bg"}`}
             >
               Pending Payment
             </Link>
             <Link
-              href={`/finance/petty-cash${monthQuery}&status=paid`}
+              href={`/spending/petty-cash/claims${monthQuery}&status=paid`}
               className={`rounded-md px-2.5 py-1 text-[12px] font-semibold ${statusParam === "paid" ? "bg-primary text-white" : "text-text-secondary hover:bg-bg"}`}
             >
               Paid

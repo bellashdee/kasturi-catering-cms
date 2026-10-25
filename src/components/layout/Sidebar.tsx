@@ -3,12 +3,12 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { CompanySelector, CompanyQuickLinks } from "./CompanySelector";
-import { MainDashboardLink, ModuleLinks, BulletinLink, PayrollCentreLink, PriorityCentreLink, SettingsLink } from "./NavLinks";
+import { MainDashboardLink, ModuleLinks, BulletinLink, PayrollCentreLink, SpendingLink, PriorityCentreLink, SettingsLink } from "./NavLinks";
 import { useMobileNav } from "./MobileNavContext";
 
 type Company = { id: string; name: string; legal_name: string };
 
-export function Sidebar({ companies, allowedModules, badges, taskLinkLabel, showPayroll }: { companies: Company[]; allowedModules: string[] | null; badges?: Record<string, number>; taskLinkLabel?: string; showPayroll?: boolean }) {
+export function Sidebar({ companies, allowedModules, badges, taskLinkLabel, showPayroll, showSpending }: { companies: Company[]; allowedModules: string[] | null; badges?: Record<string, number>; taskLinkLabel?: string; showPayroll?: boolean; showSpending?: boolean }) {
   const { open, setOpen } = useMobileNav();
   const pathname = usePathname();
 
@@ -46,6 +46,7 @@ export function Sidebar({ companies, allowedModules, badges, taskLinkLabel, show
           <PriorityCentreLink label={taskLinkLabel} />
           <BulletinLink />
           {showPayroll && <PayrollCentreLink />}
+          {showSpending && <SpendingLink />}
           <CompanyQuickLinks companies={companies} />
           <div className="my-2 h-px bg-sidebar-line" />
           <ModuleLinks allowedModules={allowedModules} badges={badges} />

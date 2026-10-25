@@ -38,6 +38,7 @@ export type PettyCashEntryInput = {
 };
 
 function validate(input: PettyCashEntryInput) {
+  if (!input.personName?.trim() || !input.personPosition?.trim()) throw new Error("Choose whose petty cash this is: the name and the position.");
   if (input.entryType !== "top_up" && input.entryType !== "expense") throw new Error("Choose whether the money was received or spent.");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.entryDate)) throw new Error("Select the date.");
   if (input.entryDate > todayInMalaysia()) throw new Error("The date cannot be in the future.");
@@ -48,7 +49,7 @@ const label = (r: { entry_type: string; amount: number | string; entry_date: str
   `${r.entry_type === "top_up" ? "Received" : "Spent"} RM ${Number(r.amount).toFixed(2)} · ${r.entry_date}${r.description ? ` · ${r.description}` : ""}`;
 
 function refresh() {
-  revalidatePath("/driver-logistics/petty-cash");
+  revalidatePath("/spending/petty-cash");
 }
 
 export async function createPettyCashEntry(input: PettyCashEntryInput): Promise<ActionResult<{ id: string }>> {

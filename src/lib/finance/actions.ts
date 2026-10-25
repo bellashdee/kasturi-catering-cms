@@ -52,7 +52,7 @@ export async function createCompanyExpense(input: CompanyExpenseInput) {
       .eq("id", input.documentId);
   }
 
-  revalidatePath("/finance/expenses");
+  revalidatePath("/spending/expenses");
   revalidatePath("/admin");
   revalidatePath("/");
 }
@@ -75,7 +75,7 @@ async function requireExpenseAccess(supabase: Awaited<ReturnType<typeof requireU
 }
 
 function revalidateExpenses() {
-  revalidatePath("/finance/expenses");
+  revalidatePath("/spending/expenses");
   revalidatePath("/admin");
   revalidatePath("/reports/expenses");
   revalidatePath("/");
@@ -226,7 +226,7 @@ export async function updateBudget(id: string, input: { budgetedAmount: number; 
     previousValue: `${before.category} · RM ${Number(before.budgeted_amount).toFixed(2)}`,
     newValue: `${before.category} · RM ${Number(input.budgetedAmount).toFixed(2)}`,
   });
-  revalidatePath("/admin/budgets");
+  revalidatePath("/spending/budgets");
 }
 
 export async function deleteBudget(id: string) {
@@ -234,7 +234,7 @@ export async function deleteBudget(id: string) {
   const { data, error } = await supabase.from("budgets").delete().eq("id", id).select("company_id, category, budgeted_amount");
   if (error || !data?.length) throw new Error("You cannot delete this budget.");
   await recordAudit({ companyId: data[0].company_id, relatedTable: "budgets", relatedId: id, action: "budget_deleted", previousValue: `${data[0].category} · RM ${Number(data[0].budgeted_amount).toFixed(2)}` });
-  revalidatePath("/admin/budgets");
+  revalidatePath("/spending/budgets");
 }
 
 export type PettyCashInput = {
@@ -257,6 +257,7 @@ export async function createPettyCashTransaction(input: PettyCashInput): Promise
   const { supabase, userId } = await requireUser();
   if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("Enter an amount more than 0.");
   if (input.type === "expense" && !input.claimantName?.trim()) throw new Error("Enter who is claiming this petty cash.");
+  if (!input.personName?.trim() || !input.personPosition?.trim()) throw new Error("Choose whose petty cash this is: the name and the position.");
   const { data: created, error } = await supabase.from("petty_cash_transactions").insert({
     company_id: input.companyId,
     type: input.type,
@@ -281,7 +282,7 @@ export async function createPettyCashTransaction(input: PettyCashInput): Promise
     action: input.type === "expense" ? "claim_submitted" : "top_up_recorded",
     newValue: `RM ${Number(input.amount).toFixed(2)}${input.claimantName ? ` · ${input.claimantName}` : ""}${input.personName ? ` · ${input.personName}` : ""}`,
   });
-  revalidatePath("/finance/petty-cash");
+  revalidatePath("/spending/petty-cash/claims");
   revalidatePath("/admin");
   revalidatePath("/");
   return {};
@@ -320,7 +321,7 @@ export async function markPettyCashPaid(input: MarkPettyCashPaidInput) {
       newValue: `Paid ${paymentDate} · RM ${Number(before.amount).toFixed(2)}`,
     });
   }
-  revalidatePath("/finance/petty-cash");
+  revalidatePath("/spending/petty-cash/claims");
   revalidatePath("/admin");
   revalidatePath("/");
 }
@@ -348,7 +349,7 @@ export async function createBudget(input: BudgetInput) {
     created_by: userId,
   });
   if (error) throw error;
-  revalidatePath("/admin/budgets");
+  revalidatePath("/spending/budgets");
 }
 
 export type CustomerInvoiceInput = {

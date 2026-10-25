@@ -237,12 +237,11 @@ export async function listCompanyExpenses(supabase: DB, companyIds: string[]) {
   return data;
 }
 
-export async function listPettyCashTransactions(supabase: DB, companyIds: string[]) {
-  const { data, error } = await supabase
-    .from("petty_cash_transactions")
-    .select("*, companies(name)")
-    .in("company_id", companyIds)
-    .order("transaction_date", { ascending: false });
+export async function listPettyCashTransactions(supabase: DB, companyIds: string[], holderPattern?: string) {
+  let query = supabase.from("petty_cash_transactions").select("*, companies(name)").in("company_id", companyIds);
+  // only the petty cash of one person (a case-insensitive "equals" pattern)
+  if (holderPattern) query = query.ilike("person_name", holderPattern);
+  const { data, error } = await query.order("transaction_date", { ascending: false });
   if (error) throw error;
   return data;
 }
