@@ -3276,6 +3276,27 @@ export type Database = {
           },
         ]
       }
+      operation_petty_cash_access: {
+        Row: {
+          can_see_all: boolean
+          created_at: string
+          note: string | null
+          user_id: string
+        }
+        Insert: {
+          can_see_all?: boolean
+          created_at?: string
+          note?: string | null
+          user_id: string
+        }
+        Update: {
+          can_see_all?: boolean
+          created_at?: string
+          note?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       operation_petty_cash: {
         Row: {
           amount: number

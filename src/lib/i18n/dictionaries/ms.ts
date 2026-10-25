@@ -3697,7 +3697,12 @@ const dictionary: Record<string, string> = {
  "Your own leave requests.": "Permohonan cuti anda sendiri.",
  "Your phone will ask for location access. You must be within {0} metres of the event location to clock in or out.": "Telefon anda akan meminta akses lokasi. Anda mesti berada dalam lingkungan {0} meter dari lokasi acara untuk clock in atau clock out.",
  "Your phone's location is not exact enough (about {0} m). Go outdoors, switch on high-accuracy location and try again.": "Lokasi telefon anda tidak cukup tepat (kira-kira {0} m). Keluar ke kawasan terbuka, hidupkan lokasi ketepatan tinggi dan cuba lagi.",
- "Your session has expired or you do not have access to this file. Sign in again and retry.": "Sesi anda telah tamat atau anda tidak mempunyai akses kepada fail ini. Log masuk semula dan cuba lagi."
+ "Your session has expired or you do not have access to this file. Sign in again and retry.": "Sesi anda telah tamat atau anda tidak mempunyai akses kepada fail ini. Log masuk semula dan cuba lagi.",
+ "Your own petty cash only.": "Petty cash anda sendiri sahaja.",
+ "Show this petty cash": "Papar petty cash ini",
+ "Show everyone's petty cash": "Papar petty cash semua orang",
+ "Everyone's balance": "Baki semua orang",
+ "You can only record and change your own petty cash.": "Anda hanya boleh merekod dan mengubah petty cash anda sendiri."
 };
 
 export default dictionary;

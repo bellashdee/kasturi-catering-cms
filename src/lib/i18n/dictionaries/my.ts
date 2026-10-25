@@ -3754,7 +3754,12 @@ const dictionary: Record<string, string> = {
  "Your own leave requests.": "သင့်ကိုယ်ပိုင် ခွင့်လျှောက်လွှာများ။",
  "Your phone will ask for location access. You must be within {0} metres of the event location to clock in or out.": "သင့်ဖုန်းက တည်နေရာ ခွင့်ပြုချက် တောင်းပါမည်။ Clock in သို့မဟုတ် clock out လုပ်ရန် ပွဲတည်နေရာမှ {0} မီတာအတွင်း ရှိရမည်။",
  "Your phone's location is not exact enough (about {0} m). Go outdoors, switch on high-accuracy location and try again.": "သင့်ဖုန်း၏ တည်နေရာ မတိကျလှပါ (ခန့်မှန်း {0} မီတာ)။ အပြင်သို့ထွက်ပြီး တိကျမှုမြင့်သော တည်နေရာကို ဖွင့်ကာ ထပ်ကြိုးစားပါ။",
- "Your session has expired or you do not have access to this file. Sign in again and retry.": "သင့်စက်ရှင် သက်တမ်းကုန်သွားပြီ သို့မဟုတ် ဤဖိုင်ကို ဝင်ခွင့်မရှိပါ။ ပြန်ဝင်ပြီး ထပ်ကြိုးစားပါ။"
+ "Your session has expired or you do not have access to this file. Sign in again and retry.": "သင့်စက်ရှင် သက်တမ်းကုန်သွားပြီ သို့မဟုတ် ဤဖိုင်ကို ဝင်ခွင့်မရှိပါ။ ပြန်ဝင်ပြီး ထပ်ကြိုးစားပါ။",
+ "Your own petty cash only.": "သင့်ကိုယ်ပိုင် ငွေသားအသေးစားသာ။",
+ "Show this petty cash": "ဤ ငွေသားအသေးစားကို ပြရန်",
+ "Show everyone's petty cash": "လူတိုင်း၏ ငွေသားအသေးစားကို ပြရန်",
+ "Everyone's balance": "လူတိုင်း၏ လက်ကျန်",
+ "You can only record and change your own petty cash.": "သင့်ကိုယ်ပိုင် ငွေသားအသေးစားကိုသာ မှတ်တမ်းတင်ပြီး ပြောင်းလဲနိုင်ပါသည်။"
 };
 
 export default dictionary;

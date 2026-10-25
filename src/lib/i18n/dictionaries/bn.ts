@@ -3760,7 +3760,12 @@ const dictionary: Record<string, string> = {
  "Your own leave requests.": "আপনার নিজের ছুটির আবেদন।",
  "Your phone will ask for location access. You must be within {0} metres of the event location to clock in or out.": "আপনার ফোন অবস্থানের অনুমতি চাইবে। ক্লক ইন বা আউট করতে আপনাকে অনুষ্ঠানের স্থান থেকে {0} মিটারের মধ্যে থাকতে হবে।",
  "Your phone's location is not exact enough (about {0} m). Go outdoors, switch on high-accuracy location and try again.": "আপনার ফোনের অবস্থান যথেষ্ট সঠিক নয় (প্রায় {0} মিটার)। বাইরে যান, উচ্চ নির্ভুলতার অবস্থান চালু করুন এবং আবার চেষ্টা করুন।",
- "Your session has expired or you do not have access to this file. Sign in again and retry.": "আপনার সেশনের মেয়াদ শেষ হয়েছে, বা এই ফাইলে আপনার অ্যাক্সেস নেই। আবার সাইন-ইন করে চেষ্টা করুন।"
+ "Your session has expired or you do not have access to this file. Sign in again and retry.": "আপনার সেশনের মেয়াদ শেষ হয়েছে, বা এই ফাইলে আপনার অ্যাক্সেস নেই। আবার সাইন-ইন করে চেষ্টা করুন।",
+ "Your own petty cash only.": "শুধু আপনার নিজের পেটি ক্যাশ।",
+ "Show this petty cash": "এই পেটি ক্যাশ দেখান",
+ "Show everyone's petty cash": "সবার পেটি ক্যাশ দেখান",
+ "Everyone's balance": "সবার ব্যালেন্স",
+ "You can only record and change your own petty cash.": "আপনি শুধু আপনার নিজের পেটি ক্যাশ লিখতে ও বদলাতে পারবেন।"
 };
 
 export default dictionary;

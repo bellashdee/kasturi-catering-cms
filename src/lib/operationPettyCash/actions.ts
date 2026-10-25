@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { recordAudit } from "@/lib/audit";
 import { runAction, type ActionResult } from "@/lib/actionResult";
 import { todayInMalaysia } from "@/lib/format";
+import { assertOwnPerson } from "@/lib/pettyCash/access";
 import type { EntryType, OperationPettyCashRow } from "./constants";
 
 async function requireHolder() {
@@ -56,6 +57,7 @@ export async function createPettyCashEntry(input: PettyCashEntryInput): Promise<
   return runAction(async () => {
     const { supabase, userId } = await requireHolder();
     validate(input);
+    await assertOwnPerson(supabase, userId, input.personName);
     const { data, error } = await supabase
       .from("operation_petty_cash")
       .insert({
@@ -81,10 +83,12 @@ export async function createPettyCashEntry(input: PettyCashEntryInput): Promise<
 
 export async function updatePettyCashEntry(id: string, input: PettyCashEntryInput): Promise<ActionResult> {
   return runAction(async () => {
-    const { supabase } = await requireHolder();
+    const { supabase, userId } = await requireHolder();
     validate(input);
     const { data: before } = await supabase.from("operation_petty_cash").select("*").eq("id", id).maybeSingle();
     if (!before) throw new Error("This entry was not found (it may have been deleted).");
+    await assertOwnPerson(supabase, userId, before.person_name);
+    await assertOwnPerson(supabase, userId, input.personName);
     const { data: updated, error } = await supabase
       .from("operation_petty_cash")
       .update({
@@ -112,9 +116,10 @@ export async function updatePettyCashEntry(id: string, input: PettyCashEntryInpu
 /** Deletes an entry and returns it, so the person can Undo (restorePettyCashEntry). */
 export async function deletePettyCashEntry(id: string): Promise<ActionResult<{ row: OperationPettyCashRow }>> {
   return runAction(async () => {
-    const { supabase } = await requireHolder();
+    const { supabase, userId } = await requireHolder();
     const { data: before } = await supabase.from("operation_petty_cash").select("*").eq("id", id).maybeSingle();
     if (!before) throw new Error("This entry was not found (it may already be deleted).");
+    await assertOwnPerson(supabase, userId, before.person_name);
     const { data: removed, error } = await supabase.from("operation_petty_cash").delete().eq("id", id).select("id");
     if (error) throw error;
     if (!removed || removed.length !== 1) throw new Error("The entry was not deleted. You may not have permission.");

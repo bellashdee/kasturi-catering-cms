@@ -3768,7 +3768,12 @@ const dictionary: Record<string, string> = {
  "Your own leave requests.": "您自己的请假申请。",
  "Your phone will ask for location access. You must be within {0} metres of the event location to clock in or out.": "您的手机会请求位置权限。您必须在活动地点 {0} 米范围内才能上班或下班打卡。",
  "Your phone's location is not exact enough (about {0} m). Go outdoors, switch on high-accuracy location and try again.": "您手机的位置不够精确（约 {0} 米）。请到室外并开启高精度定位后重试。",
- "Your session has expired or you do not have access to this file. Sign in again and retry.": "您的登录已过期，或您无权访问此文件。请重新登录后再试。"
+ "Your session has expired or you do not have access to this file. Sign in again and retry.": "您的登录已过期，或您无权访问此文件。请重新登录后再试。",
+ "Your own petty cash only.": "仅限你自己的备用金。",
+ "Show this petty cash": "显示此备用金",
+ "Show everyone's petty cash": "显示所有人的备用金",
+ "Everyone's balance": "所有人的余额",
+ "You can only record and change your own petty cash.": "你只能记录和修改自己的备用金。"
 };
 
 export default dictionary;

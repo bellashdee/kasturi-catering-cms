@@ -33,6 +33,7 @@ export function PettyCashEntryForm({
   holderPosition,
   allowBook,
   allowClaim,
+  lockName = false,
 }: {
   companies: Company[];
   defaultCompanyId?: string;
@@ -45,6 +46,8 @@ export function PettyCashEntryForm({
   allowBook: boolean;
   /** may record a staff claim */
   allowClaim: boolean;
+  /** the person sees only their own petty cash: the name is theirs and cannot be changed */
+  lockName?: boolean;
 }) {
   const router = useRouter();
   const kinds: EntryKind[] = [...(allowBook ? (["expense", "top_up"] as const) : []), ...(allowClaim ? (["claim"] as const) : [])];
@@ -168,7 +171,11 @@ export function PettyCashEntryForm({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className={labelClass}>{isReceived ? "Received by (choose the name) *" : isClaim ? "Paid from the petty cash of (choose the name) *" : "Spent by (choose the name) *"}</label>
-          <SearchSelect value={personName} onChange={setPersonName} options={holders.map((p) => p.name)} onPick={fillPosition} className={inputClass} placeholder="Search or type a name" />
+          {lockName ? (
+            <input value={personName} readOnly className={`${inputClass} cursor-not-allowed bg-surface-alt`} />
+          ) : (
+            <SearchSelect value={personName} onChange={setPersonName} options={holders.map((p) => p.name)} onPick={fillPosition} className={inputClass} placeholder="Search or type a name" />
+          )}
         </div>
         <div>
           <label className={labelClass}>Position that holds the petty cash *</label>

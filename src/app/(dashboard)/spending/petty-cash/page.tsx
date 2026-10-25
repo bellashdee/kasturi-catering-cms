@@ -22,6 +22,7 @@ import { UndoBanner } from "@/components/operationPettyCash/UndoBanner";
 import { SoftHeader, SoftPage } from "@/components/ui/Soft";
 import { buildOverview } from "@/lib/pettyCash/overview";
 import { chosenHolder, holdersOnly, likeExact, loadPersonOptions } from "@/lib/pettyCash/people";
+import { ownIdentity, pettyCashAccess } from "@/lib/pettyCash/access";
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
 const dayLabel = (iso: string) => formatMalaysiaDate(`${iso}T12:00:00+08:00`);
@@ -48,13 +49,12 @@ type Row = {
  * the name and the position are chosen at the top and nothing of anyone else's is mixed in. The cash book is private to the people who
  * hold a petty cash (and the Director of Finance); the claims follow Admin & Finance access.
  */
-export default async function PettyCashPage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string; edit?: string; holder?: string; position?: string; status?: string }> }) {
+export default async function PettyCashPage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string; edit?: string; holder?: string; position?: string; status?: string; all?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
   const supabase = await createClient();
-  const { data: allowed } = await supabase.rpc("user_can_use_operation_petty_cash");
-  const isHolder = allowed === true;
+  const { isHolder, seeAll } = await pettyCashAccess(supabase, session.userId);
   const canClaims = canAccessModule(session.allowedModules, "finance-admin");
   const sp = await searchParams;
 
@@ -79,14 +79,18 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
 
   const people = await loadPersonOptions(supabase);
   const holders = holdersOnly(people);
-  // whose petty cash this is: only that person's money, spending and claims are read, so nobody else's is ever mixed in
-  const who = chosenHolder(sp, holders, session.userId);
+  // whose petty cash this is: only that person's money, spending and claims are read, so nobody else's is ever mixed in.
+  // Only Ms. Penny and Ms. Nabilah may choose another person or look at everyone's; everybody else is kept to their own.
+  const own = ownIdentity(people, session.userId, session.fullName);
+  const everyone = seeAll && sp.all === "1";
+  const who = seeAll ? (everyone ? { name: "", position: "" } : chosenHolder(sp, holders, session.userId)) : { name: own.name, position: (sp.position ?? "").trim() || own.position };
+  const shownScope = !!who.name || everyone;
   const pattern = who.name ? likeExact(who.name) : "";
 
   let book: Awaited<ReturnType<typeof readBook>> = [];
   let transactions: Awaited<ReturnType<typeof listPettyCashTransactions>> = [];
-  if (who.name) {
-    [book, transactions] = await Promise.all([isHolder ? readBook(supabase, targetCompanyIds, pattern) : Promise.resolve([]), canClaims ? listPettyCashTransactions(supabase, targetCompanyIds, pattern) : Promise.resolve([])]);
+  if (shownScope) {
+    [book, transactions] = await Promise.all([isHolder ? readBook(supabase, targetCompanyIds, pattern) : Promise.resolve([]), canClaims ? listPettyCashTransactions(supabase, targetCompanyIds, pattern || undefined) : Promise.resolve([])]);
   }
 
   // one list, oldest first, so the balance can run down it
@@ -154,7 +158,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
     ? { id: editing.id, company_id: editing.company_id, entry_type: editing.entry_type as EntryType, entry_date: editing.entry_date, category: editing.category, description: editing.description, amount: Number(editing.amount), document_id: editing.document_id, created_by: editing.created_by, person_name: editing.person_name, person_position: editing.person_position }
     : undefined;
 
-  const keep = new URLSearchParams({ ...(sp.company ? { company: sp.company } : {}), holder: who.name, position: who.position, month });
+  const keep = new URLSearchParams({ ...(sp.company ? { company: sp.company } : {}), holder: who.name, position: who.position, month, ...(everyone ? { all: "1" } : {}) });
   const listHref = `/spending/petty-cash?${keep.toString()}`;
   const editHref = (id: string) => `${listHref}${statusParam ? `&status=${statusParam}` : ""}&edit=${id}`;
   const statusHref = (status?: string) => `${listHref}${status ? `&status=${status}` : ""}`;
@@ -190,20 +194,20 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
         </div>
       )}
 
-      <PettyCashHolderBar holders={holders} holder={who.name} position={who.position} month={month} months={months} hidden={{ company: sp.company ?? "", status: statusParam ?? "" }}>
-        {who.name && (
+      <PettyCashHolderBar holders={holders} holder={who.name} position={who.position} month={month} months={months} hidden={{ company: sp.company ?? "", status: statusParam ?? "" }} lockName={!seeAll} canSeeAll={seeAll} everyone={everyone}>
+        {shownScope && (
           <span>
-            Balance of {who.name}: <strong className={totalBalance < 0 ? "text-danger" : "text-text"}>{formatPrice(totalBalance)}</strong>
+            {everyone ? "Everyone's balance" : <>Balance of {who.name}</>}: <strong className={totalBalance < 0 ? "text-danger" : "text-text"}>{formatPrice(totalBalance)}</strong>
             {summary.pendingCount > 0 && <span>{` · claims still to be paid: ${summary.pendingCount} (${formatPrice(summary.totalPendingAmount)})`}</span>}
           </span>
         )}
       </PettyCashHolderBar>
 
-      {!who.name && <EmptyRow text="Choose your name and position above to see your own petty cash." />}
+      {!shownScope && <EmptyRow text="Choose your name and position above to see your own petty cash." />}
 
-      {who.name && <PettyCashOverview overview={overview} periodLabel={month === "all" ? "All time" : month} />}
+      {shownScope && <PettyCashOverview overview={overview} periodLabel={month === "all" ? "All time" : month} />}
 
-      {who.name && balanceByCompany.length > 1 && (
+      {shownScope && balanceByCompany.length > 1 && (
         <div className="flex flex-wrap gap-x-5 gap-y-1 text-[12.5px] text-text-secondary">
           {balanceByCompany.map((b) => (
             <span key={b.name}>
@@ -213,7 +217,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
         </div>
       )}
 
-      {who.name && (
+      {who.name && !everyone && (
         <PettyCashEntryForm
           key={editing?.id ?? "new"}
           companies={selectable}
@@ -225,10 +229,11 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
           holderPosition={who.position}
           allowBook={isHolder}
           allowClaim={canClaims && !editing}
+          lockName={!seeAll}
         />
       )}
 
-      {who.name && (
+      {shownScope && (
         <div className="rounded-xl border border-border bg-surface shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5">
             <div className="text-[15px] font-bold text-text">Petty cash records</div>
@@ -320,13 +325,9 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
 
 /** The cash book entries of one person (read only for the people who hold a petty cash; the database enforces it too). */
 async function readBook(supabase: Awaited<ReturnType<typeof createClient>>, companyIds: string[], pattern: string) {
-  const { data, error } = await supabase
-    .from("operation_petty_cash")
-    .select("*, companies(name)")
-    .in("company_id", companyIds)
-    .ilike("person_name", pattern)
-    .order("entry_date", { ascending: true })
-    .order("created_at", { ascending: true });
+  let query = supabase.from("operation_petty_cash").select("*, companies(name)").in("company_id", companyIds);
+  if (pattern) query = query.ilike("person_name", pattern);
+  const { data, error } = await query.order("entry_date", { ascending: true }).order("created_at", { ascending: true });
   if (error) throw error;
   return data ?? [];
 }
