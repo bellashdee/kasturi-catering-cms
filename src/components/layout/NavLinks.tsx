@@ -151,32 +151,32 @@ export function MainDashboardLink() {
   return <NavItem href="/" icon="dashboard" label="Main Dashboard" />;
 }
 
-export function PriorityCentreLink({ label = "Priority Centre" }: { label?: string }) {
-  return <NavItem href="/priority-centre" icon="priority" label={label} />;
-}
-
-export function BulletinLink() {
-  return <NavItem href="/bulletin" icon="bulletin" label="Bulletin Board" />;
-}
-
-export function SpendingLink() {
-  return <NavItem href="/spending" icon="petty-cash" label="Company Spending" matchPrefixes={["/spending"]} />;
+/** The links under Main Dashboard (Bulletin Board, Company Spending, Priority Centre / My Tasks), A to Z. */
+export function TopLinks({ taskLabel = "Priority Centre", showSpending }: { taskLabel?: string; showSpending?: boolean }) {
+  const links = [
+    { label: "Bulletin Board", node: <NavItem key="bulletin" href="/bulletin" icon="bulletin" label="Bulletin Board" /> },
+    ...(showSpending ? [{ label: "Company Spending", node: <NavItem key="spending" href="/spending" icon="petty-cash" label="Company Spending" matchPrefixes={["/spending"]} /> }] : []),
+    { label: taskLabel, node: <NavItem key="priority" href="/priority-centre" icon="priority" label={taskLabel} /> },
+  ];
+  return <>{links.sort((a, b) => a.label.localeCompare(b.label)).map((l) => l.node)}</>;
 }
 
 /** The Payroll Centre is part of HR (a button on the HR page); only a payroll user who has no HR access gets its own entry. */
 export function ModuleLinks({ allowedModules, badges = {}, showPayroll = false }: { allowedModules: string[] | null; badges?: Record<string, number>; showPayroll?: boolean }) {
   const show = (key: string) => !allowedModules || allowedModules.includes(key);
-  return (
-    <>
-      {MODULES.filter((m) => m.key !== "reports" && m.key !== "ai-assistant" && m.key !== "marketing" && show(m.key)).map((m) => (
-        <NavItem key={m.key} href={m.href} icon={m.key} label={m.label} matchPrefixes={m.matchPrefixes} badge={badges[m.key]} />
-      ))}
-      {!show("hr") && showPayroll && <NavItem href="/payroll-centre" icon="payroll" label="Payroll Centre" />}
-      {!show("hr") && show("overtime") && <NavItem href="/hr/overtime" icon="hr" label="Overtime (OT)" />}
-      {show("reports") && <NavItem href="/reports" icon="reports" label="Reports" />}
-      {show("ai-assistant") && <NavItem href="/ai-assistant" icon="ai-assistant" label="🤖 AI Assistant" />}
-    </>
-  );
+  // every link of the menu, A to Z
+  const links: { label: string; sort: string; node: React.ReactNode }[] = [
+    ...MODULES.filter((m) => m.key !== "reports" && m.key !== "ai-assistant" && m.key !== "marketing" && show(m.key)).map((m) => ({
+      label: m.label,
+      sort: m.label,
+      node: <NavItem key={m.key} href={m.href} icon={m.key} label={m.label} matchPrefixes={m.matchPrefixes} badge={badges[m.key]} />,
+    })),
+    ...(!show("hr") && showPayroll ? [{ label: "Payroll Centre", sort: "Payroll Centre", node: <NavItem key="payroll" href="/payroll-centre" icon="payroll" label="Payroll Centre" /> }] : []),
+    ...(!show("hr") && show("overtime") ? [{ label: "Overtime (OT)", sort: "Overtime (OT)", node: <NavItem key="overtime" href="/hr/overtime" icon="hr" label="Overtime (OT)" /> }] : []),
+    ...(show("reports") ? [{ label: "Reports", sort: "Reports", node: <NavItem key="reports" href="/reports" icon="reports" label="Reports" /> }] : []),
+    ...(show("ai-assistant") ? [{ label: "AI Assistant", sort: "AI Assistant", node: <NavItem key="ai" href="/ai-assistant" icon="ai-assistant" label="🤖 AI Assistant" /> }] : []),
+  ];
+  return <>{links.sort((a, b) => a.sort.localeCompare(b.sort)).map((l) => l.node)}</>;
 }
 
 export function SettingsLink() {

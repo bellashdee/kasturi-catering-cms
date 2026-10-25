@@ -11,7 +11,7 @@ import { createPettyCashTransaction } from "@/lib/finance/actions";
 import { PETTY_CASH_CATEGORIES, type OperationPettyCashRow } from "@/lib/operationPettyCash/constants";
 import { DescriptionInput } from "@/components/DescriptionInput";
 import { SearchSelect } from "@/components/ui/SearchSelect";
-import { holdersOnly, positionOptions, type PersonOption } from "@/lib/pettyCash/people";
+import { positionOptions, type PersonOption } from "@/lib/pettyCash/people";
 
 type Company = { id: string; name: string };
 type EntryKind = "expense" | "top_up" | "claim";
@@ -29,6 +29,7 @@ export function PettyCashEntryForm({
   editing,
   listHref,
   people,
+  holders,
   holderName,
   holderPosition,
   allowBook,
@@ -40,6 +41,8 @@ export function PettyCashEntryForm({
   editing?: OperationPettyCashRow;
   listHref: string;
   people: PersonOption[];
+  /** the people who hold a petty cash */
+  holders: PersonOption[];
   holderName: string;
   holderPosition: string;
   /** may record money received / spent (the cash book) */
@@ -67,8 +70,6 @@ export function PettyCashEntryForm({
 
   const isClaim = kind === "claim";
   const isReceived = kind === "top_up";
-  // only local staff hold the petty cash
-  const holders = holdersOnly(people);
   const fillPosition = (name: string) => {
     const found = holders.find((p) => p.name === name);
     if (found?.position) setPersonPosition(found.position);

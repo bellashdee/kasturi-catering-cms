@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { CompanySelector, CompanyQuickLinks } from "./CompanySelector";
-import { MainDashboardLink, ModuleLinks, BulletinLink, SpendingLink, PriorityCentreLink, SettingsLink } from "./NavLinks";
+import { MainDashboardLink, ModuleLinks, TopLinks, SettingsLink } from "./NavLinks";
 import { useMobileNav } from "./MobileNavContext";
 
 type Company = { id: string; name: string; legal_name: string };
@@ -43,9 +43,7 @@ export function Sidebar({ companies, allowedModules, badges, taskLinkLabel, show
 
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-3">
           <MainDashboardLink />
-          <PriorityCentreLink label={taskLinkLabel} />
-          <BulletinLink />
-          {showSpending && <SpendingLink />}
+          <TopLinks taskLabel={taskLinkLabel} showSpending={showSpending} />
           <CompanyQuickLinks companies={companies} />
           <div className="my-2 h-px bg-sidebar-line" />
           <ModuleLinks allowedModules={allowedModules} badges={badges} showPayroll={showPayroll} />

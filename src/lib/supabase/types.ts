@@ -3297,6 +3297,21 @@ export type Database = {
         }
         Relationships: []
       }
+      operation_petty_cash_holders: {
+        Row: {
+          created_at: string
+          full_name: string
+        }
+        Insert: {
+          created_at?: string
+          full_name: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string
+        }
+        Relationships: []
+      }
       operation_petty_cash: {
         Row: {
           amount: number

@@ -12,7 +12,13 @@ export async function loadPersonOptions(supabase: DB): Promise<PersonOption[]> {
   const list: PersonOption[] = [];
   for (const e of data ?? []) {
     const name = e.full_name?.trim();
-    if (!name || seen.has(name.toUpperCase())) continue;
+    if (!name) continue;
+    if (seen.has(name.toUpperCase())) {
+      // the same person in another company: the login link is kept when only one of the records has it
+      const first = list.find((p) => p.name.toUpperCase() === name.toUpperCase());
+      if (first && !first.userId && e.user_id) first.userId = e.user_id;
+      continue;
+    }
     seen.add(name.toUpperCase());
     list.push({ name, position: e.position?.trim() ?? "", department: e.department?.trim() ?? "", userId: e.user_id ?? null, local: /^malay/i.test(e.nationality?.trim() ?? "") });
   }
@@ -24,8 +30,14 @@ export function positionOptions(people: PersonOption[]): string[] {
   return Array.from(new Set(people.map((p) => p.position).filter(Boolean))).sort((a, b) => a.localeCompare(b));
 }
 
-/** The people who may hold the petty cash: local staff only. */
-export const holdersOnly = (people: PersonOption[]) => people.filter((p) => p.local);
+/** The names (as in the staff records) of the people who hold a petty cash, upper case. */
+export async function loadHolderNames(supabase: DB): Promise<Set<string>> {
+  const { data } = await supabase.from("operation_petty_cash_holders").select("full_name");
+  return new Set((data ?? []).map((h) => h.full_name.trim().toUpperCase()));
+}
+
+/** The people who hold a petty cash: the ones on the list of holders (a holder does not need a login). */
+export const holdersOnly = (people: PersonOption[], holderNames: Set<string>) => people.filter((p) => holderNames.has(p.name.toUpperCase()));
 
 /** The petty cash holder that belongs to the signed-in person (their own staff record), when they are one of the holders. */
 export const ownHolder = (holders: PersonOption[], userId: string) => holders.find((p) => p.userId === userId);

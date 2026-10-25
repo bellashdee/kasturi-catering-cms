@@ -21,7 +21,7 @@ import { PettyCashPaymentAction } from "@/components/finance/PettyCashPaymentAct
 import { UndoBanner } from "@/components/operationPettyCash/UndoBanner";
 import { SoftHeader, SoftPage } from "@/components/ui/Soft";
 import { buildOverview } from "@/lib/pettyCash/overview";
-import { chosenHolder, holdersOnly, likeExact, loadPersonOptions } from "@/lib/pettyCash/people";
+import { chosenHolder, holdersOnly, likeExact, loadHolderNames, loadPersonOptions } from "@/lib/pettyCash/people";
 import { ownIdentity, pettyCashAccess } from "@/lib/pettyCash/access";
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
@@ -77,8 +77,8 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
   if (targetCompanyIds.length === 0) return <EmptyRow text="You don't have access to any company yet." />;
   const defaultCompanyId = sp.company && accessibleIds.includes(sp.company) ? sp.company : selectable[0]?.id;
 
-  const people = await loadPersonOptions(supabase);
-  const holders = holdersOnly(people);
+  const [people, holderNames] = await Promise.all([loadPersonOptions(supabase), loadHolderNames(supabase)]);
+  const holders = holdersOnly(people, holderNames);
   // whose petty cash this is: only that person's money, spending and claims are read, so nobody else's is ever mixed in.
   // Only Ms. Penny and Ms. Nabilah may choose another person or look at everyone's; everybody else is kept to their own.
   const own = ownIdentity(people, session.userId, session.fullName);
@@ -225,6 +225,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
           editing={editingRow}
           listHref={listHref}
           people={people}
+          holders={holders}
           holderName={who.name}
           holderPosition={who.position}
           allowBook={isHolder}
