@@ -6,6 +6,7 @@ import { logTaskAudit } from "@/lib/taskProofs/actions";
 import { todayInMalaysia } from "@/lib/driverAttendance/date";
 import { runAction, type ActionResult } from "@/lib/actionResult";
 import { countedHoursForMonth } from "@/lib/hr/otQueries";
+import type { Database } from "@/lib/supabase/types";
 import {
   OT_DECIDABLE_STATUSES,
   OT_MONTHLY_LIMIT,
@@ -317,4 +318,53 @@ export async function previewOvertime(input: { employeeId: string; workDate: str
   const monthlyTotal = await countedHoursForMonth(supabase, input.employeeId, input.workDate, input.excludeId);
   const projectedTotal = monthlyTotal + (Number.isFinite(input.hours) ? input.hours : 0);
   return { monthlyTotal, projectedTotal, level: otLevel(monthlyTotal), needsApproval: projectedTotal > OT_MONTHLY_LIMIT };
+}
+
+export type OvertimeRow = Database["public"]["Tables"]["overtime_records"]["Row"];
+export type OvertimeApprovalRow = Database["public"]["Tables"]["approvals"]["Row"];
+export type OvertimeSnapshot = { ot: OvertimeRow; approval: OvertimeApprovalRow | null };
+
+/**
+ * Deletes an OT that is not part of the monthly total any more: a draft, a cancelled or a rejected one (an approved or waiting OT is cancelled
+ * first). Returns the record so the delete can be undone. The staff member deletes their own, an admin any.
+ */
+export async function deleteOvertime(overtimeId: string): Promise<ActionResult<{ row: OvertimeSnapshot }>> {
+  return runAction(async () => {
+    const { supabase, userId } = await requireUser();
+    const { data: ot } = await supabase.from("overtime_records").select("*").eq("id", overtimeId).maybeSingle();
+    if (!ot) throw new Error("This OT was not found (it may already be deleted).");
+    if (!["draft", "cancelled", "rejected"].includes(ot.status)) throw new Error("Cancel this OT first: only a draft, cancelled or rejected OT can be deleted.");
+    const { data: employee } = await supabase.from("employees").select("id, company_id, user_id, status, full_name").eq("id", ot.employee_id).maybeSingle();
+    if (employee) await assertCanActFor(supabase, userId, employee);
+    const { data: approval } = ot.approval_id ? await supabase.from("approvals").select("*").eq("id", ot.approval_id).maybeSingle() : { data: null };
+    const { data: removed, error } = await supabase.from("overtime_records").delete().eq("id", overtimeId).select("id");
+    if (error || !removed?.length) throw new Error("Could not delete the OT.");
+    if (approval) await supabase.from("approvals").delete().eq("id", approval.id);
+    await logTaskAudit({ companyId: ot.company_id, relatedTable: "overtime_records", relatedId: overtimeId, action: "ot_deleted", previousValue: `${ot.work_date} ${ot.hours}h (${ot.status})`, newValue: "deleted" });
+    refresh(ot.employee_id, overtimeId);
+    return { row: { ot, approval: approval ?? null } };
+  }, "Could not delete the OT. Please try again.");
+}
+
+/** Undo of a delete: the OT (and its approval record) come back as they were. */
+export async function restoreOvertime(snapshot: OvertimeSnapshot): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase, userId } = await requireUser();
+    const { ot, approval } = snapshot;
+    if (!ot?.id || !ot.employee_id || !ot.company_id) throw new Error("There is nothing to put back.");
+    const { data: employee } = await supabase.from("employees").select("id, company_id, user_id, status, full_name").eq("id", ot.employee_id).maybeSingle();
+    if (employee) await assertCanActFor(supabase, userId, employee);
+    if (approval) {
+      const { error: approvalError } = await supabase.from("approvals").insert(approval);
+      if (approvalError) throw new Error("Could not put the OT back.");
+    }
+    const { error } = await supabase.from("overtime_records").insert(ot);
+    if (error) {
+      if (approval) await supabase.from("approvals").delete().eq("id", approval.id);
+      throw new Error("Could not put the OT back.");
+    }
+    await logTaskAudit({ companyId: ot.company_id, relatedTable: "overtime_records", relatedId: ot.id, action: "ot_restored", newValue: "put back after it was deleted" });
+    refresh(ot.employee_id, ot.id);
+    return {};
+  }, "Could not put the OT back.");
 }

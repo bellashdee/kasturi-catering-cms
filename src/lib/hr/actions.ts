@@ -401,6 +401,97 @@ export type LeaveInput = {
   documentId?: string;
 };
 
+export type LeaveRow = Database["public"]["Tables"]["leave_requests"]["Row"];
+export type ApprovalRow = Database["public"]["Tables"]["approvals"]["Row"];
+export type LeaveSnapshot = { leave: LeaveRow; approval: ApprovalRow | null };
+
+const LEAVE_TYPES = ["annual", "medical", "emergency", "unpaid", "hospitalisation", "replacement", "maternity", "bereavement", "marriage", "other"];
+
+/** The person whose leave it is, or an admin of the company (an admin may also change a leave that is already decided). */
+async function leaveAccess(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], leave: LeaveRow) {
+  const { data: admin } = await supabase.rpc("user_is_company_admin", { target_company_id: leave.company_id });
+  if (admin === true) return { admin: true };
+  const { data: owns } = await supabase.rpc("user_owns_employee", { target_employee_id: leave.employee_id });
+  if (owns !== true) throw new Error("You can only change your own leave requests.");
+  if (leave.status !== "pending") throw new Error("A leave request that is already decided can only be changed by an admin.");
+  return { admin: false };
+}
+
+/** Changes a leave request (type, dates, reason, file). */
+export async function updateLeave(id: string, input: Omit<LeaveInput, "employeeId" | "companyId">): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase, userId } = await requireUser();
+    const { data: before } = await supabase.from("leave_requests").select("*").eq("id", id).maybeSingle();
+    if (!before) throw new Error("This leave request was not found (it may have been deleted).");
+    await leaveAccess(supabase, before);
+    if (!LEAVE_TYPES.includes(input.leaveType)) throw new Error("Choose the leave type.");
+    if (input.leaveType === "other" && !input.leaveTypeOther?.trim()) throw new Error("Write what the leave is for (Other: Nyatakan).");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(input.endDate) || input.endDate < input.startDate) throw new Error("The end date must be on or after the start date.");
+    const days = Math.round((Date.parse(input.endDate) - Date.parse(input.startDate)) / 86_400_000) + 1;
+    const { error } = await supabase
+      .from("leave_requests")
+      .update({
+        leave_type: input.leaveType,
+        leave_type_other: input.leaveType === "other" ? input.leaveTypeOther?.trim().slice(0, 120) || null : null,
+        start_date: input.startDate,
+        end_date: input.endDate,
+        days,
+        reason: input.reason?.trim() || null,
+        document_id: input.documentId || before.document_id,
+      })
+      .eq("id", id);
+    if (error) throw error;
+    if (input.documentId && input.documentId !== before.document_id) {
+      await supabase.from("documents").update({ extraction_status: "confirmed", related_table: "leave_requests", related_id: id, reviewed_by: userId, reviewed_at: new Date().toISOString() }).eq("id", input.documentId);
+    }
+    await recordAudit({ companyId: before.company_id, relatedTable: "leave_requests", relatedId: id, action: "edited", previousValue: `${before.leave_type} ${before.start_date} → ${before.end_date}`, newValue: `${input.leaveType} ${input.startDate} → ${input.endDate}` });
+    revalidatePath("/hr/leave");
+    revalidatePath(`/hr/${before.employee_id}`);
+    return {};
+  }, "Could not save the leave request. Please try again.");
+}
+
+/** Deletes a leave request (with its approval record) and returns both, so the delete can be undone. */
+export async function deleteLeave(id: string): Promise<ActionResult<{ row: LeaveSnapshot }>> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { data: leave } = await supabase.from("leave_requests").select("*").eq("id", id).maybeSingle();
+    if (!leave) throw new Error("This leave request was not found (it may already be deleted).");
+    await leaveAccess(supabase, leave);
+    const { data: approval } = leave.approval_id ? await supabase.from("approvals").select("*").eq("id", leave.approval_id).maybeSingle() : { data: null };
+    const { data: removed, error } = await supabase.from("leave_requests").delete().eq("id", id).select("id");
+    if (error || !removed?.length) throw new Error("Could not delete the leave request.");
+    if (approval) await supabase.from("approvals").delete().eq("id", approval.id);
+    await recordAudit({ companyId: leave.company_id, relatedTable: "leave_requests", relatedId: id, action: "deleted", previousValue: `${leave.leave_type} ${leave.start_date} → ${leave.end_date} (${leave.status})`, newValue: "Deleted" });
+    revalidatePath("/hr/leave");
+    revalidatePath(`/hr/${leave.employee_id}`);
+    return { row: { leave, approval: approval ?? null } };
+  }, "Could not delete the leave request. Please try again.");
+}
+
+/** Undo of a delete: the leave request and its approval record come back as they were. */
+export async function restoreLeave(snapshot: LeaveSnapshot): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { leave, approval } = snapshot;
+    if (!leave?.id || !leave.company_id || !leave.employee_id) throw new Error("There is nothing to put back.");
+    await leaveAccess(supabase, leave);
+    if (approval) {
+      const { error: approvalError } = await supabase.from("approvals").insert(approval);
+      if (approvalError) throw new Error("Could not put the leave request back.");
+    }
+    const { error } = await supabase.from("leave_requests").insert(leave);
+    if (error) {
+      if (approval) await supabase.from("approvals").delete().eq("id", approval.id);
+      throw new Error("Could not put the leave request back.");
+    }
+    await recordAudit({ companyId: leave.company_id, relatedTable: "leave_requests", relatedId: leave.id, action: "restored", newValue: "Put back after it was deleted" });
+    revalidatePath("/hr/leave");
+    revalidatePath(`/hr/${leave.employee_id}`);
+    return {};
+  }, "Could not put the leave request back.");
+}
+
 export async function requestLeave(input: LeaveInput) {
   const { supabase, userId } = await requireUser();
   const { data: owns } = await supabase.rpc("user_owns_employee", { target_employee_id: input.employeeId });
@@ -567,12 +658,70 @@ export async function createCompanyDocument(input: CompanyDocumentInput) {
   return data;
 }
 
-export async function deleteCompanyDocument(id: string) {
-  const { supabase } = await requireUser();
-  const { data: doc } = await supabase.from("company_documents").select("company_id").eq("id", id).maybeSingle();
-  if (doc) await requireHrAdmin(supabase, doc.company_id, "Only an admin of the company can delete company documents.");
-  const { error } = await supabase.from("company_documents").delete().eq("id", id);
-  if (error) throw error;
-  revalidatePath("/hr/documents");
-  revalidatePath("/");
+export type CompanyDocumentRow = Database["public"]["Tables"]["company_documents"]["Row"];
+
+export type CompanyDocumentEdit = { docType: string; title: string; referenceNumber?: string; issuedDate?: string; expiryDate?: string; notes?: string; documentId?: string };
+
+/** Changes a licence / agreement (type, title, reference, dates, notes, file). Only the admins of the company. */
+export async function updateCompanyDocument(id: string, input: CompanyDocumentEdit): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase, userId } = await requireUser();
+    const { data: before } = await supabase.from("company_documents").select("*").eq("id", id).maybeSingle();
+    if (!before) throw new Error("This document was not found (it may have been deleted).");
+    await requireHrAdmin(supabase, before.company_id, "Only an admin of the company can change company documents.");
+    const title = input.title?.trim();
+    if (!title) throw new Error("Write the title of the document.");
+    for (const d of [input.issuedDate, input.expiryDate]) if (d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) throw new Error("Enter valid dates.");
+    const { error } = await supabase
+      .from("company_documents")
+      .update({
+        doc_type: input.docType,
+        title: title.slice(0, 200),
+        reference_number: input.referenceNumber?.trim() || null,
+        issued_date: input.issuedDate || null,
+        expiry_date: input.expiryDate || null,
+        notes: input.notes?.trim() || null,
+        document_id: input.documentId || before.document_id,
+      })
+      .eq("id", id);
+    if (error) throw error;
+    if (input.documentId && input.documentId !== before.document_id) {
+      await supabase.from("documents").update({ extraction_status: "confirmed", related_table: "company_documents", related_id: id, reviewed_by: userId, reviewed_at: new Date().toISOString() }).eq("id", input.documentId);
+    }
+    await recordAudit({ companyId: before.company_id, relatedTable: "company_documents", relatedId: id, action: "edited", previousValue: `${before.doc_type} · ${before.title} · ${before.expiry_date ?? "no expiry"}`, newValue: `${input.docType} · ${title} · ${input.expiryDate || "no expiry"}` });
+    revalidatePath("/hr/documents");
+    revalidatePath("/");
+    return {};
+  }, "Could not save the document. Please try again.");
+}
+
+/** Deletes a licence / agreement and returns it, so the delete can be undone. */
+export async function deleteCompanyDocument(id: string): Promise<ActionResult<{ row: CompanyDocumentRow }>> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { data: doc } = await supabase.from("company_documents").select("*").eq("id", id).maybeSingle();
+    if (!doc) throw new Error("This document was not found (it may already be deleted).");
+    await requireHrAdmin(supabase, doc.company_id, "Only an admin of the company can delete company documents.");
+    const { data: removed, error } = await supabase.from("company_documents").delete().eq("id", id).select("id");
+    if (error || !removed?.length) throw new Error("Could not delete the document.");
+    await recordAudit({ companyId: doc.company_id, relatedTable: "company_documents", relatedId: id, action: "deleted", previousValue: `${doc.doc_type} · ${doc.title} · ${doc.expiry_date ?? "no expiry"}`, newValue: "Deleted" });
+    revalidatePath("/hr/documents");
+    revalidatePath("/");
+    return { row: doc };
+  }, "Could not delete the document. Please try again.");
+}
+
+/** Undo of a delete: the licence / agreement comes back as it was. */
+export async function restoreCompanyDocument(row: CompanyDocumentRow): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    if (!row?.id || !row.company_id) throw new Error("There is nothing to put back.");
+    await requireHrAdmin(supabase, row.company_id, "Only an admin of the company can put a company document back.");
+    const { error } = await supabase.from("company_documents").insert(row);
+    if (error) throw new Error("Could not put the document back.");
+    await recordAudit({ companyId: row.company_id, relatedTable: "company_documents", relatedId: row.id, action: "restored", newValue: `${row.title} put back after it was deleted` });
+    revalidatePath("/hr/documents");
+    revalidatePath("/");
+    return {};
+  }, "Could not put the document back.");
 }

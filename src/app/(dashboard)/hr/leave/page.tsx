@@ -1,15 +1,11 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listLeaveForCompanies } from "@/lib/hr/queries";
-import { leaveTypeText, LEAVE_STATUS_LABEL } from "@/lib/hr/constants";
-import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
-import { LeaveRowActions } from "@/components/hr/LeaveRowActions";
-import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 import { getHrAccess } from "@/lib/hr/access";
+import { LeaveItem } from "@/components/hr/LeaveItem";
 
 export default async function LeavePage({
   searchParams,
@@ -46,26 +42,30 @@ export default async function LeavePage({
           <EmptyRow text="No leave requests yet." />
         ) : (
           <div className="divide-y divide-border">
-            {requests.map((r) => (
-              <div key={r.id} className="flex items-center justify-between px-5 py-3.5">
-                <div>
-                  <div className="text-[13.5px] font-semibold text-text">
-                    <Link href={`/hr/${r.employee_id}`} className="hover:text-primary">{r.employees?.full_name}</Link>
-                    <span className="ml-2 text-text-secondary font-normal">{leaveTypeText(r.leave_type, r.leave_type_other)}</span>
-                    {r.document_id && <DocumentViewLink documentId={r.document_id} label="📎 MC / file" className="ml-2 text-xs" />}
-                  </div>
-                  <div className="mt-0.5 text-xs text-text-muted">
-                    {r.start_date} → {r.end_date} · {r.days} day(s) · {r.companies?.name}
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <StatusBadge tone={r.status === "approved" ? "success" : r.status === "rejected" ? "danger" : "warning"}>
-                    {LEAVE_STATUS_LABEL[r.status] ?? r.status}
-                  </StatusBadge>
-                  {r.status === "pending" && <LeaveRowActions leaveId={r.id} />}
-                </div>
-              </div>
-            ))}
+            {requests.map((r) => {
+              const admin = access.isAdminOf(r.company_id);
+              return (
+                <LeaveItem
+                  key={r.id}
+                  canDecide={admin}
+                  canChange={admin || r.status === "pending"}
+                  leave={{
+                    id: r.id,
+                    employeeId: r.employee_id,
+                    employeeName: r.employees?.full_name,
+                    companyName: r.companies?.name,
+                    leaveType: r.leave_type,
+                    leaveTypeOther: r.leave_type_other,
+                    startDate: r.start_date,
+                    endDate: r.end_date,
+                    days: Number(r.days),
+                    reason: r.reason,
+                    status: r.status,
+                    documentId: r.document_id,
+                  }}
+                />
+              );
+            })}
           </div>
         )}
       </div>

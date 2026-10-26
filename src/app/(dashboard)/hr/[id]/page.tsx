@@ -14,8 +14,6 @@ import {
 import {
   EMPLOYMENT_TYPE_LABEL,
   EMPLOYEE_STATUS_LABEL,
-  leaveTypeText,
-  LEAVE_STATUS_LABEL,
   PAYROLL_STATUS_LABEL,
   certificateUrgency,
   canManageStaffPrivateDetails,
@@ -28,6 +26,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { SectionCard, EmptyRow, StatRow } from "@/components/dashboard/SectionCard";
 import { getHrAccess } from "@/lib/hr/access";
 import { CertificateList } from "@/components/hr/CertificateList";
+import { LeaveItem } from "@/components/hr/LeaveItem";
 
 export default async function EmployeeProfilePage({
   params,
@@ -155,15 +154,13 @@ export default async function EmployeeProfilePage({
           ) : (
             <div className="-mx-5 -mb-5 divide-y divide-border">
               {leave.slice(0, 5).map((l) => (
-                <div key={l.id} className="flex items-center justify-between px-5 py-3">
-                  <div>
-                    <div className="text-[13px] font-semibold text-text">{leaveTypeText(l.leave_type, l.leave_type_other)}</div>
-                    <div className="text-xs text-text-muted">{l.start_date} → {l.end_date} · {l.days} day(s)</div>
-                  </div>
-                  <StatusBadge tone={l.status === "approved" ? "success" : l.status === "rejected" ? "danger" : "warning"}>
-                    {LEAVE_STATUS_LABEL[l.status] ?? l.status}
-                  </StatusBadge>
-                </div>
+                <LeaveItem
+                  key={l.id}
+                  compact
+                  canDecide={access.isAdminOf(employee.company_id)}
+                  canChange={access.isAdminOf(employee.company_id) || (access.ownEmployeeIds.has(employee.id) && l.status === "pending")}
+                  leave={{ id: l.id, employeeId: l.employee_id, leaveType: l.leave_type, leaveTypeOther: l.leave_type_other, startDate: l.start_date, endDate: l.end_date, days: Number(l.days), reason: l.reason, status: l.status, documentId: l.document_id }}
+                />
               ))}
             </div>
           )}

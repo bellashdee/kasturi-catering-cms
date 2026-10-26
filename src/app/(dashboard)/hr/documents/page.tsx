@@ -3,11 +3,9 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
-import { COMPANY_DOC_TYPE_LABEL, certificateUrgency } from "@/lib/hr/constants";
-import { StatusBadge } from "@/components/StatusBadge";
+import { certificateUrgency } from "@/lib/hr/constants";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
-import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
-import { DeleteCompanyDocumentButton } from "@/components/hr/DeleteCompanyDocumentButton";
+import { CompanyDocumentRow } from "@/components/hr/CompanyDocumentRow";
 import { getHrAccess } from "@/lib/hr/access";
 
 export default async function CompanyDocumentsPage({
@@ -66,7 +64,7 @@ export default async function CompanyDocumentsPage({
           <EmptyRow text="No licences or agreements recorded yet. Upload an MBJB licence, Halal licence or tenancy agreement and the system will remind you before it expires." />
         ) : (
           <div>
-            <div className="grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr_0.9fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
+            <div className="grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr_1.1fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
               <div>Document</div>
               <div>Type</div>
               <div>Company</div>
@@ -74,29 +72,12 @@ export default async function CompanyDocumentsPage({
               <div>Expires</div>
               <div></div>
             </div>
-            {docs.map((d) => {
-              const urgency = certificateUrgency(d.expiry_date);
-              return (
-                <div key={d.id} className="grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr_0.9fr] items-center border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0">
-                  <div className="font-semibold text-text">
-                    {d.title}
-                    {d.document_id && <DocumentViewLink documentId={d.document_id} className="ml-2 text-xs" />}
-                  </div>
-                  <div className="text-text-secondary">{COMPANY_DOC_TYPE_LABEL[d.doc_type] ?? d.doc_type}</div>
-                  <div className="text-text-secondary">{d.companies?.name}</div>
-                  <div className="text-text-secondary">{d.reference_number ?? "—"}</div>
-                  <div className="flex flex-col items-start gap-1">
-                    <span className="text-text-secondary">{d.expiry_date ?? "—"}</span>
-                    {urgency === "expired" && <StatusBadge tone="danger">Expired</StatusBadge>}
-                    {urgency === "expiring_soon" && <StatusBadge tone="warning">Expiring soon</StatusBadge>}
-                    {urgency === "valid" && <StatusBadge tone="success">Valid</StatusBadge>}
-                  </div>
-                  <div className="flex justify-end">
-                    <DeleteCompanyDocumentButton id={d.id} />
-                  </div>
-                </div>
-              );
-            })}
+            {docs.map((d) => (
+              <CompanyDocumentRow
+                key={d.id}
+                doc={{ id: d.id, companyId: d.company_id, companyName: d.companies?.name ?? "", docType: d.doc_type, title: d.title, referenceNumber: d.reference_number, issuedDate: d.issued_date, expiryDate: d.expiry_date, notes: d.notes, documentId: d.document_id, urgency: certificateUrgency(d.expiry_date) }}
+              />
+            ))}
           </div>
         )}
       </div>

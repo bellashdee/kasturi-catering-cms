@@ -4,7 +4,8 @@ import { useI18n } from "@/components/i18n/I18nProvider";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { cancelOvertime, submitOvertime } from "@/lib/hr/overtimeActions";
+import { cancelOvertime, deleteOvertime, restoreOvertime, submitOvertime, type OvertimeSnapshot } from "@/lib/hr/overtimeActions";
+import { RecordActions } from "@/components/shared/RecordActions";
 import { errorMessage, type ActionResult } from "@/lib/actionResult";
 
 /** Staff-side actions: submit a draft, edit a draft, or cancel an OT that has not been decided yet. */
@@ -51,6 +52,14 @@ export function OvertimeRecordActions({ overtimeId, status }: { overtimeId: stri
           >
             {busy === "cancel" ? "Cancelling..." : "Cancel OT"}
           </button>
+        )}
+        {["draft", "cancelled", "rejected"].includes(status) && (
+          <RecordActions<OvertimeSnapshot>
+            onDelete={() => deleteOvertime(overtimeId)}
+            onRestore={(row) => restoreOvertime(row)}
+            afterClose={() => router.push("/hr/overtime")}
+            confirmText="Delete this OT?"
+          />
         )}
       </div>
     </div>
