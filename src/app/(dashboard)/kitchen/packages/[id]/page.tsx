@@ -8,6 +8,7 @@ import { packagePriceLabel } from "@/lib/kitchen/packages/format";
 import { SectionCard } from "@/components/dashboard/SectionCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { PackageActiveToggle } from "@/components/kitchen/PackageActiveToggle";
+import { PackageActions } from "@/components/kitchen/PackageRecordActions";
 import { PackageMenuPicker, type PackageDish } from "@/components/kitchen/PackageMenuPicker";
 import { menuChoices, sideOf } from "@/lib/kitchen/side";
 import { loadRecipeData, loadRecipeRefs } from "@/lib/kitchenAi/data";
@@ -70,6 +71,18 @@ export default async function PackageMenuDetailPage({
         <div className="flex items-center gap-2">
           <StatusBadge tone={pkg.is_active ? "success" : "warning"}>{pkg.is_active ? "Active" : "Inactive"}</StatusBadge>
           <PackageActiveToggle packageId={pkg.id} isActive={pkg.is_active} />
+          <PackageActions
+            listHref={`/kitchen/packages${query}`}
+            pkg={{
+              id: pkg.id,
+              name: pkg.name,
+              pricePerPax: String(pkg.price_per_pax),
+              minimumPax: String(pkg.minimum_pax ?? 0),
+              includedItems: pkg.included_items ?? "",
+              specialRequirements: pkg.special_requirements ?? "",
+              items: [...pkg.package_menu_items].sort((a, b) => a.sort_order - b.sort_order).map((i) => ({ mealType: i.meal_type, itemName: i.item_name })),
+            }}
+          />
         </div>
       </div>
 
