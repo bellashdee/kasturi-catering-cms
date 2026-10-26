@@ -6,6 +6,7 @@ import { getCustomerWithEvents } from "@/lib/catering/queries";
 import { EVENT_STATUS_LABEL } from "@/lib/catering/constants";
 import { formatCurrency } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
+import { CustomerActions } from "@/components/catering/CateringRecordActions";
 import { SectionCard, EmptyRow, StatRow } from "@/components/dashboard/SectionCard";
 
 function statusTone(status: string): "success" | "warning" | "danger" | "info" | "neutral" {
@@ -36,16 +37,22 @@ export default async function CustomerHistoryPage({ params }: { params: Promise<
     <div className="flex flex-col gap-5">
       <Link href="/catering/customers" className="text-[12.5px] font-semibold text-text-secondary">← Back to Customers</Link>
 
-      <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-base font-bold text-white">
-          {customer.name.slice(0, 2).toUpperCase()}
-        </div>
-        <div>
-          <div className="text-[20px] font-extrabold text-text">{customer.name}</div>
-          <div className="text-[13px] text-text-secondary">
-            {customer.contact_person && `${customer.contact_person} · `}{customer.phone || "No phone"} · {customer.companies?.name}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-base font-bold text-white">
+            {customer.name.slice(0, 2).toUpperCase()}
+          </div>
+          <div>
+            <div className="text-[20px] font-extrabold text-text">{customer.name}</div>
+            <div className="text-[13px] text-text-secondary">
+              {customer.contact_person && `${customer.contact_person} · `}{customer.phone || "No phone"} · {customer.companies?.name}
+            </div>
           </div>
         </div>
+        <CustomerActions
+          listHref="/catering/customers"
+          customer={{ id, name: customer.name, contactPerson: customer.contact_person ?? "", phone: customer.phone ?? "", email: customer.email ?? "", registrationNo: customer.registration_no ?? "", billingAddress: customer.billing_address ?? "", deliveryAddress: customer.delivery_address ?? "", area: customer.area ?? "", creditTerm: customer.credit_term ?? "", notes: customer.notes ?? "" }}
+        />
       </div>
 
       {(customer.registration_no || customer.billing_address || customer.delivery_address || customer.credit_term || customer.credit_limit || customer.email || customer.account_code) && (

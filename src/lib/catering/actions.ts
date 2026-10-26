@@ -11,6 +11,7 @@ import { recordAudit } from "@/lib/audit";
 import { dueDateFromTerms } from "@/lib/finance/terms";
 import { dayPax, type EventDay } from "@/lib/catering/days";
 import { validateDays, validateServiceDetails, validateTimes } from "@/lib/catering/validation";
+import { runAction, type ActionResult } from "@/lib/actionResult";
 
 type EventStatus = Database["public"]["Enums"]["event_status"];
 
@@ -692,4 +693,219 @@ export async function upsertDelivery(input: DeliveryInput) {
   revalidatePath(`/catering/${input.eventId}`);
   revalidatePath("/driver-logistics");
   revalidatePath("/");
+}
+
+type CTables = Database["public"]["Tables"];
+export type QuotationRow = CTables["quotations"]["Row"];
+export type QuotationItemRow = CTables["quotation_items"]["Row"];
+export type QuotationSnapshot = { quotation: QuotationRow; items: QuotationItemRow[] };
+export type EventRow = CTables["catering_events"]["Row"];
+export type EventDayRow = CTables["catering_event_days"]["Row"];
+export type EventSnapshot = { event: EventRow; days: EventDayRow[] };
+export type CustomerRow = CTables["customers"]["Row"];
+
+async function cateringAdmin(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], companyId: string, message: string) {
+  const { data } = await supabase.rpc("user_is_company_admin", { target_company_id: companyId });
+  if (data !== true) throw new Error(message);
+}
+
+const total = async (q: PromiseLike<{ count: number | null }>) => (await q).count ?? 0;
+
+export type QuotationEdit = { quotationNumber: string; items: { itemName: string; quantity: number; unitPrice: number; discountPercent: number }[] };
+
+/** Changes a quotation that is not accepted yet (number and items; the totals are worked out as when it was made). */
+export async function updateQuotation(id: string, input: QuotationEdit): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { data: before } = await supabase.from("quotations").select("*, quotation_items(*)").eq("id", id).maybeSingle();
+    if (!before) throw new Error("This quotation was not found (it may have been deleted).");
+    if (before.status === "accepted") throw new Error("An accepted quotation already has an invoice, so it cannot be changed.");
+    if (!input.quotationNumber?.trim()) throw new Error("Enter the quotation number.");
+    const rows = input.items.filter((i) => i.itemName.trim());
+    if (rows.length === 0) throw new Error("A quotation needs at least one item.");
+    for (const i of rows) if (![i.quantity, i.unitPrice, i.discountPercent].every(Number.isFinite) || i.quantity <= 0 || i.unitPrice < 0 || i.discountPercent < 0 || i.discountPercent > 100) throw new Error(`Check the numbers of ${i.itemName.trim()}.`);
+    const items = rows.map((i, n) => ({ item_name: i.itemName.trim(), quantity: i.quantity, unit_price: i.unitPrice, discount_percent: i.discountPercent, line_total: Math.round(i.quantity * i.unitPrice * (1 - i.discountPercent / 100) * 100) / 100, sort_order: n }));
+    const totalAmount = Math.round(items.reduce((t, i) => t + i.line_total, 0) * 100) / 100;
+    const { error } = await supabase.from("quotations").update({ quotation_number: input.quotationNumber.trim(), total_amount: totalAmount }).eq("id", id);
+    if (error) throw error;
+    const { error: deleteError } = await supabase.from("quotation_items").delete().eq("quotation_id", id);
+    if (deleteError) throw deleteError;
+    const { error: insertError } = await supabase.from("quotation_items").insert(items.map((i) => ({ ...i, quotation_id: id })));
+    if (insertError) {
+      await supabase.from("quotation_items").insert(before.quotation_items);
+      throw insertError;
+    }
+    await supabase.from("catering_events").update({ total_amount: totalAmount }).eq("id", before.catering_event_id);
+    await recordAudit({ companyId: before.company_id, relatedTable: "quotations", relatedId: id, action: "edited", previousValue: `${before.quotation_number} · RM ${before.total_amount}`, newValue: `${input.quotationNumber.trim()} · RM ${totalAmount.toFixed(2)}` });
+    revalidatePath(`/catering/${before.catering_event_id}`);
+    revalidatePath("/catering/quotations");
+    return {};
+  }, "Could not save the quotation. Please try again.");
+}
+
+/** Deletes a quotation (with its items) that is not accepted; returns both so the delete can be undone. */
+export async function deleteQuotation(id: string): Promise<ActionResult<{ row: QuotationSnapshot }>> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { data: q } = await supabase.from("quotations").select("*, quotation_items(*)").eq("id", id).maybeSingle();
+    if (!q) throw new Error("This quotation was not found (it may already be deleted).");
+    if (q.status === "accepted") throw new Error("An accepted quotation already has an invoice, so it cannot be deleted.");
+    const { quotation_items: items, ...row } = q;
+    const { data: removed, error } = await supabase.from("quotations").delete().eq("id", id).select("id");
+    if (error || !removed?.length) throw new Error("Could not delete the quotation.");
+    await recordAudit({ companyId: q.company_id, relatedTable: "quotations", relatedId: id, action: "deleted", previousValue: `${q.quotation_number} · RM ${q.total_amount} · ${items.length} item(s)`, newValue: "Deleted" });
+    revalidatePath(`/catering/${q.catering_event_id}`);
+    revalidatePath("/catering/quotations");
+    return { row: { quotation: row, items } };
+  }, "Could not delete the quotation. Please try again.");
+}
+
+/** Undo of a delete: the quotation and its items come back as they were. */
+export async function restoreQuotation(snapshot: QuotationSnapshot): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { quotation, items } = snapshot;
+    if (!quotation?.id || !quotation.company_id) throw new Error("There is nothing to put back.");
+    const { error } = await supabase.from("quotations").insert(quotation);
+    if (error) throw new Error("Could not put the quotation back.");
+    if (items.length > 0) {
+      const { error: itemsError } = await supabase.from("quotation_items").insert(items);
+      if (itemsError) {
+        await supabase.from("quotations").delete().eq("id", quotation.id);
+        throw new Error("Could not put the quotation back.");
+      }
+    }
+    await recordAudit({ companyId: quotation.company_id, relatedTable: "quotations", relatedId: quotation.id, action: "restored", newValue: `${quotation.quotation_number} put back after it was deleted` });
+    revalidatePath(`/catering/${quotation.catering_event_id}`);
+    revalidatePath("/catering/quotations");
+    return {};
+  }, "Could not put the quotation back.");
+}
+
+/**
+ * Deletes an event that nothing has been built on: it must be an enquiry, a quoted or a cancelled event with no quotation, costing, staff,
+ * equipment, production, delivery, cost, revenue or invoice. Its days are kept for Undo.
+ */
+export async function deleteEvent(id: string): Promise<ActionResult<{ row: EventSnapshot }>> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { data: event } = await supabase.from("catering_events").select("*").eq("id", id).maybeSingle();
+    if (!event) throw new Error("This event was not found (it may already be deleted).");
+    await cateringAdmin(supabase, event.company_id, "Only an admin of the company can delete an event. You can cancel it instead.");
+    if (!["enquiry", "quoted", "cancelled"].includes(event.status)) throw new Error("A confirmed event cannot be deleted. Cancel it first.");
+    const head = { count: "exact" as const, head: true };
+    const checks: [string, PromiseLike<{ count: number | null }>][] = [
+      ["quotation(s)", supabase.from("quotations").select("id", head).eq("catering_event_id", id)],
+      ["staff assignment(s)", supabase.from("event_staff").select("id", head).eq("catering_event_id", id)],
+      ["equipment assignment(s)", supabase.from("event_equipment").select("id", head).eq("catering_event_id", id)],
+      ["production order(s)", supabase.from("production_orders").select("id", head).eq("catering_event_id", id)],
+      ["delivery(ies)", supabase.from("deliveries").select("id", head).eq("catering_event_id", id)],
+      ["cost entry(ies)", supabase.from("event_cost_entries").select("id", head).eq("catering_event_id", id)],
+      ["revenue entry(ies)", supabase.from("event_revenue_entries").select("id", head).eq("catering_event_id", id)],
+      ["budget(s)", supabase.from("event_budgets").select("id", head).eq("catering_event_id", id)],
+      ["costing", supabase.from("event_costing").select("id", head).eq("catering_event_id", id)],
+      ["customer invoice(s)", supabase.from("customer_invoices").select("id", head).eq("catering_event_id", id)],
+    ];
+    const counts = await Promise.all(checks.map(([, q]) => total(q)));
+    const used = checks.map(([label], i) => (counts[i] > 0 ? `${counts[i]} ${label}` : null)).filter(Boolean);
+    if (used.length > 0) throw new Error(`This event cannot be deleted: it has ${used.join(", ")}. Remove those first, or cancel the event instead.`);
+    const { data: days } = await supabase.from("catering_event_days").select("*").eq("catering_event_id", id);
+    const { data: removed, error } = await supabase.from("catering_events").delete().eq("id", id).select("id");
+    if (error || !removed?.length) throw new Error("The event could not be deleted. Cancel it instead.");
+    await recordAudit({ companyId: event.company_id, relatedTable: "catering_events", relatedId: id, action: "deleted", previousValue: `${event.event_name} · ${event.event_date} · ${event.status}${event.pax_count ? ` · ${event.pax_count} pax` : ""}`, newValue: "Deleted" });
+    revalidatePath("/catering");
+    revalidatePath("/catering/calendar");
+    return { row: { event, days: days ?? [] } };
+  }, "Could not delete the event. Please try again.");
+}
+
+/** Undo of a delete: the event and its days come back as they were. */
+export async function restoreEvent(snapshot: EventSnapshot): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { event, days } = snapshot;
+    if (!event?.id || !event.company_id) throw new Error("There is nothing to put back.");
+    await cateringAdmin(supabase, event.company_id, "Only an admin of the company can put an event back.");
+    const { error } = await supabase.from("catering_events").insert(event);
+    if (error) throw new Error("Could not put the event back.");
+    if (days.length > 0) {
+      const { error: daysError } = await supabase.from("catering_event_days").insert(days);
+      if (daysError) {
+        await supabase.from("catering_events").delete().eq("id", event.id);
+        throw new Error("Could not put the event back.");
+      }
+    }
+    await recordAudit({ companyId: event.company_id, relatedTable: "catering_events", relatedId: event.id, action: "restored", newValue: `${event.event_name} put back after it was deleted` });
+    revalidatePath("/catering");
+    revalidatePath("/catering/calendar");
+    return {};
+  }, "Could not put the event back.");
+}
+
+export type CustomerEdit = {
+  name: string;
+  contactPerson?: string;
+  phone?: string;
+  email?: string;
+  registrationNo?: string;
+  billingAddress?: string;
+  deliveryAddress?: string;
+  area?: string;
+  creditTerm?: string;
+  notes?: string;
+};
+
+/** Changes the details of a customer. */
+export async function updateCustomer(id: string, input: CustomerEdit): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { data: before } = await supabase.from("customers").select("*").eq("id", id).maybeSingle();
+    if (!before) throw new Error("This customer was not found (it may have been deleted).");
+    if (!input.name?.trim()) throw new Error("Write the name of the customer.");
+    const t = (v?: string) => v?.trim() || null;
+    const { error } = await supabase
+      .from("customers")
+      .update({ name: input.name.trim(), contact_person: t(input.contactPerson), phone: t(input.phone), email: t(input.email), registration_no: t(input.registrationNo), billing_address: t(input.billingAddress), delivery_address: t(input.deliveryAddress), area: t(input.area), credit_term: t(input.creditTerm), notes: t(input.notes) })
+      .eq("id", id);
+    if (error) throw error;
+    await recordAudit({ companyId: before.company_id, relatedTable: "customers", relatedId: id, action: "edited", previousValue: `${before.name} · ${before.phone ?? "no phone"}`, newValue: `${input.name.trim()} · ${input.phone?.trim() || "no phone"}` });
+    revalidatePath(`/catering/customers/${id}`);
+    revalidatePath("/catering/customers");
+    return {};
+  }, "Could not save the customer. Please try again.");
+}
+
+/** Deletes a customer that has no event or invoice (otherwise the customer is kept); returns it so the delete can be undone. */
+export async function deleteCustomer(id: string): Promise<ActionResult<{ row: CustomerRow }>> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { data: customer } = await supabase.from("customers").select("*").eq("id", id).maybeSingle();
+    if (!customer) throw new Error("This customer was not found (it may already be deleted).");
+    await cateringAdmin(supabase, customer.company_id, "Only an admin of the company can delete a customer.");
+    const head = { count: "exact" as const, head: true };
+    const [events, invoices] = await Promise.all([
+      total(supabase.from("catering_events").select("id", head).eq("customer_id", id)),
+      total(supabase.from("customer_invoices").select("id", head).eq("customer_id", id)),
+    ]);
+    if (events > 0 || invoices > 0) throw new Error(`This customer cannot be deleted: it has ${[events && `${events} event(s)`, invoices && `${invoices} invoice(s)`].filter(Boolean).join(" and ")}.`);
+    const { data: removed, error } = await supabase.from("customers").delete().eq("id", id).select("id");
+    if (error || !removed?.length) throw new Error("Could not delete the customer.");
+    await recordAudit({ companyId: customer.company_id, relatedTable: "customers", relatedId: id, action: "deleted", previousValue: `${customer.name} · ${customer.phone ?? "no phone"}`, newValue: "Deleted" });
+    revalidatePath("/catering/customers");
+    return { row: customer };
+  }, "Could not delete the customer. Please try again.");
+}
+
+/** Undo of a delete: the customer comes back as it was. */
+export async function restoreCustomer(row: CustomerRow): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    if (!row?.id || !row.company_id) throw new Error("There is nothing to put back.");
+    await cateringAdmin(supabase, row.company_id, "Only an admin of the company can put a customer back.");
+    const { error } = await supabase.from("customers").insert(row);
+    if (error) throw new Error("Could not put the customer back.");
+    await recordAudit({ companyId: row.company_id, relatedTable: "customers", relatedId: row.id, action: "restored", newValue: `${row.name} put back after it was deleted` });
+    revalidatePath("/catering/customers");
+    return {};
+  }, "Could not put the customer back.");
 }

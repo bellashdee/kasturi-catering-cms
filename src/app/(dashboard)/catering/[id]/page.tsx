@@ -29,6 +29,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { SectionCard, EmptyRow } from "@/components/dashboard/SectionCard";
 import { EventStatusSelect } from "@/components/catering/EventStatusSelect";
 import { QuotationActions } from "@/components/catering/QuotationActions";
+import { EventDeleteAction, QuotationRecordActions } from "@/components/catering/CateringRecordActions";
 import { CostingForm } from "@/components/catering/CostingForm";
 import { StaffAssignForm } from "@/components/catering/StaffAssignForm";
 import { EquipmentAssignForm } from "@/components/catering/EquipmentAssignForm";
@@ -115,6 +116,7 @@ export default async function EventDetailPage({
           <Link href={`/catering/${id}/edit${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2 text-[13px] font-semibold text-text">
             Edit
           </Link>
+          <EventDeleteAction eventId={id} name={event.event_name} listHref={`/catering${query}`} />
         </div>
       </div>
 
@@ -287,6 +289,9 @@ export default async function EventDetailPage({
                 <div className="flex items-center gap-3">
                   <StatusBadge tone={quotationTone(q.status)}>{QUOTATION_STATUS_LABEL[q.status] ?? q.status}</StatusBadge>
                   <QuotationActions quotationId={q.id} status={q.status} paymentStatus={q.payment_status} />
+                  <QuotationRecordActions
+                    quotation={{ id: q.id, number: q.quotation_number, status: q.status, items: [...(q.quotation_items ?? [])].sort((a, b) => a.sort_order - b.sort_order).map((i) => ({ itemName: i.item_name, quantity: String(i.quantity), unitPrice: String(i.unit_price), discountPercent: String(i.discount_percent) })) }}
+                  />
                 </div>
               </div>
             ))}
