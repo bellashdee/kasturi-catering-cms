@@ -6,6 +6,7 @@ import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/docum
 import { createCompanyDocument } from "@/lib/hr/actions";
 import { COMPANY_DOC_TYPE_LABEL } from "@/lib/hr/constants";
 import { requestExtraction } from "@/lib/importFlow/extractClient";
+import { Select } from "@/components/ui/Select";
 
 type Company = { id: string; name: string };
 type Extracted = {
@@ -126,14 +127,14 @@ export function CompanyDocumentUploadReview({ companies, defaultCompanyId, redir
       <div className="p-6">
         <div className="mb-4 max-w-xs">
           <label className={labelClass}>Company *</label>
-          <select
+          <Select
             value={companyId}
             disabled={documentId !== null}
             onChange={(e) => setCompanyId(e.target.value)}
             className={`${inputClass} disabled:bg-surface-alt disabled:text-text-muted`}
           >
             {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
 
         {step === "pick" && (
@@ -158,9 +159,9 @@ export function CompanyDocumentUploadReview({ companies, defaultCompanyId, redir
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelClass}>Document Type *</label>
-                <select value={docType} onChange={(e) => setDocType(e.target.value)} className={inputClass}>
+                <Select value={docType} onChange={(e) => setDocType(e.target.value)} className={inputClass}>
                   {Object.entries(COMPANY_DOC_TYPE_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className={labelClass}>Title *</label>

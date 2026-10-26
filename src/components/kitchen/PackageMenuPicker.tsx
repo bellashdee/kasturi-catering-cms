@@ -7,6 +7,7 @@ import type { KItem, KSession, KState, RecipeData } from "@/lib/kitchenAi/types"
 import type { Candidate, RecipeRef } from "@/lib/kitchenAi/match";
 import { loadRecipes } from "@/lib/purchasePlanner/actions";
 import { SIDE_LABEL, type KitchenSide } from "@/lib/kitchen/side";
+import { Select } from "@/components/ui/Select";
 
 export type PackageDish = {
   id: string;
@@ -144,7 +145,7 @@ export function PackageMenuPicker({ dishes, recipeData, recipeRefs, minimumPax, 
                         {cur && recipes.get(cur) ? `Recipe: ${recipes.get(cur)!.name} · for ${recipes.get(cur)!.yieldPax} pax · ${recipes.get(cur)!.lines.length} ingredients` : cur ? "Reading the recipe..." : "Recipe Data Required: choose a recipe"}
                       </div>
                     </div>
-                    <select value={cur ?? ""} onChange={(e) => void chooseRecipe(d.id, e.target.value)} className={`${selectClass} ${cur ? "" : "border-warning"}`}>
+                    <Select value={cur ?? ""} onChange={(e) => void chooseRecipe(d.id, e.target.value)} className={`${selectClass} ${cur ? "" : "border-warning"}`}>
                       <option value="">No recipe chosen</option>
                       {d.candidates.length > 0 && (
                         <optgroup label="Suggested">
@@ -154,7 +155,7 @@ export function PackageMenuPicker({ dishes, recipeData, recipeRefs, minimumPax, 
                       <optgroup label="All recipes">
                         {recipeRefs.map((r) => <option key={r.id} value={r.id}>{`${r.name}${r.hasIngredients ? "" : " (no ingredients yet)"}`}</option>)}
                       </optgroup>
-                    </select>
+                    </Select>
                   </div>
                   {dish && dish.lines.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-0.5 text-[12px] text-text-secondary">

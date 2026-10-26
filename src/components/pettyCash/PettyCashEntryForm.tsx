@@ -12,6 +12,7 @@ import { PETTY_CASH_CATEGORIES, type OperationPettyCashRow } from "@/lib/operati
 import { DescriptionInput } from "@/components/DescriptionInput";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { positionOptions, type PersonOption } from "@/lib/pettyCash/people";
+import { Select } from "@/components/ui/Select";
 
 type Company = { id: string; name: string };
 type EntryKind = "expense" | "top_up" | "claim";
@@ -145,19 +146,19 @@ export function PettyCashEntryForm({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
         <div>
           <label className={labelClass}>Company *</label>
-          <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={inputClass}>
+          <Select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={inputClass}>
             {companies.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Type *</label>
-          <select value={kind} disabled={!!editing} onChange={(e) => setKind(e.target.value as EntryKind)} className={inputClass}>
+          <Select value={kind} disabled={!!editing} onChange={(e) => setKind(e.target.value as EntryKind)} className={inputClass}>
             {kinds.includes("expense") && <option value="expense">Spent</option>}
             {kinds.includes("top_up") && <option value="top_up">Received (top-up)</option>}
             {kinds.includes("claim") && <option value="claim">Staff claim (to be paid)</option>}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Date *</label>
@@ -212,12 +213,12 @@ export function PettyCashEntryForm({
         {!isReceived && (
           <div>
             <label className={labelClass}>Category</label>
-            <select value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass}>
+            <Select value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass}>
               <option value="">Select category</option>
               {PETTY_CASH_CATEGORIES.map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
-            </select>
+            </Select>
           </div>
         )}
         <div className={isReceived ? "sm:col-span-2" : ""}>

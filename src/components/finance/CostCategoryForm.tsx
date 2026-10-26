@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createCostCategory } from "@/lib/finance/actions";
+import { Select } from "@/components/ui/Select";
 
 type Company = { id: string; name: string };
 
@@ -33,9 +34,9 @@ export function CostCategoryForm({ companies, defaultCompanyId }: { companies: C
       {error && <div className="w-full rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-xs text-danger">{error}</div>}
       <div>
         <label className="text-[12px] font-semibold text-text-secondary">Company</label>
-        <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className="mt-1 h-9 w-48 rounded-lg border border-border-strong px-2 text-[13px]">
+        <Select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className="mt-1 h-9 w-48 rounded-lg border border-border-strong px-2 text-[13px]">
           {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
+        </Select>
       </div>
       <div className="flex-1">
         <label className="text-[12px] font-semibold text-text-secondary">New Category Name</label>

@@ -7,6 +7,7 @@ import { deletePackageMenu, restorePackageMenu, updatePackageMenu, type PackageS
 import { PACKAGE_MEAL_TYPE_LABEL } from "@/lib/kitchen/constants";
 import { AREA, BTN, BTN_GHOST, Dialog, ErrorLine, FIELD, LABEL } from "@/components/priority/ui";
 import { RecordActions } from "@/components/shared/RecordActions";
+import { Select } from "@/components/ui/Select";
 
 export type PackageEditData = { id: string; name: string; pricePerPax: string; minimumPax: string; includedItems: string; specialRequirements: string; items: { mealType: string; itemName: string }[] };
 
@@ -80,11 +81,11 @@ export function PackageActions({ pkg, listHref }: { pkg: PackageEditData; listHr
               <div className="flex flex-col gap-1.5">
                 {items.map((it, i) => (
                   <div key={i} className="grid grid-cols-[1fr_3fr_3.5rem] items-center gap-1.5">
-                    <select className="h-9 rounded-md border border-border-strong bg-surface px-2 text-[13px]" value={it.mealType} onChange={(e) => setItem(i, { mealType: e.target.value })} aria-label="Meal">
+                    <Select className="h-9 rounded-md border border-border-strong bg-surface px-2 text-[13px]" value={it.mealType} onChange={(e) => setItem(i, { mealType: e.target.value })} aria-label="Meal">
                       {Object.entries(PACKAGE_MEAL_TYPE_LABEL).map(([k, v]) => (
                         <option key={k} value={k}>{v}</option>
                       ))}
-                    </select>
+                    </Select>
                     <input className="h-9 rounded-md border border-border-strong px-2 text-[13px]" value={it.itemName} onChange={(e) => setItem(i, { itemName: e.target.value })} aria-label="Menu line" />
                     <button type="button" className="text-right text-xs font-semibold text-danger" onClick={() => setItems((p) => p.filter((_, n) => n !== i))}>
                       Remove

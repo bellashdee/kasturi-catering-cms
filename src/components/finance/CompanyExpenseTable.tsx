@@ -6,6 +6,7 @@ import { formatCurrency } from "@/lib/format";
 import { deleteCompanyExpense, restoreCompanyExpense, updateCompanyExpense, type CompanyExpenseRow } from "@/lib/finance/actions";
 import { departmentChoices } from "@/lib/finance/constants";
 import { AREA, BTN, BTN_GHOST, BTN_SM_GHOST, Dialog, FIELD, LABEL } from "@/components/priority/ui";
+import { Select } from "@/components/ui/Select";
 
 export type ExpenseListRow = {
   id: string;
@@ -147,13 +148,13 @@ export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={LABEL}>Category *</label>
-                <select required className={FIELD} value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })}>
+                <Select required className={FIELD} value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })}>
                   {categoryChoices.map((c) => (
                     <option key={c} value={c}>
                       {c}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className={LABEL}>Expense Date *</label>
@@ -165,14 +166,14 @@ export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow
               </div>
               <div>
                 <label className={LABEL}>Department</label>
-                <select className={FIELD} value={draft.department} onChange={(e) => setDraft({ ...draft, department: e.target.value })}>
+                <Select className={FIELD} value={draft.department} onChange={(e) => setDraft({ ...draft, department: e.target.value })}>
                   <option value="">Select department (optional)</option>
                   {departmentChoices(draft.department).map((d) => (
                     <option key={d} value={d}>
                       {d}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             </div>
             <div>

@@ -9,6 +9,7 @@ import { fileTypeFromMime, uploadDocument, ANY_UPLOAD_ACCEPT } from "@/lib/docum
 import { StatusBadge } from "@/components/StatusBadge";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 import { RecordActions } from "@/components/shared/RecordActions";
+import { Select } from "@/components/ui/Select";
 
 export type CompanyDocData = {
   id: string;
@@ -70,11 +71,11 @@ export function CompanyDocumentRow({ doc }: { doc: CompanyDocData }) {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
             <label className={labelClass}>Type *</label>
-            <select value={docType} onChange={(e) => setDocType(e.target.value)} className={inputClass}>
+            <Select value={docType} onChange={(e) => setDocType(e.target.value)} className={inputClass}>
               {Object.entries(COMPANY_DOC_TYPE_LABEL).map(([k, v]) => (
                 <option key={k} value={k}>{v}</option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className="sm:col-span-2">
             <label className={labelClass}>Title *</label>

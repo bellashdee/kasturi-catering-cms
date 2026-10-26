@@ -11,6 +11,7 @@ import { eventsText, purchaseOrderMessage, whatsappLink } from "@/lib/procuremen
 import { StatusBadge } from "@/components/StatusBadge";
 import { PurchaseOrderStatusSelect } from "@/components/procurement/PurchaseOrderStatusSelect";
 import { useI18n } from "@/components/i18n/I18nProvider";
+import { Select } from "@/components/ui/Select";
 
 export type BoardItem = { id: string; itemName: string; quantity: number; unit: string | null; unitPrice: number };
 export type BoardOrder = { id: string; poNumber: string; orderDate: string; status: string; total: number; sourceEvents: string | null; companyName: string; items: BoardItem[] };
@@ -96,12 +97,12 @@ export function PurchaseOrdersBoard({ suppliers, query }: { suppliers: BoardSupp
 
       <div className="flex flex-wrap items-center gap-2.5">
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search supplier, event, item or PO number" aria-label="Search" className={`${inputClass} max-w-md flex-1`} />
-        <select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Status" className={`${inputClass} w-auto`}>
+        <Select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Status" className={`${inputClass} w-auto`}>
           <option value="">All statuses</option>
           {Object.entries(PO_STATUS_LABEL).map(([key, label]) => (
             <option key={key} value={key}>{label}</option>
           ))}
-        </select>
+        </Select>
       </div>
 
       {shown.length === 0 && <div className="rounded-xl border border-border bg-surface px-5 py-8 text-center text-[13.5px] text-text-muted shadow-sm">No purchase orders to show.</div>}

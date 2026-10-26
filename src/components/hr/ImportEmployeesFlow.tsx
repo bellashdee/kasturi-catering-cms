@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 import { bulkImportEmployees, type BulkEmployeeRow } from "@/lib/hr/actions";
+import { Select } from "@/components/ui/Select";
 
 type Company = { id: string; name: string };
 
@@ -169,11 +170,11 @@ export function ImportEmployeesFlow({
       <div className="flex flex-col gap-4">
         <div>
           <label className="text-[12.5px] font-semibold text-text-secondary">Company *</label>
-          <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className="mt-1.5 h-10 w-full max-w-xs rounded-lg border border-border-strong px-3 text-sm outline-none">
+          <Select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className="mt-1.5 h-10 w-full max-w-xs rounded-lg border border-border-strong px-3 text-sm outline-none">
             {companies.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
-          </select>
+          </Select>
         </div>
 
         {error && <div className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">{error}</div>}

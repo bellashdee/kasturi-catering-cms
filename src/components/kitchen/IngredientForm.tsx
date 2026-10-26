@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createIngredient, updateIngredient, type IngredientInput } from "@/lib/kitchen/actions";
 import { normalizeUnit, unitChoices } from "@/lib/kitchen/constants";
+import { Select } from "@/components/ui/Select";
 
 type Company = { id: string; name: string };
 type Supplier = { id: string; name: string; company_id: string };
@@ -77,9 +78,9 @@ export function IngredientForm({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Company *</label>
-          <select required value={companyId} onChange={(e) => { setCompanyId(e.target.value); setForm((f) => ({ ...f, preferredSupplierId: "" })); }} disabled={!!ingredientId} className={inputClass}>
+          <Select required value={companyId} onChange={(e) => { setCompanyId(e.target.value); setForm((f) => ({ ...f, preferredSupplierId: "" })); }} disabled={!!ingredientId} className={inputClass}>
             {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Ingredient Name *</label>
@@ -94,16 +95,16 @@ export function IngredientForm({
         </div>
         <div>
           <label className={labelClass}>Unit of Measure</label>
-          <select value={form.unitOfMeasure} onChange={(e) => setForm((f) => ({ ...f, unitOfMeasure: e.target.value }))} className={inputClass}>
+          <Select value={form.unitOfMeasure} onChange={(e) => setForm((f) => ({ ...f, unitOfMeasure: e.target.value }))} className={inputClass}>
             {unitChoices(form.unitOfMeasure).map((u) => <option key={u} value={u}>{u}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Preferred Supplier</label>
-          <select value={form.preferredSupplierId} onChange={(e) => setForm((f) => ({ ...f, preferredSupplierId: e.target.value }))} className={inputClass}>
+          <Select value={form.preferredSupplierId} onChange={(e) => setForm((f) => ({ ...f, preferredSupplierId: e.target.value }))} className={inputClass}>
             <option value="">None</option>
             {suppliersForCompany.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
+          </Select>
         </div>
       </div>
 

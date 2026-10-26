@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { updatePayment, type DuplicateHit, type PaymentInput } from "@/lib/finance/paymentActions";
 import { accountDisplay, type PaymentCategory } from "@/lib/finance/payments";
+import { Select } from "@/components/ui/Select";
 
 const inputClass =
   "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
@@ -153,12 +154,12 @@ export function PaymentEditForm({ paymentId, initial, redirectTo }: { paymentId:
       <div className="grid grid-cols-3 gap-4">
         <div>
           <label className={labelClass}>Priority</label>
-          <select value={form.priority} onChange={(e) => set("priority", e.target.value as Initial["priority"])} className={inputClass}>
+          <Select value={form.priority} onChange={(e) => set("priority", e.target.value as Initial["priority"])} className={inputClass}>
             <option value="">Not set</option>
             <option value="high">High</option>
             <option value="medium">Medium</option>
             <option value="low">Low</option>
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Payment Voucher No.</label>

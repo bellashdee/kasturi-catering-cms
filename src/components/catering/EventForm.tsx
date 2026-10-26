@@ -8,6 +8,7 @@ import { MealTypeSelect } from "@/components/catering/MealTypeSelect";
 import type { EventDay } from "@/lib/catering/days";
 import { hasPackagePrice } from "@/lib/kitchen/packages/format";
 import { EventDaysEditor, emptyDay } from "@/components/catering/EventDaysEditor";
+import { Select } from "@/components/ui/Select";
 
 type Company = { id: string; name: string };
 type Customer = { id: string; name: string; company_id: string };
@@ -147,7 +148,7 @@ export function EventForm({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Company *</label>
-          <select
+          <Select
             required
             value={form.companyId}
             onChange={(e) => {
@@ -157,14 +158,14 @@ export function EventForm({
             className={inputClass}
           >
             {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Customer</label>
-          <select value={form.customerId ?? ""} onChange={(e) => set("customerId", e.target.value || undefined)} className={inputClass}>
+          <Select value={form.customerId ?? ""} onChange={(e) => set("customerId", e.target.value || undefined)} className={inputClass}>
             <option value="">Not linked yet</option>
             {customersForCompany.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
       </div>
 
@@ -209,9 +210,9 @@ export function EventForm({
         </div>
         <div>
           <label className={labelClass}>Event Type</label>
-          <select value={form.eventType} onChange={(e) => set("eventType", e.target.value)} className={inputClass}>
+          <Select value={form.eventType} onChange={(e) => set("eventType", e.target.value)} className={inputClass}>
             {eventTypeOptions(form.eventType).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
+          </Select>
         </div>
       </div>
 
@@ -226,10 +227,10 @@ export function EventForm({
         </div>
         <div>
           <label className={labelClass}>Sales agent</label>
-          <select value={form.salesAgent ?? ""} onChange={(e) => set("salesAgent", e.target.value)} className={inputClass}>
+          <Select value={form.salesAgent ?? ""} onChange={(e) => set("salesAgent", e.target.value)} className={inputClass}>
             <option value="">Select sales agent</option>
             {SALES_AGENTS.map((a) => <option key={a} value={a}>{a}</option>)}
-          </select>
+          </Select>
         </div>
       </div>
 
@@ -246,7 +247,7 @@ export function EventForm({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Service type *</label>
-          <select
+          <Select
             required
             value={form.serviceType ?? ""}
             onChange={(e) => {
@@ -261,7 +262,7 @@ export function EventForm({
           >
             <option value="">Select service type</option>
             {Object.entries(SERVICE_TYPE_LABEL).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
+          </Select>
           <label className={`${labelClass} mt-3 block`}>Pax for this service *</label>
           <input
             type="number"
@@ -276,7 +277,7 @@ export function EventForm({
         </div>
         <div>
           <label className={labelClass}>Second service type (optional)</label>
-          <select
+          <Select
             value={form.secondServiceType ?? ""}
             onChange={(e) => {
               set("secondServiceType", e.target.value);
@@ -287,7 +288,7 @@ export function EventForm({
           >
             <option value="">None</option>
             {Object.entries(SERVICE_TYPE_LABEL).filter(([key]) => key !== form.serviceType).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
+          </Select>
           <label className={`${labelClass} mt-3 block`}>Pax for this service{form.secondServiceType ? " *" : ""}</label>
           <input
             type="number"
@@ -313,21 +314,21 @@ export function EventForm({
       {!eventId && (
         <div>
           <label className={labelClass}>Status</label>
-          <select value={form.status} onChange={(e) => set("status", e.target.value)} className={inputClass}>
+          <Select value={form.status} onChange={(e) => set("status", e.target.value)} className={inputClass}>
             <option value="enquiry">Enquiry</option>
             <option value="quoted">Quoted</option>
             <option value="confirmed">Confirmed</option>
-          </select>
+          </Select>
         </div>
       )}
 
       {!multiDay && packagesForCompany.length > 0 && (
         <div>
           <label className={labelClass}>Select Package (optional)</label>
-          <select value={form.packageMenuId ?? ""} onChange={(e) => onPackageChange(e.target.value)} className={inputClass}>
+          <Select value={form.packageMenuId ?? ""} onChange={(e) => onPackageChange(e.target.value)} className={inputClass}>
             <option value="">No package — type menu manually</option>
             {packagesForCompany.map((p) => <option key={p.id} value={p.id}>{p.name}{hasPackagePrice(p.price_per_pax) ? ` (RM${p.price_per_pax}/pax)` : ""}</option>)}
-          </select>
+          </Select>
         </div>
       )}
 

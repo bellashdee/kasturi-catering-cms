@@ -6,6 +6,7 @@ import { AREA, BTN, BTN_GHOST, BTN_SM_GHOST, Dialog, FIELD, LABEL, Pill } from "
 import { BULLETIN_CATEGORIES, BULLETIN_CATEGORY_LABEL, BULLETIN_CATEGORY_TONE, type BulletinCategory } from "@/lib/bulletin/constants";
 import { createBulletinPost, deleteBulletinPost, restoreBulletinPost, setBulletinPinned, updateBulletinPost, type BulletinRow } from "@/lib/bulletin/actions";
 import type { ActionResult } from "@/lib/actionResult";
+import { Select } from "@/components/ui/Select";
 
 export type BoardPost = {
   id: string;
@@ -175,24 +176,24 @@ export function BulletinBoard({ posts, postable, canPostAll, canPost }: { posts:
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={LABEL}>For *</label>
-                <select className={FIELD} value={draft.companyId} onChange={(e) => setDraft({ ...draft, companyId: e.target.value })}>
+                <Select className={FIELD} value={draft.companyId} onChange={(e) => setDraft({ ...draft, companyId: e.target.value })}>
                   {canPostAll && <option value="">All companies</option>}
                   {postable.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className={LABEL}>Category *</label>
-                <select className={FIELD} value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value as BulletinCategory })}>
+                <Select className={FIELD} value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value as BulletinCategory })}>
                   {BULLETIN_CATEGORIES.map((c) => (
                     <option key={c} value={c}>
                       {BULLETIN_CATEGORY_LABEL[c]}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             </div>
             <div>

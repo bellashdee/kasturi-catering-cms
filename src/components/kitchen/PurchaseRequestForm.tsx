@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPurchaseRequest, type PurchaseRequestInput } from "@/lib/kitchen/actions";
 import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/documents/upload";
+import { Select } from "@/components/ui/Select";
 
 type Company = { id: string; name: string };
 type Ingredient = { id: string; name: string; unit_of_measure: string | null; company_id: string; preferred_supplier_id: string | null };
@@ -95,22 +96,22 @@ export function PurchaseRequestForm({
 
       <div>
         <label className={labelClass}>Company *</label>
-        <select
+        <Select
           required
           value={companyId}
           onChange={(e) => { setCompanyId(e.target.value); onIngredientChange(""); }}
           className={inputClass}
         >
           {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
+        </Select>
       </div>
 
       <div>
         <label className={labelClass}>Ingredient *</label>
-        <select required value={ingredientId} onChange={(e) => onIngredientChange(e.target.value)} className={inputClass}>
+        <Select required value={ingredientId} onChange={(e) => onIngredientChange(e.target.value)} className={inputClass}>
           <option value="">Select ingredient</option>
           {ingredientsForCompany.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
-        </select>
+        </Select>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -127,10 +128,10 @@ export function PurchaseRequestForm({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Supplier</label>
-          <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} className={inputClass}>
+          <Select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} className={inputClass}>
             <option value="">Not decided yet</option>
             {suppliersForCompany.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Required Date</label>

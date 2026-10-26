@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createDriver, type DriverInput } from "@/lib/driver/actions";
+import { Select } from "@/components/ui/Select";
 
 type Company = { id: string; name: string };
 type Employee = { id: string; full_name: string; company_id: string };
@@ -74,9 +75,9 @@ export function DriverForm({ companies, defaultCompanyId, employees }: { compani
 
       <div>
         <label className={labelClass}>Company *</label>
-        <select required value={companyId} onChange={(e) => { setCompanyId(e.target.value); setEmployeeId(""); }} className={inputClass}>
+        <Select required value={companyId} onChange={(e) => { setCompanyId(e.target.value); setEmployeeId(""); }} className={inputClass}>
           {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
+        </Select>
       </div>
 
       <div className="flex gap-2">
@@ -91,10 +92,10 @@ export function DriverForm({ companies, defaultCompanyId, employees }: { compani
       {mode === "existing" ? (
         <div>
           <label className={labelClass}>Employee *</label>
-          <select required={mode === "existing"} value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} className={inputClass}>
+          <Select required={mode === "existing"} value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} className={inputClass}>
             <option value="">Select employee</option>
             {employeesForCompany.map((emp) => <option key={emp.id} value={emp.id}>{emp.full_name}</option>)}
-          </select>
+          </Select>
           {employeesForCompany.length === 0 && (
             <p className="mt-1 text-xs text-text-muted">No employees found for this company yet — add them in HR, or use &quot;New Person&quot; above.</p>
           )}

@@ -15,6 +15,7 @@ import { saveIngredientMatch } from "@/lib/purchasePlanner/matchActions";
 import { SupplierItemPicker } from "@/components/procurement/SupplierItemPicker";
 import type { PlannerEvent } from "@/lib/purchasePlanner/data";
 import { formatPrice, formatCurrency } from "@/lib/format";
+import { Select } from "@/components/ui/Select";
 
 const inputClass = "h-9 w-full rounded-lg border border-border-strong bg-white px-2 text-[13px] outline-none focus:border-primary";
 const norm = (s: string) => s.trim().replace(/\s+/g, " ").toUpperCase();
@@ -370,7 +371,7 @@ export function PurchasePlanner({ companyId, companyName, events, recipeOptions,
                                 : "No recipe attached yet"}
                           </div>
                         </div>
-                        <select value={chosen ?? ""} onChange={(e) => void chooseRecipe(d.id, e.target.value)} className={`${inputClass} ${chosen ? "" : "border-warning"}`}>
+                        <Select value={chosen ?? ""} onChange={(e) => void chooseRecipe(d.id, e.target.value)} className={`${inputClass} ${chosen ? "" : "border-warning"}`}>
                           <option value="">No recipe chosen</option>
                           {d.candidates.length > 0 && (
                             <optgroup label="Suggested">
@@ -380,7 +381,7 @@ export function PurchasePlanner({ companyId, companyName, events, recipeOptions,
                           <optgroup label="All recipes">
                             {plan.recipeRefs.map((r) => <option key={r.id} value={r.id}>{`${r.name}${r.hasIngredients ? "" : " (no ingredients yet)"}`}</option>)}
                           </optgroup>
-                        </select>
+                        </Select>
                       </div>
                     );
                   })}

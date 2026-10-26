@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateDeliveryStatus } from "@/lib/driver/actions";
 import { DELIVERY_STATUS_LABEL } from "@/lib/driver/constants";
+import { Select } from "@/components/ui/Select";
 
 const OPTIONS = ["scheduled", "in_transit", "delivered", "cancelled"];
 
@@ -22,7 +23,7 @@ export function DeliveryStatusSelect({ deliveryId, status }: { deliveryId: strin
   }
 
   return (
-    <select
+    <Select
       value={status}
       disabled={pending}
       onChange={(e) => handleChange(e.target.value)}
@@ -31,6 +32,6 @@ export function DeliveryStatusSelect({ deliveryId, status }: { deliveryId: strin
       {OPTIONS.map((o) => (
         <option key={o} value={o}>{DELIVERY_STATUS_LABEL[o] ?? o}</option>
       ))}
-    </select>
+    </Select>
   );
 }

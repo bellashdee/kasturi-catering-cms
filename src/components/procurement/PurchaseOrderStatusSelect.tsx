@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { updatePurchaseOrderStatus } from "@/lib/procurement/actions";
 import { PO_STATUS_LABEL } from "@/lib/procurement/constants";
+import { Select } from "@/components/ui/Select";
 
 const OPTIONS = ["draft", "sent", "acknowledged", "completed", "cancelled"];
 
@@ -22,7 +23,7 @@ export function PurchaseOrderStatusSelect({ poId, status }: { poId: string; stat
   }
 
   return (
-    <select
+    <Select
       value={status}
       disabled={pending}
       onChange={(e) => handleChange(e.target.value)}
@@ -31,6 +32,6 @@ export function PurchaseOrderStatusSelect({ poId, status }: { poId: string; stat
       {OPTIONS.map((o) => (
         <option key={o} value={o}>{PO_STATUS_LABEL[o] ?? o}</option>
       ))}
-    </select>
+    </Select>
   );
 }

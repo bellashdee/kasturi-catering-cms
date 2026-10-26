@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateProductionOrderStatus } from "@/lib/kitchen/actions";
 import { PRODUCTION_STATUS_LABEL } from "@/lib/kitchen/constants";
+import { Select } from "@/components/ui/Select";
 
 const OPTIONS = ["planned", "preparing", "ready", "completed"];
 
@@ -27,7 +28,7 @@ export function ProductionOrderStatusSelect({ orderId, status }: { orderId: stri
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <select
+      <Select
         value={status}
         disabled={pending}
         onChange={(e) => handleChange(e.target.value)}
@@ -36,7 +37,7 @@ export function ProductionOrderStatusSelect({ orderId, status }: { orderId: stri
         {OPTIONS.map((o) => (
           <option key={o} value={o}>{PRODUCTION_STATUS_LABEL[o] ?? o}</option>
         ))}
-      </select>
+      </Select>
       {error && <div className="text-xs text-danger">{error}</div>}
     </div>
   );

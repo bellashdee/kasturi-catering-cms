@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createVehicle, updateVehicle, type VehicleInput } from "@/lib/driver/actions";
+import { Select } from "@/components/ui/Select";
 
 type Company = { id: string; name: string };
 
@@ -61,9 +62,9 @@ export function VehicleForm({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Company *</label>
-          <select required value={companyId} onChange={(e) => setCompanyId(e.target.value)} disabled={!!vehicleId} className={inputClass}>
+          <Select required value={companyId} onChange={(e) => setCompanyId(e.target.value)} disabled={!!vehicleId} className={inputClass}>
             {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Plate Number *</label>
@@ -78,12 +79,12 @@ export function VehicleForm({
         </div>
         <div>
           <label className={labelClass}>Status</label>
-          <select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))} className={inputClass}>
+          <Select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))} className={inputClass}>
             <option value="active">Active</option>
             <option value="maintenance">In Maintenance</option>
             <option value="inactive">Inactive</option>
             <option value="retired">Retired</option>
-          </select>
+          </Select>
         </div>
       </div>
 

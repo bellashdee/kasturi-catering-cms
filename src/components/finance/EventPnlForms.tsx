@@ -19,6 +19,7 @@ import { requestExtraction } from "@/lib/importFlow/extractClient";
 import type { ExtractionReport } from "@/lib/extraction/types";
 import { ExtractionReportPanel } from "@/components/shared/import/ExtractionReportPanel";
 import { DescriptionInput } from "@/components/DescriptionInput";
+import { Select } from "@/components/ui/Select";
 
 const input = "mt-1 h-10 w-full rounded-lg border border-border-strong px-3 text-[13px] outline-none focus:border-primary";
 const label = "text-[12px] font-semibold text-text-secondary";
@@ -89,10 +90,10 @@ export function RevenueForm({ eventId, entry, onDone }: { eventId: string; entry
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className={label}>Type *</label>
-          <select value={entryType} onChange={(e) => setEntryType(e.target.value)} disabled={!!entry?.customer_invoice_id} className={input}>
+          <Select value={entryType} onChange={(e) => setEntryType(e.target.value)} disabled={!!entry?.customer_invoice_id} className={input}>
             <optgroup label="Revenue">{["sales", "package", "additional_service", "other_revenue"].map((k) => <option key={k} value={k}>{REVENUE_TYPE_LABEL[k]}</option>)}</optgroup>
             <optgroup label="Deducted from revenue">{["discount", "refund", "credit_note"].map((k) => <option key={k} value={k}>{REVENUE_TYPE_LABEL[k]}</option>)}</optgroup>
-          </select>
+          </Select>
         </div>
         <div>
           <label className={label}>Amount (RM) *</label>
@@ -293,10 +294,10 @@ export function CostForm({ eventId, companyId, entry, supplierInvoices = [], onD
           {supplierInvoices.length > 0 && (
             <div className="mt-3">
               <label className={label}>Or link an invoice already recorded in Supplier &amp; Procurement</label>
-              <select value={supplierInvoiceId} onChange={(e) => pickSupplierInvoice(e.target.value)} className={input}>
+              <Select value={supplierInvoiceId} onChange={(e) => pickSupplierInvoice(e.target.value)} className={input}>
                 <option value="">— none —</option>
                 {supplierInvoices.map((s) => <option key={s.id} value={s.id}>{s.supplierName} · {s.invoice_number} · RM {Number(s.amount).toFixed(2)}</option>)}
-              </select>
+              </Select>
               <p className="mt-1 text-[11.5px] text-text-muted">A supplier invoice can be the cost of one event only, once. Paying it later is not a second cost.</p>
             </div>
           )}
@@ -306,22 +307,22 @@ export function CostForm({ eventId, companyId, entry, supplierInvoices = [], onD
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
           <label className={label}>Cost kind *</label>
-          <select value={costClass} onChange={(e) => changeClass(e.target.value as "direct" | "additional")} className={input}>
+          <Select value={costClass} onChange={(e) => changeClass(e.target.value as "direct" | "additional")} className={input}>
             <option value="direct">Direct cost</option>
             <option value="additional">Additional event-specific expense</option>
-          </select>
+          </Select>
         </div>
         <div>
           <label className={label}>Category *</label>
-          <select value={costType} onChange={(e) => setCostType(e.target.value)} className={input}>
+          <Select value={costType} onChange={(e) => setCostType(e.target.value)} className={input}>
             {Object.entries(types).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={label}>Actual or estimated *</label>
-          <select value={costBasis} onChange={(e) => setCostBasis(e.target.value as "actual" | "estimated")} className={input}>
+          <Select value={costBasis} onChange={(e) => setCostBasis(e.target.value as "actual" | "estimated")} className={input}>
             {Object.entries(COST_BASIS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}{k === "estimated" ? " (not counted in P&L)" : ""}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={label}>Supplier</label>
@@ -353,9 +354,9 @@ export function CostForm({ eventId, companyId, entry, supplierInvoices = [], onD
         </div>
         <div>
           <label className={label}>Payment status</label>
-          <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value as "unpaid" | "paid")} className={input}>
+          <Select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value as "unpaid" | "paid")} className={input}>
             {Object.entries(PAYMENT_STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={label}>Description</label>

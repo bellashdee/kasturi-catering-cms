@@ -11,6 +11,7 @@ import {
   type PaymentCategory,
   type UtilityType,
 } from "@/lib/finance/payments";
+import { Select } from "@/components/ui/Select";
 
 export type AccountRow = {
   id: string;
@@ -114,9 +115,9 @@ export function AccountsManager({ category, companies, accounts }: { category: P
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelClass}>Company</label>
-              <select value={draft.companyId} disabled={!!draft.id} onChange={(e) => setDraft({ ...draft, companyId: e.target.value })} className={inputClass}>
+              <Select value={draft.companyId} disabled={!!draft.id} onChange={(e) => setDraft({ ...draft, companyId: e.target.value })} className={inputClass}>
                 {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              </Select>
             </div>
             <div>
               <label className={labelClass}>{nameLabel} *</label>
@@ -127,17 +128,17 @@ export function AccountsManager({ category, companies, accounts }: { category: P
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelClass}>Utility Type</label>
-                <select value={draft.utilityType} onChange={(e) => setDraft({ ...draft, utilityType: e.target.value as UtilityType | "", provider: e.target.value ? UTILITY_PROVIDER_BY_TYPE[e.target.value as UtilityType] : draft.provider })} className={inputClass}>
+                <Select value={draft.utilityType} onChange={(e) => setDraft({ ...draft, utilityType: e.target.value as UtilityType | "", provider: e.target.value ? UTILITY_PROVIDER_BY_TYPE[e.target.value as UtilityType] : draft.provider })} className={inputClass}>
                   <option value="">Select type</option>
                   {(Object.keys(UTILITY_TYPE_LABEL) as UtilityType[]).map((t) => <option key={t} value={t}>{UTILITY_TYPE_LABEL[t]}</option>)}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className={labelClass}>Utility Provider</label>
-                <select value={draft.provider} onChange={(e) => setDraft({ ...draft, provider: e.target.value })} className={inputClass}>
+                <Select value={draft.provider} onChange={(e) => setDraft({ ...draft, provider: e.target.value })} className={inputClass}>
                   <option value="">Select provider</option>
                   {UTILITY_PROVIDERS.map((p) => <option key={p} value={p}>{p}</option>)}
-                </select>
+                </Select>
               </div>
             </div>
           )}

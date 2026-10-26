@@ -11,6 +11,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow, SectionCard, StatRow } from "@/components/dashboard/SectionCard";
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { MarkInvoicePaidAction } from "@/components/finance/MarkInvoicePaidAction";
+import { Select } from "@/components/ui/Select";
 
 function todayIso(): string {
   return todayInMalaysia();
@@ -177,10 +178,10 @@ export default async function OutstandingPaymentPage({
         </div>
         <div>
           <label className="text-[11px] font-semibold text-text-secondary">Status</label>
-          <select name="status" defaultValue={statusParam ?? ""} className="mt-1 h-9 rounded-lg border border-border-strong px-2 text-[13px]">
+          <Select name="status" defaultValue={statusParam ?? ""} className="mt-1 h-9 rounded-lg border border-border-strong px-2 text-[13px]">
             <option value="">All</option>
             {Object.entries(INVOICE_STATUS_LABEL).filter(([v]) => v !== "paid").map(([v, label]) => <option key={v} value={v}>{label}</option>)}
-          </select>
+          </Select>
         </div>
         <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-xs font-bold text-white">Filter</button>
         <Link href={`/finance/outstanding?${companyQuery}view=${view}`} className="h-9 rounded-lg border border-border-strong px-4 py-2 text-xs font-bold text-text">Clear</Link>

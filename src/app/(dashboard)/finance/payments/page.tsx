@@ -27,6 +27,7 @@ import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ReportTable } from "@/components/reports/ReportTable";
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
+import { Select } from "@/components/ui/Select";
 
 type SearchParams = { company?: string; year?: string; month?: string; category?: string; payee?: string; provider?: string; status?: string };
 
@@ -148,18 +149,18 @@ export default async function PaymentDashboardPage({ searchParams }: { searchPar
         </div>
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Month</label>
-          <select name="month" defaultValue={month} className="mt-1 h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
+          <Select name="month" defaultValue={month} className="mt-1 h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
             {MONTH_LABEL.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Payment Category</label>
-          <select name="category" defaultValue={category ?? ""} className="mt-1 h-9 w-44 rounded-lg border border-border-strong px-2 text-[13px]">
+          <Select name="category" defaultValue={category ?? ""} className="mt-1 h-9 w-44 rounded-lg border border-border-strong px-2 text-[13px]">
             <option value="">All categories</option>
             <option value="supplier">Supplier Payment</option>
             <option value="rental">Rental Payment</option>
             <option value="utility">Utilities Payment</option>
-          </select>
+          </Select>
         </div>
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Supplier / Payee</label>
@@ -167,16 +168,16 @@ export default async function PaymentDashboardPage({ searchParams }: { searchPar
         </div>
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Utility Provider</label>
-          <select name="provider" defaultValue={sp.provider ?? ""} className="mt-1 h-9 w-40 rounded-lg border border-border-strong px-2 text-[13px]">
+          <Select name="provider" defaultValue={sp.provider ?? ""} className="mt-1 h-9 w-40 rounded-lg border border-border-strong px-2 text-[13px]">
             <option value="">All providers</option>
             {UTILITY_PROVIDERS.map((p) => <option key={p} value={p}>{p}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Payment Status</label>
-          <select name="status" defaultValue={sp.status ?? ""} className="mt-1 h-9 w-40 rounded-lg border border-border-strong px-2 text-[13px]">
+          <Select name="status" defaultValue={sp.status ?? ""} className="mt-1 h-9 w-40 rounded-lg border border-border-strong px-2 text-[13px]">
             {STATUS_FILTER_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
+          </Select>
         </div>
         <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply Filters</button>
       </form>

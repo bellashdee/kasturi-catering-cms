@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createProcurementRequest, type ProcurementRequestInput } from "@/lib/procurement/actions";
+import { Select } from "@/components/ui/Select";
 
 type Company = { id: string; name: string };
 
@@ -50,9 +51,9 @@ export function ProcurementRequestForm({ companies, defaultCompanyId }: { compan
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Company *</label>
-          <select required value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={inputClass}>
+          <Select required value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={inputClass}>
             {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Department</label>

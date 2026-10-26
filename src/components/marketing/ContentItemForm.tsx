@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createContentItem } from "@/lib/marketing/actions";
+import { Select } from "@/components/ui/Select";
 
 type Campaign = { id: string; name: string; company_id: string };
 type Company = { id: string; name: string };
@@ -67,7 +68,7 @@ export function ContentItemForm({
       {companies.length > 1 && (
         <div>
           <label className={labelClass}>Company *</label>
-          <select
+          <Select
             required
             value={companyId}
             onChange={(e) => {
@@ -77,7 +78,7 @@ export function ContentItemForm({
             className={inputClass}
           >
             {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
       )}
 
@@ -89,16 +90,16 @@ export function ContentItemForm({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Campaign</label>
-          <select value={campaignId} onChange={(e) => setCampaignId(e.target.value)} className={inputClass}>
+          <Select value={campaignId} onChange={(e) => setCampaignId(e.target.value)} className={inputClass}>
             <option value="">None</option>
             {campaignsForCompany.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Platform</label>
-          <select value={platform} onChange={(e) => setPlatform(e.target.value)} className={inputClass}>
+          <Select value={platform} onChange={(e) => setPlatform(e.target.value)} className={inputClass}>
             <option value="facebook">Facebook</option>
             <option value="instagram">Instagram</option>
             <option value="tiktok">TikTok</option>
@@ -106,14 +107,14 @@ export function ContentItemForm({
             <option value="linkedin">LinkedIn</option>
             <option value="website">Website</option>
             <option value="other">Other</option>
-          </select>
+          </Select>
         </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
         <div>
           <label className={labelClass}>Content Type</label>
-          <select value={contentType} onChange={(e) => setContentType(e.target.value)} className={inputClass}>
+          <Select value={contentType} onChange={(e) => setContentType(e.target.value)} className={inputClass}>
             <option value="post">Post</option>
             <option value="story">Story</option>
             <option value="reel">Reel</option>
@@ -121,17 +122,17 @@ export function ContentItemForm({
             <option value="blog">Blog</option>
             <option value="ad">Ad</option>
             <option value="other">Other</option>
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Status</label>
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className={inputClass}>
+          <Select value={status} onChange={(e) => setStatus(e.target.value)} className={inputClass}>
             <option value="idea">Idea</option>
             <option value="draft">Draft</option>
             <option value="scheduled">Scheduled</option>
             <option value="published">Published</option>
             <option value="cancelled">Cancelled</option>
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Scheduled Date</label>

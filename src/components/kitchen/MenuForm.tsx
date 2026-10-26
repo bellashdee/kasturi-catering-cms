@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createMenu, type MenuInput } from "@/lib/kitchen/actions";
+import { Select } from "@/components/ui/Select";
 
 type Company = { id: string; name: string };
 type Item = { name: string; category: string; pricePerPax: string };
@@ -61,9 +62,9 @@ export function MenuForm({ companies, defaultCompanyId }: { companies: Company[]
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Company *</label>
-          <select required value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={inputClass}>
+          <Select required value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={inputClass}>
             {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Menu Name *</label>
@@ -87,14 +88,14 @@ export function MenuForm({ companies, defaultCompanyId }: { companies: Company[]
           {items.map((item, i) => (
             <div key={i} className="grid grid-cols-[2fr_1fr_1fr_auto] items-center gap-2">
               <input value={item.name} onChange={(e) => updateItem(i, "name", e.target.value)} placeholder="Item name" className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
-              <select value={item.category} onChange={(e) => updateItem(i, "category", e.target.value)} className="h-9 rounded-lg border border-border-strong px-2 text-[13px]">
+              <Select value={item.category} onChange={(e) => updateItem(i, "category", e.target.value)} className="h-9 rounded-lg border border-border-strong px-2 text-[13px]">
                 <option value="appetizer">Appetizer</option>
                 <option value="main">Main</option>
                 <option value="side">Side</option>
                 <option value="dessert">Dessert</option>
                 <option value="beverage">Beverage</option>
                 <option value="other">Other</option>
-              </select>
+              </Select>
               <input type="number" min="0" step="0.01" value={item.pricePerPax} onChange={(e) => updateItem(i, "pricePerPax", e.target.value)} placeholder="RM / pax" className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
               <button
                 type="button"

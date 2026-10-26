@@ -6,6 +6,7 @@ import { uploadDocument, fileTypeFromMime, DOCUMENT_FILE_ACCEPT } from "@/lib/do
 import { createMarketingExpense } from "@/lib/marketing/actions";
 import { requestExtraction } from "@/lib/importFlow/extractClient";
 import { DescriptionInput } from "@/components/DescriptionInput";
+import { Select } from "@/components/ui/Select";
 
 type Tab = "manual" | "pdf" | "photo";
 type Campaign = { id: string; name: string; company_id: string };
@@ -138,7 +139,7 @@ export function MarketingExpenseUploadReview({
         {companies.length > 1 && (
           <div className="mb-4">
             <label className={labelClass}>Company *</label>
-            <select
+            <Select
               required
               disabled={documentId !== null}
               value={companyId}
@@ -149,7 +150,7 @@ export function MarketingExpenseUploadReview({
               className={`${inputClass} max-w-xs disabled:bg-surface-alt disabled:text-text-muted`}
             >
               {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            </Select>
           </div>
         )}
 
@@ -196,23 +197,23 @@ export function MarketingExpenseUploadReview({
 
             <div>
               <label className={labelClass}>Campaign (optional)</label>
-              <select value={campaignId} onChange={(e) => setCampaignId(e.target.value)} className={inputClass}>
+              <Select value={campaignId} onChange={(e) => setCampaignId(e.target.value)} className={inputClass}>
                 <option value="">General / not campaign-specific</option>
                 {campaignsForCompany.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelClass}>Category *</label>
-                <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} className={inputClass}>
+                <Select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} className={inputClass}>
                   <option value="advertising">Advertising</option>
                   <option value="print">Print</option>
                   <option value="event">Event</option>
                   <option value="influencer">Influencer</option>
                   <option value="content_production">Content Production</option>
                   <option value="other">Other</option>
-                </select>
+                </Select>
               </div>
               <div>
                 <label className={labelClass}>Expense Date *</label>

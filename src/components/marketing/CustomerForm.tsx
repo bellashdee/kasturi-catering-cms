@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createCustomer } from "@/lib/marketing/actions";
+import { Select } from "@/components/ui/Select";
 
 const inputClass =
   "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
@@ -49,9 +50,9 @@ export function CustomerForm({
       {companies.length > 1 && (
         <div>
           <label className={labelClass}>Company *</label>
-          <select required value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={inputClass}>
+          <Select required value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={inputClass}>
             {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
       )}
 

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPromotion } from "@/lib/marketing/actions";
+import { Select } from "@/components/ui/Select";
 
 type Campaign = { id: string; name: string; company_id: string };
 type Company = { id: string; name: string };
@@ -65,7 +66,7 @@ export function PromotionForm({
       {companies.length > 1 && (
         <div>
           <label className={labelClass}>Company *</label>
-          <select
+          <Select
             required
             value={companyId}
             onChange={(e) => {
@@ -75,7 +76,7 @@ export function PromotionForm({
             className={inputClass}
           >
             {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
       )}
 
@@ -92,19 +93,19 @@ export function PromotionForm({
 
       <div>
         <label className={labelClass}>Linked Campaign</label>
-        <select value={campaignId} onChange={(e) => setCampaignId(e.target.value)} className={inputClass}>
+        <Select value={campaignId} onChange={(e) => setCampaignId(e.target.value)} className={inputClass}>
           <option value="">None</option>
           {campaignsForCompany.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
+        </Select>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
         <div>
           <label className={labelClass}>Discount Type</label>
-          <select value={discountType} onChange={(e) => setDiscountType(e.target.value)} className={inputClass}>
+          <Select value={discountType} onChange={(e) => setDiscountType(e.target.value)} className={inputClass}>
             <option value="percentage">Percentage (%)</option>
             <option value="fixed">Fixed (RM)</option>
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Discount Value *</label>
@@ -112,12 +113,12 @@ export function PromotionForm({
         </div>
         <div>
           <label className={labelClass}>Status</label>
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className={inputClass}>
+          <Select value={status} onChange={(e) => setStatus(e.target.value)} className={inputClass}>
             <option value="scheduled">Scheduled</option>
             <option value="active">Active</option>
             <option value="expired">Expired</option>
             <option value="cancelled">Cancelled</option>
-          </select>
+          </Select>
         </div>
       </div>
 

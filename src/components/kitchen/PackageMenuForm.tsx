@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { PackageNameInput } from "@/components/kitchen/PackageNameInput";
 import { createPackageMenu, type PackageMenuInput } from "@/lib/kitchen/packages/actions";
 import { PACKAGE_MEAL_TYPE_LABEL } from "@/lib/kitchen/constants";
+import { Select } from "@/components/ui/Select";
 
 type Company = { id: string; name: string };
 type Item = { mealType: string; itemName: string };
@@ -73,9 +74,9 @@ export function PackageMenuForm({ companies, defaultCompanyId, existing }: { com
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Company *</label>
-          <select required value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={inputClass}>
+          <Select required value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={inputClass}>
             {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Package Name *</label>
@@ -105,9 +106,9 @@ export function PackageMenuForm({ companies, defaultCompanyId, existing }: { com
         <div className="flex flex-col gap-2">
           {items.map((item, i) => (
             <div key={i} className="grid grid-cols-[1fr_2fr_auto] items-center gap-2">
-              <select value={item.mealType} onChange={(e) => updateItem(i, "mealType", e.target.value)} className="h-9 rounded-lg border border-border-strong px-2 text-[13px]">
+              <Select value={item.mealType} onChange={(e) => updateItem(i, "mealType", e.target.value)} className="h-9 rounded-lg border border-border-strong px-2 text-[13px]">
                 {MEAL_TYPES.map((m) => <option key={m} value={m}>{PACKAGE_MEAL_TYPE_LABEL[m]}</option>)}
-              </select>
+              </Select>
               <input value={item.itemName} onChange={(e) => updateItem(i, "itemName", e.target.value)} placeholder="Item name" className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
               <button
                 type="button"

@@ -1,6 +1,7 @@
 "use client";
 
 import type { FieldDef } from "@/lib/importFlow/types";
+import { Select } from "@/components/ui/Select";
 
 /**
  * The Field Mapping step for Excel/CSV imports: every column the file actually
@@ -47,7 +48,7 @@ export function ColumnMappingStep({
               <tr key={h} className="border-t border-border">
                 <td className="px-3 py-2 text-[13px] font-semibold text-text">{h}</td>
                 <td className="px-3 py-2">
-                  <select
+                  <Select
                     value={mapping[h] ?? ""}
                     onChange={(e) => onMappingChange(h, e.target.value)}
                     className="h-9 w-full max-w-xs rounded-lg border border-border-strong px-2 text-[13px]"
@@ -58,7 +59,7 @@ export function ColumnMappingStep({
                         {f.label}{f.required ? " *" : ""}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </td>
               </tr>
             ))}

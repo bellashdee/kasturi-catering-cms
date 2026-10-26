@@ -7,6 +7,7 @@ import { PasswordInput } from "@/components/shared/PasswordInput";
 import { ROLE_LABEL } from "@/lib/users/constants";
 import { ModulePicker } from "@/components/settings/ModulePicker";
 import type { Database } from "@/lib/supabase/types";
+import { Select } from "@/components/ui/Select";
 
 type Company = { id: string; name: string };
 type UserRole = Database["public"]["Enums"]["user_role"];
@@ -113,16 +114,16 @@ export function MemberActions({
         </div>
         <div>
           <label className={labelClass}>Role</label>
-          <select value={role} onChange={(e) => setRole(e.target.value as UserRole)} className={inputClass}>
+          <Select value={role} onChange={(e) => setRole(e.target.value as UserRole)} className={inputClass}>
             {Object.entries(ROLE_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Company Access</label>
-          <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={inputClass}>
+          <Select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={inputClass}>
             <option value="">All Companies</option>
             {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
       </div>
       <ModulePicker value={modules} onChange={setModules} />

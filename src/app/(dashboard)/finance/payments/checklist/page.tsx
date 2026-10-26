@@ -24,6 +24,7 @@ import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { ChecklistActions } from "@/components/finance/ChecklistActions";
+import { Select } from "@/components/ui/Select";
 
 type SearchParams = { company?: string; year?: string; month?: string; category?: string; show?: string; group?: string };
 
@@ -157,19 +158,19 @@ export default async function PaymentChecklistPage({ searchParams }: { searchPar
         </div>
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Month</label>
-          <select name="month" defaultValue={month ?? ""} className="mt-1 h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
+          <Select name="month" defaultValue={month ?? ""} className="mt-1 h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
             <option value="">All months</option>
             {MONTH_LABEL.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Category</label>
-          <select name="category" defaultValue={category ?? ""} className="mt-1 h-9 w-44 rounded-lg border border-border-strong px-2 text-[13px]">
+          <Select name="category" defaultValue={category ?? ""} className="mt-1 h-9 w-44 rounded-lg border border-border-strong px-2 text-[13px]">
             <option value="">All categories</option>
             <option value="supplier">Supplier Payment</option>
             <option value="rental">Rental Payment</option>
             <option value="utility">Utilities Payment</option>
-          </select>
+          </Select>
         </div>
         <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply Filters</button>
         <Link href={query({ show: showPaid ? "" : "all" })} className="flex h-9 items-center rounded-lg border border-border-strong px-4 text-[13px] font-semibold text-text">

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { requestLeave } from "@/lib/hr/actions";
 import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/documents/upload";
+import { Select } from "@/components/ui/Select";
 
 const inputClass =
   "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
@@ -59,7 +60,7 @@ export function LeaveRequestForm({ employeeId, companyId }: { employeeId: string
 
       <div>
         <label className={labelClass}>Leave Type *</label>
-        <select value={leaveType} onChange={(e) => setLeaveType(e.target.value)} className={inputClass}>
+        <Select value={leaveType} onChange={(e) => setLeaveType(e.target.value)} className={inputClass}>
           <option value="annual">Annual Leave (AL) – Cuti Tahunan</option>
           <option value="medical">Medical Leave (MC) – Cuti Sakit</option>
           <option value="emergency">Emergency Leave (EL) – Cuti Kecemasan</option>
@@ -70,7 +71,7 @@ export function LeaveRequestForm({ employeeId, companyId }: { employeeId: string
           <option value="bereavement">Bereavement Leave (BL) – Cuti Kematian</option>
           <option value="marriage">Marriage Leave (MRL) – Cuti Perkahwinan</option>
           <option value="other">Other: Nyatakan</option>
-        </select>
+        </Select>
       </div>
       {leaveType === "other" && (
         <div>

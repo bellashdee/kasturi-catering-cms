@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupplier, updateSupplier, type SupplierInput } from "@/lib/procurement/actions";
+import { Select } from "@/components/ui/Select";
 
 type Company = { id: string; name: string };
 
@@ -61,9 +62,9 @@ export function SupplierForm({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Company *</label>
-          <select required value={companyId} onChange={(e) => setCompanyId(e.target.value)} disabled={!!supplierId} className={inputClass}>
+          <Select required value={companyId} onChange={(e) => setCompanyId(e.target.value)} disabled={!!supplierId} className={inputClass}>
             {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Supplier Name *</label>
@@ -95,11 +96,11 @@ export function SupplierForm({
 
       <div>
         <label className={labelClass}>Status</label>
-        <select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))} className={`${inputClass} max-w-xs`}>
+        <Select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))} className={`${inputClass} max-w-xs`}>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
           <option value="blacklisted">Blacklisted</option>
-        </select>
+        </Select>
       </div>
 
       <div className="mt-2 flex justify-end gap-2.5">

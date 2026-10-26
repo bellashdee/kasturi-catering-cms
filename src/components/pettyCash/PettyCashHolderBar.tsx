@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { positionOptions, type PersonOption } from "@/lib/pettyCash/people";
+import { Select } from "@/components/ui/Select";
 
 const inputClass = "mt-1 h-9 w-full rounded-lg border border-border-strong bg-surface px-2.5 text-[13.5px] font-semibold outline-none focus:border-primary";
 const labelClass = "text-[11.5px] font-bold uppercase tracking-wide text-text-muted";
@@ -73,12 +74,12 @@ export function PettyCashHolderBar({
       </div>
       <div>
         <label className={labelClass} htmlFor="pc-month">Month</label>
-        <select id="pc-month" name="month" defaultValue={month} className="mt-1 h-9 rounded-lg border border-border-strong bg-surface px-3 text-[13.5px] font-semibold">
+        <Select id="pc-month" name="month" defaultValue={month} className="mt-1 h-9 rounded-lg border border-border-strong bg-surface px-3 text-[13.5px] font-semibold">
           {months.map((m) => (
             <option key={m} value={m}>{m}</option>
           ))}
           <option value="all">All</option>
-        </select>
+        </Select>
       </div>
       <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">{lockName ? "Show my petty cash" : "Show this petty cash"}</button>
       {canSeeAll && (

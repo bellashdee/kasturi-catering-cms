@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { addEquipmentAssignment, createEquipment } from "@/lib/catering/actions";
+import { Select } from "@/components/ui/Select";
 
 type Equipment = { id: string; name: string; total_quantity: number; unit: string | null };
 
@@ -50,11 +51,11 @@ export function EquipmentAssignForm({ companyId, eventId, equipment }: { company
 
       {!creatingNew && equipment.length > 0 && (
         <div className="flex items-end gap-2">
-          <select value={equipmentId} onChange={(e) => setEquipmentId(e.target.value)} className="h-9 flex-1 rounded-lg border border-border-strong px-2 text-[13px]">
+          <Select value={equipmentId} onChange={(e) => setEquipmentId(e.target.value)} className="h-9 flex-1 rounded-lg border border-border-strong px-2 text-[13px]">
             {equipment.map((eq) => (
               <option key={eq.id} value={eq.id}>{eq.name} ({eq.total_quantity} {eq.unit ?? ""} available)</option>
             ))}
-          </select>
+          </Select>
           <input type="number" min="0.5" step="0.5" value={quantityNeeded} onChange={(e) => setQuantityNeeded(e.target.value)} className="h-9 w-24 rounded-lg border border-border-strong px-2 text-[13px]" placeholder="Qty" />
           <button type="submit" disabled={saving} className="h-9 rounded-lg bg-primary px-3 text-xs font-bold text-white disabled:opacity-60">
             {saving ? "Adding..." : "+ Assign"}

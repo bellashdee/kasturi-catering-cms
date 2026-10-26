@@ -9,6 +9,7 @@ import { fileTypeFromMime, uploadDocument } from "@/lib/documents/upload";
 import { formatDue, TASK_PRIORITIES, TASK_PRIORITY_LABEL, TASK_PRIORITY_TONE, TASK_STATUS_LABEL, type TaskPriority, type TaskStatus } from "@/lib/priority/tasks";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 import { AREA, BTN, BTN_GHOST, BTN_SM_GHOST, Dialog, ErrorLine, FIELD, LABEL, Pill } from "@/components/priority/ui";
+import { Select } from "@/components/ui/Select";
 
 export type TaskCard = {
   id: string;
@@ -130,11 +131,11 @@ export function TaskForm({
         </div>
         <div>
           <label className={LABEL} htmlFor="task-company">Company</label>
-          <select id="task-company" className={FIELD} value={companyId} onChange={(e) => setCompanyId(e.target.value)} disabled={!!task}>
+          <Select id="task-company" className={FIELD} value={companyId} onChange={(e) => setCompanyId(e.target.value)} disabled={!!task}>
             {companies.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={LABEL} htmlFor="task-department">Department</label>
@@ -147,21 +148,21 @@ export function TaskForm({
         </div>
         <div>
           <label className={LABEL} htmlFor="task-responsible">Responsible person</label>
-          <select id="task-responsible" className={FIELD} value={admin ? responsibleId : currentUserId} onChange={(e) => setResponsibleId(e.target.value)} disabled={!admin}>
+          <Select id="task-responsible" className={FIELD} value={admin ? responsibleId : currentUserId} onChange={(e) => setResponsibleId(e.target.value)} disabled={!admin}>
             <option value="">Not assigned</option>
             {people.map((p) => (
               <option key={p.id} value={p.id}>{p.id === currentUserId ? `${p.name} (me)` : p.name}</option>
             ))}
-          </select>
+          </Select>
           {!admin && <p className="mt-1 text-[12px] text-text-muted">Only an admin can assign a task to someone else.</p>}
         </div>
         <div>
           <label className={LABEL} htmlFor="task-priority">Priority</label>
-          <select id="task-priority" className={FIELD} value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)}>
+          <Select id="task-priority" className={FIELD} value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)}>
             {TASK_PRIORITIES.map((p) => (
               <option key={p} value={p}>{TASK_PRIORITY_LABEL[p]}</option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={LABEL} htmlFor="task-start">Start date</label>

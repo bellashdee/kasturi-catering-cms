@@ -16,6 +16,7 @@ import {
   type PaymentCategory,
   type UtilityType,
 } from "@/lib/finance/payments";
+import { Select } from "@/components/ui/Select";
 
 export type PaymentAccountOption = {
   id: string;
@@ -236,14 +237,14 @@ export function PaymentForm({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>{category === "supplier" ? "Payment Of (company) *" : "Company *"}</label>
-          <select
+          <Select
             value={companyId}
             disabled={flow.documentId !== null || companies.length === 1}
             onChange={(e) => { setCompanyId(e.target.value); setAccountId(""); setProvider(""); setDuplicates(null); }}
             className={inputClass}
           >
             {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>{isUtility ? "Billing Month *" : isRental ? "Rental Month *" : "Payment Month *"}</label>
@@ -255,17 +256,17 @@ export function PaymentForm({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Utility Provider *</label>
-            <select value={provider} onChange={(e) => { setProvider(e.target.value); setAccountId(""); }} className={inputClass}>
+            <Select value={provider} onChange={(e) => { setProvider(e.target.value); setAccountId(""); }} className={inputClass}>
               <option value="">Select provider</option>
               {UTILITY_PROVIDERS.map((p) => <option key={p} value={p}>{p}</option>)}
-            </select>
+            </Select>
           </div>
           <div>
             <label className={labelClass}>Location / Account Name *</label>
-            <select value={accountId} onChange={(e) => pickAccount(e.target.value)} className={inputClass}>
+            <Select value={accountId} onChange={(e) => pickAccount(e.target.value)} className={inputClass}>
               <option value="">Select location</option>
               {utilityAccounts.map((a) => <option key={a.id} value={a.id}>{a.name}{a.utilityType ? ` — ${UTILITY_TYPE_LABEL[a.utilityType].replace("Utility – ", "")}` : ""}</option>)}
-            </select>
+            </Select>
           </div>
         </div>
       )}
@@ -273,10 +274,10 @@ export function PaymentForm({
       {isRental && (
         <div>
           <label className={labelClass}>Rental / Payee *</label>
-          <select value={accountId} onChange={(e) => pickAccount(e.target.value)} className={inputClass}>
+          <Select value={accountId} onChange={(e) => pickAccount(e.target.value)} className={inputClass}>
             <option value="">Select rental / payee</option>
             {accountsForCompany.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
+          </Select>
         </div>
       )}
 

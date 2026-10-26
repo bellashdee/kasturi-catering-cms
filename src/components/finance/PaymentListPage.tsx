@@ -30,6 +30,7 @@ import { ReportTable } from "@/components/reports/ReportTable";
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { PaymentSummaryCards } from "@/components/finance/PaymentSummaryCards";
 import { PaymentRowActions, PaymentUndoBanner } from "@/components/finance/PaymentRowActions";
+import { Select } from "@/components/ui/Select";
 
 type SearchParams = { company?: string; year?: string; month?: string; status?: string; payee?: string; provider?: string; saved?: string };
 
@@ -174,16 +175,16 @@ export async function PaymentListPage({ category, searchParams }: { category: Pa
         </div>
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Month</label>
-          <select name="month" defaultValue={allMonths ? "all" : month} className="mt-1 h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
+          <Select name="month" defaultValue={allMonths ? "all" : month} className="mt-1 h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
             <option value="all">All months</option>
             {MONTH_LABEL.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Status</label>
-          <select name="status" defaultValue={sp.status ?? ""} className="mt-1 h-9 w-40 rounded-lg border border-border-strong px-2 text-[13px]">
+          <Select name="status" defaultValue={sp.status ?? ""} className="mt-1 h-9 w-40 rounded-lg border border-border-strong px-2 text-[13px]">
             {STATUS_FILTER_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">{category === "supplier" ? "Supplier" : category === "rental" ? "Payee" : "Location"}</label>
@@ -192,10 +193,10 @@ export async function PaymentListPage({ category, searchParams }: { category: Pa
         {category === "utility" && (
           <div>
             <label className="text-[12px] font-semibold text-text-secondary">Utility Provider</label>
-            <select name="provider" defaultValue={sp.provider ?? ""} className="mt-1 h-9 w-40 rounded-lg border border-border-strong px-2 text-[13px]">
+            <Select name="provider" defaultValue={sp.provider ?? ""} className="mt-1 h-9 w-40 rounded-lg border border-border-strong px-2 text-[13px]">
               <option value="">All providers</option>
               {providerOptions.map((p) => <option key={p} value={p}>{p}</option>)}
-            </select>
+            </Select>
           </div>
         )}
         <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply Filters</button>

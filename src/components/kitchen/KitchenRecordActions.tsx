@@ -19,6 +19,7 @@ import {
 import { MENU_CATEGORY_LABEL } from "@/lib/kitchen/constants";
 import { AREA, BTN, BTN_GHOST, Dialog, ErrorLine, FIELD, LABEL } from "@/components/priority/ui";
 import { RecordActions } from "@/components/shared/RecordActions";
+import { Select } from "@/components/ui/Select";
 
 /** Edit (Save / Cancel) and Delete (Undo) of a purchase request that is not received yet. */
 export function PurchaseRequestRecordActions({ id, name, quantity, unit, requiredDate, notes, status }: { id: string; name: string; quantity: string; unit: string; requiredDate: string; notes: string; status: string }) {
@@ -173,11 +174,11 @@ export function MenuActions({ menu, listHref }: { menu: MenuEditData; listHref: 
                 {items.map((it, i) => (
                   <div key={i} className="grid grid-cols-[2fr_1.2fr_0.9fr_3.5rem] items-center gap-1.5">
                     <input className="h-9 rounded-md border border-border-strong px-2 text-[13px]" value={it.name} onChange={(e) => setItem(i, { name: e.target.value })} aria-label="Item" />
-                    <select className="h-9 rounded-md border border-border-strong bg-surface px-2 text-[13px]" value={it.category} onChange={(e) => setItem(i, { category: e.target.value })} aria-label="Category">
+                    <Select className="h-9 rounded-md border border-border-strong bg-surface px-2 text-[13px]" value={it.category} onChange={(e) => setItem(i, { category: e.target.value })} aria-label="Category">
                       {Object.entries(MENU_CATEGORY_LABEL).map(([k, v]) => (
                         <option key={k} value={k}>{v}</option>
                       ))}
-                    </select>
+                    </Select>
                     <input className="h-9 rounded-md border border-border-strong px-2 text-[13px]" type="number" step="any" min="0" placeholder="RM / pax" value={it.pricePerPax} onChange={(e) => setItem(i, { pricePerPax: e.target.value })} aria-label="Price per pax" />
                     <button type="button" className="text-right text-xs font-semibold text-danger" onClick={() => setItems((p) => p.filter((_, n) => n !== i))}>
                       Remove

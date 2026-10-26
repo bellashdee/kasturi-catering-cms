@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 import { RecordActions } from "@/components/shared/RecordActions";
 import { LeaveRowActions } from "@/components/hr/LeaveRowActions";
+import { Select } from "@/components/ui/Select";
 
 export type LeaveItemData = {
   id: string;
@@ -68,11 +69,11 @@ export function LeaveItem({ leave, canDecide, canChange, compact = false }: { le
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <label className={labelClass}>Leave Type *</label>
-            <select value={type} onChange={(e) => setType(e.target.value)} className={inputClass}>
+            <Select value={type} onChange={(e) => setType(e.target.value)} className={inputClass}>
               {Object.entries(LEAVE_TYPE_LABEL).map(([k, v]) => (
                 <option key={k} value={k}>{v}</option>
               ))}
-            </select>
+            </Select>
           </div>
           {type === "other" && (
             <div className="sm:col-span-2">

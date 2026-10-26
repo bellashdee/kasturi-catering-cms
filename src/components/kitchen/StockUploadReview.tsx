@@ -6,6 +6,7 @@ import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/docum
 import { recordStockMovement, findDuplicateStockInvoice } from "@/lib/kitchen/actions";
 import { MOVEMENT_TYPE_LABEL } from "@/lib/kitchen/constants";
 import { requestExtraction } from "@/lib/importFlow/extractClient";
+import { Select } from "@/components/ui/Select";
 
 type Tab = "manual" | "count" | "supplier_invoice" | "customer_invoice";
 type Company = { id: string; name: string };
@@ -266,7 +267,7 @@ export function StockUploadReview({
       <div className="p-6">
         <div className="mb-4">
           <label className={labelClass}>Company *</label>
-          <select
+          <Select
             required
             disabled={documentId !== null}
             value={companyId}
@@ -274,7 +275,7 @@ export function StockUploadReview({
             className={`${inputClass} disabled:bg-surface-alt disabled:text-text-muted`}
           >
             {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
 
         {step === "pick" && tab !== "manual" && (
@@ -333,10 +334,10 @@ export function StockUploadReview({
                 {tab === "customer_invoice" && (
                   <div>
                     <label className={labelClass}>Catering Event</label>
-                    <select value={eventId} onChange={(e) => setEventId(e.target.value)} className={inputClass}>
+                    <Select value={eventId} onChange={(e) => setEventId(e.target.value)} className={inputClass}>
                       <option value="">Not linked</option>
                       {eventsForCompany.map((ev) => <option key={ev.id} value={ev.id}>{ev.event_name} ({ev.event_date})</option>)}
-                    </select>
+                    </Select>
                   </div>
                 )}
               </div>
@@ -344,12 +345,12 @@ export function StockUploadReview({
 
             <div>
               <label className={labelClass}>This batch should be recorded as</label>
-              <select value={movementType} onChange={(e) => setMovementType(e.target.value as MovementType)} className={inputClass}>
+              <Select value={movementType} onChange={(e) => setMovementType(e.target.value as MovementType)} className={inputClass}>
                 <option value="in">{MOVEMENT_TYPE_LABEL.in} (received from supplier)</option>
                 <option value="adjustment">{MOVEMENT_TYPE_LABEL.adjustment} (physical stock count)</option>
                 <option value="wastage">{MOVEMENT_TYPE_LABEL.wastage} (spoiled / thrown out)</option>
                 <option value="out">{MOVEMENT_TYPE_LABEL.out} (used / removed)</option>
-              </select>
+              </Select>
             </div>
 
             <div className="overflow-hidden rounded-lg border border-border">
@@ -368,10 +369,10 @@ export function StockUploadReview({
                     <tr key={i} className={`border-t border-border ${row.ocrName && !row.ingredientId ? "bg-warning-bg/40" : ""}`}>
                       <td className="px-3 py-1.5 text-[12.5px] text-text-muted">{row.ocrName || "—"}</td>
                       <td className="px-3 py-1.5">
-                        <select value={row.ingredientId} onChange={(e) => updateRow(i, "ingredientId", e.target.value)} className={cellClass}>
+                        <Select value={row.ingredientId} onChange={(e) => updateRow(i, "ingredientId", e.target.value)} className={cellClass}>
                           <option value="">{row.ocrName ? "Needs your confirmation — select ingredient" : "Select ingredient"}</option>
                           {ingredientsForCompany.map((ing) => <option key={ing.id} value={ing.id}>{ing.name}</option>)}
-                        </select>
+                        </Select>
                       </td>
                       <td className="px-3 py-1.5"><input className={cellClass} value={row.quantity} onChange={(e) => updateRow(i, "quantity", e.target.value)} /></td>
                       <td className="px-3 py-1.5"><input className={cellClass} value={row.unit} onChange={(e) => updateRow(i, "unit", e.target.value)} /></td>

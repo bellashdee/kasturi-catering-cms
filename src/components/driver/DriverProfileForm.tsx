@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateDriver } from "@/lib/driver/actions";
+import { Select } from "@/components/ui/Select";
 
 const inputClass =
   "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
@@ -89,10 +90,10 @@ export function DriverProfileForm({
       </div>
       <div>
         <label className={labelClass}>Linked Login Account</label>
-        <select value={userId} onChange={(e) => setUserId(e.target.value)} className={inputClass}>
+        <Select value={userId} onChange={(e) => setUserId(e.target.value)} className={inputClass}>
           <option value="">Not linked</option>
           {accounts.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
-        </select>
+        </Select>
         <p className="mt-1 text-[11px] text-text-muted">
           This driver can only clock in/out when signed in with this account. Create the login first under Settings → Members.
         </p>

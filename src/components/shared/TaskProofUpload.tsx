@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { uploadDocument, fileTypeFromMime } from "@/lib/documents/upload";
 import { attachTaskProof } from "@/lib/taskProofs/actions";
 import { PROOF_TYPE_LABEL } from "@/lib/taskProofs/constants";
+import { Select } from "@/components/ui/Select";
 
 /**
  * Generic "Proof of Work" upload widget — pass any module's own table/row id
@@ -70,11 +71,11 @@ export function TaskProofUpload({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Proof Type *</label>
-          <select value={proofType} onChange={(e) => setProofType(e.target.value)} className="mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]">
+          <Select value={proofType} onChange={(e) => setProofType(e.target.value)} className="mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]">
             {Object.entries(PROOF_TYPE_LABEL).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Remarks (optional)</label>

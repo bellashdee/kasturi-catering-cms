@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { GENDER_OPTIONS, MARITAL_STATUS_OPTIONS, RACE_OPTIONS, RELIGION_OPTIONS, dobFromIc, withCurrent } from "@/lib/hr/ic";
 import { attachEmployeeToCompanies, createEmployeeInCompanies, updateEmployee, type EmployeeInput } from "@/lib/hr/actions";
 import { SearchSelect } from "@/components/ui/SearchSelect";
+import { Select } from "@/components/ui/Select";
 
 /** The places where the staff work. */
 const BRANCHES = ["KILANG 1", "KILANG 2", "RESTORAN BARA", "UTM"];
@@ -152,19 +153,19 @@ export function EmployeeForm({
       <div className="grid grid-cols-3 gap-4">
         <div>
           <label className={labelClass}>Employment Type</label>
-          <select value={form.employmentType} onChange={(e) => set("employmentType", e.target.value)} className={inputClass}>
+          <Select value={form.employmentType} onChange={(e) => set("employmentType", e.target.value)} className={inputClass}>
             <option value="full_time">Full-time</option>
             <option value="part_time">Part-time</option>
             <option value="contract">Contract</option>
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Employment Status</label>
-          <select value={form.status} onChange={(e) => set("status", e.target.value)} className={inputClass}>
+          <Select value={form.status} onChange={(e) => set("status", e.target.value)} className={inputClass}>
             <option value="active">Active</option>
             <option value="resigned">Resigned</option>
             <option value="terminated">Terminated</option>
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Start Date (Tarikh Mula Kerja)</label>
@@ -208,42 +209,42 @@ export function EmployeeForm({
         </div>
         <div>
           <label className={labelClass}>Gender</label>
-          <select value={form.gender} onChange={(e) => set("gender", e.target.value)} className={inputClass}>
+          <Select value={form.gender} onChange={(e) => set("gender", e.target.value)} className={inputClass}>
             <option value="">Select</option>
             {GENDER_OPTIONS.map((g) => (
               <option key={g} value={g}>{g}</option>
             ))}
-          </select>
+          </Select>
         </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
         <div>
           <label className={labelClass}>Race</label>
-          <select value={form.race} onChange={(e) => set("race", e.target.value)} className={inputClass}>
+          <Select value={form.race} onChange={(e) => set("race", e.target.value)} className={inputClass}>
             <option value="">Select</option>
             {withCurrent(RACE_OPTIONS, form.race ?? "").map((r) => (
               <option key={r} value={r}>{r}</option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Religion</label>
-          <select value={form.religion} onChange={(e) => set("religion", e.target.value)} className={inputClass}>
+          <Select value={form.religion} onChange={(e) => set("religion", e.target.value)} className={inputClass}>
             <option value="">Select</option>
             {withCurrent(RELIGION_OPTIONS, form.religion ?? "").map((r) => (
               <option key={r} value={r}>{r}</option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Marital Status</label>
-          <select value={form.maritalStatus} onChange={(e) => set("maritalStatus", e.target.value)} className={inputClass}>
+          <Select value={form.maritalStatus} onChange={(e) => set("maritalStatus", e.target.value)} className={inputClass}>
             <option value="">Select</option>
             {MARITAL_STATUS_OPTIONS.map((m) => (
               <option key={m} value={m}>{m}</option>
             ))}
-          </select>
+          </Select>
         </div>
       </div>
 
@@ -261,10 +262,10 @@ export function EmployeeForm({
       {accounts && employeeId && (
         <div>
           <label className={labelClass}>Linked Login Account</label>
-          <select value={linkedUserId} onChange={(e) => setLinkedUserId(e.target.value)} className={inputClass}>
+          <Select value={linkedUserId} onChange={(e) => setLinkedUserId(e.target.value)} className={inputClass}>
             <option value="">Not linked</option>
             {accounts.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
-          </select>
+          </Select>
           <p className="mt-1 text-[11.5px] text-text-muted">Lets this person submit and view their own OT (Staff OT Form). Create the login first under Settings → Members.</p>
         </div>
       )}

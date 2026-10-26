@@ -6,6 +6,7 @@ import { SALES_AGENTS } from "@/lib/catering/constants";
 import { requestProofUpload, submitPaymentProof } from "@/lib/finance/paymentProofActions";
 import { PAYMENT_REMARK_OPTIONS, PROOF_ACCEPT, PROOF_MAX_BYTES, PUBLIC_PAYMENT_METHODS } from "@/lib/finance/paymentProof";
 import { todayInMalaysia } from "@/lib/format";
+import { Select } from "@/components/ui/Select";
 
 const inputClass =
   "mt-1.5 h-11 w-full rounded-lg border border-border-strong px-3 text-[15px] outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
@@ -94,10 +95,10 @@ export function PublicPaymentProofForm({ companySlug }: { companySlug: string })
 
       <div>
         <label className={labelClass} htmlFor="pp-agent">Sales agent *</label>
-        <select id="pp-agent" required value={salesAgent} onChange={(e) => setSalesAgent(e.target.value)} className={inputClass}>
+        <Select id="pp-agent" required value={salesAgent} onChange={(e) => setSalesAgent(e.target.value)} className={inputClass}>
           <option value="">Select your name</option>
           {SALES_AGENTS.map((a) => <option key={a} value={a}>{a}</option>)}
-        </select>
+        </Select>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -107,10 +108,10 @@ export function PublicPaymentProofForm({ companySlug }: { companySlug: string })
         </div>
         <div>
           <label className={labelClass} htmlFor="pp-method">Payment method *</label>
-          <select id="pp-method" required value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className={inputClass}>
+          <Select id="pp-method" required value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className={inputClass}>
             <option value="">Select how the customer paid</option>
             {PUBLIC_PAYMENT_METHODS.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
-          </select>
+          </Select>
         </div>
       </div>
 
@@ -132,10 +133,10 @@ export function PublicPaymentProofForm({ companySlug }: { companySlug: string })
         </div>
         <div>
           <label className={labelClass} htmlFor="pp-remarks">Remarks *</label>
-          <select id="pp-remarks" required value={remarks} onChange={(e) => setRemarks(e.target.value)} className={inputClass}>
+          <Select id="pp-remarks" required value={remarks} onChange={(e) => setRemarks(e.target.value)} className={inputClass}>
             <option value="">Deposit or full payment</option>
             {PAYMENT_REMARK_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
-          </select>
+          </Select>
         </div>
       </div>
 

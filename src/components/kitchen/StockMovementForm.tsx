@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { recordStockMovement } from "@/lib/kitchen/actions";
 import { MOVEMENT_TYPE_LABEL } from "@/lib/kitchen/constants";
+import { Select } from "@/components/ui/Select";
 
 type Ingredient = { id: string; name: string; unit_of_measure: string | null; company_id: string };
 
@@ -63,19 +64,19 @@ export function StockMovementForm({
         {!fixedIngredientId && (
           <div>
             <label className={labelClass}>Ingredient *</label>
-            <select value={ingredientId} onChange={(e) => setIngredientId(e.target.value)} className={inputClass}>
+            <Select value={ingredientId} onChange={(e) => setIngredientId(e.target.value)} className={inputClass}>
               {ingredients.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
-            </select>
+            </Select>
           </div>
         )}
         <div>
           <label className={labelClass}>Movement Type *</label>
-          <select value={movementType} onChange={(e) => setMovementType(e.target.value as typeof movementType)} className={inputClass}>
+          <Select value={movementType} onChange={(e) => setMovementType(e.target.value as typeof movementType)} className={inputClass}>
             <option value="adjustment">{MOVEMENT_TYPE_LABEL.adjustment} (set stock to this count)</option>
             <option value="in">{MOVEMENT_TYPE_LABEL.in} (add to stock)</option>
             <option value="out">{MOVEMENT_TYPE_LABEL.out} (deduct from stock)</option>
             <option value="wastage">{MOVEMENT_TYPE_LABEL.wastage} (deduct — spoiled/thrown out)</option>
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Quantity *</label>

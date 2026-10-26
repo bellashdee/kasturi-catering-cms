@@ -1,6 +1,7 @@
 "use client";
 
 import type { DeliveryPerson } from "@/lib/driver/deliveryPersons";
+import { Select } from "@/components/ui/Select";
 
 /**
  * "Driver / Delivery Person": a list-only choice of the approved internal drivers and external
@@ -28,11 +29,11 @@ export function DeliveryPersonSelect({
   return (
     <div>
       <label className={labelClassName}>{label}</label>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className={className}>
+      <Select value={value} onChange={(e) => onChange(e.target.value)} className={className}>
         <option value="">Not assigned yet</option>
         {drivers.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
         {vendors.map((p) => <option key={p.value} value={p.value}>{p.label} (external)</option>)}
-      </select>
+      </Select>
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateLeadStatus, convertLeadToCustomer } from "@/lib/marketing/actions";
+import { Select } from "@/components/ui/Select";
 
 export function LeadActions({ leadId, status }: { leadId: string; status: string }) {
   const router = useRouter();
@@ -34,7 +35,7 @@ export function LeadActions({ leadId, status }: { leadId: string; status: string
 
   return (
     <div className="flex items-center gap-2">
-      <select
+      <Select
         value={status}
         disabled={pending}
         onChange={(e) => handleStatusChange(e.target.value)}
@@ -44,7 +45,7 @@ export function LeadActions({ leadId, status }: { leadId: string; status: string
         <option value="contacted">Contacted</option>
         <option value="qualified">Qualified</option>
         <option value="lost">Lost</option>
-      </select>
+      </Select>
       <button
         onClick={handleConvert}
         disabled={pending}

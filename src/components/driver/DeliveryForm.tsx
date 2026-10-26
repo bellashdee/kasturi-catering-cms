@@ -9,6 +9,7 @@ import { DeliveryPersonSelect } from "@/components/driver/DeliveryPersonSelect";
 import { toMalaysiaInputValue } from "@/lib/format";
 import { uploadDocument, fileTypeFromMime } from "@/lib/documents/upload";
 import { attachTaskProof } from "@/lib/taskProofs/actions";
+import { Select } from "@/components/ui/Select";
 
 type Company = { id: string; name: string };
 type Event = { id: string; event_name: string; company_id: string };
@@ -143,16 +144,16 @@ export function DeliveryForm({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Company *</label>
-          <select required value={companyId} disabled={!!deliveryId} onChange={(e) => { setCompanyId(e.target.value); set("cateringEventId", ""); set("vehicleId", ""); set("assignee", ""); }} className={inputClass}>
+          <Select required value={companyId} disabled={!!deliveryId} onChange={(e) => { setCompanyId(e.target.value); set("cateringEventId", ""); set("vehicleId", ""); set("assignee", ""); }} className={inputClass}>
             {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Catering Event</label>
-          <select value={form.cateringEventId} disabled={!!deliveryId} onChange={(e) => set("cateringEventId", e.target.value)} className={inputClass}>
+          <Select value={form.cateringEventId} disabled={!!deliveryId} onChange={(e) => set("cateringEventId", e.target.value)} className={inputClass}>
             <option value="">Not linked to an event</option>
             {eventsForCompany.map((ev) => <option key={ev.id} value={ev.id}>{ev.event_name}</option>)}
-          </select>
+          </Select>
         </div>
       </div>
 
@@ -171,10 +172,10 @@ export function DeliveryForm({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Vehicle</label>
-          <select value={form.vehicleId} onChange={(e) => set("vehicleId", e.target.value)} className={inputClass}>
+          <Select value={form.vehicleId} onChange={(e) => set("vehicleId", e.target.value)} className={inputClass}>
             <option value="">Not assigned yet</option>
             {vehiclesForCompany.map((v) => <option key={v.id} value={v.id}>{vehicleLabel(v)}</option>)}
-          </select>
+          </Select>
         </div>
         <DeliveryPersonSelect
           value={form.assignee}

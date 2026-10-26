@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { RecipeRef } from "@/lib/kitchenAi/match";
 import type { CalcResult, KItem, KSession, KState } from "@/lib/kitchenAi/types";
+import { Select } from "@/components/ui/Select";
 
 export type KitchenPatch = Record<string, unknown> & { kind: string };
 
@@ -34,7 +35,7 @@ function ItemRow({ item, recipeOptions, busy, onPatch, pax, hasPax }: { item: KI
           aria-label="Dish"
           className={`${inputClass} min-w-[9rem] flex-1 font-semibold`}
         />
-        <select
+        <Select
           value={item.recipeId ?? ""}
           disabled={busy}
           onChange={(e) => onPatch({ kind: "set_recipe", itemId: item.id, recipeId: e.target.value || null })}
@@ -54,7 +55,7 @@ function ItemRow({ item, recipeOptions, busy, onPatch, pax, hasPax }: { item: KI
               <option key={r.id} value={r.id} disabled={!r.hasIngredients}>{r.name}{r.hasIngredients ? "" : " (no ingredients yet)"}</option>
             ))}
           </optgroup>
-        </select>
+        </Select>
         <button type="button" disabled={busy} onClick={() => onPatch({ kind: "remove_item", itemId: item.id })} aria-label="Remove dish" className="h-8 rounded-md px-2 text-[13px] font-bold text-danger hover:bg-danger-bg disabled:opacity-40">
           ✕
         </button>

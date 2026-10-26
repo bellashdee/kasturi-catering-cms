@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { InvoiceDateFilter as Filter } from "@/lib/finance/dateFilter";
+import { Select } from "@/components/ui/Select";
 
 /**
  * The date filter above an invoice list: pick whether it applies to the invoice date or the due date, then a From and/or a
@@ -13,10 +14,10 @@ export function InvoiceDateFilter({ filter, requestedCompanyId, clearHref }: { f
       {requestedCompanyId && <input type="hidden" name="company" value={requestedCompanyId} />}
       <div>
         <label className={label} htmlFor="invoice-date-field">Filter by</label>
-        <select id="invoice-date-field" name="dateField" defaultValue={filter.field} className={`${field} block w-40`}>
+        <Select id="invoice-date-field" name="dateField" defaultValue={filter.field} className={`${field} block w-40`}>
           <option value="invoice_date">Invoice date</option>
           <option value="due_date">Due date</option>
-        </select>
+        </Select>
       </div>
       <div>
         <label className={label} htmlFor="invoice-date-from">From</label>

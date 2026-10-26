@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/documents/upload";
 import { recordPaymentExecution } from "@/lib/procurement/actions";
+import { Select } from "@/components/ui/Select";
 
 function todayIso(): string {
   return todayInMalaysia();
@@ -53,13 +54,13 @@ export function PaymentExecutionForm({ paymentId, companyId }: { paymentId: stri
         </div>
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Payment Method *</label>
-          <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]">
+          <Select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]">
             <option value="bank_transfer">Bank Transfer</option>
             <option value="cheque">Cheque</option>
             <option value="cash">Cash</option>
             <option value="online_banking">Online Banking</option>
             <option value="other">Other</option>
-          </select>
+          </Select>
         </div>
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Reference Number</label>

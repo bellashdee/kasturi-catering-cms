@@ -8,6 +8,7 @@ import { fileTypeFromMime, uploadDocument, ANY_UPLOAD_ACCEPT } from "@/lib/docum
 import { CERT_TYPE_LABEL, NO_EXPIRY_CERT_TYPES } from "@/lib/hr/constants";
 import { StatusBadge } from "@/components/StatusBadge";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
+import { Select } from "@/components/ui/Select";
 
 export type CertificateItem = {
   id: string;
@@ -164,11 +165,11 @@ function CertificateEditor({ item, onClose }: { item: CertificateItem; onClose: 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className={labelClass}>Type *</label>
-          <select value={certType} onChange={(e) => setCertType(e.target.value)} className={inputClass}>
+          <Select value={certType} onChange={(e) => setCertType(e.target.value)} className={inputClass}>
             {Object.entries(CERT_TYPE_LABEL).map(([k, v]) => (
               <option key={k} value={k}>{v}</option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Name *</label>

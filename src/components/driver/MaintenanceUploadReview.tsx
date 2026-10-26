@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { uploadDocument, fileTypeFromMime, DOCUMENT_FILE_ACCEPT } from "@/lib/documents/upload";
 import { createMaintenanceRecord } from "@/lib/driver/actions";
 import { requestExtraction } from "@/lib/importFlow/extractClient";
+import { Select } from "@/components/ui/Select";
 
 type Tab = "manual" | "pdf" | "photo";
 type Company = { id: string; name: string };
@@ -136,7 +137,7 @@ export function MaintenanceUploadReview({
         <div className="mb-4 grid grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Company *</label>
-            <select
+            <Select
               required
               disabled={documentId !== null || !!defaultVehicleId}
               value={companyId}
@@ -144,11 +145,11 @@ export function MaintenanceUploadReview({
               className={`${inputClass} disabled:bg-surface-alt disabled:text-text-muted`}
             >
               {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            </Select>
           </div>
           <div>
             <label className={labelClass}>Vehicle *</label>
-            <select
+            <Select
               required
               disabled={documentId !== null || !!defaultVehicleId}
               value={vehicleId}
@@ -157,7 +158,7 @@ export function MaintenanceUploadReview({
             >
               <option value="">Select vehicle</option>
               {vehiclesForCompany.map((v) => <option key={v.id} value={v.id}>{vehicleLabel(v)}</option>)}
-            </select>
+            </Select>
           </div>
         </div>
 

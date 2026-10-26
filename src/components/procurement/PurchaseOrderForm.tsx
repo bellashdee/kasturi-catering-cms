@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createPurchaseOrder, type PurchaseOrderInput } from "@/lib/procurement/actions";
 import type { ItemSuggestion } from "@/lib/procurement/itemSuggestions";
 import { ItemNameInput } from "@/components/procurement/ItemNameInput";
+import { Select } from "@/components/ui/Select";
 
 type Company = { id: string; name: string };
 type Supplier = { id: string; name: string; company_id: string };
@@ -117,16 +118,16 @@ export function PurchaseOrderForm({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Company *</label>
-          <select required value={companyId} onChange={(e) => { setCompanyId(e.target.value); setSupplierId(""); }} className={inputClass}>
+          <Select required value={companyId} onChange={(e) => { setCompanyId(e.target.value); setSupplierId(""); }} className={inputClass}>
             {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Supplier *</label>
-          <select required value={supplierId} onChange={(e) => setSupplierId(e.target.value)} className={inputClass}>
+          <Select required value={supplierId} onChange={(e) => setSupplierId(e.target.value)} className={inputClass}>
             <option value="">Select supplier</option>
             {suppliersForCompany.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
+          </Select>
         </div>
       </div>
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { approvePaymentProof, getPaymentProofUrl, rejectPaymentProof } from "@/lib/finance/paymentProofActions";
 import { formatPrice } from "@/lib/format";
+import { Select } from "@/components/ui/Select";
 
 export type InvoiceOption = { id: string; label: string; outstanding: number };
 
@@ -74,10 +75,10 @@ export function PaymentProofReviewRow({
       <div className="grid grid-cols-1 gap-3 md:grid-cols-[2fr_1fr_1fr]">
         <div>
           <label className="text-[12.5px] font-semibold text-text-secondary">Customer invoice</label>
-          <select value={invoiceId} onChange={(e) => pickInvoice(e.target.value)} className={`${field} mt-1 block w-full`}>
+          <Select value={invoiceId} onChange={(e) => pickInvoice(e.target.value)} className={`${field} mt-1 block w-full`}>
             <option value="">{matchedInvoiceId ? "—" : "Choose the invoice this payment is for"}</option>
             {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-          </select>
+          </Select>
           {chosen && <div className="mt-1 text-[12.5px] text-text-secondary">Still to be paid: <b className="text-text">{formatPrice(chosen.outstanding)}</b></div>}
         </div>
         <div>

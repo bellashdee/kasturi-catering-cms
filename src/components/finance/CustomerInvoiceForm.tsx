@@ -10,6 +10,7 @@ import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/docum
 import type { ExtractionReport } from "@/lib/extraction/types";
 import { ExtractionReportPanel } from "@/components/shared/import/ExtractionReportPanel";
 import { requestExtraction } from "@/lib/importFlow/extractClient";
+import { Select } from "@/components/ui/Select";
 
 type Company = { id: string; name: string };
 type Customer = { id: string; name: string; company_id: string; credit_term?: string | null };
@@ -170,19 +171,19 @@ export function CustomerInvoiceForm({ companies, defaultCompanyId, customers }: 
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="text-[12.5px] font-semibold text-text-secondary">Company *</label>
-          <select required value={companyId} onChange={(e) => { setCompanyId(e.target.value); setCustomerId(""); }} className="mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none">
+          <Select required value={companyId} onChange={(e) => { setCompanyId(e.target.value); setCustomerId(""); }} className="mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none">
             {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className="text-[12.5px] font-semibold text-text-secondary">Customer *</label>
-          <select required value={customerId} onChange={(e) => {
+          <Select required value={customerId} onChange={(e) => {
               setCustomerId(e.target.value);
               applyTerms(e.target.value, invoiceDate);
             }} className="mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none">
             <option value="">Select customer</option>
             {customersForCompany.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
           {customersForCompany.length === 0 && (
             <p className="mt-1 text-xs text-text-muted">No customers found for this company yet — add one in Catering first.</p>
           )}

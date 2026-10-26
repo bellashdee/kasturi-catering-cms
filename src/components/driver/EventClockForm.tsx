@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getCurrentPosition } from "@/lib/driverAttendance/geo";
 import { submitEventClock } from "@/lib/eventAttendance/actions";
 import { EVENT_RADIUS_M } from "@/lib/eventAttendance/rules";
+import { Select } from "@/components/ui/Select";
 
 const inputClass = "mt-1.5 h-11 w-full rounded-lg border border-border-strong bg-surface px-3 text-[15px] outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
 const labelClass = "text-[13px] font-semibold text-text-secondary";
@@ -98,22 +99,22 @@ export function EventClockForm({
       {companies.length > 1 && (
         <div>
           <label className={labelClass} htmlFor="ec-company">Company</label>
-          <select id="ec-company" className={inputClass} value={companySlug} onChange={(e) => { setCompanySlug(e.target.value); setStaffId(""); }}>
+          <Select id="ec-company" className={inputClass} value={companySlug} onChange={(e) => { setCompanySlug(e.target.value); setStaffId(""); }}>
             {companies.map((c) => (
               <option key={c.slug} value={c.slug}>{c.name}</option>
             ))}
-          </select>
+          </Select>
         </div>
       )}
 
       <div>
         <label className={labelClass} htmlFor="ec-driver">Staff name</label>
-        <select id="ec-driver" className={inputClass} value={staffId} onChange={(e) => setStaffId(e.target.value)} required>
+        <Select id="ec-driver" className={inputClass} value={staffId} onChange={(e) => setStaffId(e.target.value)} required>
           <option value="">Select your name</option>
           {companyStaff.map((d) => (
             <option key={d.id} value={d.id}>{d.name}</option>
           ))}
-        </select>
+        </Select>
       </div>
 
       <div>

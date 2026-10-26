@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateQuotationStatus, updateQuotationPaymentStatus } from "@/lib/catering/actions";
+import { Select } from "@/components/ui/Select";
 
 export function QuotationActions({ quotationId, status, paymentStatus }: { quotationId: string; status: string; paymentStatus: string }) {
   const router = useRouter();
@@ -36,7 +37,7 @@ export function QuotationActions({ quotationId, status, paymentStatus }: { quota
         </>
       )}
       {status === "accepted" && (
-        <select
+        <Select
           value={paymentStatus}
           disabled={pending}
           onChange={(e) => run(() => updateQuotationPaymentStatus(quotationId, e.target.value))}
@@ -45,7 +46,7 @@ export function QuotationActions({ quotationId, status, paymentStatus }: { quota
           <option value="unpaid">Unpaid</option>
           <option value="partial">Partially Paid</option>
           <option value="paid">Paid</option>
-        </select>
+        </Select>
       )}
     </div>
   );

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { deleteBudget, updateBudget } from "@/lib/finance/actions";
 import { departmentChoices } from "@/lib/finance/constants";
 import { AREA, BTN, BTN_GHOST, BTN_SM_GHOST, Dialog, FIELD, LABEL } from "@/components/priority/ui";
+import { Select } from "@/components/ui/Select";
 
 /** Edit (amount, department, notes) and Delete of one budget. */
 export function BudgetRowActions({ id, label, amount, department, notes }: { id: string; label: string; amount: number; department: string | null; notes: string | null }) {
@@ -61,14 +62,14 @@ export function BudgetRowActions({ id, label, amount, department, notes }: { id:
               </div>
               <div>
                 <label className={LABEL}>Department</label>
-                <select className={FIELD} value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })}>
+                <Select className={FIELD} value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })}>
                   <option value="">Company-wide (no department)</option>
                   {departmentChoices(form.department).map((d) => (
                     <option key={d} value={d}>
                       {d}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             </div>
             <div>

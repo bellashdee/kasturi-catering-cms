@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveEventSite } from "@/lib/eventAttendance/siteActions";
 import { getCurrentPosition } from "@/lib/driverAttendance/geo";
+import { Select } from "@/components/ui/Select";
 
 export type SiteRow = { id: string; companyId: string; companyName: string; locationText: string; latitude: number; longitude: number; source: string };
 
@@ -61,11 +62,11 @@ export function EventSitesPanel({ sites, companies, knownLocations }: { sites: S
       <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className={label} htmlFor="site-company">Company</label>
-          <select id="site-company" className={field} value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
+          <Select id="site-company" className={field} value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
             {companies.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={label} htmlFor="site-text">Event location (as written on the form)</label>

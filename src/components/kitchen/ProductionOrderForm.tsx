@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { mealRank, mealTitle } from "@/lib/menuPlan/calc";
 import { createProductionOrder, type ProductionOrderInput } from "@/lib/kitchen/actions";
+import { Select } from "@/components/ui/Select";
 
 type Company = { id: string; name: string };
 type Recipe = { id: string; name: string; yield_pax: number; company_id: string };
@@ -86,7 +87,7 @@ export function ProductionOrderForm({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Company *</label>
-          <select
+          <Select
             required
             value={companyId}
             onChange={(e) => {
@@ -100,7 +101,7 @@ export function ProductionOrderForm({
             className={inputClass}
           >
             {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Planned Date *</label>
@@ -114,31 +115,31 @@ export function ProductionOrderForm({
           <div className="mt-2 grid grid-cols-4 gap-3">
             <div>
               <label className="text-[11px] text-text-muted">Menu Category</label>
-              <select value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setWeekId(""); setMealId(""); setDishId(""); }} className={inputClass}>
+              <Select value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setWeekId(""); setMealId(""); setDishId(""); }} className={inputClass}>
                 <option value="">Select</option>
                 {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="text-[11px] text-text-muted">Week</label>
-              <select value={weekId} onChange={(e) => { setWeekId(e.target.value); setMealId(""); setDishId(""); }} disabled={!categoryId} className={inputClass}>
+              <Select value={weekId} onChange={(e) => { setWeekId(e.target.value); setMealId(""); setDishId(""); }} disabled={!categoryId} className={inputClass}>
                 <option value="">Select</option>
                 {weeks.map((w) => <option key={w.id} value={w.id}>Week {w.week_number}</option>)}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="text-[11px] text-text-muted">Meal / Day</label>
-              <select value={mealId} onChange={(e) => { setMealId(e.target.value); setDishId(""); }} disabled={!weekId} className={inputClass}>
+              <Select value={mealId} onChange={(e) => { setMealId(e.target.value); setDishId(""); }} disabled={!weekId} className={inputClass}>
                 <option value="">Select</option>
                 {meals.map((m) => <option key={m.id} value={m.id}>{mealTitle(m)}</option>)}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="text-[11px] text-text-muted">Dish</label>
-              <select value={dishId} onChange={(e) => setDishId(e.target.value)} disabled={!mealId} className={inputClass}>
+              <Select value={dishId} onChange={(e) => setDishId(e.target.value)} disabled={!mealId} className={inputClass}>
                 <option value="">Select</option>
                 {dishes.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-              </select>
+              </Select>
             </div>
           </div>
           {categoryId === "" && <p className="mt-2 text-[11px] text-text-muted">Optional — leave blank to use a Recipe below instead.</p>}
@@ -148,10 +149,10 @@ export function ProductionOrderForm({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Recipe{hasMenuPlan ? " (alternative to menu dish above)" : ""}</label>
-          <select value={recipeId} onChange={(e) => setRecipeId(e.target.value)} className={inputClass}>
+          <Select value={recipeId} onChange={(e) => setRecipeId(e.target.value)} className={inputClass}>
             <option value="">Not linked to a recipe yet</option>
             {recipesForCompany.map((r) => <option key={r.id} value={r.id}>{r.name} (base yield {r.yield_pax} pax)</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Pax to Produce</label>

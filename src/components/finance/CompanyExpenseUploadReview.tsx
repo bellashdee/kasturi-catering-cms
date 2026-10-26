@@ -8,6 +8,7 @@ import { ImportTabs, FileDropZone, ExtractionNotice, FormError, ConfirmActions }
 import { createCompanyExpense } from "@/lib/finance/actions";
 import { DEPARTMENT_OPTIONS } from "@/lib/finance/constants";
 import { DescriptionInput } from "@/components/DescriptionInput";
+import { Select } from "@/components/ui/Select";
 
 type Company = { id: string; name: string };
 type CostCategory = { id: string; name: string };
@@ -106,7 +107,7 @@ export function CompanyExpenseUploadReview({
         <div className="mb-4 grid grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Company *</label>
-            <select
+            <Select
               required
               disabled={flow.documentId !== null}
               value={companyId}
@@ -114,14 +115,14 @@ export function CompanyExpenseUploadReview({
               className={`${inputClass} disabled:bg-surface-alt disabled:text-text-muted`}
             >
               {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            </Select>
           </div>
           <div>
             <label className={labelClass}>Department</label>
-            <select value={department} onChange={(e) => setDepartment(e.target.value)} className={inputClass}>
+            <Select value={department} onChange={(e) => setDepartment(e.target.value)} className={inputClass}>
               <option value="">Select department (optional)</option>
               {DEPARTMENT_OPTIONS.map((d) => <option key={d} value={d}>{d}</option>)}
-            </select>
+            </Select>
           </div>
         </div>
 
@@ -148,9 +149,9 @@ export function CompanyExpenseUploadReview({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelClass}>Category *</label>
-                <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} className={inputClass}>
+                <Select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} className={inputClass}>
                   {categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className={labelClass}>Expense Date *</label>
@@ -161,10 +162,10 @@ export function CompanyExpenseUploadReview({
             {isUtilities && (
               <div>
                 <label className={labelClass}>Utility account (branch and account no.)</label>
-                <select value={accountId} onChange={(e) => pickAccount(e.target.value)} className={inputClass}>
+                <Select value={accountId} onChange={(e) => pickAccount(e.target.value)} className={inputClass}>
                   <option value="">Select the account (optional)</option>
                   {accountsOfCompany.map((a) => <option key={a.id} value={a.id}>{accountLabel(a)}</option>)}
-                </select>
+                </Select>
               </div>
             )}
 

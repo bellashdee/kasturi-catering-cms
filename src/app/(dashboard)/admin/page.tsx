@@ -8,6 +8,7 @@ import { formatCurrency, malaysiaYearMonth } from "@/lib/format";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { MonthlySalesForm } from "@/components/finance/MonthlySalesForm";
+import { Select } from "@/components/ui/Select";
 
 function currentYearMonth() {
   return malaysiaYearMonth();
@@ -85,23 +86,23 @@ export default async function AdminPage({
         </div>
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Month</label>
-          <select name="month" defaultValue={month} className="mt-1 h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
+          <Select name="month" defaultValue={month} className="mt-1 h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
             {MONTH_LABEL.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Department</label>
-          <select name="department" defaultValue={departmentParam ?? ""} className="mt-1 h-9 w-44 rounded-lg border border-border-strong px-2 text-[13px]">
+          <Select name="department" defaultValue={departmentParam ?? ""} className="mt-1 h-9 w-44 rounded-lg border border-border-strong px-2 text-[13px]">
             <option value="">All Departments</option>
             {departments.map((d) => <option key={d} value={d}>{d}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Category</label>
-          <select name="category" defaultValue={categoryParam ?? ""} className="mt-1 h-9 w-52 rounded-lg border border-border-strong px-2 text-[13px]">
+          <Select name="category" defaultValue={categoryParam ?? ""} className="mt-1 h-9 w-52 rounded-lg border border-border-strong px-2 text-[13px]">
             <option value="">All Categories</option>
             {uniqueCategories(categories).map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
         <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply Filters</button>
       </form>

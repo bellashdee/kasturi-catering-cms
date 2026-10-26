@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createCampaign, updateCampaign, type CampaignInput } from "@/lib/marketing/actions";
+import { Select } from "@/components/ui/Select";
 
 type Company = { id: string; name: string };
 
@@ -65,11 +66,11 @@ export function CampaignForm({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Company *</label>
-          <select required value={form.companyId} onChange={(e) => set("companyId", e.target.value)} className={inputClass}>
+          <Select required value={form.companyId} onChange={(e) => set("companyId", e.target.value)} className={inputClass}>
             {companies.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Campaign Name *</label>
@@ -85,23 +86,23 @@ export function CampaignForm({
       <div className="grid grid-cols-3 gap-4">
         <div>
           <label className={labelClass}>Channel</label>
-          <select value={form.channel} onChange={(e) => set("channel", e.target.value)} className={inputClass}>
+          <Select value={form.channel} onChange={(e) => set("channel", e.target.value)} className={inputClass}>
             <option value="social_media">Social Media</option>
             <option value="advertising">Advertising</option>
             <option value="print">Print</option>
             <option value="event">Event</option>
             <option value="email">Email</option>
             <option value="other">Other</option>
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Status</label>
-          <select value={form.status} onChange={(e) => set("status", e.target.value)} className={inputClass}>
+          <Select value={form.status} onChange={(e) => set("status", e.target.value)} className={inputClass}>
             <option value="planned">Planned</option>
             <option value="active">Active</option>
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Budget (RM)</label>

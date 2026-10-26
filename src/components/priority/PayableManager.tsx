@@ -34,6 +34,7 @@ import {
 } from "@/lib/priority/payables";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 import { AREA, BTN, BTN_GHOST, BTN_SM, BTN_SM_GHOST, Dialog, ErrorLine, FIELD, LABEL, Pill } from "@/components/priority/ui";
+import { Select } from "@/components/ui/Select";
 
 export type EventOption = { id: string; name: string; date: string };
 
@@ -112,11 +113,11 @@ function ConfirmPaymentForm({ entry, companyId, onDone }: { entry: LedgerEntry; 
       </div>
       <div>
         <label className={LABEL} htmlFor={`pm-${entry.id}`}>Payment method</label>
-        <select id={`pm-${entry.id}`} className={FIELD} value={method} onChange={(e) => setMethod(e.target.value)}>
+        <Select id={`pm-${entry.id}`} className={FIELD} value={method} onChange={(e) => setMethod(e.target.value)}>
           {METHODS.map((m) => (
             <option key={m}>{m}</option>
           ))}
-        </select>
+        </Select>
       </div>
       <div>
         <label className={LABEL} htmlFor={`pr-${entry.id}`}>Transaction reference</label>
@@ -286,12 +287,12 @@ export function PayableManager({ p, isApprover, events, onClose }: { p: PayableV
                 </div>
               </div>
               <div className="grid gap-2 sm:grid-cols-[10rem_1fr_auto]">
-                <select className={FIELD} value={overrideLevel} onChange={(e) => setOverrideLevel(e.target.value as PriorityLevel | "")} aria-label="Priority override">
+                <Select className={FIELD} value={overrideLevel} onChange={(e) => setOverrideLevel(e.target.value as PriorityLevel | "")} aria-label="Priority override">
                   <option value="">Automatic</option>
                   {(["urgent", "high", "medium", "low"] as PriorityLevel[]).map((l) => (
                     <option key={l} value={l}>{PRIORITY_LABEL[l]}</option>
                   ))}
-                </select>
+                </Select>
                 <input className={FIELD} placeholder="Reason for changing the priority" value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)} aria-label="Reason for changing the priority" />
                 <button type="button" className={BTN_GHOST} disabled={busy || (overrideLevel !== "" && !overrideReason.trim())} onClick={() => void run(() => overridePriority({ ...ref, priority: overrideLevel || null, reason: overrideReason }), "Priority saved.")}>Save priority</button>
               </div>
@@ -302,11 +303,11 @@ export function PayableManager({ p, isApprover, events, onClose }: { p: PayableV
         {!paid && (
           <Section title="Hold or dispute">
             <div className="grid gap-2 sm:grid-cols-[11rem_1fr_auto]">
-              <select className={FIELD} value={hold} onChange={(e) => setHoldValue(e.target.value as "" | "on_hold" | "disputed")} aria-label="Hold status">
+              <Select className={FIELD} value={hold} onChange={(e) => setHoldValue(e.target.value as "" | "on_hold" | "disputed")} aria-label="Hold status">
                 <option value="">Not on hold</option>
                 <option value="on_hold">On hold</option>
                 <option value="disputed">Disputed</option>
-              </select>
+              </Select>
               <input className={FIELD} placeholder="Reason" value={holdReason} onChange={(e) => setHoldReason(e.target.value)} aria-label="Reason for the hold" />
               <button type="button" className={BTN_GHOST} disabled={busy || (hold !== "" && !holdReason.trim())} onClick={() => void run(() => setHold({ ...ref, status: hold || null, reason: holdReason }), "Saved.")}>Save</button>
             </div>
@@ -316,19 +317,19 @@ export function PayableManager({ p, isApprover, events, onClose }: { p: PayableV
         {!paid && (
           <Section title="Operational alert (only record what has been confirmed)">
             <div className="grid gap-2">
-              <select className={FIELD} value={alertType} onChange={(e) => setAlertType(e.target.value as OpsAlertType | "")} aria-label="Operational alert">
+              <Select className={FIELD} value={alertType} onChange={(e) => setAlertType(e.target.value as OpsAlertType | "")} aria-label="Operational alert">
                 <option value="">No operational alert</option>
                 {(Object.keys(OPS_ALERT_LABEL) as OpsAlertType[]).map((k) => (
                   <option key={k} value={k}>{OPS_ALERT_LABEL[k]}</option>
                 ))}
-              </select>
+              </Select>
               {alertType === "event_affected" && (
-                <select className={FIELD} value={alertEvent} onChange={(e) => setAlertEvent(e.target.value)} aria-label="Affected event">
+                <Select className={FIELD} value={alertEvent} onChange={(e) => setAlertEvent(e.target.value)} aria-label="Affected event">
                   <option value="">Which event? (optional)</option>
                   {events.map((ev) => (
                     <option key={ev.id} value={ev.id}>{ev.name} · {fmtDate(ev.date)}</option>
                   ))}
-                </select>
+                </Select>
               )}
               <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
                 <input className={FIELD} placeholder="What was confirmed, by whom and when" value={alertNote} onChange={(e) => setAlertNote(e.target.value)} aria-label="What was confirmed" />

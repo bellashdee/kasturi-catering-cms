@@ -6,6 +6,7 @@ import { uploadDocument, fileTypeFromMime, DOCUMENT_FILE_ACCEPT } from "@/lib/do
 import { createCertificate } from "@/lib/hr/actions";
 import { CERT_TYPE_LABEL, NO_EXPIRY_CERT_TYPES } from "@/lib/hr/constants";
 import { requestExtraction } from "@/lib/importFlow/extractClient";
+import { Select } from "@/components/ui/Select";
 
 type Tab = "manual" | "pdf" | "photo";
 
@@ -184,7 +185,7 @@ export function CertificateUploadReview({ employeeId, companyId }: { employeeId:
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelClass}>Document Type *</label>
-                <select
+                <Select
                   value={form.certType}
                   onChange={(e) => setForm((f) => ({ ...f, certType: e.target.value }))}
                   className={inputClass}
@@ -192,7 +193,7 @@ export function CertificateUploadReview({ employeeId, companyId }: { employeeId:
                   {Object.entries(CERT_TYPE_LABEL).map(([value, label]) => (
                     <option key={value} value={value}>{label}</option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className={labelClass}>Document Name *</label>

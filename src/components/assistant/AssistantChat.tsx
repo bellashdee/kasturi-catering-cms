@@ -12,6 +12,7 @@ import type { RecipeRef } from "@/lib/kitchenAi/match";
 import type { CalcResult, KState } from "@/lib/kitchenAi/types";
 import { ChatMarkdown } from "./ChatMarkdown";
 import { KitchenPanel, type KitchenPatch } from "./KitchenPanel";
+import { Select } from "@/components/ui/Select";
 
 type Message = {
   id: string;
@@ -582,11 +583,11 @@ export function AssistantChat({ variant = "widget" }: { variant?: "widget" | "pa
       {!kitchen && meta && meta.companies.length > 1 && (
         <div className="flex items-center gap-2 border-t border-border px-3 pt-2 text-[12px] text-text-secondary">
           <label htmlFor="kitchen-company" className="font-semibold">Recipes of</label>
-          <select id="kitchen-company" value={companyId} disabled={!!meta.event} onChange={(e) => setCompanyId(e.target.value)} className="h-7 rounded-md border border-border-strong bg-white px-1.5 text-[12px] disabled:opacity-60">
+          <Select id="kitchen-company" value={companyId} disabled={!!meta.event} onChange={(e) => setCompanyId(e.target.value)} className="h-7 rounded-md border border-border-strong bg-white px-1.5 text-[12px] disabled:opacity-60">
             {meta.companies.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
-          </select>
+          </Select>
           <span className="text-text-muted">(for menu photos)</span>
         </div>
       )}

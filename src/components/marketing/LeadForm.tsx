@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createLead } from "@/lib/marketing/actions";
+import { Select } from "@/components/ui/Select";
 
 const inputClass =
   "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
@@ -42,9 +43,9 @@ export function LeadForm({ companies, defaultCompanyId }: { companies: Company[]
       {companies.length > 1 && (
         <div>
           <label className={labelClass}>Company *</label>
-          <select required value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={inputClass}>
+          <Select required value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={inputClass}>
             {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
       )}
 
@@ -66,14 +67,14 @@ export function LeadForm({ companies, defaultCompanyId }: { companies: Company[]
 
       <div>
         <label className={labelClass}>Source</label>
-        <select value={source} onChange={(e) => setSource(e.target.value)} className={inputClass}>
+        <Select value={source} onChange={(e) => setSource(e.target.value)} className={inputClass}>
           <option value="referral">Referral</option>
           <option value="social_media">Social Media</option>
           <option value="advertising">Advertising</option>
           <option value="walk_in">Walk-in</option>
           <option value="website">Website</option>
           <option value="other">Other</option>
-        </select>
+        </Select>
       </div>
 
       <div>

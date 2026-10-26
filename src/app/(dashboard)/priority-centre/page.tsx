@@ -30,6 +30,7 @@ import { MultiPersonFilter } from "@/components/priority/MultiPersonFilter";
 import { CheerCard, DashGreeting, MonthCalendar, ProgressList, StatTile, TopTasks, UpcomingReminders, WeekChart, type ReminderRow, type TopTask } from "@/components/priority/PriorityDashboard";
 import { MONTH_LABEL } from "@/lib/finance/constants";
 import type { EventOption } from "@/components/priority/PayableManager";
+import { Select } from "@/components/ui/Select";
 
 type Params = Record<string, string | undefined>;
 
@@ -432,12 +433,12 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
           <Hidden params={carry} keys={PAY_KEYS} />
           <div>
             <label className={LABEL} htmlFor="f-company">Company</label>
-            <select id="f-company" name="company" defaultValue={params.company ?? ""} className={FIELD}>
+            <Select id="f-company" name="company" defaultValue={params.company ?? ""} className={FIELD}>
               <option value="">All companies</option>
               {accessibleCompanies.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
-            </select>
+            </Select>
           </div>
           <div>
             <label className={LABEL} htmlFor="f-resp">Responsible person</label>
@@ -450,33 +451,33 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
           </div>
           <div>
             <label className={LABEL} htmlFor="f-prio">Priority</label>
-            <select id="f-prio" name="tPriority" defaultValue={params.tPriority ?? ""} className={FIELD}>
+            <Select id="f-prio" name="tPriority" defaultValue={params.tPriority ?? ""} className={FIELD}>
               <option value="">All priorities</option>
               {TASK_PRIORITIES.map((p) => (
                 <option key={p} value={p}>{TASK_PRIORITY_LABEL[p]}</option>
               ))}
-            </select>
+            </Select>
           </div>
           <div>
             <label className={LABEL} htmlFor="f-status">Status</label>
-            <select id="f-status" name="tStatus" defaultValue={tStatus} className={FIELD}>
+            <Select id="f-status" name="tStatus" defaultValue={tStatus} className={FIELD}>
               <option value="open">Not finished</option>
               <option value="all">All, including finished</option>
               {TASK_STATUSES.map((s) => (
                 <option key={s} value={s}>{TASK_STATUS_LABEL[s]}</option>
               ))}
-            </select>
+            </Select>
           </div>
           <div>
             <label className={LABEL} htmlFor="f-due">Due date</label>
-            <select id="f-due" name="tDue" defaultValue={params.tDue ?? ""} className={FIELD}>
+            <Select id="f-due" name="tDue" defaultValue={params.tDue ?? ""} className={FIELD}>
               <option value="">Any time</option>
               <option value="overdue">Overdue</option>
               <option value="today">Due today</option>
               <option value="tomorrow">Due tomorrow</option>
               <option value="week">Due within 7 days</option>
               <option value="none">No due date</option>
-            </select>
+            </Select>
           </div>
           <button type="submit" className={BTN}>Apply</button>
           {tasksFiltered && <Link href={clearTasks} className="flex h-10 items-center text-[14px] font-semibold text-text-secondary hover:text-text">Clear</Link>}
@@ -510,12 +511,12 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
             <Hidden params={carry} keys={TASK_KEYS} />
             <div>
               <label className={LABEL} htmlFor="p-company">Company</label>
-              <select id="p-company" name="company" defaultValue={params.company ?? ""} className={FIELD}>
+              <Select id="p-company" name="company" defaultValue={params.company ?? ""} className={FIELD}>
                 <option value="">All companies</option>
                 {accessibleCompanies.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label className={LABEL} htmlFor="p-supplier">Supplier</label>
@@ -523,30 +524,30 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
             </div>
             <div>
               <label className={LABEL} htmlFor="p-prio">Priority</label>
-              <select id="p-prio" name="pPriority" defaultValue={params.pPriority ?? ""} className={FIELD}>
+              <Select id="p-prio" name="pPriority" defaultValue={params.pPriority ?? ""} className={FIELD}>
                 <option value="">All</option>
                 {(["urgent", "high", "medium", "low"] as const).map((l) => (
                   <option key={l} value={l}>{PRIORITY_LABEL[l]}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label className={LABEL} htmlFor="p-status">Payment status</label>
-              <select id="p-status" name="pStatus" defaultValue={params.pStatus ?? ""} className={FIELD}>
+              <Select id="p-status" name="pStatus" defaultValue={params.pStatus ?? ""} className={FIELD}>
                 <option value="">Still to pay</option>
                 {Object.entries(PAYMENT_STATUS_LABEL).map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label className={LABEL} htmlFor="p-appr">Approval</label>
-              <select id="p-appr" name="pApproval" defaultValue={params.pApproval ?? ""} className={FIELD}>
+              <Select id="p-appr" name="pApproval" defaultValue={params.pApproval ?? ""} className={FIELD}>
                 <option value="">All</option>
                 {Object.entries(APPROVAL_LABEL).map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label className={LABEL} htmlFor="p-from">Due from</label>

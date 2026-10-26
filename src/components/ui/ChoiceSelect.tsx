@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useI18n } from "@/components/i18n/I18nProvider";
 
 export type Choice = { value: string; label: string };
@@ -10,7 +11,8 @@ const norm = (s: string) => s.trim().replace(/\s+/g, " ").toUpperCase();
 /**
  * A choice from a fixed list, searched by typing: click the box (or the arrow) to see the whole list, type to narrow it down, then pick one.
  * Unlike a free search box, only an option of the list is accepted: anything else that was typed is not a value, and the form refuses to be sent
- * until an option is chosen (when `required`). An option with the value "" (for example "None") is a valid choice too.
+ * until an option is chosen (when `required`). An option with the value "" (for example "None") is a valid choice too. The list opens above everything
+ * else on the page, so a table or a card never cuts it off.
  */
 export function ChoiceSelect({
   value,
@@ -21,6 +23,8 @@ export function ChoiceSelect({
   required,
   disabled,
   id,
+  name,
+  ariaLabel,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -30,6 +34,9 @@ export function ChoiceSelect({
   required?: boolean;
   disabled?: boolean;
   id?: string;
+  /** when the box is in a form that is sent as it is (a GET form), the chosen value is sent under this name */
+  name?: string;
+  ariaLabel?: string;
 }) {
   // the options are shown (and searched) in the language of the page
   const { t } = useI18n();
@@ -40,11 +47,12 @@ export function ChoiceSelect({
   const text = draft ?? selected?.label ?? "";
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
+  const [box, setBox] = useState<{ left: number; top: number; width: number; maxHeight: number; above: boolean } | null>(null);
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const exact = (t: string) => options.find((o) => norm(o.label) === norm(t));
+  const exact = (s: string) => options.find((o) => norm(o.label) === norm(s));
   const valid = !!exact(text) && exact(text)?.value === value;
   // a required box with no real choice cannot be sent
   useEffect(() => {
@@ -59,6 +67,27 @@ export function ChoiceSelect({
   }, [options, selected, text]);
   const showList = open && !disabled && matches.length > 0;
 
+  // where the list is drawn: under the box (above it when there is no room below), in fixed coordinates
+  useLayoutEffect(() => {
+    if (!showList) return;
+    const place = () => {
+      const r = inputRef.current?.getBoundingClientRect();
+      if (!r) return;
+      const below = window.innerHeight - r.bottom - 12;
+      const above = r.top - 12;
+      const up = below < 160 && above > below;
+      const maxHeight = Math.max(120, Math.min(256, up ? above : below));
+      setBox({ left: r.left, top: up ? r.top - 4 : r.bottom + 4, width: r.width, maxHeight, above: up });
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [showList, matches.length]);
+
   function pick(o: Choice) {
     setDraft(null);
     onChange(o.value);
@@ -67,19 +96,20 @@ export function ChoiceSelect({
   }
 
   return (
-    <div className="relative">
+    <div className={`relative ${className?.includes("w-full") ? "block w-full" : "inline-block"}`}>
       <input
         ref={inputRef}
         id={id}
         value={text}
         required={required}
         disabled={disabled}
+        aria-label={ariaLabel}
         onChange={(e) => {
-          const t = e.target.value;
-          setDraft(t);
+          const s = e.target.value;
+          setDraft(s);
           setOpen(true);
           setActive(-1);
-          const hit = exact(t);
+          const hit = exact(s);
           if (hit) onChange(hit.value);
           else if (value !== "" || selected) onChange("");
         }}
@@ -119,6 +149,7 @@ export function ChoiceSelect({
         aria-controls={listId}
         className={`${className ?? ""} pr-9 disabled:bg-surface-alt disabled:opacity-60`}
       />
+      {name && <input type="hidden" name={name} value={value} disabled={disabled} />}
       <button
         type="button"
         tabIndex={-1}
@@ -135,25 +166,33 @@ export function ChoiceSelect({
           <path d="M5 8l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
-      {showList && (
-        <ul id={listId} role="listbox" className="absolute left-0 right-0 top-full z-30 mt-1 max-h-64 overflow-y-auto rounded-lg border border-border-strong bg-surface shadow-lg">
-          {matches.map((o, i) => (
-            <li
-              key={o.value || "__empty"}
-              role="option"
-              aria-selected={o.value === value}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                pick(o);
-              }}
-              onMouseEnter={() => setActive(i)}
-              className={`cursor-pointer px-3 py-1.5 text-[13px] font-semibold text-text ${i === active ? "bg-info-bg" : ""} ${o.value === value ? "text-primary" : ""}`}
-            >
-              {o.label}
-            </li>
-          ))}
-        </ul>
-      )}
+      {showList &&
+        box &&
+        createPortal(
+          <ul
+            id={listId}
+            role="listbox"
+            style={{ position: "fixed", left: box.left, top: box.above ? undefined : box.top, bottom: box.above ? window.innerHeight - box.top : undefined, width: box.width, maxHeight: box.maxHeight }}
+            className="z-[70] overflow-y-auto rounded-lg border border-border-strong bg-surface shadow-lg"
+          >
+            {matches.map((o, i) => (
+              <li
+                key={o.value || "__empty"}
+                role="option"
+                aria-selected={o.value === value}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  pick(o);
+                }}
+                onMouseEnter={() => setActive(i)}
+                className={`cursor-pointer px-3 py-1.5 text-[13px] font-semibold text-text ${i === active ? "bg-info-bg" : ""} ${o.value === value ? "text-primary" : ""}`}
+              >
+                {o.label}
+              </li>
+            ))}
+          </ul>,
+          document.body,
+        )}
     </div>
   );
 }

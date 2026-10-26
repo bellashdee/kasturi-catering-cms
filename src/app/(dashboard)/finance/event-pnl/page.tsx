@@ -15,6 +15,7 @@ import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { PrintButton } from "@/components/finance/EventPnlForms";
+import { Select } from "@/components/ui/Select";
 
 type SearchParams = { company?: string; year?: string; month?: string; q?: string; customer?: string; status?: string };
 
@@ -95,9 +96,9 @@ export default async function MonthlyEventPnlPage({ searchParams }: { searchPara
       <form method="get" className="flex flex-wrap items-end gap-3 print:hidden">
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Month</label>
-          <select name="month" defaultValue={month} className="mt-1 h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
+          <Select name="month" defaultValue={month} className="mt-1 h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
             {MONTH_LABEL.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Year</label>
@@ -105,10 +106,10 @@ export default async function MonthlyEventPnlPage({ searchParams }: { searchPara
         </div>
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Company</label>
-          <select name="company" defaultValue={sp.company ?? ""} className="mt-1 h-9 w-52 rounded-lg border border-border-strong px-2 text-[13px]">
+          <Select name="company" defaultValue={sp.company ?? ""} className="mt-1 h-9 w-52 rounded-lg border border-border-strong px-2 text-[13px]">
             <option value="">Both companies (consolidated)</option>
             {pnlCompanies.filter((c) => adminIds.includes(c.id) || session.hasAllCompaniesAccess).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Event name / reference</label>
@@ -120,10 +121,10 @@ export default async function MonthlyEventPnlPage({ searchParams }: { searchPara
         </div>
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Event status</label>
-          <select name="status" defaultValue={sp.status ?? ""} className="mt-1 h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
+          <Select name="status" defaultValue={sp.status ?? ""} className="mt-1 h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
             <option value="">All statuses</option>
             {Object.entries(EVENT_STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-          </select>
+          </Select>
         </div>
         <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply Filters</button>
       </form>

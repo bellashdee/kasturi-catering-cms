@@ -8,6 +8,7 @@ import { ImportTabs, FileDropZone, ExtractionNotice, FormError, ConfirmActions, 
 import { createSupplierInvoice } from "@/lib/procurement/actions";
 import { checkDuplicateInvoiceAction } from "@/lib/procurement/checkDuplicate";
 import type { DuplicateMatch } from "@/lib/importFlow/types";
+import { Select } from "@/components/ui/Select";
 
 type Company = { id: string; name: string };
 type Supplier = { id: string; name: string; company_id: string };
@@ -189,7 +190,7 @@ export function SupplierInvoiceUploadReview({
         <div className="mb-4 grid grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Company *</label>
-            <select
+            <Select
               required
               disabled={flow.documentId !== null}
               value={companyId}
@@ -197,7 +198,7 @@ export function SupplierInvoiceUploadReview({
               className={`${inputClass} disabled:bg-surface-alt disabled:text-text-muted`}
             >
               {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            </Select>
           </div>
           <div>
             <label className={labelClass}>Department</label>
@@ -228,17 +229,17 @@ export function SupplierInvoiceUploadReview({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelClass}>Supplier *</label>
-                <select value={supplierId} onChange={(e) => { setSupplierId(e.target.value); setPurchaseOrderId(""); flow.resetDuplicateState(); }} className={inputClass}>
+                <Select value={supplierId} onChange={(e) => { setSupplierId(e.target.value); setPurchaseOrderId(""); flow.resetDuplicateState(); }} className={inputClass}>
                   <option value="">Select supplier</option>
                   {suppliersForCompany.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className={labelClass}>Related Purchase Order</label>
-                <select value={purchaseOrderId} onChange={(e) => setPurchaseOrderId(e.target.value)} className={inputClass}>
+                <Select value={purchaseOrderId} onChange={(e) => setPurchaseOrderId(e.target.value)} className={inputClass}>
                   <option value="">Not linked to a PO</option>
                   {posForSupplier.map((po) => <option key={po.id} value={po.id}>{po.po_number}</option>)}
-                </select>
+                </Select>
               </div>
             </div>
 

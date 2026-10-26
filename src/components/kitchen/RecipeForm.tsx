@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createIngredient, createRecipe, renameIngredient, updateRecipe, type RecipeInput } from "@/lib/kitchen/actions";
 import { normalizeUnit, unitChoices } from "@/lib/kitchen/constants";
+import { Select } from "@/components/ui/Select";
 
 type Company = { id: string; name: string };
 type MenuItem = { id: string; name: string; company_id: string };
@@ -164,7 +165,7 @@ export function RecipeForm({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Company *</label>
-          <select
+          <Select
             required
             disabled={!!initial}
             value={companyId}
@@ -172,7 +173,7 @@ export function RecipeForm({
             className={inputClass}
           >
             {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Recipe Name *</label>
@@ -183,10 +184,10 @@ export function RecipeForm({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Linked Menu Item</label>
-          <select value={menuItemId} onChange={(e) => setMenuItemId(e.target.value)} className={inputClass}>
+          <Select value={menuItemId} onChange={(e) => setMenuItemId(e.target.value)} className={inputClass}>
             <option value="">Not linked</option>
             {menuItemsForCompany.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass}>Base Yield (Pax) *</label>
@@ -211,11 +212,11 @@ export function RecipeForm({
             <div key={i} className="flex flex-col gap-1.5">
               <div className="grid grid-cols-[2fr_1fr_0.8fr_auto] items-center gap-2">
                 <div className="flex items-center gap-1.5">
-                  <select value={line.ingredientId} onChange={(e) => handleIngredientSelect(i, e.target.value)} className="h-9 min-w-0 flex-1 rounded-lg border border-border-strong px-2 text-[13px]">
+                  <Select value={line.ingredientId} onChange={(e) => handleIngredientSelect(i, e.target.value)} className="h-9 min-w-0 flex-1 rounded-lg border border-border-strong px-2 text-[13px]">
                     <option value="">Select ingredient</option>
                     {ingredientsForCompany.map((ing) => <option key={ing.id} value={ing.id}>{ing.name}</option>)}
                     <option value={NEW_ITEM}>＋ Add new item…</option>
-                  </select>
+                  </Select>
                   <button
                     type="button"
                     onClick={() => startRename(i)}
@@ -228,10 +229,10 @@ export function RecipeForm({
                   </button>
                 </div>
                 <input type="number" min="0" step="0.001" value={line.quantityPerYield} onChange={(e) => updateLine(i, "quantityPerYield", e.target.value)} placeholder="Quantity" className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
-                <select value={normalizeUnit(line.unit)} onChange={(e) => updateLine(i, "unit", e.target.value)} className="h-9 rounded-lg border border-border-strong px-2 text-[13px]">
+                <Select value={normalizeUnit(line.unit)} onChange={(e) => updateLine(i, "unit", e.target.value)} className="h-9 rounded-lg border border-border-strong px-2 text-[13px]">
                   <option value="">Unit</option>
                   {unitChoices(line.unit).map((u) => <option key={u} value={u}>{u}</option>)}
-                </select>
+                </Select>
                 <button
                   type="button"
                   onClick={() => { setEditor(null); setLines((prev) => prev.filter((_, idx) => idx !== i)); }}
@@ -253,9 +254,9 @@ export function RecipeForm({
                     className="h-8 min-w-[10rem] flex-1 rounded-lg border border-border-strong px-2 text-[13px]"
                   />
                   {editor.mode === "new" && (
-                    <select value={editor.unit} onChange={(e) => setEditor({ ...editor, unit: e.target.value })} className="h-8 rounded-lg border border-border-strong px-2 text-[13px]">
+                    <Select value={editor.unit} onChange={(e) => setEditor({ ...editor, unit: e.target.value })} className="h-8 rounded-lg border border-border-strong px-2 text-[13px]">
                       {unitChoices(editor.unit).map((u) => <option key={u} value={u}>{u}</option>)}
-                    </select>
+                    </Select>
                   )}
                   <button type="button" onClick={() => void saveEditor()} disabled={editorBusy} className="h-8 rounded-lg bg-primary px-3 text-[12.5px] font-semibold text-white disabled:opacity-60">
                     {editorBusy ? "Saving…" : editor.mode === "new" ? "Add item" : "Save name"}

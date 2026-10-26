@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBudget } from "@/lib/finance/actions";
 import { MONTH_LABEL } from "@/lib/finance/constants";
+import { Select } from "@/components/ui/Select";
 
 type Company = { id: string; name: string };
 type CostCategory = { id: string; name: string };
@@ -56,25 +57,25 @@ export function BudgetForm({ companies, defaultCompanyId, categories }: { compan
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="text-[12.5px] font-semibold text-text-secondary">Company *</label>
-          <select required value={companyId} onChange={(e) => setCompanyId(e.target.value)} className="mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none">
+          <Select required value={companyId} onChange={(e) => setCompanyId(e.target.value)} className="mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none">
             {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className="text-[12.5px] font-semibold text-text-secondary">Department</label>
-          <select value={department} onChange={(e) => setDepartment(e.target.value)} className="mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none">
+          <Select value={department} onChange={(e) => setDepartment(e.target.value)} className="mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none">
             <option value="">Company-wide (no department)</option>
             {DEPARTMENT_OPTIONS.map((d) => <option key={d} value={d}>{d}</option>)}
-          </select>
+          </Select>
         </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
         <div>
           <label className="text-[12.5px] font-semibold text-text-secondary">Category *</label>
-          <select value={category} onChange={(e) => setCategory(e.target.value)} className="mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none">
+          <Select value={category} onChange={(e) => setCategory(e.target.value)} className="mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none">
             {categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
           <label className="text-[12.5px] font-semibold text-text-secondary">Year *</label>
@@ -82,9 +83,9 @@ export function BudgetForm({ companies, defaultCompanyId, categories }: { compan
         </div>
         <div>
           <label className="text-[12.5px] font-semibold text-text-secondary">Month *</label>
-          <select value={month} onChange={(e) => setMonth(e.target.value)} className="mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none">
+          <Select value={month} onChange={(e) => setMonth(e.target.value)} className="mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none">
             {MONTH_LABEL.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-          </select>
+          </Select>
         </div>
       </div>
 

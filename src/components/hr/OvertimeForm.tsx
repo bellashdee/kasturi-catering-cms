@@ -6,6 +6,7 @@ import { uploadDocument } from "@/lib/documents/upload";
 import { errorMessage } from "@/lib/actionResult";
 import { previewOvertime, saveOvertime, type OvertimePreview } from "@/lib/hr/overtimeActions";
 import { OT_MONTHLY_LIMIT, OT_WARNING_FROM, calcOtHours, formatHours } from "@/lib/hr/overtime";
+import { Select } from "@/components/ui/Select";
 
 export type OtStaffOption = {
   id: string;
@@ -141,10 +142,10 @@ export function OvertimeForm({
 
       <div>
         <label className={labelClass}>Select Staff Name *</label>
-        <select required value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} disabled={!!overtimeId} className={inputClass}>
+        <Select required value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} disabled={!!overtimeId} className={inputClass}>
           <option value="">Select Staff Name</option>
           {staff.map((s) => <option key={s.id} value={s.id}>{s.name}{staff.some((o) => o.id !== s.id && o.name === s.name) ? ` (${s.companyName})` : ""}</option>)}
-        </select>
+        </Select>
         {staff.length === 0 && (
           <p className="mt-1.5 text-[12px] text-text-muted">Your login is not linked to a staff record. Ask HR or an admin to link your account to your name.</p>
         )}

@@ -11,6 +11,7 @@ import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 import { formatMalaysiaTime } from "@/lib/format";
 import { LiveClock } from "@/components/layout/LiveClock";
 import { todayInMalaysia } from "@/lib/driverAttendance/date";
+import { Select } from "@/components/ui/Select";
 
 function formatTime(iso: string | null): string {
   return formatMalaysiaTime(iso);
@@ -107,9 +108,9 @@ export default async function DriverDashboardPage({
         {requestedId && <input type="hidden" name="company" value={requestedId} />}
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Driver</label>
-          <select name="driver" defaultValue={driverId} className="mt-1 h-9 w-64 rounded-lg border border-border-strong px-2 text-[13px]">
+          <Select name="driver" defaultValue={driverId} className="mt-1 h-9 w-64 rounded-lg border border-border-strong px-2 text-[13px]">
             {drivers.map((d) => <option key={d.id} value={d.id}>{d.full_name}</option>)}
-          </select>
+          </Select>
         </div>
         <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">View</button>
       </form>

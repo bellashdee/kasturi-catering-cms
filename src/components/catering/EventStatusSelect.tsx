@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateEventStatus } from "@/lib/catering/actions";
+import { Select } from "@/components/ui/Select";
 
 const OPTIONS = ["enquiry", "quoted", "confirmed", "in_production", "delivered", "completed", "cancelled"];
 const LABEL: Record<string, string> = {
@@ -30,7 +31,7 @@ export function EventStatusSelect({ eventId, status }: { eventId: string; status
   }
 
   return (
-    <select
+    <Select
       value={status}
       disabled={pending}
       onChange={(e) => handleChange(e.target.value)}
@@ -39,6 +40,6 @@ export function EventStatusSelect({ eventId, status }: { eventId: string; status
       {OPTIONS.map((o) => (
         <option key={o} value={o}>{LABEL[o]}</option>
       ))}
-    </select>
+    </Select>
   );
 }
