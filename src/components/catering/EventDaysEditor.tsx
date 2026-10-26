@@ -5,6 +5,9 @@ import { MealTypeSelect } from "@/components/catering/MealTypeSelect";
 import { MAX_SECOND_MENUS, dayAmount, dayPax, emptySecondChoice, secondMenusOf, type EventDay } from "@/lib/catering/days";
 import { SecondChoiceEditor } from "@/components/catering/QuotationRequestExtras";
 import { formatPrice } from "@/lib/format";
+import { ChoiceSelect } from "@/components/ui/ChoiceSelect";
+
+const SERVICE_OPTIONS = Object.entries(SERVICE_TYPE_LABEL).map(([value, label]) => ({ value, label }));
 
 const inputClass =
   "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
@@ -111,37 +114,34 @@ export function EventDaysEditor({
           <div className="mt-3 grid grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Service type *</label>
-              <select
+              <ChoiceSelect
                 required
                 value={day.serviceType}
-                onChange={(e) => {
-                  const v = e.target.value;
+                onChange={(v) => {
                   patch(i, {
                     serviceType: v,
                     ...(v === "" ? { servicePax: undefined } : {}),
                     ...(v && v === day.secondServiceType ? { secondServiceType: "", secondServicePax: undefined } : {}),
                   });
                 }}
+                options={SERVICE_OPTIONS}
+                placeholder="Search and choose the service type"
                 className={inputClass}
-              >
-                <option value="">Select service type</option>
-                {Object.entries(SERVICE_TYPE_LABEL).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-              </select>
+              />
               {secondService && paxField(day, i)}
             </div>
             {!secondService && <div>{paxField(day, i)}</div>}
             {secondService && (
             <div>
               <label className={labelClass}>Second service type (optional)</label>
-              <select
+              <ChoiceSelect
                 value={day.secondServiceType ?? ""}
                 disabled={!day.serviceType}
-                onChange={(e) => patch(i, { secondServiceType: e.target.value, ...(e.target.value ? {} : { secondServicePax: undefined }) })}
+                onChange={(v) => patch(i, { secondServiceType: v, ...(v ? {} : { secondServicePax: undefined }) })}
+                options={[{ value: "", label: "None" }, ...SERVICE_OPTIONS.filter((o) => o.value !== day.serviceType)]}
+                placeholder="Search or choose"
                 className={inputClass}
-              >
-                <option value="">None</option>
-                {Object.entries(SERVICE_TYPE_LABEL).filter(([key]) => key !== day.serviceType).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-              </select>
+              />
               <label className={`${labelClass} mt-3 block`}>Pax for this service{day.secondServiceType ? " *" : ""}</label>
               <input
                 type="number"

@@ -3786,7 +3786,17 @@ const dictionary: Record<string, string> = {
  "Tax (RM)": "Cukai (RM)",
  "UOM": "Unit ukuran",
  "📎 View file": "📎 Lihat fail",
- "You can undo it straight after.": "Anda boleh membatalkannya (Undo) sejurus selepas ini."
+ "You can undo it straight after.": "Anda boleh membatalkannya (Undo) sejurus selepas ini.",
+ "Included in the food price": "Termasuk dalam harga makanan",
+ "Search or choose": "Cari atau pilih",
+ "Search and choose your name": "Cari dan pilih nama anda",
+ "Search and choose the event type": "Cari dan pilih jenis majlis",
+ "Search and choose the service type": "Cari dan pilih jenis hidangan",
+ "Search or choose the service type": "Cari atau pilih jenis hidangan",
+ "Search or choose the branch": "Cari atau pilih cawangan",
+ "Search and choose for each one: Yes (add the price if you know it), No, or Included in the food price. Each Yes is added to the quotation; Included means it is already in the price of the food.": "Cari dan pilih untuk setiap satu: Ya (letak harga jika anda tahu), Tidak, atau Termasuk dalam harga makanan. Setiap Ya ditambah ke sebut harga; Termasuk bermakna ia sudah ada dalam harga makanan.",
+ "Choose one option from the list.": "Pilih satu pilihan daripada senarai.",
+ "You cannot approve or reject your own OT. Another approver (Saiful, Redza, Atiq or Ismaizal) must review it.": "Anda tidak boleh meluluskan atau menolak OT anda sendiri. Pelulus lain (Saiful, Redza, Atiq atau Ismaizal) mesti menyemaknya."
 };
 
 export default dictionary;

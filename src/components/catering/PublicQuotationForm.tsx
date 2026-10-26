@@ -7,6 +7,10 @@ import { dayAmount, type EventDay } from "@/lib/catering/days";
 import { additionalServiceLines, unansweredAdditionalServices, type AdditionalServices, type ExtraItem, type QuotationRequestInput } from "@/lib/catering/quotationRequest";
 import { EventDaysEditor, emptyDay } from "@/components/catering/EventDaysEditor";
 import { AdditionalServicesEditor } from "@/components/catering/QuotationRequestExtras";
+import { ChoiceSelect } from "@/components/ui/ChoiceSelect";
+
+const AGENT_OPTIONS = SALES_AGENTS.map((a) => ({ value: a, label: a }));
+const TYPE_OPTIONS = EVENT_TYPE_OPTIONS.map(([value, label]) => ({ value, label }));
 import { formatPrice } from "@/lib/format";
 
 const inputClass =
@@ -94,10 +98,7 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Sales agent *</label>
-          <select required value={form.salesAgent} onChange={(e) => set("salesAgent", e.target.value)} className={inputClass}>
-            <option value="">Select your name</option>
-            {SALES_AGENTS.map((a) => <option key={a} value={a}>{a}</option>)}
-          </select>
+          <ChoiceSelect required value={form.salesAgent} onChange={(v) => set("salesAgent", v)} options={AGENT_OPTIONS} placeholder="Search and choose your name" className={inputClass} />
         </div>
         <div>
           <label className={labelClass}>Customer / company name *</label>
@@ -112,10 +113,7 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
         </div>
         <div>
           <label className={labelClass}>Event type *</label>
-          <select required value={form.eventType} onChange={(e) => set("eventType", e.target.value)} className={inputClass}>
-            <option value="">Select event type</option>
-            {EVENT_TYPE_OPTIONS.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
+          <ChoiceSelect required value={form.eventType} onChange={(v) => set("eventType", v)} options={TYPE_OPTIONS} placeholder="Search and choose the event type" className={inputClass} />
         </div>
       </div>
 
@@ -143,7 +141,7 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
 
       <div>
         <div className="text-[14px] font-extrabold text-text">Additional requirement (answer each one) *</div>
-        <p className="mb-2 text-xs text-text-muted">Choose Yes or No for each. Each Yes is added to the quotation.</p>
+        <p className="mb-2 text-xs text-text-muted">Search and choose for each one: Yes (add the price if you know it), No, or Included in the food price. Each Yes is added to the quotation; Included means it is already in the price of the food.</p>
         <AdditionalServicesEditor value={additional} onChange={setAdditional} />
       </div>
 

@@ -87,13 +87,13 @@ function sanitizeSecondChoice(c: SecondChoice | undefined, label: string): Secon
   return { menu, pax: c.pax, mealTypes, serviceType: c.serviceType, pricePerMeal: c.pricePerMeal };
 }
 
-/** The ticked additional services; a ticked transportation needs its price (the price of equipment handling, staff serving and dome set is optional). */
+/** The answered additional services: Yes (with an optional price), No, or included in the food price (nothing is added). No price is compulsory. */
 function sanitizeAdditional(a: AdditionalServices | undefined): AdditionalServices {
   // compulsory: every additional requirement must be answered Yes or No (not left out)
-  if (!a || typeof a.equipmentHandling !== "boolean") throw new Error("Additional requirement: answer Yes or No for Equipment handling.");
-  if (typeof a.staffServing !== "boolean") throw new Error("Additional requirement: answer Yes or No for Staff serving.");
-  if (typeof a.transportation !== "boolean") throw new Error("Additional requirement: answer Yes or No for Transportation.");
-  if (typeof a.domeSet !== "boolean") throw new Error("Additional requirement: answer Yes or No for Dome set.");
+  if (!a || typeof a.equipmentHandling !== "boolean") throw new Error("Additional requirement: answer Equipment handling (Yes, No or Included in the food price).");
+  if (typeof a.staffServing !== "boolean") throw new Error("Additional requirement: answer Staff serving (Yes, No or Included in the food price).");
+  if (typeof a.transportation !== "boolean") throw new Error("Additional requirement: answer Transportation (Yes, No or Included in the food price).");
+  if (typeof a.domeSet !== "boolean") throw new Error("Additional requirement: answer Dome set (Yes, No or Included in the food price).");
   const price = (v: number | undefined, label: string, required: boolean) => {
     if (v === undefined) {
       if (required) throw new Error(`${label}: enter the price (RM).`);
@@ -102,15 +102,28 @@ function sanitizeAdditional(a: AdditionalServices | undefined): AdditionalServic
     if (!(v >= 0)) throw new Error(`${label}: the price cannot be negative.`);
     return v;
   };
+  const one = (yes: boolean, included: boolean | undefined, v: number | undefined, label: string) => ({
+    yes,
+    included: yes && included === true,
+    price: yes && included !== true ? price(v, label, false) : undefined,
+  });
+  const e = one(a.equipmentHandling, a.equipmentHandlingIncluded, a.equipmentHandlingPrice, "Equipment handling");
+  const s = one(a.staffServing, a.staffServingIncluded, a.staffServingPrice, "Staff serving");
+  const t = one(a.transportation, a.transportationIncluded, a.transportationPrice, "Transportation");
+  const d = one(a.domeSet, a.domeSetIncluded, a.domeSetPrice, "Dome set");
   return {
-    equipmentHandling: !!a.equipmentHandling,
-    equipmentHandlingPrice: a.equipmentHandling ? price(a.equipmentHandlingPrice, "Equipment handling", false) : undefined,
-    staffServing: !!a.staffServing,
-    staffServingPrice: a.staffServing ? price(a.staffServingPrice, "Staff serving", false) : undefined,
-    transportation: !!a.transportation,
-    transportationPrice: a.transportation ? price(a.transportationPrice, "Transportation", true) : undefined,
-    domeSet: a.domeSet,
-    domeSetPrice: a.domeSet ? price(a.domeSetPrice, "Dome set", false) : undefined,
+    equipmentHandling: e.yes,
+    equipmentHandlingIncluded: e.included,
+    equipmentHandlingPrice: e.price,
+    staffServing: s.yes,
+    staffServingIncluded: s.included,
+    staffServingPrice: s.price,
+    transportation: t.yes,
+    transportationIncluded: t.included,
+    transportationPrice: t.price,
+    domeSet: d.yes,
+    domeSetIncluded: d.included,
+    domeSetPrice: d.price,
   };
 }
 

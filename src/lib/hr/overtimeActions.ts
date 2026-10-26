@@ -263,8 +263,8 @@ async function decideOvertimeImpl(overtimeId: string, decision: "approved" | "re
   if (!rec) throw new Error("OT record not found.");
   if (!OT_DECIDABLE_STATUSES.includes(rec.status as OtStatus)) throw new Error("This OT is not waiting for a decision.");
 
-  const { data: isManager } = await supabase.rpc("user_is_ot_manager", { target_company_id: rec.company_id });
-  if (isManager !== true) throw new Error("Only a manager can approve or reject overtime.");
+  const { data: isApprover } = await supabase.rpc("user_can_approve_ot", { target_company_id: rec.company_id });
+  if (isApprover !== true) throw new Error("Only Saiful, Redza, Atiq or Ismaizal can approve or reject overtime.");
   if (rec.employees?.user_id === userId) throw new Error("You cannot approve or reject your own overtime.");
 
   const remarks = options.remarks?.trim() || null;

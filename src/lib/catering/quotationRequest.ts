@@ -42,6 +42,11 @@ export type AdditionalServices = {
   domeSet: boolean | null;
   /** Optional: the office can price it later. */
   domeSetPrice?: number;
+  /** "Included in the food price": the service is given (the answer is Yes) but nothing is added to the quotation. */
+  equipmentHandlingIncluded?: boolean;
+  staffServingIncluded?: boolean;
+  transportationIncluded?: boolean;
+  domeSetIncluded?: boolean;
 };
 
 export const noAdditionalServices = (): AdditionalServices => ({ equipmentHandling: false, staffServing: false, transportation: false, domeSet: false });
@@ -56,12 +61,13 @@ export const unansweredAdditionalServices = (): AdditionalServices => ({ equipme
  */
 export function additionalRows(a: AdditionalServices | null | undefined, extras: ExtraItem[] = []): { label: string; yes: boolean; detail: string }[] {
   const price = (n: number | undefined, perPax = false) => (n && n > 0 ? `RM ${n.toFixed(2)}${perPax ? " per pax" : ""}` : "");
+  const detail = (yes: boolean | null, included: boolean | undefined, n: number | undefined) => (!yes ? "" : included ? "Included in the food price" : price(n));
   if (a) {
     return [
-      { label: "Equipment handling", yes: !!a.equipmentHandling, detail: a.equipmentHandling ? price(a.equipmentHandlingPrice) : "" },
-      { label: "Staff serving", yes: !!a.staffServing, detail: a.staffServing ? price(a.staffServingPrice) : "" },
-      { label: "Transportation", yes: !!a.transportation, detail: a.transportation ? price(a.transportationPrice) : "" },
-      { label: "Dome set", yes: !!a.domeSet, detail: a.domeSet ? price(a.domeSetPrice) : "" },
+      { label: "Equipment handling", yes: !!a.equipmentHandling, detail: detail(a.equipmentHandling, a.equipmentHandlingIncluded, a.equipmentHandlingPrice) },
+      { label: "Staff serving", yes: !!a.staffServing, detail: detail(a.staffServing, a.staffServingIncluded, a.staffServingPrice) },
+      { label: "Transportation", yes: !!a.transportation, detail: detail(a.transportation, a.transportationIncluded, a.transportationPrice) },
+      { label: "Dome set", yes: !!a.domeSet, detail: detail(a.domeSet, a.domeSetIncluded, a.domeSetPrice) },
     ];
   }
   const line = (name: string) => extras.find((i) => i.itemName === name);
@@ -81,10 +87,14 @@ export function additionalRows(a: AdditionalServices | null | undefined, extras:
 export function additionalServiceLines(a: AdditionalServices | undefined): ExtraItem[] {
   if (!a) return [];
   const lines: ExtraItem[] = [];
-  if (a.equipmentHandling) lines.push({ itemName: "Equipment handling", quantity: 1, unitPrice: a.equipmentHandlingPrice ?? 0 });
-  if (a.staffServing) lines.push({ itemName: "Staff serving", quantity: 1, unitPrice: a.staffServingPrice ?? 0 });
-  if (a.transportation) lines.push({ itemName: "Transportation", quantity: 1, unitPrice: a.transportationPrice ?? 0 });
-  if (a.domeSet) lines.push({ itemName: "Dome set", quantity: 1, unitPrice: a.domeSetPrice ?? 0 });
+  // a service that is included in the food price is written on the quotation at RM 0.00, so the customer sees that it is given
+  const add = (yes: boolean | null, included: boolean | undefined, name: string, price: number | undefined) => {
+    if (yes) lines.push({ itemName: included ? `${name} (included in the food price)` : name, quantity: 1, unitPrice: included ? 0 : (price ?? 0) });
+  };
+  add(a.equipmentHandling, a.equipmentHandlingIncluded, "Equipment handling", a.equipmentHandlingPrice);
+  add(a.staffServing, a.staffServingIncluded, "Staff serving", a.staffServingPrice);
+  add(a.transportation, a.transportationIncluded, "Transportation", a.transportationPrice);
+  add(a.domeSet, a.domeSetIncluded, "Dome set", a.domeSetPrice);
   return lines;
 }
 

@@ -5980,6 +5980,10 @@ export type Database = {
         Args: { target_company_id: string }
         Returns: boolean
       }
+      user_can_approve_ot: {
+        Args: { target_company_id: string }
+        Returns: boolean
+      }
       user_owns_employee: {
         Args: { target_employee_id: string }
         Returns: boolean

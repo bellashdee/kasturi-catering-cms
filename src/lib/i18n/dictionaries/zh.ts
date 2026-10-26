@@ -3852,7 +3852,17 @@ const dictionary: Record<string, string> = {
  "Special requirements": "特殊要求",
  "Tax (RM)": "税 (RM)",
  "📎 View file": "📎 查看文件",
- "You can undo it straight after.": "删除后可立即撤销。"
+ "You can undo it straight after.": "删除后可立即撤销。",
+ "Included in the food price": "已包含在餐食价格内",
+ "Search or choose": "搜索或选择",
+ "Search and choose your name": "搜索并选择您的姓名",
+ "Search and choose the event type": "搜索并选择活动类型",
+ "Search and choose the service type": "搜索并选择服务类型",
+ "Search or choose the service type": "搜索或选择服务类型",
+ "Search or choose the branch": "搜索或选择分行",
+ "Search and choose for each one: Yes (add the price if you know it), No, or Included in the food price. Each Yes is added to the quotation; Included means it is already in the price of the food.": "请逐项搜索并选择：是（知道价格可填写）、否，或已包含在餐食价格内。每个“是”都会加入报价单；“已包含”表示已在餐食价格内。",
+ "Choose one option from the list.": "请从列表中选择一项。",
+ "You cannot approve or reject your own OT. Another approver (Saiful, Redza, Atiq or Ismaizal) must review it.": "您不能批准或拒绝自己的加班。须由其他审批人（Saiful、Redza、Atiq 或 Ismaizal）审核。"
 };
 
 export default dictionary;

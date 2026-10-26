@@ -4,6 +4,9 @@ import { useState } from "react";
 import { submitCustomerIntake } from "@/lib/catering/intakeActions";
 import { SALES_AGENTS } from "@/lib/catering/constants";
 import type { CustomerIntakeInput } from "@/lib/catering/intake";
+import { ChoiceSelect } from "@/components/ui/ChoiceSelect";
+
+const AGENT_OPTIONS = SALES_AGENTS.map((a) => ({ value: a, label: a }));
 
 const inputClass =
   "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
@@ -65,10 +68,7 @@ export function PublicCustomerForm({ companySlug }: { companySlug: string }) {
 
       <div>
         <label className={labelClass}>Sales agent *</label>
-        <select required value={form.salesAgent} onChange={(e) => set("salesAgent", e.target.value)} className={inputClass}>
-          <option value="">Select your name</option>
-          {SALES_AGENTS.map((a) => <option key={a} value={a}>{a}</option>)}
-        </select>
+        <ChoiceSelect required value={form.salesAgent} onChange={(v) => set("salesAgent", v)} options={AGENT_OPTIONS} placeholder="Search and choose your name" className={inputClass} />
       </div>
 
       <div>

@@ -54,7 +54,7 @@ export default async function OvertimeDetailPage({ params }: { params: Promise<{
   const [auditLog, monthlyTotal, { data: isManager }, { data: isAdmin }, reviewer] = await Promise.all([
     listOvertimeAuditLog(supabase, id),
     countedHoursForMonth(supabase, ot.employee_id, ot.work_date),
-    supabase.rpc("user_is_ot_manager", { target_company_id: ot.company_id }),
+    supabase.rpc("user_can_approve_ot", { target_company_id: ot.company_id }),
     supabase.rpc("user_is_company_admin", { target_company_id: ot.company_id }),
     ot.reviewed_by ? supabase.from("profiles").select("full_name").eq("id", ot.reviewed_by).maybeSingle() : Promise.resolve({ data: null }),
   ]);
@@ -145,7 +145,7 @@ export default async function OvertimeDetailPage({ params }: { params: Promise<{
         </SectionCard>
       )}
       {isManager === true && isOwnRecord && OT_DECIDABLE_STATUSES.includes(ot.status as OtStatus) && (
-        <p className="text-[12.5px] text-text-muted">You cannot approve or reject your own OT. Another manager must review it.</p>
+        <p className="text-[12.5px] text-text-muted">You cannot approve or reject your own OT. Another approver (Saiful, Redza, Atiq or Ismaizal) must review it.</p>
       )}
 
       {canEditOwn && ["draft", "submitted", "pending_approval"].includes(ot.status) && (

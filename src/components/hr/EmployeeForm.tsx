@@ -4,6 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { GENDER_OPTIONS, MARITAL_STATUS_OPTIONS, RACE_OPTIONS, RELIGION_OPTIONS, dobFromIc, withCurrent } from "@/lib/hr/ic";
 import { attachEmployeeToCompanies, createEmployeeInCompanies, updateEmployee, type EmployeeInput } from "@/lib/hr/actions";
+import { SearchSelect } from "@/components/ui/SearchSelect";
+
+/** The places where the staff work. */
+const BRANCHES = ["KILANG 1", "KILANG 2", "RESTORAN BARA", "UTM"];
 
 type Company = { id: string; name: string };
 
@@ -246,7 +250,7 @@ export function EmployeeForm({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Branch</label>
-          <input value={form.branch} onChange={(e) => set("branch", e.target.value)} className={inputClass} placeholder="e.g. Johor Bahru" />
+          <SearchSelect value={form.branch ?? ""} onChange={(v) => set("branch", v)} options={BRANCHES} className={inputClass} placeholder="Search or choose the branch" />
         </div>
         <div>
           <label className={labelClass}>Short Name (label on the birthday calendar)</label>
