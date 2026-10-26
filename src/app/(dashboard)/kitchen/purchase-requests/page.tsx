@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { KitchenSubNav } from "@/components/kitchen/KitchenSubNav";
 import { PurchaseRequestActions } from "@/components/kitchen/PurchaseRequestActions";
+import { PurchaseRequestRecordActions } from "@/components/kitchen/KitchenRecordActions";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 import { DeletePurchaseOrderButton } from "@/components/procurement/DeletePurchaseOrderButton";
 
@@ -122,7 +123,10 @@ export default async function PurchaseRequestsPage({
                 <div className="text-text-secondary">{formatMalaysiaDate(r.created_at)}</div>
                 <div className="text-text-secondary">{r.required_date ?? "—"}</div>
                 <div><StatusBadge tone={statusTone(r.status)}>{PURCHASE_REQUEST_STATUS_LABEL[r.status] ?? r.status}</StatusBadge></div>
-                <div className="flex justify-end"><PurchaseRequestActions requestId={r.id} status={r.status} /></div>
+                <div className="flex flex-col items-end gap-1.5">
+                  <PurchaseRequestActions requestId={r.id} status={r.status} />
+                  <PurchaseRequestRecordActions id={r.id} name={r.ingredients?.name ?? "this item"} quantity={String(r.quantity_requested)} unit={r.unit ?? r.ingredients?.unit_of_measure ?? ""} requiredDate={r.required_date ?? ""} notes={r.notes ?? ""} status={r.status} />
+                </div>
               </div>
             ))}
           </div>

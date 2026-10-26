@@ -3,6 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { scaleIngredientRequirements } from "@/lib/kitchen/queries";
+import { runAction, type ActionResult } from "@/lib/actionResult";
+import { recordAudit } from "@/lib/audit";
+import type { Database } from "@/lib/supabase/types";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -518,4 +521,167 @@ export async function renameIngredient(ingredientId: string, name: string) {
   if (error) throw error;
   revalidatePath("/kitchen/ingredients");
   revalidatePath(`/kitchen/ingredients/${ingredientId}`);
+}
+
+type KTables = Database["public"]["Tables"];
+export type PurchaseRequestRow = KTables["purchase_requests"]["Row"];
+export type IngredientRow = KTables["ingredients"]["Row"];
+export type MenuRow = KTables["menus"]["Row"];
+export type MenuItemRow = KTables["menu_items"]["Row"];
+export type MenuSnapshot = { menu: MenuRow; items: MenuItemRow[] };
+
+async function kitchenAdmin(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], companyId: string, message: string) {
+  const { data } = await supabase.rpc("user_is_company_admin", { target_company_id: companyId });
+  if (data !== true) throw new Error(message);
+}
+
+export type PurchaseRequestEdit = { quantity: number; unit?: string; requiredDate?: string; notes?: string };
+
+/** Changes the quantity, unit, required date or notes of a purchase request that has not been received yet. */
+export async function updatePurchaseRequest(id: string, input: PurchaseRequestEdit): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { data: before } = await supabase.from("purchase_requests").select("*").eq("id", id).maybeSingle();
+    if (!before) throw new Error("This request was not found (it may have been deleted).");
+    if (before.status === "completed") throw new Error("This request is already received into the stock, so it cannot be changed.");
+    if (!Number.isFinite(input.quantity) || input.quantity <= 0) throw new Error("Enter a quantity more than 0.");
+    if (input.requiredDate && !/^\d{4}-\d{2}-\d{2}$/.test(input.requiredDate)) throw new Error("Enter a valid required date.");
+    const { error } = await supabase.from("purchase_requests").update({ quantity_requested: input.quantity, unit: input.unit?.trim() || null, required_date: input.requiredDate || null, notes: input.notes?.trim() || null }).eq("id", id);
+    if (error) throw error;
+    await recordAudit({ companyId: before.company_id, relatedTable: "purchase_requests", relatedId: id, action: "edited", previousValue: `${before.quantity_requested} ${before.unit ?? ""}`.trim(), newValue: `${input.quantity} ${input.unit ?? ""}`.trim() });
+    revalidatePath("/kitchen/purchase-requests");
+    return {};
+  }, "Could not save the request. Please try again.");
+}
+
+/** Deletes a purchase request that is not received yet; returns it so the delete can be undone. */
+export async function deletePurchaseRequest(id: string): Promise<ActionResult<{ row: PurchaseRequestRow }>> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { data: before } = await supabase.from("purchase_requests").select("*").eq("id", id).maybeSingle();
+    if (!before) throw new Error("This request was not found (it may already be deleted).");
+    if (before.status === "completed") throw new Error("This request is already received into the stock, so it cannot be deleted.");
+    const { data: removed, error } = await supabase.from("purchase_requests").delete().eq("id", id).select("id");
+    if (error || !removed?.length) throw new Error("Could not delete the request.");
+    await recordAudit({ companyId: before.company_id, relatedTable: "purchase_requests", relatedId: id, action: "deleted", previousValue: `${before.quantity_requested} ${before.unit ?? ""} (${before.status})`.trim(), newValue: "Deleted" });
+    revalidatePath("/kitchen/purchase-requests");
+    return { row: before };
+  }, "Could not delete the request. Please try again.");
+}
+
+/** Undo of a delete: the purchase request comes back as it was. */
+export async function restorePurchaseRequest(row: PurchaseRequestRow): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    if (!row?.id || !row.company_id) throw new Error("There is nothing to put back.");
+    const { error } = await supabase.from("purchase_requests").insert(row);
+    if (error) throw new Error("Could not put the request back.");
+    await recordAudit({ companyId: row.company_id, relatedTable: "purchase_requests", relatedId: row.id, action: "restored", newValue: "Put back after it was deleted" });
+    revalidatePath("/kitchen/purchase-requests");
+    return {};
+  }, "Could not put the request back.");
+}
+
+/**
+ * Deletes an ingredient that is not used anywhere. One used in a recipe, in the stock history or in a purchase request is kept (deleting it would
+ * delete all of those too). Returns the ingredient so the delete can be undone.
+ */
+export async function deleteIngredient(id: string): Promise<ActionResult<{ row: IngredientRow }>> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { data: ing } = await supabase.from("ingredients").select("*").eq("id", id).maybeSingle();
+    if (!ing) throw new Error("This ingredient was not found (it may already be deleted).");
+    await kitchenAdmin(supabase, ing.company_id, "Only an admin of the company can delete an ingredient.");
+    const head = { count: "exact" as const, head: true };
+    const [recipes, movements, requests] = await Promise.all([
+      supabase.from("recipe_ingredients").select("id", head).eq("ingredient_id", id),
+      supabase.from("stock_movements").select("id", head).eq("ingredient_id", id),
+      supabase.from("purchase_requests").select("id", head).eq("ingredient_id", id),
+    ]);
+    const used = [[recipes.count, "recipe line(s)"], [movements.count, "stock movement(s)"], [requests.count, "purchase request(s)"]].filter(([n]) => (n as number) > 0).map(([n, label]) => `${n} ${label}`);
+    if (used.length > 0) throw new Error(`This ingredient cannot be deleted: it is used in ${used.join(", ")}.`);
+    const { data: removed, error } = await supabase.from("ingredients").delete().eq("id", id).select("id");
+    if (error || !removed?.length) throw new Error("Could not delete the ingredient.");
+    await recordAudit({ companyId: ing.company_id, relatedTable: "ingredients", relatedId: id, action: "deleted", previousValue: ing.name, newValue: "Deleted" });
+    revalidatePath("/kitchen/ingredients");
+    return { row: ing };
+  }, "Could not delete the ingredient. Please try again.");
+}
+
+/** Undo of a delete: the ingredient comes back as it was. */
+export async function restoreIngredient(row: IngredientRow): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    if (!row?.id || !row.company_id) throw new Error("There is nothing to put back.");
+    await kitchenAdmin(supabase, row.company_id, "Only an admin of the company can put an ingredient back.");
+    const { error } = await supabase.from("ingredients").insert(row);
+    if (error) throw new Error("Could not put the ingredient back.");
+    await recordAudit({ companyId: row.company_id, relatedTable: "ingredients", relatedId: row.id, action: "restored", newValue: `${row.name} put back after it was deleted` });
+    revalidatePath("/kitchen/ingredients");
+    return {};
+  }, "Could not put the ingredient back.");
+}
+
+export type MenuEdit = { name: string; description?: string; items: { name: string; category: string; pricePerPax?: number | null }[] };
+
+/** Changes a menu: its name, description and items (the items are replaced as they are on the screen). */
+export async function updateMenu(id: string, input: MenuEdit): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { data: before } = await supabase.from("menus").select("*, menu_items(*)").eq("id", id).maybeSingle();
+    if (!before) throw new Error("This menu was not found (it may have been deleted).");
+    if (!input.name?.trim()) throw new Error("Write the name of the menu.");
+    const items = input.items.filter((i) => i.name.trim());
+    const { error } = await supabase.from("menus").update({ name: input.name.trim(), description: input.description?.trim() || null }).eq("id", id);
+    if (error) throw error;
+    const { error: deleteError } = await supabase.from("menu_items").delete().eq("menu_id", id);
+    if (deleteError) throw deleteError;
+    if (items.length > 0) {
+      const { error: insertError } = await supabase.from("menu_items").insert(items.map((i) => ({ company_id: before.company_id, menu_id: id, name: i.name.trim(), category: i.category, price_per_pax: i.pricePerPax ?? null })));
+      if (insertError) {
+        await supabase.from("menu_items").insert(before.menu_items);
+        throw insertError;
+      }
+    }
+    await recordAudit({ companyId: before.company_id, relatedTable: "menus", relatedId: id, action: "edited", previousValue: `${before.name} · ${before.menu_items.length} item(s)`, newValue: `${input.name.trim()} · ${items.length} item(s)` });
+    revalidatePath("/kitchen/menus");
+    revalidatePath(`/kitchen/menus/${id}`);
+    return {};
+  }, "Could not save the menu. Please try again.");
+}
+
+/** Deletes a menu with its items and returns both, so the delete can be undone. */
+export async function deleteMenu(id: string): Promise<ActionResult<{ row: MenuSnapshot }>> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { data: menu } = await supabase.from("menus").select("*, menu_items(*)").eq("id", id).maybeSingle();
+    if (!menu) throw new Error("This menu was not found (it may already be deleted).");
+    const { menu_items: items, ...row } = menu;
+    const { data: removed, error } = await supabase.from("menus").delete().eq("id", id).select("id");
+    if (error || !removed?.length) throw new Error("Could not delete the menu.");
+    await recordAudit({ companyId: menu.company_id, relatedTable: "menus", relatedId: id, action: "deleted", previousValue: `${menu.name} · ${items.length} item(s)`, newValue: "Deleted" });
+    revalidatePath("/kitchen/menus");
+    return { row: { menu: row, items } };
+  }, "Could not delete the menu. Please try again.");
+}
+
+/** Undo of a delete: the menu and its items come back as they were. */
+export async function restoreMenu(snapshot: MenuSnapshot): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { menu, items } = snapshot;
+    if (!menu?.id || !menu.company_id) throw new Error("There is nothing to put back.");
+    const { error } = await supabase.from("menus").insert(menu);
+    if (error) throw new Error("Could not put the menu back.");
+    if (items.length > 0) {
+      const { error: itemsError } = await supabase.from("menu_items").insert(items);
+      if (itemsError) {
+        await supabase.from("menus").delete().eq("id", menu.id);
+        throw new Error("Could not put the menu back.");
+      }
+    }
+    await recordAudit({ companyId: menu.company_id, relatedTable: "menus", relatedId: menu.id, action: "restored", newValue: `${menu.name} put back after it was deleted` });
+    revalidatePath("/kitchen/menus");
+    return {};
+  }, "Could not put the menu back.");
 }

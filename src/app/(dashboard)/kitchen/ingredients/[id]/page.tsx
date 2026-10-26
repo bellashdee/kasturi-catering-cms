@@ -8,6 +8,7 @@ import { formatMalaysiaDateTime, formatUnitPrice } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SectionCard, EmptyRow } from "@/components/dashboard/SectionCard";
 import { StockMovementForm } from "@/components/kitchen/StockMovementForm";
+import { IngredientDeleteAction } from "@/components/kitchen/KitchenRecordActions";
 
 export default async function IngredientDetailPage({
   params,
@@ -45,9 +46,12 @@ export default async function IngredientDetailPage({
           <div className="mt-2 text-[20px] font-extrabold text-text">{ingredient.name}</div>
           <div className="text-[13px] text-text-secondary">{ingredient.companies?.name}</div>
         </div>
-        <Link href={`/kitchen/ingredients/${id}/edit${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2 text-[13px] font-semibold text-text">
-          Edit
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href={`/kitchen/ingredients/${id}/edit${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2 text-[13px] font-semibold text-text">
+            Edit
+          </Link>
+          <IngredientDeleteAction id={id} name={ingredient.name} listHref={`/kitchen/ingredients${query}`} />
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">

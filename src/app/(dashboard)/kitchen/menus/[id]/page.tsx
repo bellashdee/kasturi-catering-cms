@@ -6,6 +6,7 @@ import { getMenu } from "@/lib/kitchen/queries";
 import { MENU_CATEGORY_LABEL } from "@/lib/kitchen/constants";
 import { formatCurrency } from "@/lib/format";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
+import { MenuActions } from "@/components/kitchen/KitchenRecordActions";
 
 export default async function MenuDetailPage({
   params,
@@ -32,15 +33,21 @@ export default async function MenuDetailPage({
 
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <Link href={`/kitchen/menus${query}`} className="text-[12.5px] font-semibold text-text-secondary">
-          ← Back to Menus
-        </Link>
-        <div className="mt-2 text-[20px] font-extrabold text-text">{menu.name}</div>
-        <div className="text-[13px] text-text-secondary">
-          {menu.companies?.name}
-          {menu.description && ` · ${menu.description}`}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <Link href={`/kitchen/menus${query}`} className="text-[12.5px] font-semibold text-text-secondary">
+            ← Back to Menus
+          </Link>
+          <div className="mt-2 text-[20px] font-extrabold text-text">{menu.name}</div>
+          <div className="text-[13px] text-text-secondary">
+            {menu.companies?.name}
+            {menu.description && ` · ${menu.description}`}
+          </div>
         </div>
+        <MenuActions
+          listHref={`/kitchen/menus${query}`}
+          menu={{ id, name: menu.name, description: menu.description ?? "", items: menu.menu_items.map((i) => ({ name: i.name, category: i.category, pricePerPax: i.price_per_pax === null ? "" : String(i.price_per_pax) })) }}
+        />
       </div>
 
       <SectionCard title="Menu Items" action={<Link href={`/kitchen/recipes/new${query}`} className="text-[12.5px] font-semibold text-primary">+ New Recipe for an Item</Link>}>
