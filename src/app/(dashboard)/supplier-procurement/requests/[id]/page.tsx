@@ -7,6 +7,7 @@ import { PROCUREMENT_REQUEST_STATUS_LABEL } from "@/lib/procurement/constants";
 import { formatCurrency, formatMalaysiaDate } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ProcurementRequestActions } from "@/components/procurement/ProcurementRequestActions";
+import { RequestEditActions } from "@/components/procurement/ProcurementRecordActions";
 
 function statusTone(status: string): "success" | "warning" | "danger" | "info" {
   if (status === "approved") return "success";
@@ -55,6 +56,10 @@ export default async function ProcurementRequestDetailPage({
         <div className="flex items-center gap-2">
           <StatusBadge tone={statusTone(request.status)}>{PROCUREMENT_REQUEST_STATUS_LABEL[request.status] ?? request.status}</StatusBadge>
           <ProcurementRequestActions requestId={id} status={request.status} />
+          <RequestEditActions
+            listHref={`/supplier-procurement/orders${query}`}
+            request={{ id, itemName: request.item_name, quantity: String(request.quantity), estimatedCost: request.estimated_cost === null ? "" : String(request.estimated_cost), department: request.department ?? "", reason: request.reason ?? "", status: request.status }}
+          />
         </div>
       </div>
 

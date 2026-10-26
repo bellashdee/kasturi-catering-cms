@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SupplierProcurementSubNav } from "@/components/procurement/SupplierProcurementSubNav";
 import { ProcurementRequestActions } from "@/components/procurement/ProcurementRequestActions";
+import { RequestEditActions } from "@/components/procurement/ProcurementRecordActions";
 import { PurchaseOrdersBoard, type BoardSupplier } from "@/components/procurement/PurchaseOrdersBoard";
 
 /**
@@ -111,6 +112,7 @@ export default async function PurchaseOrdersPage({ searchParams }: { searchParam
                 <div className="flex items-center gap-3">
                   <StatusBadge tone={r.status === "approved" ? "success" : "warning"}>{PROCUREMENT_REQUEST_STATUS_LABEL[r.status] ?? r.status}</StatusBadge>
                   <ProcurementRequestActions requestId={r.id} status={r.status} />
+                  <RequestEditActions request={{ id: r.id, itemName: r.item_name, quantity: String(r.quantity), estimatedCost: r.estimated_cost === null ? "" : String(r.estimated_cost), department: r.department ?? "", reason: r.reason ?? "", status: r.status }} />
                   {r.status === "approved" && (
                     <Link
                       href={`/supplier-procurement/orders/new?request=${r.id}&item=${encodeURIComponent(r.item_name)}&qty=${r.quantity}&company=${r.company_id}`}

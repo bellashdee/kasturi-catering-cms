@@ -7,6 +7,7 @@ import { SUPPLIER_STATUS_LABEL, INVOICE_STATUS_LABEL, PO_STATUS_LABEL } from "@/
 import { formatCurrency, formatMalaysiaDate, formatUnitPrice } from "@/lib/format";
 import { listPurchaseLines, summariseSupplierItems } from "@/lib/procurement/purchaseLines";
 import { StatusBadge } from "@/components/StatusBadge";
+import { SupplierDeleteAction } from "@/components/procurement/ProcurementRecordActions";
 import { SectionCard, EmptyRow } from "@/components/dashboard/SectionCard";
 
 export default async function SupplierDetailPage({
@@ -59,6 +60,7 @@ export default async function SupplierDetailPage({
           <Link href={`/supplier-procurement/${id}/edit${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2 text-[13px] font-semibold text-text">
             Edit
           </Link>
+          <SupplierDeleteAction supplierId={id} name={supplier.name} listHref={`/supplier-procurement${query}`} />
         </div>
       </div>
 

@@ -6,6 +6,7 @@ import { getSupplierInvoice } from "@/lib/procurement/queries";
 import { INVOICE_STATUS_LABEL, PAYMENT_STATUS_LABEL, isOverdue } from "@/lib/procurement/constants";
 import { formatCurrency, formatUnitPrice } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
+import { InvoiceActions } from "@/components/procurement/ProcurementRecordActions";
 import { SectionCard, EmptyRow } from "@/components/dashboard/SectionCard";
 import { RequestPaymentForm } from "@/components/procurement/RequestPaymentForm";
 import { SupplierPaymentActions } from "@/components/procurement/SupplierPaymentActions";
@@ -65,6 +66,18 @@ export default async function SupplierInvoiceDetailPage({
             {INVOICE_STATUS_LABEL[invoice.status] ?? invoice.status}
           </StatusBadge>
           {overdue && <StatusBadge tone="danger">Overdue</StatusBadge>}
+          <InvoiceActions
+            listHref={`/supplier-procurement/invoices${query}`}
+            invoice={{
+              id,
+              invoiceNumber: invoice.invoice_number,
+              invoiceDate: invoice.invoice_date,
+              dueDate: invoice.due_date,
+              amount: String(invoice.amount),
+              department: invoice.department ?? "",
+              items: invoice.supplier_invoice_items.map((i) => ({ itemCode: i.item_code ?? "", itemName: i.item_name, uom: i.uom ?? "", quantity: String(i.quantity), unitPrice: String(i.unit_price), discount: i.discount === null ? "" : String(i.discount), lineTotal: String(i.line_total) })),
+            }}
+          />
         </div>
       </div>
 

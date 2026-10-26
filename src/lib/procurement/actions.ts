@@ -372,6 +372,223 @@ export async function restorePurchaseOrder(snapshot: PurchaseOrderSnapshot): Pro
   }, "Could not put the purchase order back.");
 }
 
+type Tables = Database["public"]["Tables"];
+export type SupplierRow = Tables["suppliers"]["Row"];
+export type InvoiceRow = Tables["supplier_invoices"]["Row"];
+export type InvoiceItemRow = Tables["supplier_invoice_items"]["Row"];
+export type InvoiceSnapshot = { invoice: InvoiceRow; items: InvoiceItemRow[] };
+export type ProcurementRequestRow = Tables["procurement_requests"]["Row"];
+export type ApprovalRow = Tables["approvals"]["Row"];
+export type RequestSnapshot = { request: ProcurementRequestRow; approval: ApprovalRow | null };
+
+async function requireAdminOf(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], companyId: string, message: string) {
+  const { data } = await supabase.rpc("user_is_company_admin", { target_company_id: companyId });
+  if (data !== true) throw new Error(message);
+}
+
+const countOf = async (query: PromiseLike<{ count: number | null }>) => (await query).count ?? 0;
+
+/**
+ * Deletes a supplier that nothing depends on. A supplier with orders, invoices, purchase lines or ingredient matches is kept (set it to Inactive
+ * instead), because deleting it would also delete all of those. Returns the supplier so the delete can be undone.
+ */
+export async function deleteSupplier(id: string): Promise<ActionResult<{ row: SupplierRow }>> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { data: supplier } = await supabase.from("suppliers").select("*").eq("id", id).maybeSingle();
+    if (!supplier) throw new Error("This supplier was not found (it may already be deleted).");
+    await requireAdminOf(supabase, supplier.company_id, "Only an admin of the company can delete a supplier.");
+    const head = { count: "exact" as const, head: true };
+    const [orders, invoices, lines, matches, preferred] = await Promise.all([
+      countOf(supabase.from("purchase_orders").select("id", head).eq("supplier_id", id)),
+      countOf(supabase.from("supplier_invoices").select("id", head).eq("supplier_id", id)),
+      countOf(supabase.from("supplier_purchase_lines").select("id", head).eq("supplier_id", id)),
+      countOf(supabase.from("ingredient_supplier_matches").select("id", head).eq("supplier_id", id)),
+      countOf(supabase.from("ingredients").select("id", head).eq("preferred_supplier_id", id)),
+    ]);
+    const used = [orders && `${orders} purchase order(s)`, invoices && `${invoices} invoice(s)`, lines && `${lines} item price line(s)`, matches && `${matches} ingredient match(es)`, preferred && `${preferred} ingredient(s) that prefer this supplier`].filter(Boolean);
+    if (used.length > 0) throw new Error(`This supplier cannot be deleted: it has ${used.join(", ")}. Set the supplier to Inactive instead.`);
+    const { data: removed, error } = await supabase.from("suppliers").delete().eq("id", id).select("id");
+    if (error || !removed?.length) throw new Error("Could not delete the supplier.");
+    await recordAudit({ companyId: supplier.company_id, relatedTable: "suppliers", relatedId: id, action: "deleted", previousValue: `${supplier.name} · ${supplier.phone ?? "no phone"}`, newValue: "Deleted" });
+    revalidatePath("/supplier-procurement");
+    return { row: supplier };
+  }, "Could not delete the supplier. Please try again.");
+}
+
+/** Undo of a delete: the supplier comes back as it was. */
+export async function restoreSupplier(row: SupplierRow): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    if (!row?.id || !row.company_id) throw new Error("There is nothing to put back.");
+    await requireAdminOf(supabase, row.company_id, "Only an admin of the company can put a supplier back.");
+    const { error } = await supabase.from("suppliers").insert(row);
+    if (error) throw new Error("Could not put the supplier back.");
+    await recordAudit({ companyId: row.company_id, relatedTable: "suppliers", relatedId: row.id, action: "restored", newValue: `${row.name} put back after it was deleted` });
+    revalidatePath("/supplier-procurement");
+    return {};
+  }, "Could not put the supplier back.");
+}
+
+export type SupplierInvoiceEdit = {
+  invoiceNumber: string;
+  invoiceDate: string;
+  dueDate: string;
+  amount: number;
+  department?: string;
+  /** every line exactly as printed on the invoice: nothing is recalculated */
+  items: { itemCode?: string; itemName: string; uom?: string; quantity: number; unitPrice: number; discount?: number; lineTotal: number }[];
+};
+
+/** Corrects a supplier invoice (header and lines). The figures are saved exactly as typed: no rounding, no recalculation. */
+export async function updateSupplierInvoice(id: string, input: SupplierInvoiceEdit): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { data: before } = await supabase.from("supplier_invoices").select("*, supplier_invoice_items(*)").eq("id", id).maybeSingle();
+    if (!before) throw new Error("This invoice was not found (it may have been deleted).");
+    const number = input.invoiceNumber?.trim();
+    if (!number) throw new Error("Enter the invoice number.");
+    for (const d of [input.invoiceDate, input.dueDate]) if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) throw new Error("Enter valid invoice and due dates.");
+    if (!Number.isFinite(input.amount) || input.amount < 0) throw new Error("Enter the invoice amount.");
+    for (const i of input.items) {
+      if (!i.itemName?.trim()) throw new Error("Every line needs an item name (remove a line you do not need).");
+      if (![i.quantity, i.unitPrice, i.lineTotal].every(Number.isFinite)) throw new Error(`Check the numbers of ${i.itemName.trim()}.`);
+    }
+    const { data: same } = await supabase.from("supplier_invoices").select("id").eq("company_id", before.company_id).eq("supplier_id", before.supplier_id).ilike("invoice_number", number.replace(/[\\%_]/g, "\\$&")).neq("id", id).limit(1);
+    if ((same ?? []).length > 0) throw new Error("Another invoice of this supplier has the same invoice number.");
+
+    const { error } = await supabase.from("supplier_invoices").update({ invoice_number: number, invoice_date: input.invoiceDate, due_date: input.dueDate, amount: input.amount, department: input.department?.trim() || null }).eq("id", id);
+    if (error) throw error;
+    const { error: deleteError } = await supabase.from("supplier_invoice_items").delete().eq("supplier_invoice_id", id);
+    if (deleteError) throw deleteError;
+    if (input.items.length > 0) {
+      const { error: insertError } = await supabase.from("supplier_invoice_items").insert(
+        input.items.map((i) => ({ supplier_invoice_id: id, item_code: i.itemCode?.trim() || null, item_name: i.itemName.trim(), uom: i.uom?.trim() || null, quantity: i.quantity, unit_price: i.unitPrice, discount: i.discount ?? null, line_total: i.lineTotal })),
+      );
+      if (insertError) {
+        await supabase.from("supplier_invoice_items").insert(before.supplier_invoice_items); // the lines it had are put back
+        throw insertError;
+      }
+    }
+    await recordAudit({ companyId: before.company_id, relatedTable: "supplier_invoices", relatedId: id, action: "edited", previousValue: `${before.invoice_number} · RM ${before.amount} · due ${before.due_date}`, newValue: `${number} · RM ${input.amount} · due ${input.dueDate}` });
+    revalidatePath("/supplier-procurement/invoices");
+    revalidatePath(`/supplier-procurement/invoices/${id}`);
+    revalidatePath("/");
+    return {};
+  }, "Could not save the invoice. Please try again.");
+}
+
+/**
+ * Deletes a supplier invoice (with its lines) that has no payment request or cost entry attached; those must be removed first. Returns the invoice
+ * and its lines so the delete can be undone.
+ */
+export async function deleteSupplierInvoice(id: string): Promise<ActionResult<{ row: InvoiceSnapshot }>> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { data: invoice } = await supabase.from("supplier_invoices").select("*, supplier_invoice_items(*)").eq("id", id).maybeSingle();
+    if (!invoice) throw new Error("This invoice was not found (it may already be deleted).");
+    await requireAdminOf(supabase, invoice.company_id, "Only an admin of the company can delete an invoice.");
+    const head = { count: "exact" as const, head: true };
+    const [payments, costs] = await Promise.all([
+      countOf(supabase.from("supplier_payments").select("id", head).eq("supplier_invoice_id", id)),
+      countOf(supabase.from("event_cost_entries").select("id", head).eq("supplier_invoice_id", id)),
+    ]);
+    if (payments > 0) throw new Error(`This invoice has ${payments} payment request(s). Deal with them first (a paid invoice cannot be deleted).`);
+    if (costs > 0) throw new Error("This invoice is used as a cost of an event. Remove it from the event first.");
+    const { supplier_invoice_items: items, ...row } = invoice;
+    const { data: removed, error } = await supabase.from("supplier_invoices").delete().eq("id", id).select("id");
+    if (error || !removed?.length) throw new Error("Could not delete the invoice.");
+    await recordAudit({ companyId: invoice.company_id, relatedTable: "supplier_invoices", relatedId: id, action: "deleted", previousValue: `${invoice.invoice_number} · RM ${invoice.amount} · ${items.length} line(s)`, newValue: "Deleted" });
+    revalidatePath("/supplier-procurement/invoices");
+    revalidatePath("/");
+    return { row: { invoice: row, items } };
+  }, "Could not delete the invoice. Please try again.");
+}
+
+/** Undo of a delete: the invoice and its lines come back exactly as they were. */
+export async function restoreSupplierInvoice(snapshot: InvoiceSnapshot): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { invoice, items } = snapshot;
+    if (!invoice?.id || !invoice.company_id) throw new Error("There is nothing to put back.");
+    await requireAdminOf(supabase, invoice.company_id, "Only an admin of the company can put an invoice back.");
+    const { error } = await supabase.from("supplier_invoices").insert(invoice);
+    if (error) throw new Error("Could not put the invoice back.");
+    if (items.length > 0) {
+      const { error: itemsError } = await supabase.from("supplier_invoice_items").insert(items);
+      if (itemsError) {
+        await supabase.from("supplier_invoices").delete().eq("id", invoice.id);
+        throw new Error("Could not put the invoice back.");
+      }
+    }
+    await recordAudit({ companyId: invoice.company_id, relatedTable: "supplier_invoices", relatedId: invoice.id, action: "restored", newValue: `${invoice.invoice_number} put back after it was deleted` });
+    revalidatePath("/supplier-procurement/invoices");
+    revalidatePath("/");
+    return {};
+  }, "Could not put the invoice back.");
+}
+
+export type ProcurementRequestEdit = { itemName: string; quantity: number; estimatedCost?: number | null; reason?: string; department?: string };
+
+/** Changes an item request that has not been turned into a purchase order yet. */
+export async function updateProcurementRequest(id: string, input: ProcurementRequestEdit): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { data: before } = await supabase.from("procurement_requests").select("*").eq("id", id).maybeSingle();
+    if (!before) throw new Error("This request was not found (it may have been deleted).");
+    if (before.status === "converted") throw new Error("This request is already a purchase order: change the order instead.");
+    if (!input.itemName?.trim()) throw new Error("Write the item.");
+    if (!Number.isFinite(input.quantity) || input.quantity <= 0) throw new Error("Enter a quantity more than 0.");
+    if (input.estimatedCost !== null && input.estimatedCost !== undefined && (!Number.isFinite(input.estimatedCost) || input.estimatedCost < 0)) throw new Error("Enter a valid estimated cost.");
+    const { error } = await supabase.from("procurement_requests").update({ item_name: input.itemName.trim(), quantity: input.quantity, estimated_cost: input.estimatedCost ?? null, reason: input.reason?.trim() || null, department: input.department?.trim() || null }).eq("id", id);
+    if (error) throw error;
+    await recordAudit({ companyId: before.company_id, relatedTable: "procurement_requests", relatedId: id, action: "edited", previousValue: `${before.item_name} × ${before.quantity}`, newValue: `${input.itemName.trim()} × ${input.quantity}` });
+    revalidatePath("/supplier-procurement/orders");
+    revalidatePath(`/supplier-procurement/requests/${id}`);
+    return {};
+  }, "Could not save the request. Please try again.");
+}
+
+/** Deletes an item request (with its approval record) that is not a purchase order; returns both so the delete can be undone. */
+export async function deleteProcurementRequest(id: string): Promise<ActionResult<{ row: RequestSnapshot }>> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { data: request } = await supabase.from("procurement_requests").select("*").eq("id", id).maybeSingle();
+    if (!request) throw new Error("This request was not found (it may already be deleted).");
+    if (request.status === "converted") throw new Error("This request is already a purchase order. Delete the purchase order first; the request then goes back to Approved.");
+    const { data: approval } = request.approval_id ? await supabase.from("approvals").select("*").eq("id", request.approval_id).maybeSingle() : { data: null };
+    const { data: removed, error } = await supabase.from("procurement_requests").delete().eq("id", id).select("id");
+    if (error || !removed?.length) throw new Error("Could not delete the request.");
+    if (approval) await supabase.from("approvals").delete().eq("id", approval.id);
+    await recordAudit({ companyId: request.company_id, relatedTable: "procurement_requests", relatedId: id, action: "deleted", previousValue: `${request.item_name} × ${request.quantity} (${request.status})`, newValue: "Deleted" });
+    revalidatePath("/supplier-procurement/orders");
+    revalidatePath("/");
+    return { row: { request, approval: approval ?? null } };
+  }, "Could not delete the request. Please try again.");
+}
+
+/** Undo of a delete: the request (and its approval record) come back as they were. */
+export async function restoreProcurementRequest(snapshot: RequestSnapshot): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { request, approval } = snapshot;
+    if (!request?.id || !request.company_id) throw new Error("There is nothing to put back.");
+    if (approval) {
+      const { error: approvalError } = await supabase.from("approvals").insert(approval);
+      if (approvalError) throw new Error("Could not put the request back.");
+    }
+    const { error } = await supabase.from("procurement_requests").insert(request);
+    if (error) {
+      if (approval) await supabase.from("approvals").delete().eq("id", approval.id);
+      throw new Error("Could not put the request back.");
+    }
+    await recordAudit({ companyId: request.company_id, relatedTable: "procurement_requests", relatedId: request.id, action: "restored", newValue: `${request.item_name} put back after it was deleted` });
+    revalidatePath("/supplier-procurement/orders");
+    revalidatePath("/");
+    return {};
+  }, "Could not put the request back.");
+}
+
 export type SupplierInvoiceInput = {
   companyId: string;
   supplierId: string;
