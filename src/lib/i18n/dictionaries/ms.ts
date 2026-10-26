@@ -3730,7 +3730,8 @@ const dictionary: Record<string, string> = {
  "How it works:": "Cara ia berfungsi:",
  "1. Make the orders from an event menu (the ingredient list of the menu, one order for each supplier) · 2. Check the items and quantities here, edit them if needed · 3. Press Send to supplier on WhatsApp: the chat of the supplier opens with the event, its date and the list of items typed in.": "1. Buat pesanan daripada menu majlis (senarai bahan menu, satu pesanan untuk setiap pembekal) · 2. Semak item dan kuantiti di sini, ubah jika perlu · 3. Tekan Hantar kepada pembekal melalui WhatsApp: sembang pembekal dibuka dengan majlis, tarikhnya dan senarai item sudah ditaip.",
  "Make an order": "Buat pesanan",
- "Check the orders and send them to the suppliers": "Semak pesanan dan hantar kepada pembekal"
+ "Check the orders and send them to the suppliers": "Semak pesanan dan hantar kepada pembekal",
+ "Deleted:": "Dipadam:"
 };
 
 export default dictionary;

@@ -2,8 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { runAction, type ActionResult } from "@/lib/actionResult";
 import { BULLETIN_CATEGORIES, type BulletinCategory } from "@/lib/bulletin/constants";
 import { todayInMalaysia } from "@/lib/format";
+import type { Database } from "@/lib/supabase/types";
 
 export type BulletinInput = {
   companyId: string | null;
@@ -13,6 +15,8 @@ export type BulletinInput = {
   pinned: boolean;
   expiresOn?: string | null;
 };
+
+export type BulletinRow = Database["public"]["Tables"]["bulletin_posts"]["Row"];
 
 async function session() {
   const supabase = await createClient();
@@ -43,30 +47,56 @@ function refresh() {
   revalidatePath("/");
 }
 
-export async function createBulletinPost(input: BulletinInput) {
-  const { supabase, userId, name } = await session();
-  const { error } = await supabase.from("bulletin_posts").insert({ ...clean(input), created_by: userId, created_by_name: name });
-  if (error) throw new Error("You cannot post to this company. Only Super Admin (all companies) and Company Admin (own company) can post.");
-  refresh();
+/** Local staff and the admins post, change and delete announcements; everybody else only reads (the database decides who may). */
+export async function createBulletinPost(input: BulletinInput): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase, userId, name } = await session();
+    const { error } = await supabase.from("bulletin_posts").insert({ ...clean(input), created_by: userId, created_by_name: name });
+    if (error) throw new Error("You cannot post to this company. Only local staff and the admins can post.");
+    refresh();
+    return {};
+  });
 }
 
-export async function updateBulletinPost(id: string, input: BulletinInput) {
-  const { supabase } = await session();
-  const { data, error } = await supabase.from("bulletin_posts").update(clean(input)).eq("id", id).select("id");
-  if (error || !data?.length) throw new Error("You cannot change this announcement.");
-  refresh();
+export async function updateBulletinPost(id: string, input: BulletinInput): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await session();
+    const { data, error } = await supabase.from("bulletin_posts").update(clean(input)).eq("id", id).select("id");
+    if (error || !data?.length) throw new Error("You cannot change this announcement.");
+    refresh();
+    return {};
+  });
 }
 
-export async function setBulletinPinned(id: string, pinned: boolean) {
-  const { supabase } = await session();
-  const { data, error } = await supabase.from("bulletin_posts").update({ pinned }).eq("id", id).select("id");
-  if (error || !data?.length) throw new Error("You cannot change this announcement.");
-  refresh();
+export async function setBulletinPinned(id: string, pinned: boolean): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await session();
+    const { data, error } = await supabase.from("bulletin_posts").update({ pinned }).eq("id", id).select("id");
+    if (error || !data?.length) throw new Error("You cannot change this announcement.");
+    refresh();
+    return {};
+  });
 }
 
-export async function deleteBulletinPost(id: string) {
-  const { supabase } = await session();
-  const { data, error } = await supabase.from("bulletin_posts").delete().eq("id", id).select("id");
-  if (error || !data?.length) throw new Error("You cannot delete this announcement.");
-  refresh();
+/** Deletes an announcement and returns it, so it can be put back with Undo. */
+export async function deleteBulletinPost(id: string): Promise<ActionResult<{ row: BulletinRow }>> {
+  return runAction(async () => {
+    const { supabase } = await session();
+    const { data, error } = await supabase.from("bulletin_posts").delete().eq("id", id).select("*");
+    if (error || !data?.length) throw new Error("You cannot delete this announcement.");
+    refresh();
+    return { row: data[0] };
+  });
+}
+
+/** Undo of a delete: the announcement comes back as it was (same text, date and author). */
+export async function restoreBulletinPost(row: BulletinRow): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await session();
+    if (!row?.id || !row.title || !row.body) throw new Error("There is nothing to put back.");
+    const { error } = await supabase.from("bulletin_posts").insert(row);
+    if (error) throw new Error("You cannot put this announcement back.");
+    refresh();
+    return {};
+  });
 }

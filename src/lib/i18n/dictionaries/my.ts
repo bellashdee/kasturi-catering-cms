@@ -3786,7 +3786,8 @@ const dictionary: Record<string, string> = {
  "How it works:": "အလုပ်လုပ်ပုံ:",
  "1. Make the orders from an event menu (the ingredient list of the menu, one order for each supplier) · 2. Check the items and quantities here, edit them if needed · 3. Press Send to supplier on WhatsApp: the chat of the supplier opens with the event, its date and the list of items typed in.": "၁။ ပွဲမီနူးမှ အမှာစာများ ပြုလုပ်ပါ (မီနူး၏ ပါဝင်ပစ္စည်းစာရင်း၊ ပေးသွင်းသူတစ်ဦးစီအတွက် အမှာစာတစ်စောင်) · ၂။ ပစ္စည်းနှင့် အရေအတွက်ကို ဤနေရာတွင် စစ်ဆေးပြီး လိုအပ်ပါက ပြင်ပါ · ၃။ WhatsApp ဖြင့် ပေးသွင်းသူထံ ပို့ရန် ကိုနှိပ်ပါ - ပေးသွင်းသူ၏ ချက်တင်တွင် ပွဲ၊ ရက်စွဲနှင့် ပစ္စည်းစာရင်း ရိုက်ထည့်ပြီးသား ပွင့်လာမည်။",
  "Make an order": "အမှာစာ ပြုလုပ်ရန်",
- "Check the orders and send them to the suppliers": "အမှာစာများကို စစ်ဆေးပြီး ပေးသွင်းသူများထံ ပို့ပါ"
+ "Check the orders and send them to the suppliers": "အမှာစာများကို စစ်ဆေးပြီး ပေးသွင်းသူများထံ ပို့ပါ",
+ "Deleted:": "ဖျက်ပြီး:"
 };
 
 export default dictionary;

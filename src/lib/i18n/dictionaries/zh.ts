@@ -3800,7 +3800,8 @@ const dictionary: Record<string, string> = {
  "How it works:": "操作方式：",
  "1. Make the orders from an event menu (the ingredient list of the menu, one order for each supplier) · 2. Check the items and quantities here, edit them if needed · 3. Press Send to supplier on WhatsApp: the chat of the supplier opens with the event, its date and the list of items typed in.": "1. 根据活动菜单生成订单（菜单的食材清单，每个供应商一张订单）· 2. 在这里检查项目和数量，需要时进行编辑 · 3. 点击“通过 WhatsApp 发送给供应商”：将打开供应商的聊天窗口，并填好活动、日期和项目清单。",
  "Make an order": "生成订单",
- "Check the orders and send them to the suppliers": "检查订单并发送给供应商"
+ "Check the orders and send them to the suppliers": "检查订单并发送给供应商",
+ "Deleted:": "已删除："
 };
 
 export default dictionary;

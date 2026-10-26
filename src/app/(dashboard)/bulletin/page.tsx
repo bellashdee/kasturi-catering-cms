@@ -20,9 +20,14 @@ export default async function BulletinPage({ searchParams }: { searchParams: Pro
   const { company: requestedId } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
 
-  const canPost = canPostBulletin(session.role);
-  const postableIds = canPost ? await adminCompanyIds(supabase, companies.map((c) => c.id)) : [];
-  const isSuper = session.role === "super_admin";
+  // every local (Malaysian) staff member may post, edit and delete; the admins as before
+  const { data: localStaff } = await supabase.rpc("user_is_local_staff");
+  const isLocal = localStaff === true;
+  const isAdmin = canPostBulletin(session.role);
+  const canPost = isAdmin || isLocal;
+  const adminIds = isAdmin ? await adminCompanyIds(supabase, companies.map((c) => c.id)) : [];
+  const postableIds = isLocal ? companies.map((c) => c.id) : adminIds;
+  const isSuper = session.role === "super_admin" || isLocal;
   const rows = await listBulletinPosts(supabase, targetCompanyIds, { includeExpired: canPost });
 
   const posts: BoardPost[] = rows.map((p) => ({
@@ -38,7 +43,7 @@ export default async function BulletinPage({ searchParams }: { searchParams: Pro
     isNew: p.isNew,
     author: p.created_by_name,
     postedLabel: formatMalaysiaDateTime(p.created_at),
-    editable: p.company_id ? postableIds.includes(p.company_id) : isSuper,
+    editable: isLocal || (p.company_id ? adminIds.includes(p.company_id) : session.role === "super_admin"),
   }));
 
   return (

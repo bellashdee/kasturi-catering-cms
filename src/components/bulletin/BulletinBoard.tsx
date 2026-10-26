@@ -4,7 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AREA, BTN, BTN_GHOST, BTN_SM_GHOST, Dialog, FIELD, LABEL, Pill } from "@/components/priority/ui";
 import { BULLETIN_CATEGORIES, BULLETIN_CATEGORY_LABEL, BULLETIN_CATEGORY_TONE, type BulletinCategory } from "@/lib/bulletin/constants";
-import { createBulletinPost, deleteBulletinPost, setBulletinPinned, updateBulletinPost } from "@/lib/bulletin/actions";
+import { createBulletinPost, deleteBulletinPost, restoreBulletinPost, setBulletinPinned, updateBulletinPost, type BulletinRow } from "@/lib/bulletin/actions";
+import type { ActionResult } from "@/lib/actionResult";
 
 export type BoardPost = {
   id: string;
@@ -33,16 +34,39 @@ export function BulletinBoard({ posts, postable, canPostAll, canPost }: { posts:
   const [draft, setDraft] = useState<Draft | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const [deleted, setDeleted] = useState<BulletinRow | null>(null);
 
   const shown = posts.filter((p) => filter === "all" || p.category === filter);
   const defaultCompany = canPostAll ? "" : (postable[0]?.id ?? "");
 
-  function run(task: () => Promise<void>, after?: () => void) {
+  function run(task: () => Promise<ActionResult>, after?: () => void) {
     setError(null);
     start(async () => {
       try {
-        await task();
+        const result = await task();
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
         after?.();
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Something went wrong.");
+      }
+    });
+  }
+
+  /** Deletes the announcement; the bar above the list can put it back. */
+  function remove(id: string) {
+    setError(null);
+    start(async () => {
+      try {
+        const result = await deleteBulletinPost(id);
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+        setDeleted(result.row);
         router.refresh();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Something went wrong.");
@@ -82,6 +106,21 @@ export function BulletinBoard({ posts, postable, canPostAll, canPost }: { posts:
         )}
       </div>
       {error && !draft && <div className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-[13px] text-danger">{error}</div>}
+      {deleted && (
+        <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning/40 bg-warning-bg px-4 py-2.5 text-[13px] text-text">
+          <span>
+            Deleted: {deleted.title}
+          </span>
+          <span className="flex items-center gap-3">
+            <button type="button" disabled={pending} className="font-bold text-primary hover:underline disabled:opacity-50" onClick={() => run(() => restoreBulletinPost(deleted), () => setDeleted(null))}>
+              Undo
+            </button>
+            <button type="button" className="font-semibold text-text-muted hover:text-text" onClick={() => setDeleted(null)}>
+              Close
+            </button>
+          </span>
+        </div>
+      )}
 
       {shown.length === 0 ? (
         <div className="rounded-2xl border border-border bg-surface px-5 py-10 text-center text-[14px] text-text-muted">No announcements yet.</div>
@@ -111,7 +150,7 @@ export function BulletinBoard({ posts, postable, canPostAll, canPost }: { posts:
                     type="button"
                     className={BTN_SM_GHOST}
                     disabled={pending}
-                    onClick={() => window.confirm("Delete this announcement?") && run(() => deleteBulletinPost(p.id))}
+                    onClick={() => window.confirm("Delete this announcement? You can undo it straight after.") && remove(p.id)}
                   >
                     Delete
                   </button>

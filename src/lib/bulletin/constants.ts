@@ -21,7 +21,7 @@ export const BULLETIN_CATEGORY_TONE: Record<BulletinCategory, "info" | "success"
   general: "neutral",
 };
 
-/** Super Admins and Company Admins post to the bulletin board; everybody reads it. */
+/** Super Admins and Company Admins post to the bulletin board (local staff too, see user_is_local_staff); everybody reads it. */
 export function canPostBulletin(role: string): boolean {
   return role === "super_admin" || role === "company_admin";
 }
