@@ -245,7 +245,7 @@ export function CheerCard({ cheer }: { cheer: Cheer }) {
           </>
         )}
       </div>
-      <span className="text-[44px] leading-none" aria-hidden="true">🐰</span>
+      <span className="text-[44px] leading-none" aria-hidden="true">{cheer.icon}</span>
     </div>
   );
 }

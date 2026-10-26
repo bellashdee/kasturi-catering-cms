@@ -80,7 +80,11 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
   // the birthday (for the star sign line of the day) comes from the person's own staff record, when there is one
   const { data: ownRecord } = await supabase.from("employees").select("date_of_birth").eq("user_id", session.userId).not("date_of_birth", "is", null).limit(1).maybeSingle();
   const birthDate = ownRecord?.date_of_birth ?? null;
-  const access = await getPriorityAccess(supabase, session, accessibleIds);
+  const fullAccess = await getPriorityAccess(supabase, session, accessibleIds);
+  // Madam Penny's Daily Briefing (the supplier payments to pay, their figures and approvals) is for the Director of Finance only, who pays the suppliers:
+  // every other person, also another admin, sees their own day and their own tasks
+  const { data: directorOfFinance } = await supabase.rpc("user_gets_payment_reminders");
+  const access = directorOfFinance === true ? fullAccess : { ...fullAccess, canSeePayments: false, isApprover: false };
   const inScope = new Set(targetCompanyIds);
 
   // everything the person may see, for every company, so reminders are worked out on the whole picture; the page then narrows to the chosen company
