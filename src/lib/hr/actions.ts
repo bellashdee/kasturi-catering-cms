@@ -325,6 +325,8 @@ export type LeaveInput = {
   employeeId: string;
   companyId: string;
   leaveType: string;
+  /** what the leave is for, when the type is "other" */
+  leaveTypeOther?: string;
   startDate: string;
   endDate: string;
   days: number;
@@ -343,6 +345,7 @@ export async function requestLeave(input: LeaveInput) {
       company_id: input.companyId,
       employee_id: input.employeeId,
       leave_type: input.leaveType,
+      leave_type_other: input.leaveType === "other" ? input.leaveTypeOther?.trim().slice(0, 120) || null : null,
       start_date: input.startDate,
       end_date: input.endDate,
       days: input.days,

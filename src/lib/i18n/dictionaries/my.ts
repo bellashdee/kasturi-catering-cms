@@ -3788,7 +3788,23 @@ const dictionary: Record<string, string> = {
  "Make an order": "အမှာစာ ပြုလုပ်ရန်",
  "Check the orders and send them to the suppliers": "အမှာစာများကို စစ်ဆေးပြီး ပေးသွင်းသူများထံ ပို့ပါ",
  "Deleted:": "ဖျက်ပြီး:",
- "Everyone (clear)": "လူတိုင်း (ရှင်းရန်)"
+ "Everyone (clear)": "လူတိုင်း (ရှင်းရန်)",
+ "Annual Leave (AL) – Cuti Tahunan": "နှစ်စဉ်ခွင့် (AL) – Cuti Tahunan",
+ "Medical Leave (MC) – Cuti Sakit": "ဆေးခွင့် (MC) – Cuti Sakit",
+ "Emergency Leave (EL) – Cuti Kecemasan": "အရေးပေါ်ခွင့် (EL) – Cuti Kecemasan",
+ "Unpaid Leave (UPL) – Cuti Tanpa Gaji": "လစာမဲ့ခွင့် (UPL) – Cuti Tanpa Gaji",
+ "Hospitalisation Leave (HL) – Cuti Hospitalisasi": "ဆေးရုံတက်ခွင့် (HL) – Cuti Hospitalisasi",
+ "Replacement Leave (RL) – Cuti Gantian": "အစားထိုးခွင့် (RL) – Cuti Gantian",
+ "Maternity Leave (ML) – Cuti Bersalin": "မီးဖွားခွင့် (ML) – Cuti Bersalin",
+ "Bereavement Leave (BL) – Cuti Kematian": "ဈာပနခွင့် (BL) – Cuti Kematian",
+ "Marriage Leave (MRL) – Cuti Perkahwinan": "လက်ထပ်ခွင့် (MRL) – Cuti Perkahwinan",
+ "Other: Nyatakan": "အခြား: ဖော်ပြပါ",
+ "Other: Nyatakan (state the leave) *": "အခြား: ဖော်ပြပါ (ခွင့်အမျိုးအစား ရေးပါ) *",
+ "e.g. Cuti Haji": "ဥပမာ - Cuti Haji",
+ "Manager's approval — attach *": "မန်နေဂျာ၏ ခွင့်ပြုချက် — ပူးတွဲပါ *",
+ "Your manager must approve the OT first. Attach the approval (a screenshot of the message, a signed form or an email). It is required to submit; a draft can be saved without it.": "သင့်မန်နေဂျာက OT ကို အရင်ခွင့်ပြုရမည်။ ခွင့်ပြုချက်ကို ပူးတွဲပါ (မက်ဆေ့ချ် ဖန်သားပြင်ပုံ၊ လက်မှတ်ထိုးပုံစံ သို့မဟုတ် အီးမေးလ်)။ တင်သွင်းရန် လိုအပ်သည်၊ မူကြမ်းကို မပါဘဲ သိမ်းနိုင်သည်။",
+ "An approval is already attached. Choose a file only to replace it.": "ခွင့်ပြုချက် ပူးတွဲပြီးသား ဖြစ်သည်။ အစားထိုးလိုမှသာ ဖိုင်ရွေးပါ။",
+ "Manager's approval": "မန်နေဂျာ၏ ခွင့်ပြုချက်"
 };
 
 export default dictionary;

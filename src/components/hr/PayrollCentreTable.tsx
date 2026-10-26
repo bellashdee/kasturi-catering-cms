@@ -4,7 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { formatPrice, formatMalaysiaDate } from "@/lib/format";
 import { paymentMethodFor, type PayrollLine } from "@/lib/hr/payrollCentre";
-import { markPayrollEntryPaid, savePayrollEntry, undoPayrollEntryPaid } from "@/lib/hr/payrollCentreActions";
+import { deletePayrollEntry, markPayrollEntryPaid, restorePayrollEntry, savePayrollEntry, undoPayrollEntryPaid, type PayrollRow } from "@/lib/hr/payrollCentreActions";
+import type { ActionResult } from "@/lib/actionResult";
 import { AREA, BTN, BTN_GHOST, BTN_SM, BTN_SM_GHOST, Dialog, FIELD, LABEL, Pill } from "@/components/priority/ui";
 
 type Mode = { kind: "salary" | "pay"; line: PayrollLine } | null;
@@ -38,6 +39,7 @@ export function PayrollCentreTable({ lines, month, today }: { lines: PayrollLine
   const [remarks, setRemarks] = useState("");
   const [paidOn, setPaidOn] = useState(today);
   const [reference, setReference] = useState("");
+  const [deleted, setDeleted] = useState<{ row: PayrollRow; name: string } | null>(null);
 
   const companies = Array.from(new Set(lines.map((l) => l.companyName)));
   const waiting = lines.filter((l) => l.status === "draft" && (l.netPay ?? 0) > 0).length;
@@ -52,11 +54,15 @@ export function PayrollCentreTable({ lines, month, today }: { lines: PayrollLine
     setMode({ kind, line });
   }
 
-  function run(task: () => Promise<void>) {
+  function run(task: () => Promise<ActionResult>) {
     setError(null);
     start(async () => {
       try {
-        await task();
+        const result = await task();
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
         setMode(null);
         router.refresh();
       } catch (e) {
@@ -72,8 +78,46 @@ export function PayrollCentreTable({ lines, month, today }: { lines: PayrollLine
     run(() => undoPayrollEntryPaid(id));
   }
 
+  /** Deletes the salary figures of the month that are not paid yet; the bar below can put them back. */
+  function remove(line: PayrollLine) {
+    if (!line.recordId) return;
+    const id = line.recordId;
+    if (!window.confirm(`Delete the salary entry of ${line.fullName} for ${month}? You can undo it straight after.`)) return;
+    setError(null);
+    start(async () => {
+      try {
+        const result = await deletePayrollEntry(id);
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+        setDeleted({ row: result.row, name: line.fullName });
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Something went wrong.");
+      }
+    });
+  }
+
   return (
     <div className="flex flex-col gap-5">
+      {deleted && (
+        <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning/40 bg-warning-bg px-4 py-2.5 text-[13px] text-text print:hidden">
+          <span>Deleted the salary entry of {deleted.name}</span>
+          <span className="flex items-center gap-3">
+            <button type="button" disabled={pending} className="font-bold text-primary hover:underline disabled:opacity-50" onClick={() => {
+                const row = deleted.row;
+                setDeleted(null);
+                run(() => restorePayrollEntry(row));
+              }}>
+              Undo
+            </button>
+            <button type="button" className="font-semibold text-text-muted hover:text-text" onClick={() => setDeleted(null)}>
+              Close
+            </button>
+          </span>
+        </div>
+      )}
       <div className="flex flex-wrap gap-2.5 print:hidden">
         <button type="button" className={BTN_GHOST} onClick={() => window.print()}>
           🖨 Print
@@ -167,6 +211,11 @@ export function PayrollCentreTable({ lines, month, today }: { lines: PayrollLine
                           {l.status === "draft" && (
                             <button type="button" className={BTN_SM} onClick={() => open("pay", l)}>
                               Mark paid
+                            </button>
+                          )}
+                          {l.status === "draft" && (
+                            <button type="button" className="inline-flex h-8 items-center rounded-md border border-danger/40 px-3 text-[12.5px] font-semibold text-danger hover:bg-danger-bg disabled:opacity-50" disabled={pending} onClick={() => remove(l)}>
+                              Delete
                             </button>
                           )}
                           {l.status === "paid" && (

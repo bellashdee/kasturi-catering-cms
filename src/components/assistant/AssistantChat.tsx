@@ -59,8 +59,14 @@ export function AssistantChat({ variant = "widget" }: { variant?: "widget" | "pa
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const camRef = useRef<HTMLInputElement>(null);
+  const boxRef = useRef<HTMLTextAreaElement>(null);
   const localIdRef = useRef(0);
   const lastErrorCode = useRef<string | null>(null);
+
+  // the writing box shrinks back after a question is sent
+  useEffect(() => {
+    if (!input && boxRef.current) boxRef.current.style.height = "auto";
+  }, [input]);
 
   // a new answer is read from its top (an ingredient list is long); everything else scrolls to the end
   useEffect(() => {
@@ -590,7 +596,7 @@ export function AssistantChat({ variant = "widget" }: { variant?: "widget" | "pa
           e.preventDefault();
           send(input);
         }}
-        className="flex items-center gap-2 border-t border-border px-3 py-2.5"
+        className="flex items-end gap-2 border-t border-border px-3 py-2.5"
       >
         <input ref={fileRef} type="file" accept={ASSISTANT_FILE_ACCEPT} multiple hidden onChange={(e) => handleFiles(e.target.files)} />
         <input ref={camRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => handleFiles(e.target.files)} />
@@ -610,11 +616,24 @@ export function AssistantChat({ variant = "widget" }: { variant?: "widget" | "pa
         >
           🌐
         </button>
-        <input
+        {/* a box that grows as the person types; Enter sends, Shift + Enter starts a new line */}
+        <textarea
+          ref={boxRef}
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          rows={1}
+          onChange={(e) => {
+            setInput(e.target.value);
+            e.target.style.height = "auto";
+            e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              e.currentTarget.form?.requestSubmit();
+            }
+          }}
           placeholder={kitchen ? "e.g. Change the pax to 300 · Remove the soup · Shopping list" : attached.length > 0 ? "Ask about the file… (or send it without a question)" : "Ask anything… (English or Bahasa Melayu)"}
-          className="min-w-0 flex-1 rounded-lg border border-border px-3 py-2 text-[13px] outline-none focus:border-primary"
+          className="max-h-40 min-h-[38px] min-w-0 flex-1 resize-none rounded-lg border border-border px-3 py-2 text-[13px] leading-snug outline-none focus:border-primary"
         />
         <button
           type="submit"

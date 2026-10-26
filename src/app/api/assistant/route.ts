@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { geminiGenerateWithSources, getAiProvider, type GeminiPart } from "@/lib/ai/gemini";
+import { geminiChatWithTools, geminiGenerateWithSources, getAiProvider, type GeminiPart } from "@/lib/ai/gemini";
+import { runTool, toolDeclarations, type ToolContext } from "@/lib/assistant/tools";
+import { formatMalaysiaLongDate } from "@/lib/format";
 import { ensureDocumentMarkdown } from "@/lib/documents/markdown";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext, ROLE_LABEL } from "@/lib/auth";
@@ -21,6 +23,7 @@ import {
 } from "@/lib/assistant/actions";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 const DAILY_MESSAGE_LIMIT = 60;
 const MAX_ANSWER_TOKENS = 3000;
@@ -31,8 +34,6 @@ type Attachment = { mime: string; data: Buffer };
 type TextFile = { name: string; text: string };
 
 const MAX_TEXT_CHARS = 60_000;
-/** Words that show the question needs today's facts from the web (the person can also turn the web search on by hand). */
-const WEB_HINT = /\b(latest|news|current|currently|today|tonight|this week|this month|right now|price of|prices|weather|exchange rate|stock price|who won|score|search|google|online|terkini|berita|harga|cuaca|semasa|hari ini|kadar tukaran|carian|cari di internet)\b/i;
 
 /**
  * Downloads the files the person attached for this question (only their own files). Photos and PDFs go to the AI as they are;
@@ -187,47 +188,53 @@ export async function POST(request: Request) {
         .slice(-10, -1) // exclude the user message we just saved; cap context
         .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
 
+      const toolCtx: ToolContext = { supabase, session, targetCompanyIds, companyLabel, sources: [] };
+      const tools = provider === "gemini" ? toolDeclarations(toolCtx) : [];
       const systemPrompt = buildSystemPrompt({
         pageLabel,
         userFullName: session.fullName,
         roleLabel: ROLE_LABEL[session.role],
         kbEntries,
         liveDataBlock,
+        todayLabel: formatMalaysiaLongDate(),
+        hasTools: tools.length > 0,
+        forceWeb: webSearch,
       });
 
       if (provider === "gemini") {
         const fileText = attachments.texts.map((t) => `--- File: ${t.name} ---\n${t.text}`).join("\n\n");
         const userText = fileText ? `${fileText}\n\n--- Question ---\n${message}` : message;
         const hasFiles = attachments.files.length > 0 || attachments.texts.length > 0;
-        const useSearch = (webSearch || WEB_HINT.test(message)) && attachments.files.length === 0;
         const turns = [
           ...history.map((m) => ({ role: m.role === "assistant" ? ("model" as const) : ("user" as const), parts: [{ text: m.content }] })),
           { role: "user" as const, parts: [...attachments.files.map((f): GeminiPart => ({ inline_data: { mime_type: f.mime, data: f.data.toString("base64") } })), { text: userText }] },
         ];
-        const ask = (search: boolean) =>
-          geminiGenerateWithSources({
+        let text = "";
+        let usedWeb = false;
+        const started = Date.now();
+        try {
+          // the AI answers by itself and looks things up when it needs to (this business's data, the web)
+          const chat = await geminiChatWithTools({
             system: systemPrompt,
             turns,
+            tools,
+            runTool: (name, args) => runTool(name, args, toolCtx),
             maxOutputTokens: MAX_ANSWER_TOKENS,
-            search,
-            // a model that is slow to start is dropped after a few seconds (a photo or a long file needs longer, a web search a little)
-            attemptCapMs: hasFiles ? 25_000 : search ? 16_000 : 9_000,
-            // total time for the answer: after this the written help for the question is shown instead of waiting longer
-            budgetMs: hasFiles ? 55_000 : search ? 40_000 : 25_000,
+            attemptCapMs: hasFiles ? 28_000 : 18_000,
+            budgetMs: hasFiles ? 55_000 : 52_000,
           });
-        let searchFailed = false;
-        let result: { text: string; sources: { title: string; url: string }[] } | null = null;
-        if (useSearch) {
-          try {
-            result = await ask(true);
-          } catch {
-            searchFailed = true; // the web is not available (for example the AI plan has no search): answer without it
+          text = chat.text.trim();
+          usedWeb = chat.toolCalls.some((n) => n === "web_search" || n === "read_webpage");
+        } catch {
+          // the lookups could not be used (busy service...): a plain answer without them, in the time that is left
+          const left = 56_000 - (Date.now() - started);
+          if (left > 6_000) {
+            const plain = await geminiGenerateWithSources({ system: systemPrompt, turns, maxOutputTokens: MAX_ANSWER_TOKENS, attemptCapMs: hasFiles ? 25_000 : 9_000, budgetMs: Math.min(left, hasFiles ? 55_000 : 25_000) });
+            text = plain.text.trim();
           }
         }
-        if (!result) result = await ask(false);
-        reply = result.text.trim() || kbOnlyReply(kbEntries);
-        if (searchFailed) reply += "\n\n_Web search is not available on the current AI plan, so this answer comes from my own knowledge and may not be up to date._";
-        if (result.sources.length > 0) reply += `\n\n**Sources**\n${result.sources.map((x, i) => `${i + 1}. [${x.title || new URL(x.url).hostname}](${x.url})`).join("\n")}`;
+        reply = text || kbOnlyReply(kbEntries);
+        if (usedWeb && toolCtx.sources.length > 0) reply += `\n\n**Sources**\n${toolCtx.sources.slice(0, 6).map((x, i) => `${i + 1}. [${x.title || new URL(x.url).hostname}](${x.url})`).join("\n")}`;
       } else {
         const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
         const response = await anthropic.messages.create({

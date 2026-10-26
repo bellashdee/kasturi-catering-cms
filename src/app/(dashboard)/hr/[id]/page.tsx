@@ -15,7 +15,7 @@ import {
   EMPLOYMENT_TYPE_LABEL,
   EMPLOYEE_STATUS_LABEL,
   CERT_TYPE_LABEL,
-  LEAVE_TYPE_LABEL,
+  leaveTypeText,
   LEAVE_STATUS_LABEL,
   PAYROLL_STATUS_LABEL,
   certificateUrgency,
@@ -171,7 +171,7 @@ export default async function EmployeeProfilePage({
               {leave.slice(0, 5).map((l) => (
                 <div key={l.id} className="flex items-center justify-between px-5 py-3">
                   <div>
-                    <div className="text-[13px] font-semibold text-text">{LEAVE_TYPE_LABEL[l.leave_type] ?? l.leave_type}</div>
+                    <div className="text-[13px] font-semibold text-text">{leaveTypeText(l.leave_type, l.leave_type_other)}</div>
                     <div className="text-xs text-text-muted">{l.start_date} → {l.end_date} · {l.days} day(s)</div>
                   </div>
                   <StatusBadge tone={l.status === "approved" ? "success" : l.status === "rejected" ? "danger" : "warning"}>

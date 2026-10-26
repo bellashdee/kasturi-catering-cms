@@ -121,7 +121,7 @@ export default async function OvertimeDetailPage({ params }: { params: Promise<{
             <dd className="mt-0.5 text-text">{ot.reason || "—"}</dd>
           </div>
           <div className="col-span-2">
-            <dt className={labelClass}>Supporting document</dt>
+            <dt className={labelClass}>Manager&apos;s approval</dt>
             <dd className="mt-0.5">{ot.document_id ? <DocumentViewLink documentId={ot.document_id} /> : <span className="text-text-muted">None</span>}</dd>
           </div>
         </dl>

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionContext } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import { canUsePayrollCentre } from "@/lib/hr/payrollAccess";
 import { SoftHeader, SoftPage } from "@/components/ui/Soft";
 
 const REPORTS = [
@@ -28,13 +30,16 @@ export default async function ReportsHubPage({
 
   const { company: requestedId } = await searchParams;
   const query = requestedId ? `?company=${requestedId}` : "";
+  // the HR (payroll) report is only for the people who may open the Payroll Centre
+  const showHr = await canUsePayrollCentre(await createClient());
+  const reports = REPORTS.filter((r) => showHr || r.href !== "/reports/hr");
 
   return (
     <SoftPage>
       <SoftHeader title="Reports" subtitle="Real, live figures from every module — nothing here is hardcoded." />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {REPORTS.map((r) => (
+        {reports.map((r) => (
           <Link
             key={r.href}
             href={`${r.href}${query}`}

@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listLeaveForCompanies } from "@/lib/hr/queries";
-import { LEAVE_TYPE_LABEL, LEAVE_STATUS_LABEL } from "@/lib/hr/constants";
+import { leaveTypeText, LEAVE_STATUS_LABEL } from "@/lib/hr/constants";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { LeaveRowActions } from "@/components/hr/LeaveRowActions";
@@ -51,7 +51,7 @@ export default async function LeavePage({
                 <div>
                   <div className="text-[13.5px] font-semibold text-text">
                     <Link href={`/hr/${r.employee_id}`} className="hover:text-primary">{r.employees?.full_name}</Link>
-                    <span className="ml-2 text-text-secondary font-normal">{LEAVE_TYPE_LABEL[r.leave_type] ?? r.leave_type}</span>
+                    <span className="ml-2 text-text-secondary font-normal">{leaveTypeText(r.leave_type, r.leave_type_other)}</span>
                     {r.document_id && <DocumentViewLink documentId={r.document_id} label="📎 MC / file" className="ml-2 text-xs" />}
                   </div>
                   <div className="mt-0.5 text-xs text-text-muted">

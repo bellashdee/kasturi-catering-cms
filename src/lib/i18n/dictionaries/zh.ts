@@ -3802,7 +3802,23 @@ const dictionary: Record<string, string> = {
  "Make an order": "生成订单",
  "Check the orders and send them to the suppliers": "检查订单并发送给供应商",
  "Deleted:": "已删除：",
- "Everyone (clear)": "所有人（清除）"
+ "Everyone (clear)": "所有人（清除）",
+ "Annual Leave (AL) – Cuti Tahunan": "年假 (AL) – Cuti Tahunan",
+ "Medical Leave (MC) – Cuti Sakit": "病假 (MC) – Cuti Sakit",
+ "Emergency Leave (EL) – Cuti Kecemasan": "紧急假 (EL) – Cuti Kecemasan",
+ "Unpaid Leave (UPL) – Cuti Tanpa Gaji": "无薪假 (UPL) – Cuti Tanpa Gaji",
+ "Hospitalisation Leave (HL) – Cuti Hospitalisasi": "住院假 (HL) – Cuti Hospitalisasi",
+ "Replacement Leave (RL) – Cuti Gantian": "补休 (RL) – Cuti Gantian",
+ "Maternity Leave (ML) – Cuti Bersalin": "产假 (ML) – Cuti Bersalin",
+ "Bereavement Leave (BL) – Cuti Kematian": "丧假 (BL) – Cuti Kematian",
+ "Marriage Leave (MRL) – Cuti Perkahwinan": "婚假 (MRL) – Cuti Perkahwinan",
+ "Other: Nyatakan": "其他：请说明",
+ "Other: Nyatakan (state the leave) *": "其他：请说明（写明是什么假）*",
+ "e.g. Cuti Haji": "例如 Cuti Haji（朝觐假）",
+ "Manager's approval — attach *": "经理的批准 — 请附上 *",
+ "Your manager must approve the OT first. Attach the approval (a screenshot of the message, a signed form or an email). It is required to submit; a draft can be saved without it.": "您的经理必须先批准加班。请附上批准证明（消息截图、签名表格或电子邮件）。提交时必须附上；草稿可以不附而保存。",
+ "An approval is already attached. Choose a file only to replace it.": "已附有批准证明。仅在要替换时才选择文件。",
+ "Manager's approval": "经理的批准"
 };
 
 export default dictionary;

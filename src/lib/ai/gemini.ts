@@ -189,3 +189,109 @@ export async function geminiGenerateWithSources(params: {
     throw err;
   }
 }
+
+export type GeminiFunctionDeclaration = { name: string; description: string; parameters?: unknown };
+
+type RawPart = { text?: string; thought?: boolean; functionCall?: { name: string; args?: Record<string, unknown> } };
+type ToolResponse = {
+  error?: { message?: string };
+  candidates?: { finishReason?: string; content?: { role?: string; parts?: RawPart[] } }[];
+  promptFeedback?: { blockReason?: string };
+};
+
+/**
+ * A chat in which the AI can call functions (look things up) before it answers: it asks for a lookup, the lookup is run by `runTool`, the result is
+ * handed back, and this repeats (at most `maxRounds` times) until the AI writes its answer. The reply of the model is sent back exactly as it was
+ * received (Gemini 3 needs its "thought signatures" to come back unchanged).
+ */
+export async function geminiChatWithTools({
+  system,
+  turns,
+  tools,
+  runTool,
+  maxOutputTokens,
+  budgetMs = 50_000,
+  attemptCapMs = 18_000,
+  maxRounds = 5,
+}: {
+  system: string;
+  turns: GeminiTurn[];
+  tools: GeminiFunctionDeclaration[];
+  runTool: (name: string, args: Record<string, unknown>) => Promise<unknown>;
+  maxOutputTokens: number;
+  budgetMs?: number;
+  attemptCapMs?: number;
+  maxRounds?: number;
+}): Promise<{ text: string; model: string; toolCalls: string[] }> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new GeminiError("GEMINI_API_KEY is not set.", "other");
+  const started = Date.now();
+  const contents: unknown[] = [...turns];
+  const toolCalls: string[] = [];
+  let working: string | null = null;
+  let lastError: GeminiError | null = null;
+
+  for (let round = 0; round < maxRounds; round++) {
+    const last = round === maxRounds - 1;
+    const chain = working ? [working, ...modelChain().filter((m) => m !== working)] : modelChain();
+    let response: ToolResponse | null = null;
+    let usedModel = "";
+    for (const model of chain) {
+      const remaining = budgetMs - (Date.now() - started);
+      if (remaining < 4_000) break;
+      const body = JSON.stringify({
+        systemInstruction: { parts: [{ text: system }] },
+        contents,
+        generationConfig: { maxOutputTokens, thinkingConfig: { thinkingLevel: "low" } },
+        tools: [{ functionDeclarations: tools }],
+        // on the last round the AI must answer with what it has
+        toolConfig: { functionCallingConfig: { mode: last ? "NONE" : "AUTO" } },
+      });
+      let res: Response;
+      let data: ToolResponse | null = null;
+      try {
+        res = await fetch(`${GEMINI_ENDPOINT}/${model}:generateContent`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+          body,
+          signal: AbortSignal.timeout(Math.min(attemptCapMs, remaining)),
+        });
+        data = (await res.json().catch(() => null)) as ToolResponse | null;
+      } catch {
+        lastError = new GeminiError("The AI service did not answer in time.", "timeout");
+        overloadedAt.set(model, Date.now());
+        continue;
+      }
+      if (res.ok) {
+        response = data;
+        usedModel = model;
+        break;
+      }
+      if (res.status === 429 || res.status === 503 || res.status === 500) overloadedAt.set(model, Date.now());
+      if (res.status === 429) lastError = new GeminiError("The AI service is busy or the free daily limit was reached.", "rate_limit", 429);
+      else if (res.status === 503 || res.status === 500) lastError = new GeminiError("The AI service is temporarily overloaded.", "busy", res.status);
+      else if (res.status === 404 || res.status === 400) lastError = new GeminiError(data?.error?.message ?? `Model ${model} is not usable.`, "other", res.status);
+      else throw new GeminiError(data?.error?.message ?? `AI request failed (${res.status}).`, "bad_request", res.status);
+    }
+    if (!response) throw lastError ?? new GeminiError("The AI service did not answer in time.", "timeout");
+    working = usedModel;
+
+    const candidate = response.candidates?.[0];
+    const parts = candidate?.content?.parts ?? [];
+    const calls = parts.filter((p) => p.functionCall).map((p) => p.functionCall!);
+    if (calls.length === 0 || last) {
+      const text = parts.filter((p) => !p.thought && typeof p.text === "string").map((p) => p.text).join("");
+      if (!text && response.promptFeedback?.blockReason) throw new GeminiError(`The AI service refused this request (${response.promptFeedback.blockReason}).`, "blocked", 200);
+      return { text, model: usedModel, toolCalls };
+    }
+    contents.push(candidate!.content);
+    const results = await Promise.all(
+      calls.map(async (c) => {
+        toolCalls.push(c.name);
+        return { functionResponse: { name: c.name, response: { result: await runTool(c.name, c.args ?? {}) } } };
+      }),
+    );
+    contents.push({ role: "user", parts: results });
+  }
+  throw lastError ?? new GeminiError("The AI service did not answer in time.", "timeout");
+}

@@ -83,6 +83,10 @@ export function OvertimeForm({
       setError("Enter the reason / description for this OT.");
       return;
     }
+    if (intent === "submit" && !photo && !initial?.documentId) {
+      setError("Attach the approval of your manager before you submit the OT.");
+      return;
+    }
     setBusy(intent);
     setError(null);
     try {
@@ -201,9 +205,10 @@ export function OvertimeForm({
       </div>
 
       <div>
-        <label className={labelClass}>Supporting document / photo (if required)</label>
+        <label className={labelClass}>Manager&apos;s approval — attach *</label>
         <input type="file" accept="image/*,application/pdf" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} className="mt-1.5 block w-full text-[13px]" />
-        {initial?.documentId && !photo && <p className="mt-1 text-[11.5px] text-text-muted">A document is already attached. Choose a file only to replace it.</p>}
+        <p className="mt-1 text-[11.5px] text-text-muted">Your manager must approve the OT first. Attach the approval (a screenshot of the message, a signed form or an email). It is required to submit; a draft can be saved without it.</p>
+        {initial?.documentId && !photo && <p className="mt-1 text-[11.5px] text-text-muted">An approval is already attached. Choose a file only to replace it.</p>}
       </div>
 
       <div className="grid grid-cols-2 gap-4">

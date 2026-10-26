@@ -34,12 +34,20 @@ export const COMPANY_DOC_TYPE_LABEL: Record<string, string> = {
 };
 
 export const LEAVE_TYPE_LABEL: Record<string, string> = {
-  annual: "Annual Leave",
-  medical: "Medical Leave",
-  emergency: "Emergency Leave",
-  unpaid: "Unpaid Leave",
-  other: "Other",
+  annual: "Annual Leave (AL) – Cuti Tahunan",
+  medical: "Medical Leave (MC) – Cuti Sakit",
+  emergency: "Emergency Leave (EL) – Cuti Kecemasan",
+  unpaid: "Unpaid Leave (UPL) – Cuti Tanpa Gaji",
+  hospitalisation: "Hospitalisation Leave (HL) – Cuti Hospitalisasi",
+  replacement: "Replacement Leave (RL) – Cuti Gantian",
+  maternity: "Maternity Leave (ML) – Cuti Bersalin",
+  bereavement: "Bereavement Leave (BL) – Cuti Kematian",
+  marriage: "Marriage Leave (MRL) – Cuti Perkahwinan",
+  other: "Other: Nyatakan",
 };
+
+/** The leave type as shown in a list: for "Other" the person's own words are added. */
+export const leaveTypeText = (type: string, other?: string | null) => (type === "other" && other?.trim() ? `Other: ${other.trim()}` : (LEAVE_TYPE_LABEL[type] ?? type));
 
 export const LEAVE_STATUS_LABEL: Record<string, string> = {
   pending: "Pending",

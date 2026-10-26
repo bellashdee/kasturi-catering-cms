@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { getHRReportRows } from "@/lib/reports/queries";
+import { canUsePayrollCentre } from "@/lib/hr/payrollAccess";
 import { PAYROLL_STATUS_LABEL } from "@/lib/hr/constants";
 import { formatCurrency, malaysiaYearMonth } from "@/lib/format";
 import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
@@ -26,6 +27,8 @@ export default async function HRReportPage({
   if (!session) redirect("/login");
 
   const supabase = await createClient();
+  // payroll is private: only the Director of Finance and her personal assistant
+  if (!(await canUsePayrollCentre(supabase))) return <EmptyRow text="Payroll is private. Only the Director of Finance and her personal assistant can open this report." />;
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 

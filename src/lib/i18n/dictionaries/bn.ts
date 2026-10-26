@@ -3794,7 +3794,23 @@ const dictionary: Record<string, string> = {
  "Make an order": "অর্ডার তৈরি করুন",
  "Check the orders and send them to the suppliers": "অর্ডারগুলো দেখে সরবরাহকারীদের কাছে পাঠান",
  "Deleted:": "মুছে ফেলা হয়েছে:",
- "Everyone (clear)": "সবাই (মুছুন)"
+ "Everyone (clear)": "সবাই (মুছুন)",
+ "Annual Leave (AL) – Cuti Tahunan": "বার্ষিক ছুটি (AL) – Cuti Tahunan",
+ "Medical Leave (MC) – Cuti Sakit": "অসুস্থতার ছুটি (MC) – Cuti Sakit",
+ "Emergency Leave (EL) – Cuti Kecemasan": "জরুরি ছুটি (EL) – Cuti Kecemasan",
+ "Unpaid Leave (UPL) – Cuti Tanpa Gaji": "বিনা বেতনে ছুটি (UPL) – Cuti Tanpa Gaji",
+ "Hospitalisation Leave (HL) – Cuti Hospitalisasi": "হাসপাতালে ভর্তির ছুটি (HL) – Cuti Hospitalisasi",
+ "Replacement Leave (RL) – Cuti Gantian": "বদলি ছুটি (RL) – Cuti Gantian",
+ "Maternity Leave (ML) – Cuti Bersalin": "মাতৃত্বকালীন ছুটি (ML) – Cuti Bersalin",
+ "Bereavement Leave (BL) – Cuti Kematian": "শোকজনিত ছুটি (BL) – Cuti Kematian",
+ "Marriage Leave (MRL) – Cuti Perkahwinan": "বিবাহ ছুটি (MRL) – Cuti Perkahwinan",
+ "Other: Nyatakan": "অন্যান্য: উল্লেখ করুন",
+ "Other: Nyatakan (state the leave) *": "অন্যান্য: উল্লেখ করুন (কোন ছুটি লিখুন) *",
+ "e.g. Cuti Haji": "যেমন Cuti Haji (হজের ছুটি)",
+ "Manager's approval — attach *": "ম্যানেজারের অনুমোদন — সংযুক্ত করুন *",
+ "Your manager must approve the OT first. Attach the approval (a screenshot of the message, a signed form or an email). It is required to submit; a draft can be saved without it.": "আপনার ম্যানেজারকে আগে OT অনুমোদন করতে হবে। অনুমোদনটি সংযুক্ত করুন (বার্তার স্ক্রিনশট, সইকৃত ফর্ম বা ইমেইল)। জমা দিতে এটি লাগবে; খসড়া এটি ছাড়াই সংরক্ষণ করা যায়।",
+ "An approval is already attached. Choose a file only to replace it.": "অনুমোদন আগেই সংযুক্ত আছে। বদলাতে চাইলেই কেবল ফাইল বাছুন।",
+ "Manager's approval": "ম্যানেজারের অনুমোদন"
 };
 
 export default dictionary;

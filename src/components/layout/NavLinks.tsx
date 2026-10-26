@@ -151,34 +151,39 @@ export function MainDashboardLink() {
   return <NavItem href="/" icon="dashboard" label="Main Dashboard" />;
 }
 
-/** The links under Main Dashboard (Bulletin Board, Company Spending, Priority Centre / My Tasks), A to Z. */
-export function TopLinks({ taskLabel = "Priority Centre", showSpending }: { taskLabel?: string; showSpending?: boolean }) {
-  const links = [
-    { label: "Bulletin Board", node: <NavItem key="bulletin" href="/bulletin" icon="bulletin" label="Bulletin Board" /> },
-    ...(showSpending ? [{ label: "Company Spending", node: <NavItem key="spending" href="/spending" icon="petty-cash" label="Company Spending" matchPrefixes={["/spending"]} /> }] : []),
-    { label: taskLabel, node: <NavItem key="priority" href="/priority-centre" icon="priority" label={taskLabel} /> },
-  ];
-  return <>{links.sort((a, b) => a.label.localeCompare(b.label)).map((l) => l.node)}</>;
-}
-
-/** The Payroll Centre is part of HR (a button on the HR page); only a payroll user who has no HR access gets its own entry. */
-export function ModuleLinks({ allowedModules, badges = {}, showPayroll = false }: { allowedModules: string[] | null; badges?: Record<string, number>; showPayroll?: boolean }) {
-  const show = (key: string) => !allowedModules || allowedModules.includes(key);
-  // every link of the menu, A to Z (the AI Assistant is added after them)
-  const links: { label: string; sort: string; node: React.ReactNode }[] = [
-    ...MODULES.filter((m) => m.key !== "reports" && m.key !== "ai-assistant" && m.key !== "marketing" && show(m.key)).map((m) => ({
-      label: m.label,
-      sort: m.label,
-      node: <NavItem key={m.key} href={m.href} icon={m.key} label={m.label} matchPrefixes={m.matchPrefixes} badge={badges[m.key]} />,
-    })),
-    ...(!show("hr") && showPayroll ? [{ label: "Payroll Centre", sort: "Payroll Centre", node: <NavItem key="payroll" href="/payroll-centre" icon="payroll" label="Payroll Centre" /> }] : []),
-    ...(!show("hr") && show("overtime") ? [{ label: "Overtime (OT)", sort: "Overtime (OT)", node: <NavItem key="overtime" href="/hr/overtime" icon="hr" label="Overtime (OT)" /> }] : []),
-    ...(show("reports") ? [{ label: "Reports", sort: "Reports", node: <NavItem key="reports" href="/reports" icon="reports" label="Reports" /> }] : []),
-  ];
-  // the AI Assistant comes last, after Supplier & Procurement
+/** The links under Main Dashboard: the person's own work first (Priority Centre / My Tasks), then the Bulletin Board. */
+export function TopLinks({ taskLabel = "Priority Centre" }: { taskLabel?: string }) {
   return (
     <>
-      {links.sort((a, b) => a.sort.localeCompare(b.sort)).map((l) => l.node)}
+      <NavItem href="/priority-centre" icon="priority" label={taskLabel} />
+      <NavItem href="/bulletin" icon="bulletin" label="Bulletin Board" />
+    </>
+  );
+}
+
+/**
+ * The modules in the order the work goes: the event is sold (Catering), cooked (Kitchen), bought for (Supplier & Procurement), delivered
+ * (Operation Management), then paid and accounted for (Admin & Finance, Company Spending), then the staff (HR), the Reports and the AI Assistant.
+ * The Payroll Centre is part of HR (a button on the HR page); only a payroll user who has no HR access gets its own entry.
+ */
+export function ModuleLinks({ allowedModules, badges = {}, showPayroll = false, showSpending = false }: { allowedModules: string[] | null; badges?: Record<string, number>; showPayroll?: boolean; showSpending?: boolean }) {
+  const show = (key: string) => !allowedModules || allowedModules.includes(key);
+  const moduleLink = (key: string) => {
+    const m = MODULES.find((x) => x.key === key);
+    return m && show(key) ? <NavItem key={key} href={m.href} icon={key} label={m.label} matchPrefixes={m.matchPrefixes} badge={badges[key]} /> : null;
+  };
+  return (
+    <>
+      {moduleLink("catering")}
+      {moduleLink("kitchen")}
+      {moduleLink("supplier-procurement")}
+      {moduleLink("driver-logistics")}
+      {moduleLink("finance-admin")}
+      {showSpending && <NavItem href="/spending" icon="petty-cash" label="Company Spending" matchPrefixes={["/spending"]} />}
+      {moduleLink("hr")}
+      {!show("hr") && showPayroll && <NavItem href="/payroll-centre" icon="payroll" label="Payroll Centre" />}
+      {!show("hr") && show("overtime") && <NavItem href="/hr/overtime" icon="hr" label="Overtime (OT)" />}
+      {show("reports") && <NavItem href="/reports" icon="reports" label="Reports" />}
       {show("ai-assistant") && <NavItem href="/ai-assistant" icon="ai-assistant" label="🤖 AI Assistant" />}
     </>
   );

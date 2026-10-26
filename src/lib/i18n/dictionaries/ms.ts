@@ -3732,7 +3732,23 @@ const dictionary: Record<string, string> = {
  "Make an order": "Buat pesanan",
  "Check the orders and send them to the suppliers": "Semak pesanan dan hantar kepada pembekal",
  "Deleted:": "Dipadam:",
- "Everyone (clear)": "Semua orang (kosongkan)"
+ "Everyone (clear)": "Semua orang (kosongkan)",
+ "Annual Leave (AL) – Cuti Tahunan": "Cuti Tahunan (AL)",
+ "Medical Leave (MC) – Cuti Sakit": "Cuti Sakit (MC)",
+ "Emergency Leave (EL) – Cuti Kecemasan": "Cuti Kecemasan (EL)",
+ "Unpaid Leave (UPL) – Cuti Tanpa Gaji": "Cuti Tanpa Gaji (UPL)",
+ "Hospitalisation Leave (HL) – Cuti Hospitalisasi": "Cuti Hospitalisasi (HL)",
+ "Replacement Leave (RL) – Cuti Gantian": "Cuti Gantian (RL)",
+ "Maternity Leave (ML) – Cuti Bersalin": "Cuti Bersalin (ML)",
+ "Bereavement Leave (BL) – Cuti Kematian": "Cuti Kematian (BL)",
+ "Marriage Leave (MRL) – Cuti Perkahwinan": "Cuti Perkahwinan (MRL)",
+ "Other: Nyatakan": "Lain-lain: Nyatakan",
+ "Other: Nyatakan (state the leave) *": "Lain-lain: Nyatakan (nyatakan cuti) *",
+ "e.g. Cuti Haji": "cth. Cuti Haji",
+ "Manager's approval — attach *": "Kelulusan pengurus — lampirkan *",
+ "Your manager must approve the OT first. Attach the approval (a screenshot of the message, a signed form or an email). It is required to submit; a draft can be saved without it.": "Pengurus anda mesti meluluskan OT dahulu. Lampirkan kelulusan itu (tangkapan skrin mesej, borang bertandatangan atau e-mel). Ia diperlukan untuk menghantar; draf boleh disimpan tanpanya.",
+ "An approval is already attached. Choose a file only to replace it.": "Kelulusan sudah dilampirkan. Pilih fail hanya untuk menggantikannya.",
+ "Manager's approval": "Kelulusan pengurus"
 };
 
 export default dictionary;

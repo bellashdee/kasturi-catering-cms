@@ -61,6 +61,7 @@ function validate(input: OvertimeInput, submitting: boolean) {
     throw new Error("Normal working hours must be between 0 and 24.");
   }
   if (submitting && !input.reason?.trim()) throw new Error("Enter the reason / description for this OT. For a saved draft, press Edit Draft and fill it in.");
+  if (submitting && !input.documentId) throw new Error("Attach the approval of your manager (for example a screenshot of the message, a signed form or an email) before you submit the OT.");
 }
 
 async function assertNoOverlap(supabase: DB, employeeId: string, workDate: string, start: string, end: string, excludeId?: string) {

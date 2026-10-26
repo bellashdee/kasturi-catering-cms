@@ -20,6 +20,7 @@ function daysBetween(start: string, end: string): number {
 export function LeaveRequestForm({ employeeId, companyId }: { employeeId: string; companyId: string }) {
   const router = useRouter();
   const [leaveType, setLeaveType] = useState("annual");
+  const [otherType, setOtherType] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [reason, setReason] = useState("");
@@ -43,7 +44,7 @@ export function LeaveRequestForm({ employeeId, companyId }: { employeeId: string
         const doc = await uploadDocument({ companyId, module: "hr", fileType: fileTypeFromMime(file), file });
         documentId = doc.id;
       }
-      await requestLeave({ employeeId, companyId, leaveType, startDate, endDate, days, reason, documentId });
+      await requestLeave({ employeeId, companyId, leaveType, leaveTypeOther: leaveType === "other" ? otherType.trim() : undefined, startDate, endDate, days, reason, documentId });
       router.push(`/hr/${employeeId}`);
       router.refresh();
     } catch (err) {
@@ -59,13 +60,24 @@ export function LeaveRequestForm({ employeeId, companyId }: { employeeId: string
       <div>
         <label className={labelClass}>Leave Type *</label>
         <select value={leaveType} onChange={(e) => setLeaveType(e.target.value)} className={inputClass}>
-          <option value="annual">Annual Leave</option>
-          <option value="medical">Medical Leave</option>
-          <option value="emergency">Emergency Leave</option>
-          <option value="unpaid">Unpaid Leave</option>
-          <option value="other">Other</option>
+          <option value="annual">Annual Leave (AL) – Cuti Tahunan</option>
+          <option value="medical">Medical Leave (MC) – Cuti Sakit</option>
+          <option value="emergency">Emergency Leave (EL) – Cuti Kecemasan</option>
+          <option value="unpaid">Unpaid Leave (UPL) – Cuti Tanpa Gaji</option>
+          <option value="hospitalisation">Hospitalisation Leave (HL) – Cuti Hospitalisasi</option>
+          <option value="replacement">Replacement Leave (RL) – Cuti Gantian</option>
+          <option value="maternity">Maternity Leave (ML) – Cuti Bersalin</option>
+          <option value="bereavement">Bereavement Leave (BL) – Cuti Kematian</option>
+          <option value="marriage">Marriage Leave (MRL) – Cuti Perkahwinan</option>
+          <option value="other">Other: Nyatakan</option>
         </select>
       </div>
+      {leaveType === "other" && (
+        <div>
+          <label className={labelClass}>Other: Nyatakan (state the leave) *</label>
+          <input required maxLength={120} value={otherType} onChange={(e) => setOtherType(e.target.value)} placeholder="e.g. Cuti Haji" className={inputClass} />
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <div>

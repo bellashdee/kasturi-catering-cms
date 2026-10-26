@@ -43,10 +43,10 @@ export function Sidebar({ companies, allowedModules, badges, taskLinkLabel, show
 
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-3">
           <MainDashboardLink />
-          <TopLinks taskLabel={taskLinkLabel} showSpending={showSpending} />
+          <TopLinks taskLabel={taskLinkLabel} />
           <CompanyQuickLinks companies={companies} />
           <div className="my-2 h-px bg-sidebar-line" />
-          <ModuleLinks allowedModules={allowedModules} badges={badges} showPayroll={showPayroll} />
+          <ModuleLinks allowedModules={allowedModules} badges={badges} showPayroll={showPayroll} showSpending={showSpending} />
         </nav>
 
         <div className="border-t border-sidebar-line p-3">
