@@ -536,3 +536,216 @@ export async function saveMonthlySales(input: { companyId: string; year: number;
   revalidatePath("/admin");
   revalidatePath("/reports/monthly-costing");
 }
+
+type FTables = Database["public"]["Tables"];
+export type CustomerInvoiceRow = FTables["customer_invoices"]["Row"];
+export type CustomerPaymentRow = FTables["customer_payments"]["Row"];
+export type PettyCashTransactionRow = FTables["petty_cash_transactions"]["Row"];
+
+async function financeAdmin(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], companyId: string, message: string) {
+  const { data } = await supabase.rpc("user_is_company_admin", { target_company_id: companyId });
+  if (data !== true) throw new Error(message);
+}
+
+/** Works the invoice status out again from what has been paid (the same rule as when a payment is recorded). */
+async function refreshInvoiceStatus(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], invoiceId: string) {
+  const [{ data: invoice }, { data: payments }] = await Promise.all([
+    supabase.from("customer_invoices").select("id, amount, tax_amount, status").eq("id", invoiceId).maybeSingle(),
+    supabase.from("customer_payments").select("amount").eq("customer_invoice_id", invoiceId),
+  ]);
+  if (!invoice) return;
+  const paid = (payments ?? []).reduce((t, p) => t + Number(p.amount), 0);
+  const total = Number(invoice.amount) + Number(invoice.tax_amount ?? 0);
+  const status: InvoiceStatus = paid >= total && total > 0 ? "paid" : paid > 0 ? "partially_paid" : "issued";
+  if (status !== invoice.status) await supabase.from("customer_invoices").update({ status }).eq("id", invoiceId);
+}
+
+function refreshInvoicePages(invoiceId?: string) {
+  revalidatePath("/finance/invoices");
+  if (invoiceId) revalidatePath(`/finance/invoices/${invoiceId}`);
+  revalidatePath("/finance/outstanding");
+  revalidatePath("/");
+}
+
+export type CustomerInvoiceEdit = { invoiceNumber: string; invoiceDate: string; dueDate: string; amount: number; taxAmount?: number; description?: string };
+
+/** Corrects a customer invoice; the status is worked out again from the payments. */
+export async function updateCustomerInvoice(id: string, input: CustomerInvoiceEdit): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { data: before } = await supabase.from("customer_invoices").select("*").eq("id", id).maybeSingle();
+    if (!before) throw new Error("This invoice was not found (it may have been deleted).");
+    const number = input.invoiceNumber?.trim();
+    if (!number) throw new Error("Enter the invoice number.");
+    for (const d of [input.invoiceDate, input.dueDate]) if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) throw new Error("Enter valid invoice and due dates.");
+    if (!Number.isFinite(input.amount) || input.amount < 0) throw new Error("Enter the invoice amount.");
+    if (input.taxAmount !== undefined && (!Number.isFinite(input.taxAmount) || input.taxAmount < 0)) throw new Error("Enter a valid tax amount.");
+    const { data: same } = await supabase.from("customer_invoices").select("id").eq("company_id", before.company_id).ilike("invoice_number", number.replace(/[\\%_]/g, "\\$&")).neq("id", id).limit(1);
+    if ((same ?? []).length > 0) throw new Error("Another invoice of this company has the same invoice number.");
+    const { error } = await supabase.from("customer_invoices").update({ invoice_number: number, invoice_date: input.invoiceDate, due_date: input.dueDate, amount: input.amount, tax_amount: input.taxAmount ?? 0, description: input.description?.trim() || null }).eq("id", id);
+    if (error) throw error;
+    await refreshInvoiceStatus(supabase, id);
+    await recordAudit({ companyId: before.company_id, relatedTable: "customer_invoices", relatedId: id, action: "edited", previousValue: `${before.invoice_number} · RM ${before.amount} + ${before.tax_amount} tax · due ${before.due_date}`, newValue: `${number} · RM ${input.amount} + ${input.taxAmount ?? 0} tax · due ${input.dueDate}` });
+    refreshInvoicePages(id);
+    return {};
+  }, "Could not save the invoice. Please try again.");
+}
+
+/** Deletes a customer invoice that has no payment and no revenue entry; returns it so the delete can be undone. */
+export async function deleteCustomerInvoice(id: string): Promise<ActionResult<{ row: CustomerInvoiceRow }>> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { data: invoice } = await supabase.from("customer_invoices").select("*").eq("id", id).maybeSingle();
+    if (!invoice) throw new Error("This invoice was not found (it may already be deleted).");
+    await financeAdmin(supabase, invoice.company_id, "Only an admin of the company can delete an invoice.");
+    const head = { count: "exact" as const, head: true };
+    const [payments, revenue] = await Promise.all([
+      supabase.from("customer_payments").select("id", head).eq("customer_invoice_id", id),
+      supabase.from("event_revenue_entries").select("id", head).eq("customer_invoice_id", id),
+    ]);
+    if ((payments.count ?? 0) > 0) throw new Error(`This invoice has ${payments.count} payment(s) recorded. Delete the payments first.`);
+    if ((revenue.count ?? 0) > 0) throw new Error("This invoice is counted as revenue of an event. Remove it from the event first.");
+    const { data: removed, error } = await supabase.from("customer_invoices").delete().eq("id", id).select("id");
+    if (error || !removed?.length) throw new Error("Could not delete the invoice.");
+    await recordAudit({ companyId: invoice.company_id, relatedTable: "customer_invoices", relatedId: id, action: "deleted", previousValue: `${invoice.invoice_number} · RM ${invoice.amount} · due ${invoice.due_date}`, newValue: "Deleted" });
+    refreshInvoicePages();
+    return { row: invoice };
+  }, "Could not delete the invoice. Please try again.");
+}
+
+/** Undo of a delete: the invoice comes back as it was. */
+export async function restoreCustomerInvoice(row: CustomerInvoiceRow): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    if (!row?.id || !row.company_id) throw new Error("There is nothing to put back.");
+    await financeAdmin(supabase, row.company_id, "Only an admin of the company can put an invoice back.");
+    const { error } = await supabase.from("customer_invoices").insert(row);
+    if (error) throw new Error("Could not put the invoice back.");
+    await recordAudit({ companyId: row.company_id, relatedTable: "customer_invoices", relatedId: row.id, action: "restored", newValue: `${row.invoice_number} put back after it was deleted` });
+    refreshInvoicePages(row.id);
+    return {};
+  }, "Could not put the invoice back.");
+}
+
+export type CustomerPaymentEdit = { amount: number; paymentDate: string; paymentReference?: string; paymentRemarks?: string };
+
+/** Corrects a customer payment (amount, date, reference); the invoice status is worked out again. */
+export async function updateCustomerPayment(id: string, input: CustomerPaymentEdit): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { data: before } = await supabase.from("customer_payments").select("*").eq("id", id).maybeSingle();
+    if (!before) throw new Error("This payment was not found (it may have been deleted).");
+    await financeAdmin(supabase, before.company_id, "Only an admin of the company can change a payment.");
+    if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("Enter an amount more than 0.");
+    const date = confirmedPaymentDate(input.paymentDate);
+    const { error } = await supabase.from("customer_payments").update({ amount: input.amount, payment_date: date, payment_reference: input.paymentReference?.trim() || null, payment_remarks: input.paymentRemarks?.trim() || null }).eq("id", id);
+    if (error) throw error;
+    await refreshInvoiceStatus(supabase, before.customer_invoice_id);
+    await recordAudit({ companyId: before.company_id, relatedTable: "customer_invoices", relatedId: before.customer_invoice_id, action: "payment_edited", previousValue: `RM ${before.amount} on ${before.payment_date}`, newValue: `RM ${input.amount} on ${date}` });
+    refreshInvoicePages(before.customer_invoice_id);
+    return {};
+  }, "Could not save the payment. Please try again.");
+}
+
+/** Deletes a customer payment (the invoice status is worked out again); returns it so the delete can be undone. */
+export async function deleteCustomerPayment(id: string): Promise<ActionResult<{ row: CustomerPaymentRow }>> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { data: payment } = await supabase.from("customer_payments").select("*").eq("id", id).maybeSingle();
+    if (!payment) throw new Error("This payment was not found (it may already be deleted).");
+    await financeAdmin(supabase, payment.company_id, "Only an admin of the company can delete a payment.");
+    const { data: removed, error } = await supabase.from("customer_payments").delete().eq("id", id).select("id");
+    if (error || !removed?.length) throw new Error("Could not delete the payment.");
+    await refreshInvoiceStatus(supabase, payment.customer_invoice_id);
+    await recordAudit({ companyId: payment.company_id, relatedTable: "customer_invoices", relatedId: payment.customer_invoice_id, action: "payment_deleted", previousValue: `RM ${payment.amount} on ${payment.payment_date}`, newValue: "Deleted" });
+    refreshInvoicePages(payment.customer_invoice_id);
+    return { row: payment };
+  }, "Could not delete the payment. Please try again.");
+}
+
+/** Undo of a delete: the payment comes back and the invoice status is worked out again. */
+export async function restoreCustomerPayment(row: CustomerPaymentRow): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    if (!row?.id || !row.company_id) throw new Error("There is nothing to put back.");
+    await financeAdmin(supabase, row.company_id, "Only an admin of the company can put a payment back.");
+    const { error } = await supabase.from("customer_payments").insert(row);
+    if (error) throw new Error("Could not put the payment back.");
+    await refreshInvoiceStatus(supabase, row.customer_invoice_id);
+    await recordAudit({ companyId: row.company_id, relatedTable: "customer_invoices", relatedId: row.customer_invoice_id, action: "payment_restored", newValue: `RM ${row.amount} on ${row.payment_date} put back` });
+    refreshInvoicePages(row.customer_invoice_id);
+    return {};
+  }, "Could not put the payment back.");
+}
+
+export type PettyCashClaimEdit = { claimantName?: string; claimantDepartment?: string; category?: string; description?: string; amount: number; transactionDate: string };
+
+/** Who may change a petty cash claim or top-up: the admins of the company, and the person who made it while it is still waiting for payment. */
+async function claimAccess(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], userId: string, row: PettyCashTransactionRow) {
+  const { data: admin } = await supabase.rpc("user_is_company_admin", { target_company_id: row.company_id });
+  if (admin !== true && !(row.created_by === userId && row.payment_status !== "paid")) throw new Error("Only an admin, or the person who made it while it is not paid yet, can change this.");
+  await assertOwnPerson(supabase, userId, row.person_name);
+}
+
+/** Changes a petty cash claim / top-up (who claimed, what for, the amount and the date). */
+export async function updatePettyCashClaim(id: string, input: PettyCashClaimEdit): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase, userId } = await requireUser();
+    const { data: before } = await supabase.from("petty_cash_transactions").select("*").eq("id", id).maybeSingle();
+    if (!before) throw new Error("This entry was not found (it may have been deleted).");
+    await claimAccess(supabase, userId, before);
+    if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("Enter an amount more than 0.");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.transactionDate)) throw new Error("Choose the date.");
+    if (before.type === "expense" && !input.claimantName?.trim()) throw new Error("Enter who is claiming this petty cash.");
+    const { error } = await supabase
+      .from("petty_cash_transactions")
+      .update({
+        claimant_name: before.type === "expense" ? input.claimantName?.trim() || null : null,
+        claimant_department: before.type === "expense" ? input.claimantDepartment?.trim() || null : null,
+        category: input.category?.trim() || null,
+        description: input.description?.trim() || null,
+        amount: input.amount,
+        transaction_date: input.transactionDate,
+      })
+      .eq("id", id);
+    if (error) throw error;
+    await recordAudit({ companyId: before.company_id, relatedTable: "petty_cash_transactions", relatedId: id, action: "edited", previousValue: `RM ${before.amount} · ${before.transaction_date} · ${before.claimant_name ?? ""}`, newValue: `RM ${input.amount} · ${input.transactionDate} · ${input.claimantName ?? ""}` });
+    revalidatePath("/spending/petty-cash");
+    revalidatePath("/admin");
+    revalidatePath("/");
+    return {};
+  }, "Could not save. Please try again.");
+}
+
+/** Deletes a petty cash claim / top-up and returns it so the delete can be undone. */
+export async function deletePettyCashClaim(id: string): Promise<ActionResult<{ row: PettyCashTransactionRow }>> {
+  return runAction(async () => {
+    const { supabase, userId } = await requireUser();
+    const { data: before } = await supabase.from("petty_cash_transactions").select("*").eq("id", id).maybeSingle();
+    if (!before) throw new Error("This entry was not found (it may already be deleted).");
+    await claimAccess(supabase, userId, before);
+    const { data: removed, error } = await supabase.from("petty_cash_transactions").delete().eq("id", id).select("id");
+    if (error || !removed?.length) throw new Error("Could not delete the entry.");
+    await recordAudit({ companyId: before.company_id, relatedTable: "petty_cash_transactions", relatedId: id, action: "deleted", previousValue: `RM ${before.amount} · ${before.transaction_date} · ${before.claimant_name ?? ""} (${before.payment_status})`, newValue: "Deleted" });
+    revalidatePath("/spending/petty-cash");
+    revalidatePath("/admin");
+    revalidatePath("/");
+    return { row: before };
+  }, "Could not delete the entry. Please try again.");
+}
+
+/** Undo of a delete: the claim / top-up comes back as it was. */
+export async function restorePettyCashClaim(row: PettyCashTransactionRow): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase, userId } = await requireUser();
+    if (!row?.id || !row.company_id) throw new Error("There is nothing to put back.");
+    await claimAccess(supabase, userId, row);
+    const { error } = await supabase.from("petty_cash_transactions").insert(row);
+    if (error) throw new Error("Could not put the entry back.");
+    await recordAudit({ companyId: row.company_id, relatedTable: "petty_cash_transactions", relatedId: row.id, action: "restored", newValue: `RM ${row.amount} put back after it was deleted` });
+    revalidatePath("/spending/petty-cash");
+    revalidatePath("/admin");
+    revalidatePath("/");
+    return {};
+  }, "Could not put the entry back.");
+}

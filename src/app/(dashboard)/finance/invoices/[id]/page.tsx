@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { SectionCard, EmptyRow } from "@/components/dashboard/SectionCard";
 import { RecordCustomerPaymentForm } from "@/components/finance/RecordCustomerPaymentForm";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
+import { CustomerInvoiceActions, CustomerPaymentActions } from "@/components/finance/FinanceRecordActions";
 
 export default async function CustomerInvoiceDetailPage({
   params,
@@ -59,6 +60,10 @@ export default async function CustomerInvoiceDetailPage({
             {INVOICE_STATUS_LABEL[invoice.status] ?? invoice.status}
           </StatusBadge>
           {overdue && <StatusBadge tone="danger">Overdue</StatusBadge>}
+          <CustomerInvoiceActions
+            listHref={`/finance/invoices${query}`}
+            invoice={{ id, number: invoice.invoice_number, invoiceDate: invoice.invoice_date, dueDate: invoice.due_date, amount: String(invoice.amount), taxAmount: String(invoice.tax_amount ?? 0), description: invoice.description ?? "" }}
+          />
         </div>
       </div>
 
@@ -94,7 +99,10 @@ export default async function CustomerInvoiceDetailPage({
                     <span className="font-semibold text-text">{formatCurrency(Number(p.amount))}</span>
                     {p.payment_reference && <span className="ml-2 text-xs text-text-muted">Ref: {p.payment_reference}</span>}
                   </div>
-                  <span className="text-text-secondary">{p.payment_date}</span>
+                  <div className="flex items-center gap-4">
+                    <span className="text-text-secondary">{p.payment_date}</span>
+                    <CustomerPaymentActions payment={{ id: p.id, amount: String(p.amount), paymentDate: p.payment_date, reference: p.payment_reference ?? "", remarks: p.payment_remarks ?? "" }} />
+                  </div>
                 </div>
               ))}
             </div>

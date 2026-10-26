@@ -18,6 +18,7 @@ import { PettyCashHolderBar } from "@/components/pettyCash/PettyCashHolderBar";
 import { PettyCashOverview } from "@/components/pettyCash/PettyCashOverview";
 import { OperationPettyCashRowActions } from "@/components/operationPettyCash/OperationPettyCashRowActions";
 import { PettyCashPaymentAction } from "@/components/finance/PettyCashPaymentAction";
+import { PettyCashClaimActions } from "@/components/finance/FinanceRecordActions";
 import { UndoBanner } from "@/components/operationPettyCash/UndoBanner";
 import { SoftHeader, SoftPage } from "@/components/ui/Soft";
 import { buildOverview } from "@/lib/pettyCash/overview";
@@ -42,6 +43,8 @@ type Row = {
   documentId: string | null;
   bookId?: string;
   claim?: { id: string; status: string; paymentDate: string | null; claimant: string | null; department: string | null };
+  /** a row that comes from the claims / top-ups table (it can be edited and deleted here) */
+  tx?: { id: string; type: "expense" | "top_up"; claimant: string; department: string; category: string; description: string };
 };
 
 /**
@@ -124,6 +127,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
       person: [t.person_name, t.person_position].filter(Boolean).join(" · "),
       documentId: t.document_id,
       claim: t.type === "expense" ? { id: t.id, status: t.payment_status, paymentDate: t.payment_date, claimant: t.claimant_name, department: t.claimant_department } : undefined,
+      tx: { id: t.id, type: t.type === "expense" ? "expense" : "top_up", claimant: t.claimant_name ?? "", department: t.claimant_department ?? "", category: t.category ?? "", description: t.description ?? "" },
     })),
   ].sort((a, b) => a.date.localeCompare(b.date) || a.created.localeCompare(b.created));
 
@@ -309,7 +313,14 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
                         </td>
                         <td className="px-4 py-2.5">{r.documentId ? <DocumentViewLink documentId={r.documentId} /> : <span className="text-text-muted">—</span>}</td>
                         <td className="px-4 py-2.5">
-                          {r.bookId ? <OperationPettyCashRowActions id={r.bookId} editHref={editHref(r.bookId)} /> : r.claim ? <PettyCashPaymentAction transactionId={r.claim.id} paymentStatus={r.claim.status} /> : null}
+                          {r.bookId ? (
+                            <OperationPettyCashRowActions id={r.bookId} editHref={editHref(r.bookId)} />
+                          ) : (
+                            <div className="flex flex-col items-start gap-1.5">
+                              {r.claim && <PettyCashPaymentAction transactionId={r.claim.id} paymentStatus={r.claim.status} />}
+                              {r.tx && <PettyCashClaimActions claim={{ ...r.tx, amount: String(r.amount), date: r.date }} />}
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );

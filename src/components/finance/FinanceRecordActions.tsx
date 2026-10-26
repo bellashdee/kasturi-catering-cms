@@ -1,0 +1,264 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { errorMessage } from "@/lib/actionResult";
+import {
+  deleteCustomerInvoice,
+  deleteCustomerPayment,
+  deletePettyCashClaim,
+  restoreCustomerInvoice,
+  restoreCustomerPayment,
+  restorePettyCashClaim,
+  updateCustomerInvoice,
+  updateCustomerPayment,
+  updatePettyCashClaim,
+  type CustomerInvoiceRow,
+  type CustomerPaymentRow,
+  type PettyCashTransactionRow,
+} from "@/lib/finance/actions";
+import { todayInMalaysia } from "@/lib/format";
+import { AREA, BTN, BTN_GHOST, Dialog, ErrorLine, FIELD, LABEL } from "@/components/priority/ui";
+import { RecordActions } from "@/components/shared/RecordActions";
+
+export type InvoiceEditData = { id: string; number: string; invoiceDate: string; dueDate: string; amount: string; taxAmount: string; description: string };
+
+/** Edit (Save / Cancel) and Delete (Undo) of a customer invoice on its page. */
+export function CustomerInvoiceActions({ invoice, listHref }: { invoice: InvoiceEditData; listHref: string }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [f, setF] = useState(invoice);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const set = (patch: Partial<InvoiceEditData>) => setF((p) => ({ ...p, ...patch }));
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await updateCustomerInvoice(invoice.id, { invoiceNumber: f.number, invoiceDate: f.invoiceDate, dueDate: f.dueDate, amount: Number(f.amount), taxAmount: f.taxAmount.trim() === "" ? 0 : Number(f.taxAmount), description: f.description });
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      setOpen(false);
+      router.refresh();
+    } catch (err) {
+      setError(errorMessage(err, "Could not save the invoice."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <RecordActions<CustomerInvoiceRow>
+        onEdit={() => { setError(null); setOpen(true); }}
+        onDelete={() => deleteCustomerInvoice(invoice.id)}
+        onRestore={(row) => restoreCustomerInvoice(row)}
+        afterClose={() => router.push(listHref)}
+        confirmText={`Delete invoice ${invoice.number}?`}
+      />
+      {open && (
+        <Dialog title={`Edit invoice ${invoice.number}`} onClose={() => setOpen(false)}>
+          <form onSubmit={save} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="sm:col-span-2"><ErrorLine message={error} /></div>
+            <div>
+              <label className={LABEL}>Invoice number *</label>
+              <input required className={FIELD} value={f.number} onChange={(e) => set({ number: e.target.value })} />
+            </div>
+            <div>
+              <label className={LABEL}>Amount (RM) *</label>
+              <input required type="number" step="any" min="0" className={FIELD} value={f.amount} onChange={(e) => set({ amount: e.target.value })} />
+            </div>
+            <div>
+              <label className={LABEL}>Invoice date *</label>
+              <input required type="date" className={FIELD} value={f.invoiceDate} onChange={(e) => set({ invoiceDate: e.target.value })} />
+            </div>
+            <div>
+              <label className={LABEL}>Due date *</label>
+              <input required type="date" className={FIELD} value={f.dueDate} onChange={(e) => set({ dueDate: e.target.value })} />
+            </div>
+            <div>
+              <label className={LABEL}>Tax (RM)</label>
+              <input type="number" step="any" min="0" className={FIELD} value={f.taxAmount} onChange={(e) => set({ taxAmount: e.target.value })} />
+            </div>
+            <div className="sm:col-span-2">
+              <label className={LABEL}>Description</label>
+              <textarea className={AREA} rows={2} value={f.description} onChange={(e) => set({ description: e.target.value })} />
+            </div>
+            <div className="flex justify-end gap-2.5 sm:col-span-2">
+              <button type="button" className={BTN_GHOST} disabled={busy} onClick={() => setOpen(false)}>
+                Cancel
+              </button>
+              <button type="submit" className={BTN} disabled={busy}>
+                {busy ? "Saving..." : "Save changes"}
+              </button>
+            </div>
+          </form>
+        </Dialog>
+      )}
+    </>
+  );
+}
+
+/** Edit (Save / Cancel) and Delete (Undo) of one payment of a customer invoice. */
+export function CustomerPaymentActions({ payment }: { payment: { id: string; amount: string; paymentDate: string; reference: string; remarks: string } }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [amount, setAmount] = useState(payment.amount);
+  const [date, setDate] = useState(payment.paymentDate);
+  const [reference, setReference] = useState(payment.reference);
+  const [remarks, setRemarks] = useState(payment.remarks);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await updateCustomerPayment(payment.id, { amount: Number(amount), paymentDate: date, paymentReference: reference, paymentRemarks: remarks });
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      setOpen(false);
+      router.refresh();
+    } catch (err) {
+      setError(errorMessage(err, "Could not save the payment."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <RecordActions<CustomerPaymentRow>
+        onEdit={() => { setError(null); setOpen(true); }}
+        onDelete={() => deleteCustomerPayment(payment.id)}
+        onRestore={(row) => restoreCustomerPayment(row)}
+        confirmText={`Delete this payment of RM ${payment.amount}?`}
+      />
+      {open && (
+        <Dialog title="Edit payment" onClose={() => setOpen(false)}>
+          <form onSubmit={save} className="flex flex-col gap-3">
+            <ErrorLine message={error} />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={LABEL}>Amount (RM) *</label>
+                <input required type="number" step="any" min="0" className={FIELD} value={amount} onChange={(e) => setAmount(e.target.value)} />
+              </div>
+              <div>
+                <label className={LABEL}>Payment date *</label>
+                <input required type="date" max={todayInMalaysia()} className={FIELD} value={date} onChange={(e) => setDate(e.target.value)} />
+              </div>
+            </div>
+            <div>
+              <label className={LABEL}>Payment reference</label>
+              <input className={FIELD} value={reference} onChange={(e) => setReference(e.target.value)} />
+            </div>
+            <div>
+              <label className={LABEL}>Remarks</label>
+              <textarea className={AREA} rows={2} value={remarks} onChange={(e) => setRemarks(e.target.value)} />
+            </div>
+            <div className="flex justify-end gap-2.5">
+              <button type="button" className={BTN_GHOST} disabled={busy} onClick={() => setOpen(false)}>
+                Cancel
+              </button>
+              <button type="submit" className={BTN} disabled={busy}>
+                {busy ? "Saving..." : "Save changes"}
+              </button>
+            </div>
+          </form>
+        </Dialog>
+      )}
+    </>
+  );
+}
+
+export type ClaimEditData = { id: string; type: "expense" | "top_up"; claimant: string; department: string; category: string; description: string; amount: string; date: string };
+
+/** Edit (Save / Cancel) and Delete (Undo) of a petty cash staff claim or top-up in the Petty Cash list. */
+export function PettyCashClaimActions({ claim }: { claim: ClaimEditData }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [f, setF] = useState(claim);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const set = (patch: Partial<ClaimEditData>) => setF((p) => ({ ...p, ...patch }));
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await updatePettyCashClaim(claim.id, { claimantName: f.claimant, claimantDepartment: f.department, category: f.category, description: f.description, amount: Number(f.amount), transactionDate: f.date });
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      setOpen(false);
+      router.refresh();
+    } catch (err) {
+      setError(errorMessage(err, "Could not save."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <RecordActions<PettyCashTransactionRow>
+        onEdit={() => { setError(null); setOpen(true); }}
+        onDelete={() => deletePettyCashClaim(claim.id)}
+        onRestore={(row) => restorePettyCashClaim(row)}
+        confirmText={`Delete this ${claim.type === "expense" ? "staff claim" : "top-up"} of RM ${claim.amount}?`}
+      />
+      {open && (
+        <Dialog title={claim.type === "expense" ? "Edit staff claim" : "Edit top-up"} onClose={() => setOpen(false)}>
+          <form onSubmit={save} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="sm:col-span-2"><ErrorLine message={error} /></div>
+            {claim.type === "expense" && (
+              <>
+                <div>
+                  <label className={LABEL}>Claimant *</label>
+                  <input required className={FIELD} value={f.claimant} onChange={(e) => set({ claimant: e.target.value })} />
+                </div>
+                <div>
+                  <label className={LABEL}>Department</label>
+                  <input className={FIELD} value={f.department} onChange={(e) => set({ department: e.target.value })} />
+                </div>
+              </>
+            )}
+            <div>
+              <label className={LABEL}>Date *</label>
+              <input required type="date" max={todayInMalaysia()} className={FIELD} value={f.date} onChange={(e) => set({ date: e.target.value })} />
+            </div>
+            <div>
+              <label className={LABEL}>Amount (RM) *</label>
+              <input required type="number" step="any" min="0" className={FIELD} value={f.amount} onChange={(e) => set({ amount: e.target.value })} />
+            </div>
+            <div>
+              <label className={LABEL}>Category</label>
+              <input className={FIELD} value={f.category} onChange={(e) => set({ category: e.target.value })} />
+            </div>
+            <div>
+              <label className={LABEL}>Description</label>
+              <input className={FIELD} value={f.description} onChange={(e) => set({ description: e.target.value })} />
+            </div>
+            <div className="flex justify-end gap-2.5 sm:col-span-2">
+              <button type="button" className={BTN_GHOST} disabled={busy} onClick={() => setOpen(false)}>
+                Cancel
+              </button>
+              <button type="submit" className={BTN} disabled={busy}>
+                {busy ? "Saving..." : "Save changes"}
+              </button>
+            </div>
+          </form>
+        </Dialog>
+      )}
+    </>
+  );
+}
