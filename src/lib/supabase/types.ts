@@ -5963,6 +5963,7 @@ export type Database = {
       current_user_is_super_admin: { Args: never; Returns: boolean }
       user_can_use_operation_petty_cash: { Args: never; Returns: boolean }
       user_can_use_payroll_centre: { Args: never; Returns: boolean }
+      user_gets_payment_reminders: { Args: never; Returns: boolean }
       user_is_local_staff: { Args: never; Returns: boolean }
       user_has_company_access: {
         Args: { target_company_id: string }

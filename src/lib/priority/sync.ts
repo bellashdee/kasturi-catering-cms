@@ -20,12 +20,16 @@ export type PriorityData = {
 export async function syncWithData(supabase: DB, data: PriorityData, now = Date.now()) {
   const { access } = data;
   const today = todayInMalaysia(now);
-  const [{ settings }, otherApprovals, events] = await Promise.all([
+  const [{ settings }, otherApprovals, events, { data: gets }] = await Promise.all([
     loadReminderSettings(supabase, access.userId),
     access.canSeePayments ? loadOtherPendingApprovals(supabase, access.adminCompanyIds) : Promise.resolve([]),
     access.canSeePayments ? loadEventsNeedingDecision(supabase, access.adminCompanyIds, today) : Promise.resolve([]),
+    supabase.rpc("user_gets_payment_reminders"),
   ]);
-  const built = buildCandidates({ today, now, userId: access.userId, isApprover: access.isApprover, payables: data.payables, tasks: data.tasks, otherApprovals, events, settings });
+  // the reminders about outstanding supplier payments go only to the Director of Finance, who pays the suppliers: nobody else gets them
+  // (the supplier payments are left out here, so the ones already waiting for anybody else are closed by saveNotifications)
+  const payables = gets === true ? data.payables : [];
+  const built = buildCandidates({ today, now, userId: access.userId, isApprover: access.isApprover, payables, tasks: data.tasks, otherApprovals, events, settings });
   await saveNotifications(supabase, access.userId, built);
 }
 

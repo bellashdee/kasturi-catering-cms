@@ -21,7 +21,10 @@ export async function getReminders(companyId: string | null): Promise<RemindersR
     const { targetCompanyIds } = resolveCompanyScope(session, companies ?? [], companyId ?? undefined);
     if (targetCompanyIds.length === 0) return { ok: true, items: [] };
     const data = await getDashboardData(supabase, targetCompanyIds, session.allowedModules);
-    const items = buildReminders(data, session.allowedModules, todayInMalaysia());
+    let items = buildReminders(data, session.allowedModules, todayInMalaysia());
+    // outstanding supplier payments (and the Finance payments) are for the Director of Finance only: she pays the suppliers
+    const { data: getsPaymentReminders } = await supabase.rpc("user_gets_payment_reminders");
+    if (getsPaymentReminders !== true) items = items.filter((i) => !/supplier (invoice|payment)|Finance payment/i.test(i.title));
     // customer payment proofs sent by sales agents that nobody has reviewed yet
     if (canAccessModule(session.allowedModules, "finance-admin")) {
       const { count } = await supabase.from("payment_proof_submissions").select("id", { count: "exact", head: true }).in("company_id", targetCompanyIds).eq("status", "pending");
