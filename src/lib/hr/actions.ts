@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { dobFromIc } from "@/lib/hr/ic";
 import { requirePayrollAccess } from "@/lib/hr/payrollAccess";
+import { runAction, type ActionResult } from "@/lib/actionResult";
+import { recordAudit } from "@/lib/audit";
+import type { Database } from "@/lib/supabase/types";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -319,6 +322,70 @@ export async function createCertificate(input: CertificateInput) {
   revalidatePath(`/hr/${input.employeeId}`);
   revalidatePath("/hr");
   return data;
+}
+
+export type CertificateRow = Database["public"]["Tables"]["employee_certificates"]["Row"];
+
+export type CertificateEdit = { certType: string; certName: string; certNumber?: string; issuedDate?: string; expiryDate?: string; documentId?: string };
+
+/** Changes a staff document (type, name, number, dates, file). Only the admins of the company. */
+export async function updateCertificate(id: string, input: CertificateEdit): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { data: before } = await supabase.from("employee_certificates").select("*").eq("id", id).maybeSingle();
+    if (!before) throw new Error("This document was not found (it may have been deleted).");
+    await requireHrAdmin(supabase, before.company_id, "Only an admin of the company can change staff documents.");
+    const name = input.certName?.trim();
+    if (!name) throw new Error("Write the name of the document.");
+    for (const d of [input.issuedDate, input.expiryDate]) if (d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) throw new Error("Enter valid dates.");
+    const { error } = await supabase
+      .from("employee_certificates")
+      .update({
+        cert_type: input.certType,
+        cert_name: name.slice(0, 200),
+        cert_number: input.certNumber?.trim() || null,
+        issued_date: input.issuedDate || null,
+        expiry_date: input.expiryDate || null,
+        document_id: input.documentId || null,
+      })
+      .eq("id", id);
+    if (error) throw error;
+    await recordAudit({ companyId: before.company_id, relatedTable: "employee_certificates", relatedId: id, action: "edited", previousValue: `${before.cert_type} · ${before.cert_name} · ${before.expiry_date ?? "no expiry"}`, newValue: `${input.certType} · ${name} · ${input.expiryDate || "no expiry"}` });
+    revalidatePath(`/hr/${before.employee_id}`);
+    revalidatePath("/hr");
+    return {};
+  }, "Could not save the document. Please try again.");
+}
+
+/** Deletes a staff document and returns it, so the delete can be undone. The attached file stays in storage. */
+export async function deleteCertificate(id: string): Promise<ActionResult<{ row: CertificateRow }>> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { data: before } = await supabase.from("employee_certificates").select("*").eq("id", id).maybeSingle();
+    if (!before) throw new Error("This document was not found (it may already be deleted).");
+    await requireHrAdmin(supabase, before.company_id, "Only an admin of the company can delete staff documents.");
+    const { data: removed, error } = await supabase.from("employee_certificates").delete().eq("id", id).select("id");
+    if (error || !removed?.length) throw new Error("Could not delete the document.");
+    await recordAudit({ companyId: before.company_id, relatedTable: "employee_certificates", relatedId: id, action: "deleted", previousValue: `${before.cert_type} · ${before.cert_name} · ${before.expiry_date ?? "no expiry"}`, newValue: "Deleted" });
+    revalidatePath(`/hr/${before.employee_id}`);
+    revalidatePath("/hr");
+    return { row: before };
+  }, "Could not delete the document. Please try again.");
+}
+
+/** Undo of a delete: the document comes back as it was. */
+export async function restoreCertificate(row: CertificateRow): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    if (!row?.id || !row.company_id || !row.employee_id) throw new Error("There is nothing to put back.");
+    await requireHrAdmin(supabase, row.company_id, "Only an admin of the company can put a staff document back.");
+    const { error } = await supabase.from("employee_certificates").insert(row);
+    if (error) throw new Error("Could not put the document back.");
+    await recordAudit({ companyId: row.company_id, relatedTable: "employee_certificates", relatedId: row.id, action: "restored", newValue: `${row.cert_name} put back after it was deleted` });
+    revalidatePath(`/hr/${row.employee_id}`);
+    revalidatePath("/hr");
+    return {};
+  }, "Could not put the document back.");
 }
 
 export type LeaveInput = {

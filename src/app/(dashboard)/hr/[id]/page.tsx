@@ -14,7 +14,6 @@ import {
 import {
   EMPLOYMENT_TYPE_LABEL,
   EMPLOYEE_STATUS_LABEL,
-  CERT_TYPE_LABEL,
   leaveTypeText,
   LEAVE_STATUS_LABEL,
   PAYROLL_STATUS_LABEL,
@@ -28,20 +27,7 @@ import { canUsePayrollCentre } from "@/lib/hr/payrollAccess";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SectionCard, EmptyRow, StatRow } from "@/components/dashboard/SectionCard";
 import { getHrAccess } from "@/lib/hr/access";
-
-const CERT_TONE: Record<string, "success" | "warning" | "danger" | "neutral"> = {
-  no_expiry: "neutral",
-  valid: "success",
-  expiring_soon: "warning",
-  expired: "danger",
-};
-
-const CERT_LABEL: Record<string, string> = {
-  no_expiry: "On file",
-  valid: "Valid",
-  expiring_soon: "Expiring Soon",
-  expired: "Expired",
-};
+import { CertificateList } from "@/components/hr/CertificateList";
 
 export default async function EmployeeProfilePage({
   params,
@@ -146,20 +132,20 @@ export default async function EmployeeProfilePage({
           {certificates.length === 0 ? (
             <EmptyRow text="No certificates on file yet." />
           ) : (
-            <div className="-mx-5 -mb-5 divide-y divide-border">
-              {certificates.map((c) => {
-                const urgency = certificateUrgency(c.expiry_date);
-                return (
-                  <div key={c.id} className="flex items-center justify-between px-5 py-3">
-                    <div>
-                      <div className="text-[13px] font-semibold text-text">{CERT_TYPE_LABEL[c.cert_type] ?? c.cert_name}</div>
-                      <div className="text-xs text-text-muted">{c.cert_name} · {c.expiry_date ? `expires ${c.expiry_date}` : "no expiry"}</div>
-                    </div>
-                    <StatusBadge tone={CERT_TONE[urgency]}>{CERT_LABEL[urgency]}</StatusBadge>
-                  </div>
-                );
-              })}
-            </div>
+            <CertificateList
+              canEdit={access.isAdminOf(employee.company_id)}
+              items={certificates.map((c) => ({
+                id: c.id,
+                companyId: c.company_id,
+                certType: c.cert_type,
+                certName: c.cert_name,
+                certNumber: c.cert_number,
+                issuedDate: c.issued_date,
+                expiryDate: c.expiry_date,
+                documentId: c.document_id,
+                urgency: certificateUrgency(c.expiry_date),
+              }))}
+            />
           )}
         </SectionCard>
 
