@@ -25,6 +25,8 @@ import { PayablesTable } from "@/components/priority/PayablesTable";
 import { ApprovalList, BriefingTaskCheck, NotificationList, ReminderSettingsForm, type ApprovalItem } from "@/components/priority/ReminderPanels";
 import { Pill, FIELD, LABEL, BTN, BTN_GHOST } from "@/components/priority/ui";
 import { SoftPage, shortName } from "@/components/ui/Soft";
+import { dailyCheer } from "@/lib/priority/cheer";
+import { MultiPersonFilter } from "@/components/priority/MultiPersonFilter";
 import { CheerCard, DashGreeting, MonthCalendar, ProgressList, StatTile, TopTasks, UpcomingReminders, WeekChart, type ReminderRow, type TopTask } from "@/components/priority/PriorityDashboard";
 import { MONTH_LABEL } from "@/lib/finance/constants";
 import type { EventOption } from "@/components/priority/PayableManager";
@@ -74,6 +76,9 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
 
   const now = nowMs();
   const today = todayInMalaysia(now);
+  // the birthday (for the star sign line of the day) comes from the person's own staff record, when there is one
+  const { data: ownRecord } = await supabase.from("employees").select("date_of_birth").eq("user_id", session.userId).not("date_of_birth", "is", null).limit(1).maybeSingle();
+  const birthDate = ownRecord?.date_of_birth ?? null;
   const access = await getPriorityAccess(supabase, session, accessibleIds);
   const inScope = new Set(targetCompanyIds);
 
@@ -134,16 +139,19 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
       completedByName: t.completed_by ? (names.get(t.completed_by) ?? "—") : null,
       completedAt: t.completed_at,
       bucket: dueBucket(t, now, today),
-      perm: { edit: admin || t.created_by === session.userId, status: admin || mine, remove: (admin || t.created_by === session.userId) && t.status !== "completed" },
+      // everybody looks after their own tasks (given to them or created by them); the admins after every task of their companies
+      perm: { edit: admin || mine, status: admin || mine, remove: (admin || mine) && t.status !== "completed" },
     };
   };
 
   // ───────── task filters ─────────
+  // the responsible person can be one or several people: "me", "none" (not assigned) or user ids, separated by commas
+  const chosenPeople = (params.tResp ?? "").split(",").map((v) => v.trim()).filter(Boolean);
   const tStatus = params.tStatus ?? "open";
   const weekEnd = new Date(Date.parse(`${today}T00:00:00Z`) + 7 * 86_400_000).toISOString().slice(0, 10);
   const taskCards = sortTasks(
     tasks.filter((t) => {
-      if (params.tResp === "me" ? t.responsible_id !== session.userId : params.tResp === "none" ? !!t.responsible_id : params.tResp ? t.responsible_id !== params.tResp : false) return false;
+      if (chosenPeople.length > 0 && !chosenPeople.some((v) => (v === "me" ? t.responsible_id === session.userId : v === "none" ? !t.responsible_id : t.responsible_id === v))) return false;
       if (params.tPriority && t.priority !== params.tPriority) return false;
       if (tStatus === "open" ? !isOpenStatus(t.status) : tStatus !== "all" && t.status !== tStatus) return false;
       if (params.tDue) {
@@ -304,7 +312,7 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
         <TopTasks title="Top tasks" tasks={topTasks} empty="No open task right now." />
         <div className="flex flex-col gap-4">
           <UpcomingReminders title="Upcoming reminders" rows={reminderRows} empty="Nothing is due soon." />
-          <CheerCard name={shortName(session.fullName)} />
+          <CheerCard cheer={dailyCheer(today, birthDate)} />
         </div>
       </div>
 
@@ -433,14 +441,12 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
           </div>
           <div>
             <label className={LABEL} htmlFor="f-resp">Responsible person</label>
-            <select id="f-resp" name="tResp" defaultValue={params.tResp ?? ""} className={FIELD}>
-              <option value="">Everyone</option>
-              <option value="me">Me</option>
-              <option value="none">Not assigned</option>
-              {people.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
+            <MultiPersonFilter
+              id="f-resp"
+              name="tResp"
+              initial={chosenPeople}
+              options={[{ value: "me", label: "Me" }, { value: "none", label: "Not assigned" }, ...people.map((p) => ({ value: p.id, label: p.name }))]}
+            />
           </div>
           <div>
             <label className={LABEL} htmlFor="f-prio">Priority</label>

@@ -33,7 +33,11 @@ function useRunner() {
     setBusy(true);
     setError(null);
     try {
-      await fn();
+      const result = await fn();
+      if (result && typeof result === "object" && "ok" in result && result.ok === false) {
+        setError("error" in result && typeof result.error === "string" ? result.error : "Could not complete this action.");
+        return;
+      }
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not complete this action.");

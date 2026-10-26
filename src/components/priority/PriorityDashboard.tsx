@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Pill } from "@/components/priority/ui";
+import type { Cheer } from "@/lib/priority/cheer";
 import { BriefingTaskCheck } from "@/components/priority/ReminderPanels";
 
 /**
@@ -226,13 +227,23 @@ export function UpcomingReminders({ title, rows, empty }: { title: string; rows:
   );
 }
 
-export function CheerCard({ name }: { name: string }) {
+/** The words of encouragement of the day: a saying of a well-known person, or a line for the star sign of the person's birthday (new every day). */
+export function CheerCard({ cheer }: { cheer: Cheer }) {
   const t = TINT.lavender;
   return (
     <div className="flex items-center justify-between gap-3 rounded-3xl border p-5" style={{ background: t.bg, borderColor: t.edge }}>
-      <div>
-        <div className="soft-serif text-[18px] font-bold" style={{ color: t.ink }}>{`You're doing amazing, ${name}!`}</div>
-        <p className="mt-1 text-[13px] leading-snug text-text-secondary">Keep up the good work and don&apos;t forget to take care of yourself.</p>
+      <div className="min-w-0">
+        {cheer.kind === "quote" ? (
+          <>
+            <div className="soft-serif text-[17px] font-bold leading-snug" style={{ color: t.ink }}>{`“${cheer.text}”`}</div>
+            <p className="mt-1.5 text-right text-[13px] font-semibold text-text-secondary">{`— ${cheer.by}`}</p>
+          </>
+        ) : (
+          <>
+            <div className="soft-serif text-[17px] font-bold leading-snug" style={{ color: t.ink }}>{`${cheer.symbol} ${cheer.sign}`}</div>
+            <p className="mt-1 text-[13.5px] leading-snug text-text-secondary">{cheer.text}</p>
+          </>
+        )}
       </div>
       <span className="text-[44px] leading-none" aria-hidden="true">🐰</span>
     </div>

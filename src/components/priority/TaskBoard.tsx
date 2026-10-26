@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createTask, deleteTask, setTaskStatus, updateTask, type TaskInput } from "@/lib/priority/taskActions";
 import { getHistory } from "@/lib/priority/historyActions";
+import type { ActionResult } from "@/lib/actionResult";
 import { fileTypeFromMime, uploadDocument } from "@/lib/documents/upload";
 import { formatDue, TASK_PRIORITIES, TASK_PRIORITY_LABEL, TASK_PRIORITY_TONE, TASK_STATUS_LABEL, type TaskPriority, type TaskStatus } from "@/lib/priority/tasks";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
@@ -102,8 +103,11 @@ export function TaskForm({
         reminderAt: reminderAt || undefined,
         documentId,
       };
-      if (task) await updateTask(task.id, input);
-      else await createTask(input);
+      const result = task ? await updateTask(task.id, input) : await createTask(input);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
       router.refresh();
       onClose();
     } catch (err) {
@@ -241,11 +245,15 @@ function TaskRow({ t, onEdit, onHistory }: { t: TaskCard; onEdit: () => void; on
   const closed = done || t.status === "cancelled";
   const bucket = BUCKET[t.bucket];
 
-  async function run(fn: () => Promise<void>) {
+  async function run(fn: () => Promise<ActionResult>) {
     setBusy(true);
     setError(null);
     try {
-      await fn();
+      const result = await fn();
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
       startTransition(() => router.refresh());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not update the task.");

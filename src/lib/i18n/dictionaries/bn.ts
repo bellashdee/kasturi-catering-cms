@@ -3793,7 +3793,8 @@ const dictionary: Record<string, string> = {
  "1. Make the orders from an event menu (the ingredient list of the menu, one order for each supplier) · 2. Check the items and quantities here, edit them if needed · 3. Press Send to supplier on WhatsApp: the chat of the supplier opens with the event, its date and the list of items typed in.": "১. ইভেন্ট মেনু থেকে অর্ডার তৈরি করুন (মেনুর উপকরণ তালিকা, প্রতি সরবরাহকারীর জন্য একটি অর্ডার) · ২. এখানে আইটেম ও পরিমাণ দেখুন, প্রয়োজনে সম্পাদনা করুন · ৩. WhatsApp-এ সরবরাহকারীকে পাঠান চাপুন: সরবরাহকারীর চ্যাট খুলবে, ইভেন্ট, তারিখ ও আইটেমের তালিকা লেখা অবস্থায়।",
  "Make an order": "অর্ডার তৈরি করুন",
  "Check the orders and send them to the suppliers": "অর্ডারগুলো দেখে সরবরাহকারীদের কাছে পাঠান",
- "Deleted:": "মুছে ফেলা হয়েছে:"
+ "Deleted:": "মুছে ফেলা হয়েছে:",
+ "Everyone (clear)": "সবাই (মুছুন)"
 };
 
 export default dictionary;
