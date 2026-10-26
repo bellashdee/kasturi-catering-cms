@@ -3849,7 +3849,12 @@ const dictionary: Record<string, string> = {
  "Search or choose the branch": "ဌာနခွဲကို ရှာပါ သို့မဟုတ် ရွေးပါ",
  "Search and choose for each one: Yes (add the price if you know it), No, or Included in the food price. Each Yes is added to the quotation; Included means it is already in the price of the food.": "တစ်ခုချင်းစီအတွက် ရှာပြီး ရွေးပါ - ဟုတ်ကဲ့ (စျေးနှုန်းသိပါက ထည့်ပါ)၊ မဟုတ်ပါ၊ သို့မဟုတ် စားသောက်ဖွယ်ရာ စျေးနှုန်းတွင် ပါဝင်ပြီး။ ဟုတ်ကဲ့ အားလုံး စျေးနှုန်းတင်ပြချက်တွင် ထည့်သွင်းမည်။",
  "Choose one option from the list.": "စာရင်းမှ တစ်ခုရွေးပါ။",
- "You cannot approve or reject your own OT. Another approver (Saiful, Redza, Atiq or Ismaizal) must review it.": "သင့်ကိုယ်ပိုင် OT ကို သင်ကိုယ်တိုင် ခွင့်ပြု/ပယ်ချ၍ မရပါ။ အခြားခွင့်ပြုသူ (Saiful, Redza, Atiq သို့မဟုတ် Ismaizal) က စစ်ဆေးရမည်။"
+ "You cannot approve or reject your own OT. Another approver (Saiful, Redza, Atiq or Ismaizal) must review it.": "သင့်ကိုယ်ပိုင် OT ကို သင်ကိုယ်တိုင် ခွင့်ပြု/ပယ်ချ၍ မရပါ။ အခြားခွင့်ပြုသူ (Saiful, Redza, Atiq သို့မဟုတ် Ismaizal) က စစ်ဆေးရမည်။",
+ "All departments": "ဌာန အားလုံး",
+ "Search a category": "အမျိုးအစား ရှာပါ",
+ "Search a department": "ဌာန ရှာပါ",
+ "Category, notes, department, amount…": "အမျိုးအစား၊ မှတ်ချက်၊ ဌာန၊ ငွေပမာဏ…",
+ "No expense matches the search. Change the words or the filters.": "ရှာဖွေမှုနှင့် ကိုက်ညီသော အသုံးစရိတ် မရှိပါ။ စကားလုံး သို့မဟုတ် စစ်ထုတ်မှု ပြောင်းပါ။"
 };
 
 export default dictionary;

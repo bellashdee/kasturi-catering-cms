@@ -3796,7 +3796,12 @@ const dictionary: Record<string, string> = {
  "Search or choose the branch": "Cari atau pilih cawangan",
  "Search and choose for each one: Yes (add the price if you know it), No, or Included in the food price. Each Yes is added to the quotation; Included means it is already in the price of the food.": "Cari dan pilih untuk setiap satu: Ya (letak harga jika anda tahu), Tidak, atau Termasuk dalam harga makanan. Setiap Ya ditambah ke sebut harga; Termasuk bermakna ia sudah ada dalam harga makanan.",
  "Choose one option from the list.": "Pilih satu pilihan daripada senarai.",
- "You cannot approve or reject your own OT. Another approver (Saiful, Redza, Atiq or Ismaizal) must review it.": "Anda tidak boleh meluluskan atau menolak OT anda sendiri. Pelulus lain (Saiful, Redza, Atiq atau Ismaizal) mesti menyemaknya."
+ "You cannot approve or reject your own OT. Another approver (Saiful, Redza, Atiq or Ismaizal) must review it.": "Anda tidak boleh meluluskan atau menolak OT anda sendiri. Pelulus lain (Saiful, Redza, Atiq atau Ismaizal) mesti menyemaknya.",
+ "All departments": "Semua jabatan",
+ "Search a category": "Cari kategori",
+ "Search a department": "Cari jabatan",
+ "Category, notes, department, amount…": "Kategori, nota, jabatan, jumlah…",
+ "No expense matches the search. Change the words or the filters.": "Tiada perbelanjaan sepadan dengan carian. Tukar perkataan atau penapis."
 };
 
 export default dictionary;

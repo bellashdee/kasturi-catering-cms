@@ -3855,7 +3855,12 @@ const dictionary: Record<string, string> = {
  "Search or choose the branch": "শাখা খুঁজুন বা বাছুন",
  "Search and choose for each one: Yes (add the price if you know it), No, or Included in the food price. Each Yes is added to the quotation; Included means it is already in the price of the food.": "প্রতিটির জন্য খুঁজে বাছুন: হ্যাঁ (দাম জানলে লিখুন), না, অথবা খাবারের দামের মধ্যেই অন্তর্ভুক্ত। প্রতিটি হ্যাঁ কোটেশনে যোগ হবে; অন্তর্ভুক্ত মানে এটি ইতিমধ্যে খাবারের দামে আছে।",
  "Choose one option from the list.": "তালিকা থেকে একটি বিকল্প বাছুন।",
- "You cannot approve or reject your own OT. Another approver (Saiful, Redza, Atiq or Ismaizal) must review it.": "আপনি নিজের OT অনুমোদন বা প্রত্যাখ্যান করতে পারবেন না। অন্য অনুমোদনকারী (Saiful, Redza, Atiq বা Ismaizal) কে পর্যালোচনা করতে হবে।"
+ "You cannot approve or reject your own OT. Another approver (Saiful, Redza, Atiq or Ismaizal) must review it.": "আপনি নিজের OT অনুমোদন বা প্রত্যাখ্যান করতে পারবেন না। অন্য অনুমোদনকারী (Saiful, Redza, Atiq বা Ismaizal) কে পর্যালোচনা করতে হবে।",
+ "All departments": "সব বিভাগ",
+ "Search a category": "ক্যাটাগরি খুঁজুন",
+ "Search a department": "বিভাগ খুঁজুন",
+ "Category, notes, department, amount…": "ক্যাটাগরি, নোট, বিভাগ, পরিমাণ…",
+ "No expense matches the search. Change the words or the filters.": "অনুসন্ধানের সাথে মিলে এমন কোনো খরচ নেই। শব্দ বা ফিল্টার বদলান।"
 };
 
 export default dictionary;

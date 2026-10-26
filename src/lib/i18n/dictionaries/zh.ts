@@ -3862,7 +3862,12 @@ const dictionary: Record<string, string> = {
  "Search or choose the branch": "搜索或选择分行",
  "Search and choose for each one: Yes (add the price if you know it), No, or Included in the food price. Each Yes is added to the quotation; Included means it is already in the price of the food.": "请逐项搜索并选择：是（知道价格可填写）、否，或已包含在餐食价格内。每个“是”都会加入报价单；“已包含”表示已在餐食价格内。",
  "Choose one option from the list.": "请从列表中选择一项。",
- "You cannot approve or reject your own OT. Another approver (Saiful, Redza, Atiq or Ismaizal) must review it.": "您不能批准或拒绝自己的加班。须由其他审批人（Saiful、Redza、Atiq 或 Ismaizal）审核。"
+ "You cannot approve or reject your own OT. Another approver (Saiful, Redza, Atiq or Ismaizal) must review it.": "您不能批准或拒绝自己的加班。须由其他审批人（Saiful、Redza、Atiq 或 Ismaizal）审核。",
+ "All departments": "所有部门",
+ "Search a category": "搜索类别",
+ "Search a department": "搜索部门",
+ "Category, notes, department, amount…": "类别、备注、部门、金额…",
+ "No expense matches the search. Change the words or the filters.": "没有符合搜索的支出。请更改关键词或筛选条件。"
 };
 
 export default dictionary;
