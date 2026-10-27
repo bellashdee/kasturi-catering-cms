@@ -3880,7 +3880,8 @@ const dictionary: Record<string, string> = {
  "Payment received by:": "ငွေလက်ခံပုံ:",
  "Online transfer": "အွန်လိုင်း လွှဲပြောင်းခြင်း",
  "Select cash or online transfer": "ငွေသား သို့မဟုတ် အွန်လိုင်း လွှဲပြောင်းခြင်း ရွေးပါ",
- "Choose how the money was received: cash or online transfer.": "ငွေလက်ခံပုံ ရွေးပါ: ငွေသား သို့မဟုတ် အွန်လိုင်း လွှဲပြောင်းခြင်း။"
+ "Choose how the money was received: cash or online transfer.": "ငွေလက်ခံပုံ ရွေးပါ: ငွေသား သို့မဟုတ် အွန်လိုင်း လွှဲပြောင်းခြင်း။",
+ "Receive": "လက်ခံရရှိ"
 };
 
 export default dictionary;

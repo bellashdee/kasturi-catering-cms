@@ -179,8 +179,8 @@ export function PettyCashEntryForm({
           <label className={labelClass}>Type *</label>
           <Select value={kind} disabled={!!editing} onChange={(e) => setKind(e.target.value as EntryKind)} className={inputClass}>
             {kinds.includes("expense") && <option value="expense">Spent</option>}
-            {kinds.includes("top_up") && <option value="top_up">Received (top-up)</option>}
-            {kinds.includes("claim") && <option value="claim">Staff claim (to be paid)</option>}
+            {kinds.includes("top_up") && <option value="top_up">Receive</option>}
+            {kinds.includes("claim") && <option value="claim">Staff claim</option>}
           </Select>
         </div>
         <div>

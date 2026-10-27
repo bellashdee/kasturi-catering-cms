@@ -3893,7 +3893,8 @@ const dictionary: Record<string, string> = {
  "Payment received by:": "收款方式：",
  "Online transfer": "网上转账",
  "Select cash or online transfer": "选择现金或网上转账",
- "Choose how the money was received: cash or online transfer.": "请选择收款方式：现金或网上转账。"
+ "Choose how the money was received: cash or online transfer.": "请选择收款方式：现金或网上转账。",
+ "Receive": "收款"
 };
 
 export default dictionary;

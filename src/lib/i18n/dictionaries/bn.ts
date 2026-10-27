@@ -3886,7 +3886,8 @@ const dictionary: Record<string, string> = {
  "Payment received by:": "টাকা গ্রহণের মাধ্যম:",
  "Online transfer": "অনলাইন ট্রান্সফার",
  "Select cash or online transfer": "নগদ বা অনলাইন ট্রান্সফার বেছে নিন",
- "Choose how the money was received: cash or online transfer.": "টাকা কীভাবে পাওয়া গেছে তা বেছে নিন: নগদ বা অনলাইন ট্রান্সফার।"
+ "Choose how the money was received: cash or online transfer.": "টাকা কীভাবে পাওয়া গেছে তা বেছে নিন: নগদ বা অনলাইন ট্রান্সফার।",
+ "Receive": "গ্রহণ"
 };
 
 export default dictionary;

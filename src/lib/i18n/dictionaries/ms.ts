@@ -3827,7 +3827,8 @@ const dictionary: Record<string, string> = {
  "Payment received by:": "Bayaran diterima secara:",
  "Online transfer": "Pemindahan dalam talian",
  "Select cash or online transfer": "Pilih tunai atau pemindahan dalam talian",
- "Choose how the money was received: cash or online transfer.": "Pilih bagaimana wang diterima: tunai atau pemindahan dalam talian."
+ "Choose how the money was received: cash or online transfer.": "Pilih bagaimana wang diterima: tunai atau pemindahan dalam talian.",
+ "Receive": "Terima"
 };
 
 export default dictionary;
