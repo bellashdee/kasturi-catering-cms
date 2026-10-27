@@ -3828,7 +3828,15 @@ const dictionary: Record<string, string> = {
  "Online transfer": "Pemindahan dalam talian",
  "Select cash or online transfer": "Pilih tunai atau pemindahan dalam talian",
  "Choose how the money was received: cash or online transfer.": "Pilih bagaimana wang diterima: tunai atau pemindahan dalam talian.",
- "Receive": "Terima"
+ "Receive": "Terima",
+ "Staff claim payment": "Bayaran tuntutan kakitangan",
+ "Staff claim that is paid *": "Tuntutan kakitangan yang dibayar *",
+ "Select the staff claim": "Pilih tuntutan kakitangan",
+ "No staff claim is waiting for payment": "Tiada tuntutan kakitangan menunggu bayaran",
+ "Payment reference (optional)": "Rujukan bayaran (pilihan)",
+ "Save payment": "Simpan bayaran",
+ "Choose the staff claim that is paid.": "Pilih tuntutan kakitangan yang dibayar.",
+ "Only the Director of Finance and her assistant can record the payment of a staff claim.": "Hanya Pengarah Kewangan dan pembantunya boleh merekod bayaran tuntutan kakitangan."
 };
 
 export default dictionary;

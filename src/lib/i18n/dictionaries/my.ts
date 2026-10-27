@@ -3881,7 +3881,15 @@ const dictionary: Record<string, string> = {
  "Online transfer": "အွန်လိုင်း လွှဲပြောင်းခြင်း",
  "Select cash or online transfer": "ငွေသား သို့မဟုတ် အွန်လိုင်း လွှဲပြောင်းခြင်း ရွေးပါ",
  "Choose how the money was received: cash or online transfer.": "ငွေလက်ခံပုံ ရွေးပါ: ငွေသား သို့မဟုတ် အွန်လိုင်း လွှဲပြောင်းခြင်း။",
- "Receive": "လက်ခံရရှိ"
+ "Receive": "လက်ခံရရှိ",
+ "Staff claim payment": "ဝန်ထမ်းတောင်းဆိုမှု ပေးချေခြင်း",
+ "Staff claim that is paid *": "ပေးချေပြီး ဝန်ထမ်းတောင်းဆိုမှု *",
+ "Select the staff claim": "ဝန်ထမ်းတောင်းဆိုမှု ရွေးပါ",
+ "No staff claim is waiting for payment": "ပေးချေရန် စောင့်ဆိုင်းနေသော ဝန်ထမ်းတောင်းဆိုမှု မရှိပါ",
+ "Payment reference (optional)": "ပေးချေမှု ရည်ညွှန်းချက် (ရွေးချယ်စရာ)",
+ "Save payment": "ပေးချေမှု သိမ်းရန်",
+ "Choose the staff claim that is paid.": "ပေးချေပြီး ဝန်ထမ်းတောင်းဆိုမှု ရွေးပါ။",
+ "Only the Director of Finance and her assistant can record the payment of a staff claim.": "ဘဏ္ဍာရေးဒါရိုက်တာနှင့် ၎င်း၏ လက်ထောက်သာ ဝန်ထမ်းတောင်းဆိုမှု ပေးချေမှုကို မှတ်တမ်းတင်နိုင်သည်။"
 };
 
 export default dictionary;

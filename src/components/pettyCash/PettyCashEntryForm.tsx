@@ -7,7 +7,7 @@ import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/docum
 import { errorMessage } from "@/lib/actionResult";
 import { todayInMalaysia } from "@/lib/format";
 import { createPettyCashEntry, updatePettyCashEntry } from "@/lib/operationPettyCash/actions";
-import { createPettyCashTransaction } from "@/lib/finance/actions";
+import { createPettyCashTransaction, markPettyCashPaid } from "@/lib/finance/actions";
 import { PAYMENT_METHOD_LABEL, PETTY_CASH_CATEGORIES, type OperationPettyCashRow } from "@/lib/operationPettyCash/constants";
 import { DescriptionInput } from "@/components/DescriptionInput";
 import { SearchSelect } from "@/components/ui/SearchSelect";
@@ -17,7 +17,10 @@ import { CompanyChips } from "@/components/pettyCash/CompanyChips";
 import { splitCompanies } from "@/lib/pettyCash/companies";
 
 type Company = { id: string; name: string };
-type EntryKind = "expense" | "top_up" | "claim";
+type EntryKind = "expense" | "top_up" | "claim" | "claim_payment";
+
+/** a staff claim that is still waiting to be paid (for the Staff claim payment) */
+export type PendingClaim = { id: string; label: string };
 
 const inputClass = "mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px] outline-none focus:border-primary";
 const labelClass = "text-[12px] font-semibold text-text-secondary";
@@ -37,6 +40,8 @@ export function PettyCashEntryForm({
   holderPosition,
   allowBook,
   allowClaim,
+  allowPayClaims = false,
+  pendingClaims = [],
   lockName = false,
 }: {
   companies: Company[];
@@ -52,14 +57,22 @@ export function PettyCashEntryForm({
   allowBook: boolean;
   /** may record a staff claim */
   allowClaim: boolean;
+  /** may record the payment of a staff claim (only the Director of Finance and her assistant) */
+  allowPayClaims?: boolean;
+  pendingClaims?: PendingClaim[];
   /** the person sees only their own petty cash: the name is theirs and cannot be changed */
   lockName?: boolean;
 }) {
   const router = useRouter();
-  const kinds: EntryKind[] = [...(allowBook ? (["expense", "top_up"] as const) : []), ...(allowClaim ? (["claim"] as const) : [])];
+  // Received, Spent, Claimant; and the Staff claim payment for the Director of Finance and her assistant
+  const kinds: EntryKind[] = [...(allowBook ? (["top_up", "expense"] as const) : []), ...(allowClaim ? (["claim"] as const) : []), ...(allowPayClaims && !editing ? (["claim_payment"] as const) : [])];
   // a new entry can be for more than one company (for example the float given for both): it is keyed in once, with one amount, and counted once
   const [companyIds, setCompanyIds] = useState<string[]>(editing ? [editing.company_id, ...(editing.shared_company_ids ?? [])] : [defaultCompanyId ?? companies[0]?.id ?? ""].filter(Boolean));
-  const [kind, setKind] = useState<EntryKind>(editing?.entry_type ?? kinds[0] ?? "expense");
+  const [kind, setKind] = useState<EntryKind>(editing?.entry_type ?? (kinds.includes("expense") ? "expense" : (kinds[0] ?? "expense")));
+  const [payClaimId, setPayClaimId] = useState("");
+  const [paymentDate, setPaymentDate] = useState(todayInMalaysia());
+  const [paymentReference, setPaymentReference] = useState("");
+  const [paymentRemarks, setPaymentRemarks] = useState("");
   const [date, setDate] = useState(editing?.entry_date ?? todayInMalaysia());
   const [amount, setAmount] = useState(editing ? String(editing.amount) : "");
   const [paymentMethod, setPaymentMethod] = useState(editing?.payment_method ?? "");
@@ -77,6 +90,7 @@ export function PettyCashEntryForm({
   const { companyId: firstCompanyId, alsoCompanyIds } = splitCompanies(chosenCompanies.map((c) => c.id), editing?.company_id);
   const isClaim = kind === "claim";
   const isReceived = kind === "top_up";
+  const isPayment = kind === "claim_payment";
   const fillPosition = (name: string) => {
     const found = holders.find((p) => p.name === name);
     if (found?.position) setPersonPosition(found.position);
@@ -84,6 +98,26 @@ export function PettyCashEntryForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (isPayment) {
+      if (!payClaimId) {
+        setError("Choose the staff claim that is paid.");
+        return;
+      }
+      setSaving(true);
+      setError(null);
+      try {
+        await markPettyCashPaid({ transactionId: payClaimId, paymentDate, paymentReference: paymentReference.trim() || undefined, paymentRemarks: paymentRemarks.trim() || undefined });
+        setPayClaimId("");
+        setPaymentReference("");
+        setPaymentRemarks("");
+        router.refresh();
+      } catch (err) {
+        setError(errorMessage(err, "Could not save."));
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
     if (!personName.trim() || !personPosition.trim()) {
       setError("Choose whose petty cash this is: the name and the position.");
       return;
@@ -150,6 +184,59 @@ export function PettyCashEntryForm({
 
   if (kinds.length === 0) return null;
 
+  const typeField = (
+    <div>
+      <label className={labelClass}>Type *</label>
+      <Select value={kind} disabled={!!editing} onChange={(e) => setKind(e.target.value as EntryKind)} className={inputClass}>
+        {kinds.includes("top_up") && <option value="top_up">Received</option>}
+        {kinds.includes("expense") && <option value="expense">Spent</option>}
+        {kinds.includes("claim") && <option value="claim">Claimant</option>}
+        {kinds.includes("claim_payment") && <option value="claim_payment">Staff claim payment</option>}
+      </Select>
+    </div>
+  );
+
+  if (isPayment) {
+    return (
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-5 shadow-sm">
+        <div className="text-[15px] font-bold text-text">New entry</div>
+        {error && <div role="alert" className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-xs text-danger">{error}</div>}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+          {typeField}
+          <div className="sm:col-span-3">
+            <label className={labelClass}>Staff claim that is paid *</label>
+            <Select value={payClaimId} onChange={(e) => setPayClaimId(e.target.value)} required className={inputClass}>
+              <option value="">{pendingClaims.length === 0 ? "No staff claim is waiting for payment" : "Select the staff claim"}</option>
+              {pendingClaims.map((c) => (
+                <option key={c.id} value={c.id}>{c.label}</option>
+              ))}
+            </Select>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div>
+            <label className={labelClass}>Payment date *</label>
+            <input type="date" required max={todayInMalaysia()} value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className={inputClass} />
+          </div>
+          <div>
+            <label className={labelClass}>Payment reference (optional)</label>
+            <input value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} className={inputClass} />
+          </div>
+          <div>
+            <label className={labelClass}>Remarks (optional)</label>
+            <input value={paymentRemarks} onChange={(e) => setPaymentRemarks(e.target.value)} className={inputClass} />
+          </div>
+        </div>
+        <div className="flex justify-end">
+          <button type="submit" disabled={saving || !payClaimId} className="rounded-lg bg-primary px-5 py-2 text-[13px] font-bold text-white disabled:opacity-60">
+            {saving ? "Saving..." : "Save payment"}
+          </button>
+        </div>
+      </form>
+    );
+  }
+
+
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-5 shadow-sm">
       <div className="text-[15px] font-bold text-text">{editing ? "Edit entry" : "New entry"}</div>
@@ -163,9 +250,10 @@ export function PettyCashEntryForm({
         <div>
           <label className={labelClass}>Type *</label>
           <Select value={kind} disabled={!!editing} onChange={(e) => setKind(e.target.value as EntryKind)} className={inputClass}>
+            {kinds.includes("top_up") && <option value="top_up">Received</option>}
             {kinds.includes("expense") && <option value="expense">Spent</option>}
-            {kinds.includes("top_up") && <option value="top_up">Receive</option>}
-            {kinds.includes("claim") && <option value="claim">Staff claim</option>}
+            {kinds.includes("claim") && <option value="claim">Claimant</option>}
+            {kinds.includes("claim_payment") && <option value="claim_payment">Staff claim payment</option>}
           </Select>
         </div>
         <div>

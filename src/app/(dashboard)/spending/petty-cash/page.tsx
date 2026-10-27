@@ -242,6 +242,10 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
           holderPosition={who.position}
           allowBook={isHolder}
           allowClaim={canClaims && !editing}
+          allowPayClaims={canClaims && seeAll}
+          pendingClaims={rows
+            .filter((r) => r.claim?.status === "pending_payment")
+            .map((r) => ({ id: r.claim!.id, label: `${r.claim!.claimant ?? "—"} · ${r.title} · RM ${r.amount.toFixed(2)} · ${r.date} · ${r.companyName}` }))}
           lockName={!seeAll}
         />
       )}
@@ -330,7 +334,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
                             <OperationPettyCashRowActions id={r.bookId} editHref={editHref(r.bookId)} />
                           ) : (
                             <div className="flex flex-col items-start gap-1.5">
-                              {r.claim && <PettyCashPaymentAction transactionId={r.claim.id} paymentStatus={r.claim.status} />}
+                              {r.claim && (seeAll ? <PettyCashPaymentAction transactionId={r.claim.id} paymentStatus={r.claim.status} /> : <span className="text-[12px] text-text-muted">—</span>)}
                               {r.tx && <PettyCashClaimActions claim={{ ...r.tx, amount: String(r.amount), date: r.date }} companies={companies} />}
                             </div>
                           )}

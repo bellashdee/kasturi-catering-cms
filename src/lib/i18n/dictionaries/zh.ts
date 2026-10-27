@@ -3894,7 +3894,15 @@ const dictionary: Record<string, string> = {
  "Online transfer": "网上转账",
  "Select cash or online transfer": "选择现金或网上转账",
  "Choose how the money was received: cash or online transfer.": "请选择收款方式：现金或网上转账。",
- "Receive": "收款"
+ "Receive": "收款",
+ "Staff claim payment": "员工报销付款",
+ "Staff claim that is paid *": "已支付的员工报销 *",
+ "Select the staff claim": "选择员工报销",
+ "No staff claim is waiting for payment": "没有等待付款的员工报销",
+ "Payment reference (optional)": "付款参考（可选）",
+ "Save payment": "保存付款",
+ "Choose the staff claim that is paid.": "请选择已支付的员工报销。",
+ "Only the Director of Finance and her assistant can record the payment of a staff claim.": "只有财务总监及其助理可以记录员工报销的付款。"
 };
 
 export default dictionary;

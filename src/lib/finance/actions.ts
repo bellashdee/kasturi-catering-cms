@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logTaskAudit } from "@/lib/taskProofs/actions";
 import { recordAudit } from "@/lib/audit";
 import { runAction, type ActionResult } from "@/lib/actionResult";
-import { assertOwnPerson } from "@/lib/pettyCash/access";
+import { assertOwnPerson, pettyCashAccess } from "@/lib/pettyCash/access";
 import { confirmedPaymentDate, todayInMalaysia } from "@/lib/format";
 import { DUPLICATE_INVOICE_MESSAGE } from "@/lib/finance/constants";
 import type { Database } from "@/lib/supabase/types";
@@ -303,6 +303,9 @@ export type MarkPettyCashPaidInput = {
 
 export async function markPettyCashPaid(input: MarkPettyCashPaidInput) {
   const { supabase, userId } = await requireUser();
+  // the payment of a staff claim is recorded only by the Director of Finance and her assistant (the people who see everyone's petty cash)
+  const { seeAll } = await pettyCashAccess(supabase, userId);
+  if (!seeAll) throw new Error("Only the Director of Finance and her assistant can record the payment of a staff claim.");
   const paymentDate = confirmedPaymentDate(input.paymentDate);
   const { data: before } = await supabase.from("petty_cash_transactions").select("company_id, amount, payment_status").eq("id", input.transactionId).single();
   const { error } = await supabase

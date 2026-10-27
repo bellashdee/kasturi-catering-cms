@@ -3887,7 +3887,15 @@ const dictionary: Record<string, string> = {
  "Online transfer": "অনলাইন ট্রান্সফার",
  "Select cash or online transfer": "নগদ বা অনলাইন ট্রান্সফার বেছে নিন",
  "Choose how the money was received: cash or online transfer.": "টাকা কীভাবে পাওয়া গেছে তা বেছে নিন: নগদ বা অনলাইন ট্রান্সফার।",
- "Receive": "গ্রহণ"
+ "Receive": "গ্রহণ",
+ "Staff claim payment": "স্টাফ দাবির পরিশোধ",
+ "Staff claim that is paid *": "পরিশোধিত স্টাফ দাবি *",
+ "Select the staff claim": "স্টাফ দাবি বেছে নিন",
+ "No staff claim is waiting for payment": "পরিশোধের অপেক্ষায় কোনো স্টাফ দাবি নেই",
+ "Payment reference (optional)": "পরিশোধের রেফারেন্স (ঐচ্ছিক)",
+ "Save payment": "পরিশোধ সংরক্ষণ করুন",
+ "Choose the staff claim that is paid.": "পরিশোধিত স্টাফ দাবি বেছে নিন।",
+ "Only the Director of Finance and her assistant can record the payment of a staff claim.": "শুধু অর্থ পরিচালক ও তাঁর সহকারী স্টাফ দাবির পরিশোধ নথিভুক্ত করতে পারেন।"
 };
 
 export default dictionary;
