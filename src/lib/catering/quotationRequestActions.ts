@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/types";
 import { EVENT_TYPE_LABEL, MAX_EVENT_DAYS, MEAL_TYPE_LABEL, SALES_AGENTS, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
-import { dayPax, quotationSeedRows, type EventDay } from "@/lib/catering/days";
+import { dayPax, normalizeMenu, quotationSeedRows, type EventDay } from "@/lib/catering/days";
 import { INTAKE_COMPANIES, INTAKE_HOURLY_LIMIT } from "@/lib/catering/intake";
 import {
   MAX_EXTRA_ITEMS,
@@ -44,7 +44,7 @@ function sanitizeDay(d: EventDay, index: number): EventDay {
     servicePax: d.servicePax,
     secondServiceType: d.secondServiceType || undefined,
     secondServicePax: d.secondServiceType ? d.secondServicePax : undefined,
-    menuDetails: clean(d.menuDetails, 3000) ?? undefined,
+    menuDetails: clean(normalizeMenu(d.menuDetails), 3000) ?? undefined,
     pricePerPax: d.pricePerPax,
     remarks: clean(d.remarks, 1000) ?? undefined,
     secondMenus: sanitizeSecondMenus(d, index),

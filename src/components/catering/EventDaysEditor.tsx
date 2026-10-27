@@ -6,6 +6,7 @@ import { MAX_SECOND_MENUS, dayAmount, dayPax, emptySecondChoice, secondMenusOf, 
 import { SecondChoiceEditor } from "@/components/catering/QuotationRequestExtras";
 import { formatPrice } from "@/lib/format";
 import { ChoiceSelect } from "@/components/ui/ChoiceSelect";
+import { MenuPointsInput } from "@/components/catering/MenuPointsInput";
 
 const SERVICE_OPTIONS = Object.entries(SERVICE_TYPE_LABEL).map(([value, label]) => ({ value, label }));
 
@@ -158,8 +159,8 @@ export function EventDaysEditor({
 
           <div className="mt-3 grid grid-cols-[2fr_1fr] gap-4">
             <div>
-              <label className={labelClass}>Menu details</label>
-              <textarea value={day.menuDetails ?? ""} onChange={(e) => patch(i, { menuDetails: e.target.value })} className={areaClass} placeholder="Menu for this day" />
+              <div className={labelClass}>Menu details</div>
+              <MenuPointsInput value={day.menuDetails ?? ""} onChange={(v) => patch(i, { menuDetails: v })} />
             </div>
             <div>
               <label className={labelClass}>Price per pax (RM)</label>

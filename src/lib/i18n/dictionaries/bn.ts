@@ -3900,7 +3900,9 @@ const dictionary: Record<string, string> = {
  "My Account": "আমার অ্যাকাউন্ট",
  "Staff record": "স্টাফ রেকর্ড",
  "Companies": "কোম্পানিসমূহ",
- "Your staff record is not linked to your login yet. Please ask the HR admin to link it, then your staff details, documents, leave and overtime will show here.": "আপনার স্টাফ রেকর্ড এখনও আপনার লগইনের সাথে যুক্ত হয়নি। অনুগ্রহ করে HR অ্যাডমিনকে যুক্ত করতে বলুন, তারপর আপনার স্টাফ তথ্য, নথি, ছুটি ও ওভারটাইম এখানে দেখা যাবে।"
+ "Your staff record is not linked to your login yet. Please ask the HR admin to link it, then your staff details, documents, leave and overtime will show here.": "আপনার স্টাফ রেকর্ড এখনও আপনার লগইনের সাথে যুক্ত হয়নি। অনুগ্রহ করে HR অ্যাডমিনকে যুক্ত করতে বলুন, তারপর আপনার স্টাফ তথ্য, নথি, ছুটি ও ওভারটাইম এখানে দেখা যাবে।",
+ "+ Add menu item": "+ মেনু আইটেম যোগ করুন",
+ "Press Enter for the next item.": "পরের আইটেমের জন্য Enter চাপুন।"
 };
 
 export default dictionary;

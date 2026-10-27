@@ -9,7 +9,7 @@ import { SALES_AGENTS } from "@/lib/catering/constants";
 import { todayInMalaysia } from "@/lib/format";
 import { recordAudit } from "@/lib/audit";
 import { dueDateFromTerms } from "@/lib/finance/terms";
-import { dayPax, type EventDay } from "@/lib/catering/days";
+import { dayPax, normalizeMenu, type EventDay } from "@/lib/catering/days";
 import { validateDays, validateServiceDetails, validateTimes } from "@/lib/catering/validation";
 import { runAction, type ActionResult } from "@/lib/actionResult";
 
@@ -136,7 +136,7 @@ function dayRows(companyId: string, eventId: string, input: EventInput) {
     service_pax: d.servicePax as number,
     second_service_type: d.secondServiceType || null,
     second_service_pax: d.secondServiceType ? d.secondServicePax ?? null : null,
-    menu_details: clean(d.menuDetails),
+    menu_details: clean(normalizeMenu(d.menuDetails)),
     price_per_pax: d.pricePerPax ?? null,
     remarks: clean(d.remarks),
     sort_order: i,

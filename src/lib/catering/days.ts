@@ -81,3 +81,13 @@ export function quotationSeedRows(
   if (single.pax && single.pricePerPax) return [{ itemName: single.eventName, quantity: single.pax, unitPrice: single.pricePerPax }];
   return [];
 }
+
+/** The menu items of a day: one on each line, blank lines and spaces taken out. */
+export function menuRows(text: string | null | undefined): string[] {
+  return (text ?? "").split(/\r?\n/).map((l) => l.replace(/\s+/g, " ").trim()).filter(Boolean);
+}
+
+/** The menu of a day as it is saved: one item on each line, no blank lines. */
+export function normalizeMenu(text: string | null | undefined): string {
+  return menuRows(text).join("\n");
+}
