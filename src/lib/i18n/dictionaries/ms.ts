@@ -3805,7 +3805,24 @@ const dictionary: Record<string, string> = {
  "Search an item or a section": "Cari item atau bahagian",
  "Collapse all": "Tutup semua",
  "Expand all": "Buka semua",
- "No item matches your search.": "Tiada item sepadan dengan carian."
+ "No item matches your search.": "Tiada item sepadan dengan carian.",
+ "Bakery & bread": "Roti & bakeri",
+ "Cleaning supplies": "Bahan pencuci",
+ "Decoration & event setup": "Hiasan & persediaan majlis",
+ "Disposables & packaging": "Pakai buang & pembungkusan",
+ "Dry goods & groceries": "Barang kering & runcit",
+ "Equipment rental": "Sewaan peralatan",
+ "Fresh ingredients (market)": "Bahan segar (pasar)",
+ "Gas (LPG)": "Gas (LPG)",
+ "Ice & beverages": "Ais & minuman",
+ "Part-time worker wages": "Upah pekerja sambilan",
+ "Stationery & printing": "Alat tulis & percetakan",
+ "Transport & lorry hire": "Pengangkutan & sewa lori",
+ "Uniforms & safety gear": "Pakaian seragam & keselamatan",
+ "Company * (choose one or more)": "Syarikat * (pilih satu atau lebih)",
+ "Type the amount of each company below.": "Taip jumlah bagi setiap syarikat di bawah.",
+ "Total of the companies:": "Jumlah semua syarikat:",
+ "Enter the amount for every company chosen.": "Masukkan jumlah bagi setiap syarikat yang dipilih."
 };
 
 export default dictionary;

@@ -3858,7 +3858,24 @@ const dictionary: Record<string, string> = {
  "Search an item or a section": "ပစ္စည်း သို့မဟုတ် အပိုင်း ရှာရန်",
  "Collapse all": "အားလုံး ပိတ်ရန်",
  "Expand all": "အားလုံး ဖွင့်ရန်",
- "No item matches your search.": "ရှာဖွေမှုနှင့် ကိုက်ညီသော ပစ္စည်း မရှိပါ။"
+ "No item matches your search.": "ရှာဖွေမှုနှင့် ကိုက်ညီသော ပစ္စည်း မရှိပါ။",
+ "Bakery & bread": "ပေါင်မုန့်နှင့် မုန့်ဖုတ်",
+ "Cleaning supplies": "သန့်ရှင်းရေးပစ္စည်း",
+ "Decoration & event setup": "အလှဆင်ခြင်းနှင့် ပွဲပြင်ဆင်မှု",
+ "Disposables & packaging": "တစ်ခါသုံးနှင့် ထုပ်ပိုးပစ္စည်း",
+ "Dry goods & groceries": "ခြောက်သွေ့ကုန်နှင့် ကုန်စုံ",
+ "Equipment rental": "ကိရိယာ ငှားရမ်းခ",
+ "Fresh ingredients (market)": "လတ်ဆတ်သော ပါဝင်ပစ္စည်း (ဈေး)",
+ "Gas (LPG)": "ဂတ်စ် (LPG)",
+ "Ice & beverages": "ရေခဲနှင့် သောက်စရာ",
+ "Part-time worker wages": "အချိန်ပိုင်း အလုပ်သမား လုပ်ခ",
+ "Stationery & printing": "စာရေးကိရိယာနှင့် ပုံနှိပ်",
+ "Transport & lorry hire": "သယ်ယူပို့ဆောင်ရေးနှင့် ကားငှားခ",
+ "Uniforms & safety gear": "ယူနီဖောင်းနှင့် ဘေးကင်းရေး ပစ္စည်း",
+ "Company * (choose one or more)": "ကုမ္ပဏီ * (တစ်ခု သို့မဟုတ် တစ်ခုထက်ပို၍ ရွေးပါ)",
+ "Type the amount of each company below.": "ကုမ္ပဏီတစ်ခုချင်းစီ၏ ပမာဏကို အောက်တွင် ရိုက်ထည့်ပါ။",
+ "Total of the companies:": "ကုမ္ပဏီများ စုစုပေါင်း:",
+ "Enter the amount for every company chosen.": "ရွေးထားသော ကုမ္ပဏီတိုင်းအတွက် ပမာဏ ထည့်ပါ။"
 };
 
 export default dictionary;

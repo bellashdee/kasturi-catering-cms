@@ -5,8 +5,29 @@ export const ENTRY_TYPE_LABEL: Record<EntryType, string> = {
   expense: "Spent",
 };
 
-/** What the float is spent on: alphabetical, "Other" last. */
-export const PETTY_CASH_CATEGORIES = ["Fuel", "Lalamove", "Meals", "Parking", "Repairs & tools", "Toll", "Other"];
+/** What the float is spent on, for a catering business: alphabetical, "Other" last. */
+export const PETTY_CASH_CATEGORIES = [
+  "Bakery & bread",
+  "Cleaning supplies",
+  "Decoration & event setup",
+  "Disposables & packaging",
+  "Dry goods & groceries",
+  "Equipment rental",
+  "Fresh ingredients (market)",
+  "Fuel",
+  "Gas (LPG)",
+  "Ice & beverages",
+  "Lalamove",
+  "Meals",
+  "Parking",
+  "Part-time worker wages",
+  "Repairs & tools",
+  "Stationery & printing",
+  "Toll",
+  "Transport & lorry hire",
+  "Uniforms & safety gear",
+  "Other",
+];
 
 export type OperationPettyCashRow = {
   id: string;

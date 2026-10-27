@@ -3871,7 +3871,24 @@ const dictionary: Record<string, string> = {
  "Search an item or a section": "搜索项目或分类",
  "Collapse all": "全部收起",
  "Expand all": "全部展开",
- "No item matches your search.": "没有符合搜索的项目。"
+ "No item matches your search.": "没有符合搜索的项目。",
+ "Bakery & bread": "面包与烘焙",
+ "Cleaning supplies": "清洁用品",
+ "Decoration & event setup": "装饰与活动布置",
+ "Disposables & packaging": "一次性用品与包装",
+ "Dry goods & groceries": "干货与杂货",
+ "Equipment rental": "设备租赁",
+ "Fresh ingredients (market)": "新鲜食材（市场）",
+ "Gas (LPG)": "燃气（LPG）",
+ "Ice & beverages": "冰块与饮料",
+ "Part-time worker wages": "兼职工人工资",
+ "Stationery & printing": "文具与印刷",
+ "Transport & lorry hire": "运输与租用罗里",
+ "Uniforms & safety gear": "制服与安全装备",
+ "Company * (choose one or more)": "公司 *（可选择一个或多个）",
+ "Type the amount of each company below.": "请在下方输入每家公司的金额。",
+ "Total of the companies:": "各公司合计：",
+ "Enter the amount for every company chosen.": "请为所选的每家公司输入金额。"
 };
 
 export default dictionary;

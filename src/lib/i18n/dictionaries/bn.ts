@@ -3864,7 +3864,24 @@ const dictionary: Record<string, string> = {
  "Search an item or a section": "আইটেম বা বিভাগ খুঁজুন",
  "Collapse all": "সব বন্ধ করুন",
  "Expand all": "সব খুলুন",
- "No item matches your search.": "অনুসন্ধানের সাথে মেলে এমন কোনো আইটেম নেই।"
+ "No item matches your search.": "অনুসন্ধানের সাথে মেলে এমন কোনো আইটেম নেই।",
+ "Bakery & bread": "রুটি ও বেকারি",
+ "Cleaning supplies": "পরিষ্কারের সামগ্রী",
+ "Decoration & event setup": "সাজসজ্জা ও অনুষ্ঠানের আয়োজন",
+ "Disposables & packaging": "ডিসপোজেবল ও প্যাকেজিং",
+ "Dry goods & groceries": "শুকনো পণ্য ও মুদি",
+ "Equipment rental": "সরঞ্জাম ভাড়া",
+ "Fresh ingredients (market)": "তাজা উপকরণ (বাজার)",
+ "Gas (LPG)": "গ্যাস (LPG)",
+ "Ice & beverages": "বরফ ও পানীয়",
+ "Part-time worker wages": "খণ্ডকালীন কর্মীর মজুরি",
+ "Stationery & printing": "স্টেশনারি ও ছাপা",
+ "Transport & lorry hire": "পরিবহন ও লরি ভাড়া",
+ "Uniforms & safety gear": "ইউনিফর্ম ও নিরাপত্তা সরঞ্জাম",
+ "Company * (choose one or more)": "কোম্পানি * (এক বা একাধিক বেছে নিন)",
+ "Type the amount of each company below.": "নিচে প্রতিটি কোম্পানির পরিমাণ লিখুন।",
+ "Total of the companies:": "কোম্পানিগুলোর মোট:",
+ "Enter the amount for every company chosen.": "বেছে নেওয়া প্রতিটি কোম্পানির জন্য পরিমাণ লিখুন।"
 };
 
 export default dictionary;
