@@ -12,6 +12,9 @@ const BAR_WORDS = new Set([
 ]);
 const FOOD_FIRST_WORDS = new Set(["AYAM", "DAGING", "KAMBING", "IKAN", "NASI", "SAYUR", "TELUR", "UDANG", "SOTONG", "MEE", "BEE", "KUIH", "ROTI", "SUP", "BUBUR", "PARU"]);
 
+/** a cooking word means a dish, even when "AIR" (water) is in the name: BAYAM MASAK AIR, PETOLA TUMIS AIR */
+const COOKING_WORDS = new Set(["MASAK", "TUMIS", "REBUS", "KUKUS", "GORENG", "BAKAR", "GULAI", "KICAP", "SAMBAL", "PEDAS", "BAYAM", "PETOLA", "KANGKUNG", "SAWI", "KOBIS", "KENTANG"]);
+
 const tokens = (s: string) => s.toUpperCase().replace(/[^A-Z]+/g, " ").split(" ").filter(Boolean);
 
 /** The section label of a menu line ("BEVERAGE", "MAIN DISH" ...) decides first; otherwise the words of the item. */
@@ -19,7 +22,7 @@ export function sideOf(name: string, section?: string | null): KitchenSide {
   if (section && tokens(section).some((t) => BAR_WORDS.has(t))) return "bar";
   const t = tokens(name);
   if (t.length === 0) return "kitchen";
-  if (FOOD_FIRST_WORDS.has(t[0])) return "kitchen";
+  if (FOOD_FIRST_WORDS.has(t[0]) || t.some((w) => COOKING_WORDS.has(w))) return "kitchen";
   return t.some((w) => BAR_WORDS.has(w)) ? "bar" : "kitchen";
 }
 
