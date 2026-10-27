@@ -13,6 +13,8 @@ import { DescriptionInput } from "@/components/DescriptionInput";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { positionOptions, type PersonOption } from "@/lib/pettyCash/people";
 import { Select } from "@/components/ui/Select";
+import { CompanyChips } from "@/components/pettyCash/CompanyChips";
+import { splitCompanies } from "@/lib/pettyCash/companies";
 
 type Company = { id: string; name: string };
 type EntryKind = "expense" | "top_up" | "claim";
@@ -55,9 +57,8 @@ export function PettyCashEntryForm({
 }) {
   const router = useRouter();
   const kinds: EntryKind[] = [...(allowBook ? (["expense", "top_up"] as const) : []), ...(allowClaim ? (["claim"] as const) : [])];
-  const [companyId, setCompanyId] = useState(editing?.company_id ?? defaultCompanyId ?? companies[0]?.id ?? "");
   // a new entry can be for more than one company (for example the float given for both): it is keyed in once, with one amount, and counted once
-  const [companyIds, setCompanyIds] = useState<string[]>([editing?.company_id ?? defaultCompanyId ?? companies[0]?.id ?? ""].filter(Boolean));
+  const [companyIds, setCompanyIds] = useState<string[]>(editing ? [editing.company_id, ...(editing.shared_company_ids ?? [])] : [defaultCompanyId ?? companies[0]?.id ?? ""].filter(Boolean));
   const [kind, setKind] = useState<EntryKind>(editing?.entry_type ?? kinds[0] ?? "expense");
   const [date, setDate] = useState(editing?.entry_date ?? todayInMalaysia());
   const [amount, setAmount] = useState(editing ? String(editing.amount) : "");
@@ -73,9 +74,7 @@ export function PettyCashEntryForm({
   const [error, setError] = useState<string | null>(null);
 
   const chosenCompanies = companies.filter((c) => companyIds.includes(c.id));
-  const firstCompanyId = editing ? companyId : (chosenCompanies[0]?.id ?? "");
-  const alsoCompanyIds = editing ? undefined : chosenCompanies.slice(1).map((c) => c.id);
-  const toggleCompany = (id: string) => setCompanyIds((ids) => (ids.includes(id) ? (ids.length > 1 ? ids.filter((x) => x !== id) : ids) : [...ids, id]));
+  const { companyId: firstCompanyId, alsoCompanyIds } = splitCompanies(chosenCompanies.map((c) => c.id), editing?.company_id);
   const isClaim = kind === "claim";
   const isReceived = kind === "top_up";
   const fillPosition = (name: string) => {
@@ -121,7 +120,7 @@ export function PettyCashEntryForm({
             personPosition: personPosition.trim(),
           })
         : editing
-          ? await updatePettyCashEntry(editing.id, { companyId: firstCompanyId, paymentMethod: isReceived ? paymentMethod : undefined, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, amount: Number(amount), documentId, personName: personName || undefined, personPosition: personPosition || undefined })
+          ? await updatePettyCashEntry(editing.id, { companyId: firstCompanyId, alsoCompanyIds, paymentMethod: isReceived ? paymentMethod : undefined, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, amount: Number(amount), documentId, personName: personName || undefined, personPosition: personPosition || undefined })
           : await createPettyCashEntry({ companyId: firstCompanyId, alsoCompanyIds, paymentMethod: isReceived ? paymentMethod : undefined, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, amount: Number(amount), documentId, personName: personName || undefined, personPosition: personPosition || undefined });
       if (!result.ok) {
         setError(result.error);
@@ -157,23 +156,9 @@ export function PettyCashEntryForm({
       {error && <div role="alert" className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-xs text-danger">{error}</div>}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
-        <div className={editing ? "" : "sm:col-span-4"}>
-          <label className={labelClass}>{editing ? "Company *" : "Company * (choose one or more)"}</label>
-          {editing ? (
-            <Select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={inputClass}>
-              {companies.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </Select>
-          ) : (
-            <div className="mt-1 flex flex-wrap gap-1.5">
-              {companies.map((c) => (
-                <button key={c.id} type="button" aria-pressed={companyIds.includes(c.id)} onClick={() => toggleCompany(c.id)} className={`rounded-full border px-3 py-1.5 text-[12.5px] font-semibold ${companyIds.includes(c.id) ? "border-primary bg-primary text-white" : "border-border-strong bg-white text-text hover:bg-surface-alt"}`}>
-                  {c.name}
-                </button>
-              ))}
-            </div>
-          )}
+        <div className="sm:col-span-4">
+          <label className={labelClass}>Company * (choose one or more)</label>
+          <CompanyChips companies={companies} value={companyIds} onChange={setCompanyIds} />
         </div>
         <div>
           <label className={labelClass}>Type *</label>

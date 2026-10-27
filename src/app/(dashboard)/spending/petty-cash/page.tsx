@@ -46,7 +46,7 @@ type Row = {
   bookId?: string;
   claim?: { id: string; status: string; paymentDate: string | null; claimant: string | null; department: string | null };
   /** a row that comes from the claims / top-ups table (it can be edited and deleted here) */
-  tx?: { id: string; type: "expense" | "top_up"; claimant: string; department: string; category: string; description: string };
+  tx?: { id: string; type: "expense" | "top_up"; claimant: string; department: string; category: string; description: string; companyId: string; sharedCompanyIds: string[] };
 };
 
 /**
@@ -134,7 +134,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
       person: [t.person_name, t.person_position].filter(Boolean).join(" · "),
       documentId: t.document_id,
       claim: t.type === "expense" ? { id: t.id, status: t.payment_status, paymentDate: t.payment_date, claimant: t.claimant_name, department: t.claimant_department } : undefined,
-      tx: { id: t.id, type: t.type === "expense" ? "expense" : "top_up", claimant: t.claimant_name ?? "", department: t.claimant_department ?? "", category: t.category ?? "", description: t.description ?? "" },
+      tx: { id: t.id, type: t.type === "expense" ? "expense" : "top_up", claimant: t.claimant_name ?? "", department: t.claimant_department ?? "", category: t.category ?? "", description: t.description ?? "", companyId: t.company_id, sharedCompanyIds: t.shared_company_ids ?? [] },
     })),
   ].sort((a, b) => a.date.localeCompare(b.date) || a.created.localeCompare(b.created));
 
@@ -331,7 +331,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
                           ) : (
                             <div className="flex flex-col items-start gap-1.5">
                               {r.claim && <PettyCashPaymentAction transactionId={r.claim.id} paymentStatus={r.claim.status} />}
-                              {r.tx && <PettyCashClaimActions claim={{ ...r.tx, amount: String(r.amount), date: r.date }} />}
+                              {r.tx && <PettyCashClaimActions claim={{ ...r.tx, amount: String(r.amount), date: r.date }} companies={companies} />}
                             </div>
                           )}
                         </td>

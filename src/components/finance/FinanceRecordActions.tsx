@@ -20,6 +20,8 @@ import {
 import { todayInMalaysia } from "@/lib/format";
 import { AREA, BTN, BTN_GHOST, Dialog, ErrorLine, FIELD, LABEL } from "@/components/priority/ui";
 import { RecordActions } from "@/components/shared/RecordActions";
+import { CompanyChips } from "@/components/pettyCash/CompanyChips";
+import { splitCompanies } from "@/lib/pettyCash/companies";
 
 export type InvoiceEditData = { id: string; number: string; invoiceDate: string; dueDate: string; amount: string; taxAmount: string; description: string };
 
@@ -178,13 +180,14 @@ export function CustomerPaymentActions({ payment }: { payment: { id: string; amo
   );
 }
 
-export type ClaimEditData = { id: string; type: "expense" | "top_up"; claimant: string; department: string; category: string; description: string; amount: string; date: string };
+export type ClaimEditData = { id: string; type: "expense" | "top_up"; claimant: string; department: string; category: string; description: string; amount: string; date: string; companyId: string; sharedCompanyIds: string[] };
 
 /** Edit (Save / Cancel) and Delete (Undo) of a petty cash staff claim or top-up in the Petty Cash list. */
-export function PettyCashClaimActions({ claim }: { claim: ClaimEditData }) {
+export function PettyCashClaimActions({ claim, companies }: { claim: ClaimEditData; companies: { id: string; name: string }[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [f, setF] = useState(claim);
+  const [companyIds, setCompanyIds] = useState<string[]>([claim.companyId, ...claim.sharedCompanyIds]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = (patch: Partial<ClaimEditData>) => setF((p) => ({ ...p, ...patch }));
@@ -194,7 +197,7 @@ export function PettyCashClaimActions({ claim }: { claim: ClaimEditData }) {
     setBusy(true);
     setError(null);
     try {
-      const r = await updatePettyCashClaim(claim.id, { claimantName: f.claimant, claimantDepartment: f.department, category: f.category, description: f.description, amount: Number(f.amount), transactionDate: f.date });
+      const r = await updatePettyCashClaim(claim.id, { claimantName: f.claimant, claimantDepartment: f.department, category: f.category, description: f.description, amount: Number(f.amount), transactionDate: f.date, ...splitCompanies(companyIds, claim.companyId) });
       if (!r.ok) {
         setError(r.error);
         return;
@@ -220,6 +223,10 @@ export function PettyCashClaimActions({ claim }: { claim: ClaimEditData }) {
         <Dialog title={claim.type === "expense" ? "Edit staff claim" : "Edit top-up"} onClose={() => setOpen(false)}>
           <form onSubmit={save} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2"><ErrorLine message={error} /></div>
+            <div className="sm:col-span-2">
+              <label className={LABEL}>Company * (choose one or more)</label>
+              <CompanyChips companies={companies} value={companyIds} onChange={setCompanyIds} />
+            </div>
             {claim.type === "expense" && (
               <>
                 <div>

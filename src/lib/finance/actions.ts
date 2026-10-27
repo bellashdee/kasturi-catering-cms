@@ -681,7 +681,7 @@ export async function restoreCustomerPayment(row: CustomerPaymentRow): Promise<A
   }, "Could not put the payment back.");
 }
 
-export type PettyCashClaimEdit = { claimantName?: string; claimantDepartment?: string; category?: string; description?: string; amount: number; transactionDate: string };
+export type PettyCashClaimEdit = { claimantName?: string; claimantDepartment?: string; category?: string; description?: string; amount: number; transactionDate: string; companyId?: string; alsoCompanyIds?: string[] };
 
 /** Who may change a petty cash claim or top-up: the admins of the company, and the person who made it while it is still waiting for payment. */
 async function claimAccess(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], userId: string, row: PettyCashTransactionRow) {
@@ -709,6 +709,8 @@ export async function updatePettyCashClaim(id: string, input: PettyCashClaimEdit
         description: input.description?.trim() || null,
         amount: input.amount,
         transaction_date: input.transactionDate,
+        // the main company and the other companies it is also for (keyed once, counted once)
+        ...(input.companyId ? { company_id: input.companyId, shared_company_ids: (input.alsoCompanyIds ?? []).filter((c) => c !== input.companyId) } : {}),
       })
       .eq("id", id);
     if (error) throw error;

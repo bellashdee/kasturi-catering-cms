@@ -109,6 +109,8 @@ export async function updatePettyCashEntry(id: string, input: PettyCashEntryInpu
         person_name: input.personName?.trim().slice(0, 200) || null,
         person_position: input.personPosition?.trim().slice(0, 200) || null,
         payment_method: input.entryType === "top_up" ? input.paymentMethod : null,
+        // the other companies are only changed when they are sent
+        ...(input.alsoCompanyIds ? { shared_company_ids: input.alsoCompanyIds.filter((id) => id !== input.companyId) } : {}),
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
