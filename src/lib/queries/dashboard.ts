@@ -441,6 +441,10 @@ export type Alert = {
   severity: "danger" | "warning" | "info";
   title: string;
   meta: string;
+  /** the page with that very information (opens when the line is pressed) */
+  href?: string;
+  /** the page with the whole list, used when several alerts of the same kind are folded into one line */
+  listHref?: string;
 };
 
 /**
@@ -466,13 +470,13 @@ export function buildAlerts(input: {
 
   const fp = input.financePayments;
   if (fp.overdueCount > 0) {
-    alerts.push({ severity: "danger", title: `🔴 ${fp.overdueCount} overdue Finance payment(s) — ${formatRM(fp.overdueAmount)}`, meta: "Admin & Finance · Payment Dashboard" });
+    alerts.push({ severity: "danger", title: `🔴 ${fp.overdueCount} overdue Finance payment(s) — ${formatRM(fp.overdueAmount)}`, meta: "Admin & Finance · Payment Dashboard", href: "/finance/payments" });
   }
   if (fp.dueTodayCount > 0) {
-    alerts.push({ severity: "warning", title: `🟠 ${fp.dueTodayCount} Finance payment(s) due today — ${formatRM(fp.dueTodayAmount)}`, meta: "Admin & Finance · Payment Dashboard" });
+    alerts.push({ severity: "warning", title: `🟠 ${fp.dueTodayCount} Finance payment(s) due today — ${formatRM(fp.dueTodayAmount)}`, meta: "Admin & Finance · Payment Dashboard", href: "/finance/payments" });
   }
   if (fp.dueSoonCount > 0) {
-    alerts.push({ severity: "info", title: `🟡 ${fp.dueSoonCount} Finance payment(s) due within ${DUE_SOON_DAYS} days — ${formatRM(fp.dueSoonAmount)}`, meta: "Admin & Finance · Payment Dashboard" });
+    alerts.push({ severity: "info", title: `🟡 ${fp.dueSoonCount} Finance payment(s) due within ${DUE_SOON_DAYS} days — ${formatRM(fp.dueSoonAmount)}`, meta: "Admin & Finance · Payment Dashboard", href: "/finance/payments" });
   }
 
   if (input.supplierPayments.overdueCount > 0) {
@@ -480,6 +484,7 @@ export function buildAlerts(input: {
       severity: "danger",
       title: `${input.supplierPayments.overdueCount} overdue supplier invoice(s)`,
       meta: "Supplier & Procurement",
+      href: "/supplier-procurement/invoices",
     });
   }
   if (input.supplierPayments.dueTodayCount > 0) {
@@ -487,6 +492,7 @@ export function buildAlerts(input: {
       severity: "warning",
       title: `${input.supplierPayments.dueTodayCount} supplier payment(s) due today`,
       meta: "Supplier & Procurement",
+      href: "/supplier-procurement/invoices",
     });
   }
   if (input.supplierPayments.dueThisWeekCount > 0) {
@@ -494,6 +500,7 @@ export function buildAlerts(input: {
       severity: "info",
       title: `${input.supplierPayments.dueThisWeekCount} supplier payment(s) due this week`,
       meta: "Supplier & Procurement",
+      href: "/supplier-procurement/invoices",
     });
   }
   if (input.customerOutstanding.overdueCount > 0) {
@@ -501,6 +508,7 @@ export function buildAlerts(input: {
       severity: "danger",
       title: `${input.customerOutstanding.overdueCount} overdue customer payment(s)`,
       meta: "Admin & Finance",
+      href: "/finance/outstanding",
     });
   }
   for (const b of input.financeAdmin.overBudget) {
@@ -508,6 +516,7 @@ export function buildAlerts(input: {
       severity: "warning",
       title: `Over budget: ${b.category}${b.department ? ` (${b.department})` : ""}`,
       meta: `Admin & Finance · ${b.actual.toFixed(0)} of ${b.budgeted.toFixed(0)} budgeted`,
+      href: "/spending/budgets",
     });
   }
   if (input.financeAdmin.pettyCashPending.overdueCount > 0) {
@@ -516,12 +525,14 @@ export function buildAlerts(input: {
       severity: "danger",
       title: `${input.financeAdmin.pettyCashPending.overdueCount} overdue petty cash claim(s) awaiting payment`,
       meta: oldest ? `Admin & Finance · oldest: ${oldest.claimant}, ${oldest.daysPending} days pending` : "Admin & Finance",
+      href: "/spending/petty-cash?status=pending_payment",
     });
   } else if (input.financeAdmin.pettyCashPending.count > 0) {
     alerts.push({
       severity: "warning",
       title: `${input.financeAdmin.pettyCashPending.count} petty cash claim(s) pending payment`,
       meta: "Admin & Finance",
+      href: "/spending/petty-cash?status=pending_payment",
     });
   }
   for (const cert of input.hr.expiringCertificates) {
@@ -529,6 +540,8 @@ export function buildAlerts(input: {
       severity: cert.expired ? "danger" : "warning",
       title: `${cert.expired ? "Document EXPIRED" : "Document expiring"}: ${cert.cert_name}${cert.employees?.full_name ? ` (${cert.employees.full_name})` : ""}`,
       meta: `HR · ${cert.expired ? "expired" : "due"} ${cert.expiry_date}`,
+      href: `/hr/${cert.employee_id}`,
+      listHref: "/hr",
     });
   }
   for (const doc of input.hr.expiringCompanyDocs) {
@@ -536,6 +549,7 @@ export function buildAlerts(input: {
       severity: doc.expired ? "danger" : "warning",
       title: `${doc.expired ? "Licence/agreement EXPIRED" : "Licence/agreement expiring"}: ${doc.title}`,
       meta: `HR · ${doc.companies?.name ?? "Company"} · ${doc.expired ? "expired" : "due"} ${doc.expiry_date}`,
+      href: "/hr/documents",
     });
   }
   for (const event of input.cateringEvents.upcoming) {
@@ -543,6 +557,8 @@ export function buildAlerts(input: {
       severity: "info",
       title: `Upcoming event: ${event.event_name}`,
       meta: `Catering · ${event.event_date}`,
+      href: `/catering/${event.id}`,
+      listHref: "/catering",
     });
   }
   for (const item of input.lowStock) {
@@ -550,6 +566,8 @@ export function buildAlerts(input: {
       severity: "warning",
       title: `Low stock: ${item.name}`,
       meta: `Kitchen · ${item.current_stock_qty} left (reorder at ${item.reorder_level})`,
+      href: `/kitchen/ingredients/${item.id}`,
+      listHref: "/kitchen/stock",
     });
   }
   for (const request of input.purchaseRequests.pending) {
@@ -557,6 +575,7 @@ export function buildAlerts(input: {
       severity: "info",
       title: `Purchase request pending: ${request.ingredients?.name ?? "ingredient"}`,
       meta: `Kitchen · ${request.quantity_requested} requested`,
+      href: "/kitchen/purchase-requests",
     });
   }
   for (const vehicle of input.vehicles) {
@@ -564,6 +583,8 @@ export function buildAlerts(input: {
       severity: "warning",
       title: `Vehicle maintenance due: ${vehicle.plate_number}`,
       meta: `Operation Management · due ${vehicle.next_maintenance_due}`,
+      href: `/driver-logistics/vehicles/${vehicle.id}`,
+      listHref: "/driver-logistics/maintenance",
     });
   }
   for (const vehicle of input.driverCompliance.vehicles) {
@@ -572,6 +593,8 @@ export function buildAlerts(input: {
       severity: "warning",
       title: `Insurance/road tax expiring: ${vehicle.plate_number}`,
       meta: `Operation Management · due ${soonest}`,
+      href: `/driver-logistics/vehicles/${vehicle.id}`,
+      listHref: "/driver-logistics/vehicles",
     });
   }
   if (input.driverAttendance.missingClockInCount > 0) {
@@ -579,6 +602,7 @@ export function buildAlerts(input: {
       severity: "danger",
       title: `${input.driverAttendance.missingClockInCount} driver(s) missing clock-in today`,
       meta: "Operation Management · Attendance",
+      href: "/driver-logistics/attendance",
     });
   }
   if (input.driverAttendance.missingClockOutCount > 0) {
@@ -586,6 +610,7 @@ export function buildAlerts(input: {
       severity: "warning",
       title: `${input.driverAttendance.missingClockOutCount} driver(s) still clocked in (no clock-out yet)`,
       meta: "Operation Management · Attendance",
+      href: "/driver-logistics/attendance",
     });
   }
   for (const license of input.driverCompliance.licenses) {
@@ -593,6 +618,7 @@ export function buildAlerts(input: {
       severity: "warning",
       title: `Driver license expiring: ${license.employees?.full_name ?? "driver"}`,
       meta: `Operation Management · due ${license.license_expiry}`,
+      href: "/driver-logistics/drivers",
     });
   }
   for (const promo of input.promotions) {
@@ -600,6 +626,7 @@ export function buildAlerts(input: {
       severity: "info",
       title: `Promotion ending soon: ${promo.title}`,
       meta: `Marketing · ends ${promo.end_date}`,
+      href: "/marketing/promotions",
     });
   }
 

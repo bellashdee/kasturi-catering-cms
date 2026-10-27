@@ -22,7 +22,8 @@ function groupSameKind(list: Reminder[]): Reminder[] {
   const lines: Reminder[] = [];
   for (const members of groups.values()) {
     const sorted = [...members].sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
-    lines.push(members.length > 1 && sorted[0].title.includes(": ") ? { ...sorted[0], more: members.length - 1 } : sorted[0]);
+    // several of the same kind folded into one line open the whole list, one alone opens that very record
+    lines.push(members.length > 1 && sorted[0].title.includes(": ") ? { ...sorted[0], more: members.length - 1, href: sorted[0].listHref ?? sorted[0].href } : sorted[0]);
     if (members.length > 1 && !sorted[0].title.includes(": ")) lines.push(...sorted.slice(1));
   }
   return lines.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
@@ -61,7 +62,7 @@ export function buildReminders(data: DashboardData, allowedModules: string[] | n
     }
   }
   if (data.approvals.pendingCount > 0) {
-    out.push({ severity: "warning", title: `${data.approvals.pendingCount} approval(s) waiting for review`, meta: "Pending approvals" });
+    out.push({ severity: "warning", title: `${data.approvals.pendingCount} approval(s) waiting for review`, meta: "Pending approvals", href: "/priority-centre" });
   }
   out.push(...alertsForModules(data.alerts, allowedModules));
 
