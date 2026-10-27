@@ -38,11 +38,14 @@ export type PettyCashEntryInput = {
   personPosition?: string;
   /** the other companies the entry is also for (keyed in once, counted once) */
   alsoCompanyIds?: string[];
+  /** how the money was received: required for a top-up */
+  paymentMethod?: string;
 };
 
 function validate(input: PettyCashEntryInput) {
   if (!input.personName?.trim() || !input.personPosition?.trim()) throw new Error("Choose whose petty cash this is: the name and the position.");
   if (input.entryType !== "top_up" && input.entryType !== "expense") throw new Error("Choose whether the money was received or spent.");
+  if (input.entryType === "top_up" && input.paymentMethod !== "cash" && input.paymentMethod !== "online_transfer") throw new Error("Choose how the money was received: cash or online transfer.");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.entryDate)) throw new Error("Select the date.");
   if (input.entryDate > todayInMalaysia()) throw new Error("The date cannot be in the future.");
   if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("Enter an amount more than 0.");
@@ -73,6 +76,7 @@ export async function createPettyCashEntry(input: PettyCashEntryInput): Promise<
         person_name: input.personName?.trim().slice(0, 200) || null,
         person_position: input.personPosition?.trim().slice(0, 200) || null,
         shared_company_ids: (input.alsoCompanyIds ?? []).filter((id) => id !== input.companyId),
+        payment_method: input.entryType === "top_up" ? input.paymentMethod : null,
         created_by: userId,
       })
       .select("id")
@@ -104,6 +108,7 @@ export async function updatePettyCashEntry(id: string, input: PettyCashEntryInpu
         document_id: input.documentId ?? before.document_id,
         person_name: input.personName?.trim().slice(0, 200) || null,
         person_position: input.personPosition?.trim().slice(0, 200) || null,
+        payment_method: input.entryType === "top_up" ? input.paymentMethod : null,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
@@ -128,7 +133,7 @@ export async function deletePettyCashEntry(id: string): Promise<ActionResult<{ r
     if (!removed || removed.length !== 1) throw new Error("The entry was not deleted. You may not have permission.");
     await recordAudit({ companyId: before.company_id, relatedTable: "operation_petty_cash", relatedId: id, action: "petty_cash_deleted", previousValue: label(before) });
     refresh();
-    const row: OperationPettyCashRow = { id: before.id, company_id: before.company_id, entry_type: before.entry_type as EntryType, entry_date: before.entry_date, category: before.category, description: before.description, amount: Number(before.amount), document_id: before.document_id, created_by: before.created_by, person_name: before.person_name, person_position: before.person_position, shared_company_ids: before.shared_company_ids ?? [] };
+    const row: OperationPettyCashRow = { id: before.id, company_id: before.company_id, entry_type: before.entry_type as EntryType, entry_date: before.entry_date, category: before.category, description: before.description, amount: Number(before.amount), document_id: before.document_id, created_by: before.created_by, person_name: before.person_name, person_position: before.person_position, payment_method: before.payment_method, shared_company_ids: before.shared_company_ids ?? [] };
     return { row };
   }, "Could not delete the entry. Please try again.");
 }
@@ -150,6 +155,7 @@ export async function restorePettyCashEntry(row: OperationPettyCashRow): Promise
       person_name: row.person_name,
       person_position: row.person_position,
       shared_company_ids: row.shared_company_ids ?? [],
+      payment_method: row.payment_method,
     });
     if (error) throw error;
     await recordAudit({ companyId: row.company_id, relatedTable: "operation_petty_cash", relatedId: row.id, action: "petty_cash_restored", newValue: label({ entry_type: row.entry_type, amount: row.amount, entry_date: row.entry_date, description: row.description }) });

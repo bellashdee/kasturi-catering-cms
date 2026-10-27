@@ -3875,7 +3875,12 @@ const dictionary: Record<string, string> = {
  "Company * (choose one or more)": "ကုမ္ပဏီ * (တစ်ခု သို့မဟုတ် တစ်ခုထက်ပို၍ ရွေးပါ)",
  "Type the amount of each company below.": "ကုမ္ပဏီတစ်ခုချင်းစီ၏ ပမာဏကို အောက်တွင် ရိုက်ထည့်ပါ။",
  "Total of the companies:": "ကုမ္ပဏီများ စုစုပေါင်း:",
- "Enter the amount for every company chosen.": "ရွေးထားသော ကုမ္ပဏီတိုင်းအတွက် ပမာဏ ထည့်ပါ။"
+ "Enter the amount for every company chosen.": "ရွေးထားသော ကုမ္ပဏီတိုင်းအတွက် ပမာဏ ထည့်ပါ။",
+ "Payment received by *": "ငွေလက်ခံပုံ *",
+ "Payment received by:": "ငွေလက်ခံပုံ:",
+ "Online transfer": "အွန်လိုင်း လွှဲပြောင်းခြင်း",
+ "Select cash or online transfer": "ငွေသား သို့မဟုတ် အွန်လိုင်း လွှဲပြောင်းခြင်း ရွေးပါ",
+ "Choose how the money was received: cash or online transfer.": "ငွေလက်ခံပုံ ရွေးပါ: ငွေသား သို့မဟုတ် အွန်လိုင်း လွှဲပြောင်းခြင်း။"
 };
 
 export default dictionary;

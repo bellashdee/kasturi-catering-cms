@@ -7,7 +7,7 @@ import { canAccessModule } from "@/lib/modules";
 import { formatPrice, formatMalaysiaDate, todayInMalaysia } from "@/lib/format";
 import { listPettyCashTransactions, summarizePettyCashClaims } from "@/lib/finance/queries";
 import { PETTY_CASH_OVERDUE_DAYS, PETTY_CASH_PAYMENT_STATUS_LABEL, isPettyCashOverdue, pettyCashDaysPending } from "@/lib/finance/constants";
-import { ENTRY_TYPE_LABEL, type EntryType, type OperationPettyCashRow } from "@/lib/operationPettyCash/constants";
+import { ENTRY_TYPE_LABEL, PAYMENT_METHOD_LABEL, type EntryType, type OperationPettyCashRow, type PaymentMethod } from "@/lib/operationPettyCash/constants";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SpendingSubNav } from "@/components/spending/SpendingSubNav";
@@ -39,6 +39,8 @@ type Row = {
   amount: number;
   title: string;
   category: string | null;
+  /** cash or online transfer, for money received */
+  method?: string | null;
   person: string;
   documentId: string | null;
   bookId?: string;
@@ -113,6 +115,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
       amount: Number(e.amount),
       title: e.description || (e.entry_type === "top_up" ? ENTRY_TYPE_LABEL.top_up : "—"),
       category: e.category,
+      method: e.entry_type === "top_up" ? e.payment_method : null,
       person: [e.person_name, e.person_position].filter(Boolean).join(" · "),
       documentId: e.document_id,
       bookId: e.id,
@@ -163,7 +166,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
 
   const editing = sp.edit ? book.find((e) => e.id === sp.edit) : undefined;
   const editingRow: OperationPettyCashRow | undefined = editing
-    ? { id: editing.id, company_id: editing.company_id, entry_type: editing.entry_type as EntryType, entry_date: editing.entry_date, category: editing.category, description: editing.description, amount: Number(editing.amount), document_id: editing.document_id, created_by: editing.created_by, person_name: editing.person_name, person_position: editing.person_position, shared_company_ids: editing.shared_company_ids ?? [] }
+    ? { id: editing.id, company_id: editing.company_id, entry_type: editing.entry_type as EntryType, entry_date: editing.entry_date, category: editing.category, description: editing.description, amount: Number(editing.amount), document_id: editing.document_id, created_by: editing.created_by, person_name: editing.person_name, person_position: editing.person_position, payment_method: editing.payment_method, shared_company_ids: editing.shared_company_ids ?? [] }
     : undefined;
 
   const keep = new URLSearchParams({ ...(sp.company ? { company: sp.company } : {}), holder: who.name, position: who.position, month, ...(everyone ? { all: "1" } : {}) });
@@ -171,12 +174,13 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
   const editHref = (id: string) => `${listHref}${statusParam ? `&status=${statusParam}` : ""}&edit=${id}`;
   const statusHref = (status?: string) => `${listHref}${status ? `&status=${status}` : ""}`;
 
-  const exportHeaders = ["Date", "Company", "Kind", "Category", "Details", "Name / position", "Claimant", "Claim status", "Received (RM)", "Spent (RM)", "Balance (RM)"];
+  const exportHeaders = ["Date", "Company", "Kind", "Category", "Payment received by", "Details", "Name / position", "Claimant", "Claim status", "Received (RM)", "Spent (RM)", "Balance (RM)"];
   const exportRows = [...shown].reverse().map((r): (string | number)[] => [
     r.date,
     r.companyName,
     r.source === "claim" ? "Staff claim" : r.kind === "in" ? "Received" : "Spent",
     r.category ?? "",
+    r.method ? (PAYMENT_METHOD_LABEL[r.method as PaymentMethod] ?? r.method) : "",
     r.title,
     r.person,
     r.claim?.claimant ?? "",
@@ -293,6 +297,11 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
                         <td className="px-4 py-2.5">
                           <div className="font-semibold text-text">{r.title}</div>
                           {r.category && <div className="text-[11.5px] text-text-muted">{r.category}</div>}
+                          {r.method && (
+                            <div className="flex gap-1 text-[11.5px] font-semibold text-text-secondary">
+                              <span>Payment received by:</span> <span>{PAYMENT_METHOD_LABEL[r.method as PaymentMethod] ?? r.method}</span>
+                            </div>
+                          )}
                           {r.claim && (
                             <div className="text-[11.5px] text-text-secondary">{`Claimed by: ${[r.claim.claimant, r.claim.department].filter(Boolean).join(" · ") || "—"}`}</div>
                           )}

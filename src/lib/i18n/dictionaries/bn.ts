@@ -3881,7 +3881,12 @@ const dictionary: Record<string, string> = {
  "Company * (choose one or more)": "কোম্পানি * (এক বা একাধিক বেছে নিন)",
  "Type the amount of each company below.": "নিচে প্রতিটি কোম্পানির পরিমাণ লিখুন।",
  "Total of the companies:": "কোম্পানিগুলোর মোট:",
- "Enter the amount for every company chosen.": "বেছে নেওয়া প্রতিটি কোম্পানির জন্য পরিমাণ লিখুন।"
+ "Enter the amount for every company chosen.": "বেছে নেওয়া প্রতিটি কোম্পানির জন্য পরিমাণ লিখুন।",
+ "Payment received by *": "টাকা গ্রহণের মাধ্যম *",
+ "Payment received by:": "টাকা গ্রহণের মাধ্যম:",
+ "Online transfer": "অনলাইন ট্রান্সফার",
+ "Select cash or online transfer": "নগদ বা অনলাইন ট্রান্সফার বেছে নিন",
+ "Choose how the money was received: cash or online transfer.": "টাকা কীভাবে পাওয়া গেছে তা বেছে নিন: নগদ বা অনলাইন ট্রান্সফার।"
 };
 
 export default dictionary;

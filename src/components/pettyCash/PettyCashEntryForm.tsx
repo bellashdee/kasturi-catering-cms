@@ -8,7 +8,7 @@ import { errorMessage } from "@/lib/actionResult";
 import { todayInMalaysia } from "@/lib/format";
 import { createPettyCashEntry, updatePettyCashEntry } from "@/lib/operationPettyCash/actions";
 import { createPettyCashTransaction } from "@/lib/finance/actions";
-import { PETTY_CASH_CATEGORIES, type OperationPettyCashRow } from "@/lib/operationPettyCash/constants";
+import { PAYMENT_METHOD_LABEL, PETTY_CASH_CATEGORIES, type OperationPettyCashRow } from "@/lib/operationPettyCash/constants";
 import { DescriptionInput } from "@/components/DescriptionInput";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { positionOptions, type PersonOption } from "@/lib/pettyCash/people";
@@ -61,6 +61,7 @@ export function PettyCashEntryForm({
   const [kind, setKind] = useState<EntryKind>(editing?.entry_type ?? kinds[0] ?? "expense");
   const [date, setDate] = useState(editing?.entry_date ?? todayInMalaysia());
   const [amount, setAmount] = useState(editing ? String(editing.amount) : "");
+  const [paymentMethod, setPaymentMethod] = useState(editing?.payment_method ?? "");
   const [category, setCategory] = useState(editing?.category ?? "");
   const [description, setDescription] = useState(editing?.description ?? "");
   const [personName, setPersonName] = useState(editing?.person_name ?? holderName);
@@ -92,6 +93,10 @@ export function PettyCashEntryForm({
       setError("Enter who is claiming this petty cash.");
       return;
     }
+    if (isReceived && !paymentMethod) {
+      setError("Choose how the money was received: cash or online transfer.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -116,8 +121,8 @@ export function PettyCashEntryForm({
             personPosition: personPosition.trim(),
           })
         : editing
-          ? await updatePettyCashEntry(editing.id, { companyId: firstCompanyId, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, amount: Number(amount), documentId, personName: personName || undefined, personPosition: personPosition || undefined })
-          : await createPettyCashEntry({ companyId: firstCompanyId, alsoCompanyIds, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, amount: Number(amount), documentId, personName: personName || undefined, personPosition: personPosition || undefined });
+          ? await updatePettyCashEntry(editing.id, { companyId: firstCompanyId, paymentMethod: isReceived ? paymentMethod : undefined, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, amount: Number(amount), documentId, personName: personName || undefined, personPosition: personPosition || undefined })
+          : await createPettyCashEntry({ companyId: firstCompanyId, alsoCompanyIds, paymentMethod: isReceived ? paymentMethod : undefined, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, amount: Number(amount), documentId, personName: personName || undefined, personPosition: personPosition || undefined });
       if (!result.ok) {
         setError(result.error);
         return;
@@ -126,6 +131,7 @@ export function PettyCashEntryForm({
         router.push(listHref);
       } else {
         setAmount("");
+        setPaymentMethod("");
         setCategory("");
         setDescription("");
         setClaimant("");
@@ -185,6 +191,17 @@ export function PettyCashEntryForm({
           <label className={labelClass}>Amount (RM) *</label>
           <input type="number" min="0.01" step="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} className={inputClass} />
         </div>
+        {isReceived && (
+          <div>
+            <label className={labelClass}>Payment received by *</label>
+            <Select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} required className={inputClass}>
+              <option value="">Select cash or online transfer</option>
+              {Object.entries(PAYMENT_METHOD_LABEL).map(([value, text]) => (
+                <option key={value} value={value}>{text}</option>
+              ))}
+            </Select>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

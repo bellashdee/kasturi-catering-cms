@@ -3888,7 +3888,12 @@ const dictionary: Record<string, string> = {
  "Company * (choose one or more)": "公司 *（可选择一个或多个）",
  "Type the amount of each company below.": "请在下方输入每家公司的金额。",
  "Total of the companies:": "各公司合计：",
- "Enter the amount for every company chosen.": "请为所选的每家公司输入金额。"
+ "Enter the amount for every company chosen.": "请为所选的每家公司输入金额。",
+ "Payment received by *": "收款方式 *",
+ "Payment received by:": "收款方式：",
+ "Online transfer": "网上转账",
+ "Select cash or online transfer": "选择现金或网上转账",
+ "Choose how the money was received: cash or online transfer.": "请选择收款方式：现金或网上转账。"
 };
 
 export default dictionary;

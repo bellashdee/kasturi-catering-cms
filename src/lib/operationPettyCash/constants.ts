@@ -1,5 +1,9 @@
 export type EntryType = "top_up" | "expense";
 
+/** How the money was received (asked for every Received / top-up entry) */
+export type PaymentMethod = "cash" | "online_transfer";
+export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = { cash: "Cash", online_transfer: "Online transfer" };
+
 export const ENTRY_TYPE_LABEL: Record<EntryType, string> = {
   top_up: "Received (top-up)",
   expense: "Spent",
@@ -42,6 +46,8 @@ export type OperationPettyCashRow = {
   /** who received (or spent) the money, and the position that holds the petty cash */
   person_name: string | null;
   person_position: string | null;
+  /** cash or online transfer (only for money received; older entries have none) */
+  payment_method: string | null;
   /** the other companies this entry is also for (company_id is the main one); the amount is counted once */
   shared_company_ids: string[];
 };

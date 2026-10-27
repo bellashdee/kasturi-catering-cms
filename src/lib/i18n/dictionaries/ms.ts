@@ -3822,7 +3822,12 @@ const dictionary: Record<string, string> = {
  "Company * (choose one or more)": "Syarikat * (pilih satu atau lebih)",
  "Type the amount of each company below.": "Taip jumlah bagi setiap syarikat di bawah.",
  "Total of the companies:": "Jumlah semua syarikat:",
- "Enter the amount for every company chosen.": "Masukkan jumlah bagi setiap syarikat yang dipilih."
+ "Enter the amount for every company chosen.": "Masukkan jumlah bagi setiap syarikat yang dipilih.",
+ "Payment received by *": "Bayaran diterima secara *",
+ "Payment received by:": "Bayaran diterima secara:",
+ "Online transfer": "Pemindahan dalam talian",
+ "Select cash or online transfer": "Pilih tunai atau pemindahan dalam talian",
+ "Choose how the money was received: cash or online transfer.": "Pilih bagaimana wang diterima: tunai atau pemindahan dalam talian."
 };
 
 export default dictionary;
