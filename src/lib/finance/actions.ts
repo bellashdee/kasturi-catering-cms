@@ -251,6 +251,8 @@ export type PettyCashInput = {
   /** who received the money (a top-up) and the position that holds the petty cash */
   personName?: string;
   personPosition?: string;
+  /** the other companies the claim is also for (keyed in once, counted once) */
+  alsoCompanyIds?: string[];
 };
 
 export async function createPettyCashTransaction(input: PettyCashInput): Promise<ActionResult> {
@@ -274,6 +276,7 @@ export async function createPettyCashTransaction(input: PettyCashInput): Promise
     document_id: input.documentId || null,
     person_name: input.personName?.trim().slice(0, 200) || null,
     person_position: input.personPosition?.trim().slice(0, 200) || null,
+    shared_company_ids: (input.alsoCompanyIds ?? []).filter((id) => id !== input.companyId),
     created_by: userId,
   }).select("id").single();
   if (error) throw error;

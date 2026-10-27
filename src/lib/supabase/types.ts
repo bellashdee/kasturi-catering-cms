@@ -3329,6 +3329,7 @@ export type Database = {
           id: string
           person_name: string | null
           person_position: string | null
+          shared_company_ids: string[]
           updated_at: string
         }
         Insert: {
@@ -3344,6 +3345,7 @@ export type Database = {
           id?: string
           person_name?: string | null
           person_position?: string | null
+          shared_company_ids?: string[]
           updated_at?: string
         }
         Update: {
@@ -3359,6 +3361,7 @@ export type Database = {
           id?: string
           person_name?: string | null
           person_position?: string | null
+          shared_company_ids?: string[]
           updated_at?: string
         }
         Relationships: [
@@ -3884,6 +3887,7 @@ export type Database = {
           type: string
           person_name: string | null
           person_position: string | null
+          shared_company_ids: string[]
           updated_at: string
         }
         Insert: {
@@ -3907,6 +3911,7 @@ export type Database = {
           type: string
           person_name?: string | null
           person_position?: string | null
+          shared_company_ids?: string[]
           updated_at?: string
         }
         Update: {
@@ -3930,6 +3935,7 @@ export type Database = {
           type?: string
           person_name?: string | null
           person_position?: string | null
+          shared_company_ids?: string[]
           updated_at?: string
         }
         Relationships: [

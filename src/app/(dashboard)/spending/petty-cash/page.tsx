@@ -96,6 +96,10 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
     [book, transactions] = await Promise.all([isHolder ? readBook(supabase, targetCompanyIds, pattern) : Promise.resolve([]), canClaims ? listPettyCashTransactions(supabase, targetCompanyIds, pattern || undefined) : Promise.resolve([])]);
   }
 
+  // an entry keyed in once for more than one company is listed with all of them ("Signature Solution + Kasturi Indah"), its amount counted once
+  const companiesLabel = (main: string | undefined, sharedIds: string[] | null | undefined) =>
+    [main ?? "", ...(sharedIds ?? []).map((id) => companies.find((c) => c.id === id)?.name ?? "")].filter(Boolean).join(" + ");
+
   // one list, oldest first, so the balance can run down it
   const rows: Row[] = [
     ...book.map<Row>((e) => ({
@@ -104,7 +108,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
       date: e.entry_date,
       created: e.created_at,
       companyId: e.company_id,
-      companyName: e.companies?.name ?? "",
+      companyName: companiesLabel(e.companies?.name, e.shared_company_ids),
       kind: e.entry_type === "top_up" ? "in" : "out",
       amount: Number(e.amount),
       title: e.description || (e.entry_type === "top_up" ? ENTRY_TYPE_LABEL.top_up : "—"),
@@ -119,7 +123,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
       date: t.transaction_date,
       created: t.created_at,
       companyId: t.company_id,
-      companyName: t.companies?.name ?? "",
+      companyName: companiesLabel(t.companies?.name, t.shared_company_ids),
       kind: t.type === "top_up" ? "in" : "out",
       amount: Number(t.amount),
       title: t.description || (t.type === "top_up" ? ENTRY_TYPE_LABEL.top_up : "—"),
@@ -159,7 +163,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
 
   const editing = sp.edit ? book.find((e) => e.id === sp.edit) : undefined;
   const editingRow: OperationPettyCashRow | undefined = editing
-    ? { id: editing.id, company_id: editing.company_id, entry_type: editing.entry_type as EntryType, entry_date: editing.entry_date, category: editing.category, description: editing.description, amount: Number(editing.amount), document_id: editing.document_id, created_by: editing.created_by, person_name: editing.person_name, person_position: editing.person_position }
+    ? { id: editing.id, company_id: editing.company_id, entry_type: editing.entry_type as EntryType, entry_date: editing.entry_date, category: editing.category, description: editing.description, amount: Number(editing.amount), document_id: editing.document_id, created_by: editing.created_by, person_name: editing.person_name, person_position: editing.person_position, shared_company_ids: editing.shared_company_ids ?? [] }
     : undefined;
 
   const keep = new URLSearchParams({ ...(sp.company ? { company: sp.company } : {}), holder: who.name, position: who.position, month, ...(everyone ? { all: "1" } : {}) });

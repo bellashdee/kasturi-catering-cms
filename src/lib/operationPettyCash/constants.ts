@@ -42,4 +42,6 @@ export type OperationPettyCashRow = {
   /** who received (or spent) the money, and the position that holds the petty cash */
   person_name: string | null;
   person_position: string | null;
+  /** the other companies this entry is also for (company_id is the main one); the amount is counted once */
+  shared_company_ids: string[];
 };

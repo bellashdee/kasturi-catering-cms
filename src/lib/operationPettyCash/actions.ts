@@ -36,6 +36,8 @@ export type PettyCashEntryInput = {
   documentId?: string;
   personName?: string;
   personPosition?: string;
+  /** the other companies the entry is also for (keyed in once, counted once) */
+  alsoCompanyIds?: string[];
 };
 
 function validate(input: PettyCashEntryInput) {
@@ -70,6 +72,7 @@ export async function createPettyCashEntry(input: PettyCashEntryInput): Promise<
         document_id: input.documentId || null,
         person_name: input.personName?.trim().slice(0, 200) || null,
         person_position: input.personPosition?.trim().slice(0, 200) || null,
+        shared_company_ids: (input.alsoCompanyIds ?? []).filter((id) => id !== input.companyId),
         created_by: userId,
       })
       .select("id")
@@ -125,7 +128,7 @@ export async function deletePettyCashEntry(id: string): Promise<ActionResult<{ r
     if (!removed || removed.length !== 1) throw new Error("The entry was not deleted. You may not have permission.");
     await recordAudit({ companyId: before.company_id, relatedTable: "operation_petty_cash", relatedId: id, action: "petty_cash_deleted", previousValue: label(before) });
     refresh();
-    const row: OperationPettyCashRow = { id: before.id, company_id: before.company_id, entry_type: before.entry_type as EntryType, entry_date: before.entry_date, category: before.category, description: before.description, amount: Number(before.amount), document_id: before.document_id, created_by: before.created_by, person_name: before.person_name, person_position: before.person_position };
+    const row: OperationPettyCashRow = { id: before.id, company_id: before.company_id, entry_type: before.entry_type as EntryType, entry_date: before.entry_date, category: before.category, description: before.description, amount: Number(before.amount), document_id: before.document_id, created_by: before.created_by, person_name: before.person_name, person_position: before.person_position, shared_company_ids: before.shared_company_ids ?? [] };
     return { row };
   }, "Could not delete the entry. Please try again.");
 }
@@ -146,6 +149,7 @@ export async function restorePettyCashEntry(row: OperationPettyCashRow): Promise
       created_by: row.created_by,
       person_name: row.person_name,
       person_position: row.person_position,
+      shared_company_ids: row.shared_company_ids ?? [],
     });
     if (error) throw error;
     await recordAudit({ companyId: row.company_id, relatedTable: "operation_petty_cash", relatedId: row.id, action: "petty_cash_restored", newValue: label({ entry_type: row.entry_type, amount: row.amount, entry_date: row.entry_date, description: row.description }) });

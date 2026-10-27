@@ -56,9 +56,8 @@ export function PettyCashEntryForm({
   const router = useRouter();
   const kinds: EntryKind[] = [...(allowBook ? (["expense", "top_up"] as const) : []), ...(allowClaim ? (["claim"] as const) : [])];
   const [companyId, setCompanyId] = useState(editing?.company_id ?? defaultCompanyId ?? companies[0]?.id ?? "");
-  // a new entry can be for more than one company (the same receipt shared): each company has its own amount, typed by the person
+  // a new entry can be for more than one company (for example the float given for both): it is keyed in once, with one amount, and counted once
   const [companyIds, setCompanyIds] = useState<string[]>([editing?.company_id ?? defaultCompanyId ?? companies[0]?.id ?? ""].filter(Boolean));
-  const [amounts, setAmounts] = useState<Record<string, string>>({});
   const [kind, setKind] = useState<EntryKind>(editing?.entry_type ?? kinds[0] ?? "expense");
   const [date, setDate] = useState(editing?.entry_date ?? todayInMalaysia());
   const [amount, setAmount] = useState(editing ? String(editing.amount) : "");
@@ -72,10 +71,9 @@ export function PettyCashEntryForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const multi = !editing && companyIds.length > 1;
   const chosenCompanies = companies.filter((c) => companyIds.includes(c.id));
   const firstCompanyId = editing ? companyId : (chosenCompanies[0]?.id ?? "");
-  const total = chosenCompanies.reduce((sum, c) => sum + (Number(amounts[c.id]) || 0), 0);
+  const alsoCompanyIds = editing ? undefined : chosenCompanies.slice(1).map((c) => c.id);
   const toggleCompany = (id: string) => setCompanyIds((ids) => (ids.includes(id) ? (ids.length > 1 ? ids.filter((x) => x !== id) : ids) : [...ids, id]));
   const isClaim = kind === "claim";
   const isReceived = kind === "top_up";
@@ -94,56 +92,40 @@ export function PettyCashEntryForm({
       setError("Enter who is claiming this petty cash.");
       return;
     }
-    if (multi && chosenCompanies.some((c) => !(Number(amounts[c.id]) > 0))) {
-      setError("Enter the amount for every company chosen.");
-      return;
-    }
     setSaving(true);
     setError(null);
     try {
-      const targets = editing ? [{ id: companyId, amount: Number(amount) }] : chosenCompanies.map((c) => ({ id: c.id, amount: multi ? Number(amounts[c.id]) : Number(amount) }));
-      const saved: string[] = [];
-      for (const target of targets) {
-        let documentId: string | undefined;
-        if (receipt) {
-          const doc = await uploadDocument({ companyId: target.id, module: isClaim ? "finance" : "driver-logistics", fileType: fileTypeFromMime(receipt), file: receipt, skipMarkdown: !isClaim });
-          documentId = doc.id;
-        }
-        const result = isClaim
-          ? await createPettyCashTransaction({
-              companyId: target.id,
-              type: "expense",
-              claimantName: claimant.trim(),
-              claimantDepartment: department.trim() || undefined,
-              category: category || undefined,
-              description: description || undefined,
-              amount: target.amount,
-              transactionDate: date,
-              documentId,
-              personName: personName.trim(),
-              personPosition: personPosition.trim(),
-            })
-          : editing
-            ? await updatePettyCashEntry(editing.id, { companyId: target.id, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, amount: target.amount, documentId, personName: personName || undefined, personPosition: personPosition || undefined })
-            : await createPettyCashEntry({ companyId: target.id, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, amount: target.amount, documentId, personName: personName || undefined, personPosition: personPosition || undefined });
-        if (!result.ok) {
-          // the companies already saved are taken off the choice, so saving again does not record them twice
-          if (saved.length > 0) {
-            setCompanyIds((ids) => ids.filter((id) => !saved.includes(id)));
-            setError(`Saved for ${companies.filter((c) => saved.includes(c.id)).map((c) => c.name).join(", ")}. Not saved for ${companies.find((c) => c.id === target.id)?.name ?? "the next company"}: ${result.error}`);
-          } else {
-            setError(result.error);
-          }
-          router.refresh();
-          return;
-        }
-        saved.push(target.id);
+      let documentId: string | undefined;
+      if (receipt) {
+        const doc = await uploadDocument({ companyId: firstCompanyId, module: isClaim ? "finance" : "driver-logistics", fileType: fileTypeFromMime(receipt), file: receipt, skipMarkdown: !isClaim });
+        documentId = doc.id;
+      }
+      const result = isClaim
+        ? await createPettyCashTransaction({
+            companyId: firstCompanyId,
+            alsoCompanyIds,
+            type: "expense",
+            claimantName: claimant.trim(),
+            claimantDepartment: department.trim() || undefined,
+            category: category || undefined,
+            description: description || undefined,
+            amount: Number(amount),
+            transactionDate: date,
+            documentId,
+            personName: personName.trim(),
+            personPosition: personPosition.trim(),
+          })
+        : editing
+          ? await updatePettyCashEntry(editing.id, { companyId: firstCompanyId, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, amount: Number(amount), documentId, personName: personName || undefined, personPosition: personPosition || undefined })
+          : await createPettyCashEntry({ companyId: firstCompanyId, alsoCompanyIds, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, amount: Number(amount), documentId, personName: personName || undefined, personPosition: personPosition || undefined });
+      if (!result.ok) {
+        setError(result.error);
+        return;
       }
       if (editing) {
         router.push(listHref);
       } else {
         setAmount("");
-        setAmounts({});
         setCategory("");
         setDescription("");
         setClaimant("");
@@ -199,29 +181,11 @@ export function PettyCashEntryForm({
           <label className={labelClass}>Date *</label>
           <input type="date" required max={todayInMalaysia()} value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} />
         </div>
-        {multi ? (
-          <div className="flex items-end pb-2 text-[12px] text-text-muted">Type the amount of each company below.</div>
-        ) : (
-          <div>
-            <label className={labelClass}>Amount (RM) *</label>
-            <input type="number" min="0.01" step="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} className={inputClass} />
-          </div>
-        )}
-      </div>
-
-      {multi && (
-        <div className="rounded-xl border border-border bg-surface-alt p-3">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {chosenCompanies.map((c) => (
-              <div key={c.id}>
-                <label className={labelClass}><span>{c.name}</span> <span>Amount (RM) *</span></label>
-                <input type="number" min="0.01" step="0.01" required value={amounts[c.id] ?? ""} onChange={(e) => setAmounts((a) => ({ ...a, [c.id]: e.target.value }))} className={inputClass} />
-              </div>
-            ))}
-          </div>
-          <div className="mt-2 flex gap-1 text-[12.5px] font-semibold text-text"><span>Total of the companies:</span> <span>{`RM ${total.toFixed(2)}`}</span></div>
+        <div>
+          <label className={labelClass}>Amount (RM) *</label>
+          <input type="number" min="0.01" step="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} className={inputClass} />
         </div>
-      )}
+      </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
