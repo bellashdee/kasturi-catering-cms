@@ -63,6 +63,9 @@ export function ProfileMenu({ fullName, email, roleLabel }: { fullName: string; 
             {email && <div className="truncate text-[12.5px] text-text-secondary">{email}</div>}
             <div className="mt-0.5 text-[12.5px] font-semibold text-primary">{roleLabel}</div>
           </div>
+          <Link href="/profile" onClick={() => setOpen(false)} className="block px-4 py-2.5 text-[14px] font-medium text-text hover:bg-bg">
+            My Profile
+          </Link>
           <Link href="/settings" onClick={() => setOpen(false)} className="block px-4 py-2.5 text-[14px] font-medium text-text hover:bg-bg">
             Settings
           </Link>

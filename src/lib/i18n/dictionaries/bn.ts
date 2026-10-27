@@ -3895,7 +3895,12 @@ const dictionary: Record<string, string> = {
  "Payment reference (optional)": "পরিশোধের রেফারেন্স (ঐচ্ছিক)",
  "Save payment": "পরিশোধ সংরক্ষণ করুন",
  "Choose the staff claim that is paid.": "পরিশোধিত স্টাফ দাবি বেছে নিন।",
- "Only the Director of Finance and her assistant can record the payment of a staff claim.": "শুধু অর্থ পরিচালক ও তাঁর সহকারী স্টাফ দাবির পরিশোধ নথিভুক্ত করতে পারেন।"
+ "Only the Director of Finance and her assistant can record the payment of a staff claim.": "শুধু অর্থ পরিচালক ও তাঁর সহকারী স্টাফ দাবির পরিশোধ নথিভুক্ত করতে পারেন।",
+ "My Profile": "আমার প্রোফাইল",
+ "My Account": "আমার অ্যাকাউন্ট",
+ "Staff record": "স্টাফ রেকর্ড",
+ "Companies": "কোম্পানিসমূহ",
+ "Your staff record is not linked to your login yet. Please ask the HR admin to link it, then your staff details, documents, leave and overtime will show here.": "আপনার স্টাফ রেকর্ড এখনও আপনার লগইনের সাথে যুক্ত হয়নি। অনুগ্রহ করে HR অ্যাডমিনকে যুক্ত করতে বলুন, তারপর আপনার স্টাফ তথ্য, নথি, ছুটি ও ওভারটাইম এখানে দেখা যাবে।"
 };
 
 export default dictionary;

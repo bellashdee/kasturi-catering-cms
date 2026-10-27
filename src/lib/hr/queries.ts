@@ -29,6 +29,8 @@ export async function getEmployee(supabase: DB, employeeId: string) {
   return data;
 }
 
+export type EmployeeWithCompany = Awaited<ReturnType<typeof getEmployee>>;
+
 export async function listCertificates(supabase: DB, employeeId: string) {
   const { data, error } = await supabase
     .from("employee_certificates")

@@ -3836,7 +3836,12 @@ const dictionary: Record<string, string> = {
  "Payment reference (optional)": "Rujukan bayaran (pilihan)",
  "Save payment": "Simpan bayaran",
  "Choose the staff claim that is paid.": "Pilih tuntutan kakitangan yang dibayar.",
- "Only the Director of Finance and her assistant can record the payment of a staff claim.": "Hanya Pengarah Kewangan dan pembantunya boleh merekod bayaran tuntutan kakitangan."
+ "Only the Director of Finance and her assistant can record the payment of a staff claim.": "Hanya Pengarah Kewangan dan pembantunya boleh merekod bayaran tuntutan kakitangan.",
+ "My Profile": "Profil Saya",
+ "My Account": "Akaun Saya",
+ "Staff record": "Rekod staf",
+ "Companies": "Syarikat",
+ "Your staff record is not linked to your login yet. Please ask the HR admin to link it, then your staff details, documents, leave and overtime will show here.": "Rekod staf anda belum dipautkan dengan log masuk anda. Sila minta admin HR memautkannya, kemudian butiran staf, dokumen, cuti dan kerja lebih masa anda akan dipaparkan di sini."
 };
 
 export default dictionary;

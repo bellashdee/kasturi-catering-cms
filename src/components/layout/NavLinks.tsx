@@ -5,6 +5,12 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { MODULES } from "@/lib/constants";
 
 const ICONS: Record<string, React.ReactNode> = {
+  profile: (
+    <>
+      <circle cx="10" cy="7" r="3.2" />
+      <path d="M3.5 17c.6-3.2 3.2-5.2 6.5-5.2s5.9 2 6.5 5.2" />
+    </>
+  ),
   dashboard: (
     <>
       <rect x="3" y="3" width="6" height="6" rx="1.2" />
@@ -145,6 +151,11 @@ function NavItem({ href, icon, label, matchPrefixes, badge }: { href: string; ic
       ) : null}
     </Link>
   );
+}
+
+/** My Profile: the first link of the side bar, every person's own details. */
+export function ProfileLink() {
+  return <NavItem href="/profile" icon="profile" label="My Profile" />;
 }
 
 export function MainDashboardLink() {

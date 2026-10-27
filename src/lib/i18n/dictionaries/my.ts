@@ -3889,7 +3889,12 @@ const dictionary: Record<string, string> = {
  "Payment reference (optional)": "ပေးချေမှု ရည်ညွှန်းချက် (ရွေးချယ်စရာ)",
  "Save payment": "ပေးချေမှု သိမ်းရန်",
  "Choose the staff claim that is paid.": "ပေးချေပြီး ဝန်ထမ်းတောင်းဆိုမှု ရွေးပါ။",
- "Only the Director of Finance and her assistant can record the payment of a staff claim.": "ဘဏ္ဍာရေးဒါရိုက်တာနှင့် ၎င်း၏ လက်ထောက်သာ ဝန်ထမ်းတောင်းဆိုမှု ပေးချေမှုကို မှတ်တမ်းတင်နိုင်သည်။"
+ "Only the Director of Finance and her assistant can record the payment of a staff claim.": "ဘဏ္ဍာရေးဒါရိုက်တာနှင့် ၎င်း၏ လက်ထောက်သာ ဝန်ထမ်းတောင်းဆိုမှု ပေးချေမှုကို မှတ်တမ်းတင်နိုင်သည်။",
+ "My Profile": "ကျွန်ုပ်၏ ပရိုဖိုင်",
+ "My Account": "ကျွန်ုပ်၏ အကောင့်",
+ "Staff record": "ဝန်ထမ်း မှတ်တမ်း",
+ "Companies": "ကုမ္ပဏီများ",
+ "Your staff record is not linked to your login yet. Please ask the HR admin to link it, then your staff details, documents, leave and overtime will show here.": "သင့်ဝန်ထမ်းမှတ်တမ်းကို သင့်လော့ဂ်အင်နှင့် ချိတ်ဆက်မထားသေးပါ။ HR အက်ဒမင်ကို ချိတ်ဆက်ပေးရန် ပြောပါ၊ ထို့နောက် သင့်ဝန်ထမ်းအချက်အလက်၊ စာရွက်စာတမ်း၊ ခွင့်နှင့် အချိန်ပိုများ ဤနေရာတွင် ပေါ်လာမည်။"
 };
 
 export default dictionary;

@@ -3902,7 +3902,12 @@ const dictionary: Record<string, string> = {
  "Payment reference (optional)": "付款参考（可选）",
  "Save payment": "保存付款",
  "Choose the staff claim that is paid.": "请选择已支付的员工报销。",
- "Only the Director of Finance and her assistant can record the payment of a staff claim.": "只有财务总监及其助理可以记录员工报销的付款。"
+ "Only the Director of Finance and her assistant can record the payment of a staff claim.": "只有财务总监及其助理可以记录员工报销的付款。",
+ "My Profile": "我的个人资料",
+ "My Account": "我的账户",
+ "Staff record": "员工记录",
+ "Companies": "公司",
+ "Your staff record is not linked to your login yet. Please ask the HR admin to link it, then your staff details, documents, leave and overtime will show here.": "您的员工记录尚未与登录账号关联。请联系人事管理员进行关联，之后您的员工资料、文件、请假和加班记录将显示在此。"
 };
 
 export default dictionary;

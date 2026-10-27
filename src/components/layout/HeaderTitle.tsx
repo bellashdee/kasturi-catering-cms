@@ -8,6 +8,7 @@ type Company = { id: string; name: string; legal_name: string };
 function pageTitle(pathname: string, priorityTitle: string): string {
   if (pathname === "/") return "Main Dashboard";
   if (pathname.startsWith("/settings")) return "Settings";
+  if (pathname.startsWith("/profile")) return "My Profile";
   if (pathname.startsWith("/priority-centre")) return priorityTitle;
   if (pathname.startsWith("/payroll-centre")) return "Payroll Centre";
   if (pathname.startsWith("/bulletin")) return "Bulletin Board";
