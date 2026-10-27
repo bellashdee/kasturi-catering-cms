@@ -32,9 +32,10 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // the signed-in person is read from the verified token (checked on this server against the project's public key), not by asking the
+  // Supabase auth server on every click: that saves a round trip on every page. Sign-in, refresh and sign-out still go to Supabase.
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const user = claimsData?.claims?.sub ? { id: claimsData.claims.sub } : null;
 
   const isPublicPath = PUBLIC_PATHS.some((path) =>
     request.nextUrl.pathname.startsWith(path),

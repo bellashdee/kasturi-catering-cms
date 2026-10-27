@@ -34,11 +34,11 @@ const ROLE_RANK: Record<Database["public"]["Enums"]["user_role"], number> = {
 export const getSessionContext = cache(async (): Promise<SessionContext | null> => {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
+  // from the verified token (no extra round trip to the Supabase auth server on every page); actions that change data still ask the server
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const claims = claimsData?.claims;
+  if (!claims?.sub) return null;
+  const user = { id: claims.sub, email: typeof claims.email === "string" ? claims.email : undefined };
 
   const [{ data: profile }, { data: access }] = await Promise.all([
     supabase.from("profiles").select("full_name, email").eq("id", user.id).single(),

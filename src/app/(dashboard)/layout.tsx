@@ -21,22 +21,20 @@ export default async function DashboardLayout({
   if (!session) redirect("/login");
 
   const supabase = await createClient();
-  const { data: companies } = await supabase
-    .from("companies")
-    .select("id, name, legal_name")
-    .order("legal_name", { ascending: true });
-
-  const { data: profile } = await supabase.from("profiles").select("language").eq("id", session.userId).maybeSingle();
-
-  // sales-agent forms waiting for review show as a number on the Catering menu item, on every page
-  const pendingCatering = canAccessModule(session.allowedModules, "catering") ? await countPendingSubmissions(supabase) : 0;
+  // everything the side bar and the top bar need is asked at the same time (not one after another), so every page opens faster
+  const [{ data: companies }, { data: profile }, pendingCatering, showPayroll, { data: holder }] = await Promise.all([
+    supabase.from("companies").select("id, name, legal_name").order("legal_name", { ascending: true }),
+    supabase.from("profiles").select("language").eq("id", session.userId).maybeSingle(),
+    // sales-agent forms waiting for review show as a number on the Catering menu item, on every page
+    canAccessModule(session.allowedModules, "catering") ? countPendingSubmissions(supabase) : Promise.resolve(0),
+    canUsePayrollCentre(supabase),
+    // Company Spending (Company Expenses, Petty Cash, Budgets) has its own place in the side bar: for Finance & Admin users and for the people who hold a petty cash
+    supabase.rpc("user_can_use_operation_petty_cash"),
+  ]);
 
   // everyone has their own task list; Super Admins and Company Admins also get Madam Penny's Priority Centre (payments and approvals)
   const isAdmin = session.role === "super_admin" || session.role === "company_admin";
-  const showPayroll = await canUsePayrollCentre(supabase);
   const taskLabel = isAdmin ? "Priority Centre" : "My Tasks";
-  // Company Spending (Company Expenses, Petty Cash, Budgets) has its own place in the side bar: for Finance & Admin users and for the people who hold a petty cash
-  const { data: holder } = await supabase.rpc("user_can_use_operation_petty_cash");
   const showSpending = canAccessModule(session.allowedModules, "finance-admin") || holder === true;
 
   return (
