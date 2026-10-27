@@ -8,6 +8,7 @@ import type { Candidate, RecipeRef } from "@/lib/kitchenAi/match";
 import { loadRecipes } from "@/lib/purchasePlanner/actions";
 import { SIDE_LABEL, type KitchenSide } from "@/lib/kitchen/side";
 import { Select } from "@/components/ui/Select";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 export type PackageDish = {
   id: string;
@@ -35,8 +36,17 @@ export function PackageMenuPicker({ dishes, recipeData, recipeRefs, minimumPax, 
   const [recipes, setRecipes] = useState<Map<string, RecipeData>>(() => new Map(recipeData.map((r) => [r.id, r])));
   const [error, setError] = useState<string | null>(null);
 
+  const { t } = useI18n();
+  const [query, setQuery] = useState("");
+  /** sections the person opened or closed by hand (key = meal | section); the rest follow the default */
+  const [toggled, setToggled] = useState<Record<string, boolean>>({});
+  const [allOpen, setAllOpen] = useState<boolean | null>(null);
+
   const counts = { all: dishes.length, kitchen: dishes.filter((d) => d.side === "kitchen").length, bar: dishes.filter((d) => d.side === "bar").length };
-  const shown = dishes.filter((d) => side === "all" || d.side === side);
+  const words = query.trim().toLowerCase();
+  const shown = dishes.filter((d) => (side === "all" || d.side === side) && (!words || `${d.name} ${d.section ?? ""}`.toLowerCase().includes(words)));
+  const sectionCount = new Set(shown.map((d) => `${d.mealLabel}|${d.section ?? ""}`)).size;
+  const isOpen = (key: string) => toggled[key] ?? (allOpen !== null ? allOpen : words !== "" || sectionCount <= 3);
   const byMeal = useMemo(() => {
     const m = new Map<string, Map<string, PackageDish[]>>();
     for (const d of shown) {
@@ -83,38 +93,83 @@ export function PackageMenuPicker({ dishes, recipeData, recipeRefs, minimumPax, 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        {(["all", "kitchen", "bar"] as const).map((k) => (
-          <button key={k} type="button" onClick={() => setSide(k)} className={chip(side === k)}>
-            {`${k === "all" ? "All" : SIDE_LABEL[k]} (${counts[k]})`}
-          </button>
-        ))}
-        <span className="mx-1 h-5 w-px bg-border" />
-        <button type="button" disabled={shown.length === 0} onClick={() => setSelected((s) => Array.from(new Set([...s, ...shown.map((d) => d.id)])))} className="rounded-lg border border-border-strong bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text hover:border-primary disabled:opacity-50">
-          {`Select all shown (${shown.length})`}
-        </button>
-        <button type="button" disabled={selected.length === 0} onClick={() => setSelected([])} className="text-[12.5px] font-semibold text-text-secondary hover:underline disabled:opacity-50">
-          Clear all
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t("Search an item or a section")}
+          className="h-9 min-w-[220px] flex-1 rounded-lg border border-border-strong bg-white px-3 text-[13px] outline-none focus:border-primary"
+        />
+        {counts.bar > 0 && (
+          <div className="flex items-center gap-1.5">
+            {(["all", "kitchen", "bar"] as const).map((k) => (
+              <button key={k} type="button" onClick={() => setSide(k)} className={chip(side === k)}>
+                {`${k === "all" ? "All" : SIDE_LABEL[k]} (${counts[k]})`}
+              </button>
+            ))}
+          </div>
+        )}
+        <button type="button" onClick={() => { setToggled({}); setAllOpen(sectionCount > 0 && !Array.from(new Set(shown.map((d) => `${d.mealLabel}|${d.section ?? ""}`))).every((k) => isOpen(k))); }} className="rounded-lg border border-border-strong bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text hover:border-primary">
+          {Array.from(new Set(shown.map((d) => `${d.mealLabel}|${d.section ?? ""}`))).every((k) => isOpen(k)) ? "Collapse all" : "Expand all"}
         </button>
       </div>
 
-      {byMeal.length === 0 && <p className="text-[13px] text-text-muted">No item on this side.</p>}
-      <div className="flex flex-col gap-3">
+      {chosen.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-primary/30 bg-info-bg px-3 py-2">
+          <span className="mr-1 text-[12.5px] font-extrabold text-text">{`Chosen: ${chosen.length}`}</span>
+          {chosen.map((d) => (
+            <button key={d.id} type="button" onClick={() => toggle(d.id)} title="Remove" className="inline-flex items-center gap-1 rounded-full border border-primary bg-white px-2.5 py-0.5 text-[12px] font-semibold text-text hover:bg-surface-alt">
+              {d.name}
+              <span aria-hidden="true" className="text-text-muted">×</span>
+            </button>
+          ))}
+          <button type="button" onClick={() => setSelected([])} className="ml-1 text-[12px] font-semibold text-text-secondary hover:underline">
+            Clear all
+          </button>
+        </div>
+      )}
+
+      {byMeal.length === 0 && <p className="text-[13px] text-text-muted">{words ? "No item matches your search." : "No item on this side."}</p>}
+      <div className="flex flex-col gap-4">
         {byMeal.map(([meal, sections]) => (
           <div key={meal}>
-            <div className="text-[12.5px] font-bold text-text">{meal}</div>
-            <div className="mt-1 flex flex-col gap-1.5">
-              {Array.from(sections.entries()).map(([section, items]) => (
-                <div key={section} className="flex flex-wrap items-center gap-x-1 gap-y-1">
-                  {section && <span className="mr-1 text-[11.5px] font-bold uppercase tracking-wide text-text-muted">{section}</span>}
-                  {items.map((d) => (
-                    <label key={d.id} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1 text-[13px] ${selected.includes(d.id) ? "border-primary bg-info-bg" : "border-border bg-surface hover:bg-surface-alt"}`}>
-                      <input type="checkbox" checked={selected.includes(d.id)} onChange={() => toggle(d.id)} />
-                      <span className="font-semibold text-text">{d.name}</span>
-                      <span className="text-[10.5px] font-bold uppercase text-text-muted">{SIDE_LABEL[d.side]}</span>
-                    </label>
-                  ))}
-                </div>
-              ))}
+            {(byMeal.length > 1 || meal !== "Other") && <div className="mb-1.5 text-[12.5px] font-bold uppercase tracking-wide text-text-muted">{meal}</div>}
+            <div className="flex flex-col gap-2">
+              {Array.from(sections.entries()).map(([section, items]) => {
+                const key = `${meal}|${section}`;
+                const open = isOpen(key);
+                const picked = items.filter((d) => selected.includes(d.id)).length;
+                const allPicked = picked === items.length;
+                return (
+                  <div key={key} className="overflow-hidden rounded-xl border border-border bg-surface">
+                    <div className="flex items-center gap-2 bg-surface-alt px-3 py-2">
+                      <button type="button" aria-expanded={open} onClick={() => setToggled((s) => ({ ...s, [key]: !open }))} className="flex flex-1 items-center gap-2 text-left">
+                        <span aria-hidden="true" className={`inline-block text-[11px] text-text-muted transition-transform ${open ? "rotate-90" : ""}`}>▶</span>
+                        <span className="text-[13px] font-extrabold uppercase tracking-wide text-text">{section || "Items"}</span>
+                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${picked > 0 ? "bg-primary text-white" : "bg-white text-text-muted"}`}>{picked > 0 ? `${picked} / ${items.length}` : items.length}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelected((s) => (allPicked ? s.filter((id) => !items.some((d) => d.id === id)) : Array.from(new Set([...s, ...items.map((d) => d.id)]))))}
+                        className="text-[12px] font-semibold text-primary hover:underline"
+                      >
+                        {allPicked ? "Clear" : "Select all"}
+                      </button>
+                    </div>
+                    {open && (
+                      <div className="grid gap-1.5 p-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                        {items.map((d) => (
+                          <label key={d.id} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-[13px] ${selected.includes(d.id) ? "border-primary bg-info-bg" : "border-border bg-white hover:bg-surface-alt"}`}>
+                            <input type="checkbox" checked={selected.includes(d.id)} onChange={() => toggle(d.id)} />
+                            <span className="font-semibold text-text">{d.name}</span>
+                            {d.side === "bar" && side === "all" && <span className="ml-auto text-[10.5px] font-bold uppercase text-text-muted">{SIDE_LABEL[d.side]}</span>}
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         ))}

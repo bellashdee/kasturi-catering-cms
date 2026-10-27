@@ -3854,7 +3854,11 @@ const dictionary: Record<string, string> = {
  "Search a category": "အမျိုးအစား ရှာပါ",
  "Search a department": "ဌာန ရှာပါ",
  "Category, notes, department, amount…": "အမျိုးအစား၊ မှတ်ချက်၊ ဌာန၊ ငွေပမာဏ…",
- "No expense matches the search. Change the words or the filters.": "ရှာဖွေမှုနှင့် ကိုက်ညီသော အသုံးစရိတ် မရှိပါ။ စကားလုံး သို့မဟုတ် စစ်ထုတ်မှု ပြောင်းပါ။"
+ "No expense matches the search. Change the words or the filters.": "ရှာဖွေမှုနှင့် ကိုက်ညီသော အသုံးစရိတ် မရှိပါ။ စကားလုံး သို့မဟုတ် စစ်ထုတ်မှု ပြောင်းပါ။",
+ "Search an item or a section": "ပစ္စည်း သို့မဟုတ် အပိုင်း ရှာရန်",
+ "Collapse all": "အားလုံး ပိတ်ရန်",
+ "Expand all": "အားလုံး ဖွင့်ရန်",
+ "No item matches your search.": "ရှာဖွေမှုနှင့် ကိုက်ညီသော ပစ္စည်း မရှိပါ။"
 };
 
 export default dictionary;

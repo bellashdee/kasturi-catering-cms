@@ -3867,7 +3867,11 @@ const dictionary: Record<string, string> = {
  "Search a category": "搜索类别",
  "Search a department": "搜索部门",
  "Category, notes, department, amount…": "类别、备注、部门、金额…",
- "No expense matches the search. Change the words or the filters.": "没有符合搜索的支出。请更改关键词或筛选条件。"
+ "No expense matches the search. Change the words or the filters.": "没有符合搜索的支出。请更改关键词或筛选条件。",
+ "Search an item or a section": "搜索项目或分类",
+ "Collapse all": "全部收起",
+ "Expand all": "全部展开",
+ "No item matches your search.": "没有符合搜索的项目。"
 };
 
 export default dictionary;

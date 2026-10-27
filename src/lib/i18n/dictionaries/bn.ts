@@ -3860,7 +3860,11 @@ const dictionary: Record<string, string> = {
  "Search a category": "ক্যাটাগরি খুঁজুন",
  "Search a department": "বিভাগ খুঁজুন",
  "Category, notes, department, amount…": "ক্যাটাগরি, নোট, বিভাগ, পরিমাণ…",
- "No expense matches the search. Change the words or the filters.": "অনুসন্ধানের সাথে মিলে এমন কোনো খরচ নেই। শব্দ বা ফিল্টার বদলান।"
+ "No expense matches the search. Change the words or the filters.": "অনুসন্ধানের সাথে মিলে এমন কোনো খরচ নেই। শব্দ বা ফিল্টার বদলান।",
+ "Search an item or a section": "আইটেম বা বিভাগ খুঁজুন",
+ "Collapse all": "সব বন্ধ করুন",
+ "Expand all": "সব খুলুন",
+ "No item matches your search.": "অনুসন্ধানের সাথে মেলে এমন কোনো আইটেম নেই।"
 };
 
 export default dictionary;

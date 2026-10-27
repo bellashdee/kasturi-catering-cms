@@ -3801,7 +3801,11 @@ const dictionary: Record<string, string> = {
  "Search a category": "Cari kategori",
  "Search a department": "Cari jabatan",
  "Category, notes, department, amount…": "Kategori, nota, jabatan, jumlah…",
- "No expense matches the search. Change the words or the filters.": "Tiada perbelanjaan sepadan dengan carian. Tukar perkataan atau penapis."
+ "No expense matches the search. Change the words or the filters.": "Tiada perbelanjaan sepadan dengan carian. Tukar perkataan atau penapis.",
+ "Search an item or a section": "Cari item atau bahagian",
+ "Collapse all": "Tutup semua",
+ "Expand all": "Buka semua",
+ "No item matches your search.": "Tiada item sepadan dengan carian."
 };
 
 export default dictionary;
