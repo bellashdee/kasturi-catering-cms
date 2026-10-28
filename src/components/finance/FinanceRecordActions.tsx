@@ -21,6 +21,8 @@ import { todayInMalaysia } from "@/lib/format";
 import { AREA, BTN, BTN_GHOST, Dialog, ErrorLine, FIELD, LABEL } from "@/components/priority/ui";
 import { RecordActions } from "@/components/shared/RecordActions";
 import { CompanyChips } from "@/components/pettyCash/CompanyChips";
+import { MultiChoiceSelect } from "@/components/ui/MultiChoiceSelect";
+import { PETTY_CASH_CATEGORIES, joinCategories, splitCategories } from "@/lib/operationPettyCash/constants";
 import { splitCompanies } from "@/lib/pettyCash/companies";
 
 export type InvoiceEditData = { id: string; number: string; invoiceDate: string; dueDate: string; amount: string; taxAmount: string; description: string };
@@ -248,8 +250,8 @@ export function PettyCashClaimActions({ claim, companies }: { claim: ClaimEditDa
               <input required type="number" step="any" min="0" className={FIELD} value={f.amount} onChange={(e) => set({ amount: e.target.value })} />
             </div>
             <div>
-              <label className={LABEL}>Category</label>
-              <input className={FIELD} value={f.category} onChange={(e) => set({ category: e.target.value })} />
+              <label className={LABEL}>Category (choose one or more)</label>
+              <MultiChoiceSelect options={PETTY_CASH_CATEGORIES} value={splitCategories(f.category)} onChange={(list) => set({ category: joinCategories(list) })} placeholder="Select category" searchPlaceholder="Search category" />
             </div>
             <div>
               <label className={LABEL}>Description</label>

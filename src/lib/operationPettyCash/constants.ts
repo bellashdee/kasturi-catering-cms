@@ -33,6 +33,10 @@ export const PETTY_CASH_CATEGORIES = [
   "Other",
 ];
 
+/** An entry can have more than one category: they are saved in one text, separated by a comma ("Dry goods & groceries, Gas (LPG)"). */
+export const splitCategories = (text: string | null | undefined): string[] => (text ?? "").split(",").map((c) => c.trim()).filter(Boolean);
+export const joinCategories = (list: string[]): string => list.join(", ");
+
 export type OperationPettyCashRow = {
   id: string;
   company_id: string;

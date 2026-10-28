@@ -35,7 +35,9 @@ export function buildOverview(entries: CashEntry[], month: string, todayMonth: s
   const expenses = sum(current, "out");
 
   const cats = new Map<string, number>();
-  for (const e of current) if (e.kind === "out") cats.set(e.category?.trim() || "Other", round2((cats.get(e.category?.trim() || "Other") ?? 0) + e.amount));
+  // an expense with more than one category is its own line ("Dry goods & groceries + Gas (LPG)"): its amount is not split between them
+  const labelOf = (e: CashEntry) => (e.category ?? "").split(",").map((c) => c.trim()).filter(Boolean).join(" + ") || "Other";
+  for (const e of current) if (e.kind === "out") cats.set(labelOf(e), round2((cats.get(labelOf(e)) ?? 0) + e.amount));
 
   // the last months, ending with the chosen month (or this month for "all")
   const end = month === "all" ? todayMonth : month;

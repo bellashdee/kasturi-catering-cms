@@ -8,12 +8,13 @@ import { errorMessage } from "@/lib/actionResult";
 import { todayInMalaysia } from "@/lib/format";
 import { createPettyCashEntry, updatePettyCashEntry } from "@/lib/operationPettyCash/actions";
 import { createPettyCashTransaction, markPettyCashPaid } from "@/lib/finance/actions";
-import { PAYMENT_METHOD_LABEL, PETTY_CASH_CATEGORIES, type OperationPettyCashRow } from "@/lib/operationPettyCash/constants";
+import { PAYMENT_METHOD_LABEL, PETTY_CASH_CATEGORIES, joinCategories, splitCategories, type OperationPettyCashRow } from "@/lib/operationPettyCash/constants";
 import { DescriptionInput } from "@/components/DescriptionInput";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { positionOptions, type PersonOption } from "@/lib/pettyCash/people";
 import { Select } from "@/components/ui/Select";
 import { CompanyChips } from "@/components/pettyCash/CompanyChips";
+import { MultiChoiceSelect } from "@/components/ui/MultiChoiceSelect";
 import { splitCompanies } from "@/lib/pettyCash/companies";
 
 type Company = { id: string; name: string };
@@ -319,13 +320,8 @@ export function PettyCashEntryForm({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {!isReceived && (
           <div>
-            <label className={labelClass}>Category</label>
-            <Select value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass}>
-              <option value="">Select category</option>
-              {PETTY_CASH_CATEGORIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </Select>
+            <label className={labelClass}>Category (choose one or more)</label>
+            <MultiChoiceSelect options={PETTY_CASH_CATEGORIES} value={splitCategories(category)} onChange={(list) => setCategory(joinCategories(list))} placeholder="Select category" searchPlaceholder="Search category" />
           </div>
         )}
         <div className={isReceived ? "sm:col-span-2" : ""}>

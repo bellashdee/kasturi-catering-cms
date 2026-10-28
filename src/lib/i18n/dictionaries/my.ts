@@ -3897,7 +3897,9 @@ const dictionary: Record<string, string> = {
  "Your staff record is not linked to your login yet. Please ask the HR admin to link it, then your staff details, documents, leave and overtime will show here.": "သင့်ဝန်ထမ်းမှတ်တမ်းကို သင့်လော့ဂ်အင်နှင့် ချိတ်ဆက်မထားသေးပါ။ HR အက်ဒမင်ကို ချိတ်ဆက်ပေးရန် ပြောပါ၊ ထို့နောက် သင့်ဝန်ထမ်းအချက်အလက်၊ စာရွက်စာတမ်း၊ ခွင့်နှင့် အချိန်ပိုများ ဤနေရာတွင် ပေါ်လာမည်။",
  "+ Add menu item": "+ မီနူး ပစ္စည်း ထည့်ရန်",
  "Press Enter for the next item.": "နောက်တစ်ခုအတွက် Enter နှိပ်ပါ။",
- "Catering Event (the customer who ordered)": "ကေးတာရင်း ပွဲ (မှာယူသော ဖောက်သည်)"
+ "Catering Event (the customer who ordered)": "ကေးတာရင်း ပွဲ (မှာယူသော ဖောက်သည်)",
+ "Category (choose one or more)": "အမျိုးအစား (တစ်ခု သို့မဟုတ် တစ်ခုထက်ပို၍ ရွေးပါ)",
+ "Search category": "အမျိုးအစား ရှာရန်"
 };
 
 export default dictionary;

@@ -3844,7 +3844,9 @@ const dictionary: Record<string, string> = {
  "Your staff record is not linked to your login yet. Please ask the HR admin to link it, then your staff details, documents, leave and overtime will show here.": "Rekod staf anda belum dipautkan dengan log masuk anda. Sila minta admin HR memautkannya, kemudian butiran staf, dokumen, cuti dan kerja lebih masa anda akan dipaparkan di sini.",
  "+ Add menu item": "+ Tambah item menu",
  "Press Enter for the next item.": "Tekan Enter untuk item seterusnya.",
- "Catering Event (the customer who ordered)": "Acara Katering (pelanggan yang membuat tempahan)"
+ "Catering Event (the customer who ordered)": "Acara Katering (pelanggan yang membuat tempahan)",
+ "Category (choose one or more)": "Kategori (pilih satu atau lebih)",
+ "Search category": "Cari kategori"
 };
 
 export default dictionary;

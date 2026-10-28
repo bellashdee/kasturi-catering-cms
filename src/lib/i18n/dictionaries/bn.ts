@@ -3903,7 +3903,9 @@ const dictionary: Record<string, string> = {
  "Your staff record is not linked to your login yet. Please ask the HR admin to link it, then your staff details, documents, leave and overtime will show here.": "আপনার স্টাফ রেকর্ড এখনও আপনার লগইনের সাথে যুক্ত হয়নি। অনুগ্রহ করে HR অ্যাডমিনকে যুক্ত করতে বলুন, তারপর আপনার স্টাফ তথ্য, নথি, ছুটি ও ওভারটাইম এখানে দেখা যাবে।",
  "+ Add menu item": "+ মেনু আইটেম যোগ করুন",
  "Press Enter for the next item.": "পরের আইটেমের জন্য Enter চাপুন।",
- "Catering Event (the customer who ordered)": "ক্যাটারিং ইভেন্ট (অর্ডারকারী গ্রাহক)"
+ "Catering Event (the customer who ordered)": "ক্যাটারিং ইভেন্ট (অর্ডারকারী গ্রাহক)",
+ "Category (choose one or more)": "বিভাগ (এক বা একাধিক বেছে নিন)",
+ "Search category": "বিভাগ খুঁজুন"
 };
 
 export default dictionary;
