@@ -5,7 +5,6 @@ import type { SessionContext } from "@/lib/auth";
 import { OT_STATUS_LABEL } from "@/lib/hr/overtime";
 import {
   getEmployeePrivateDetails,
-  listCertificates,
   listLeaveForEmployee,
   listOvertimeForEmployee,
   listPayrollForEmployee,
@@ -17,7 +16,9 @@ import {
   PAYROLL_STATUS_LABEL,
   certificateUrgency,
   canManageStaffPrivateDetails,
+  STAFF_LETTER_TYPES,
 } from "@/lib/hr/constants";
+import { likeExact } from "@/lib/pettyCash/people";
 import { formatCurrency } from "@/lib/format";
 import { dobFromIc } from "@/lib/hr/ic";
 import { shortNameOf } from "@/lib/hr/shortName";
@@ -51,8 +52,13 @@ export async function EmployeeProfileView({
   const id = employee.id;
   const canSeePrivate = canManageStaffPrivateDetails(session.role);
   const canSeePayroll = await canUsePayrollCentre(supabase);
-  const [certificates, leave, overtime, payroll, privateDetails] = await Promise.all([
-    listCertificates(supabase, id),
+  const isAdmin = access.isAdminOf(employee.company_id);
+  // the same person can have a staff record in each company he or she works for: all of them are shown together
+  const { data: sameName } = await supabase.from("employees").select("*, companies(name)").ilike("full_name", likeExact(employee.full_name)).order("created_at");
+  const records = (sameName ?? []).filter((r) => r.id === employee.id || access.canSee(r));
+  const recordIds = records.map((r) => r.id);
+  const [{ data: allCertificates }, leave, overtime, payroll, privateDetails] = await Promise.all([
+    supabase.from("employee_certificates").select("*").in("employee_id", recordIds.length > 0 ? recordIds : [id]).order("expiry_date", { ascending: true }),
     listLeaveForEmployee(supabase, id),
     listOvertimeForEmployee(supabase, id),
     canSeePayroll ? listPayrollForEmployee(supabase, id) : Promise.resolve([]),
@@ -66,6 +72,19 @@ export async function EmployeeProfileView({
   // the date of birth written on the staff record; for a Malaysian IC number it is also known from the number itself
   const dobText = employee.date_of_birth || dobFromIc(employee.ic_passport_no) || "—";
   const kwspValue = !canSeePrivate ? restricted : privateDetails?.epf_no || "—";
+  const toItem = (c: NonNullable<typeof allCertificates>[number]) => ({
+    id: c.id,
+    companyId: c.company_id,
+    certType: c.cert_type,
+    certName: c.cert_name,
+    certNumber: c.cert_number,
+    issuedDate: c.issued_date,
+    expiryDate: c.expiry_date,
+    documentId: c.document_id,
+    urgency: certificateUrgency(c.expiry_date),
+  });
+  const letters = (allCertificates ?? []).filter((c) => STAFF_LETTER_TYPES.includes(c.cert_type));
+  const documents = (allCertificates ?? []).filter((c) => !STAFF_LETTER_TYPES.includes(c.cert_type));
 
   return (
     <div className="flex flex-col gap-5">
@@ -92,9 +111,11 @@ export async function EmployeeProfileView({
           <StatusBadge tone={employee.status === "active" ? "success" : employee.status === "terminated" ? "danger" : "neutral"}>
             {EMPLOYEE_STATUS_LABEL[employee.status] ?? employee.status}
           </StatusBadge>
-          <Link href={`/hr/${id}/edit${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2 text-[13px] font-semibold text-text">
-            Edit
-          </Link>
+          {isAdmin && (
+            <Link href={`/hr/${id}/edit${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2 text-[13px] font-semibold text-text">
+              Edit
+            </Link>
+          )}
         </div>
       </div>
 
@@ -122,26 +143,40 @@ export async function EmployeeProfileView({
 
         <SectionCard
           title="Staff Documents & Certificates"
-          action={<Link href={`/hr/${id}/certificates/new${query}`} className="text-[12.5px] font-semibold text-primary">+ Upload</Link>}
+          action={isAdmin ? <Link href={`/hr/${id}/certificates/new${query}`} className="text-[12.5px] font-semibold text-primary">+ Upload</Link> : undefined}
         >
-          {certificates.length === 0 ? (
-            <EmptyRow text="No certificates on file yet." />
-          ) : (
-            <CertificateList
-              canEdit={access.isAdminOf(employee.company_id)}
-              items={certificates.map((c) => ({
-                id: c.id,
-                companyId: c.company_id,
-                certType: c.cert_type,
-                certName: c.cert_name,
-                certNumber: c.cert_number,
-                issuedDate: c.issued_date,
-                expiryDate: c.expiry_date,
-                documentId: c.document_id,
-                urgency: certificateUrgency(c.expiry_date),
-              }))}
-            />
-          )}
+          {documents.length === 0 ? <EmptyRow text="No certificates on file yet." /> : <CertificateList canEdit={isAdmin} items={documents.map(toItem)} />}
+        </SectionCard>
+
+        <SectionCard
+          title="Warning Letters & Notices"
+          action={isAdmin ? <Link href={`/hr/${id}/certificates/new${query}`} className="text-[12.5px] font-semibold text-primary">+ Add letter</Link> : undefined}
+        >
+          {letters.length === 0 ? <EmptyRow text="No warning letter or notice on file." /> : <CertificateList canEdit={isAdmin} items={letters.map(toItem)} />}
+        </SectionCard>
+
+        <SectionCard title="All Company Information">
+          <div className="-mx-5 -mb-5 divide-y divide-border">
+            {records.map((r) => (
+              <div key={r.id} className="px-5 py-3.5 text-[13.5px]">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="font-bold text-text">{r.companies?.name ?? "—"}</div>
+                  <div className="flex items-center gap-2">
+                    <StatusBadge tone={r.status === "active" ? "success" : r.status === "terminated" ? "danger" : "neutral"}>{EMPLOYEE_STATUS_LABEL[r.status] ?? r.status}</StatusBadge>
+                    {r.id !== employee.id && access.canSee(r) && (
+                      <Link href={`/hr/${r.id}${query}`} className="text-[12.5px] font-semibold text-primary hover:underline">Open record →</Link>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-0.5 text-[13px] text-text-secondary">
+                  <span>{`Position: ${r.position || "—"}`}</span>
+                  <span>{`Department: ${r.department || "—"}`}</span>
+                  <span>{`Type: ${EMPLOYMENT_TYPE_LABEL[r.employment_type] ?? r.employment_type}`}</span>
+                  <span>{`Start date: ${r.join_date || "—"}`}</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </SectionCard>
 
         <SectionCard title="Leave" action={<Link href={`/hr/${id}/leave/new${query}`} className="text-[12.5px] font-semibold text-primary">+ Request</Link>}>

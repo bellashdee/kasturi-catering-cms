@@ -1,14 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import type { SessionContext } from "@/lib/auth";
-import { companiesWhereUser } from "@/lib/hr/otStaff";
 
 type DB = SupabaseClient<Database>;
 
 /**
- * Who may see which staff record in the HR section. A Super Admin or Company Admin sees every employee of the company. Everyone
- * else (for example a department manager who has the HR module) sees only the staff record linked to their own login: no list of
- * other staff and none of their details.
+ * Who may see which staff record in the HR section. Only the Super Admins (Madam Penny and Nabilah) see and change the staff
+ * records of every company. Everyone else (a company admin, a department manager ...) sees only the staff record linked to their own
+ * login: no list of other staff and none of their details.
  */
 export type HrAccess = {
   adminCompanyIds: Set<string>;
@@ -21,10 +20,11 @@ export type HrAccess = {
 };
 
 export async function getHrAccess(supabase: DB, session: SessionContext, companyIds: string[]): Promise<HrAccess> {
-  const [adminCompanyIds, { data: own }] = await Promise.all([
-    companiesWhereUser(supabase, companyIds, "user_is_company_admin"),
+  const [{ data: isSuper }, { data: own }] = await Promise.all([
+    supabase.rpc("current_user_is_super_admin"),
     supabase.from("employees").select("id").eq("user_id", session.userId),
   ]);
+  const adminCompanyIds = new Set<string>(isSuper === true ? companyIds : []);
   const ownEmployeeIds = new Set((own ?? []).map((e) => e.id));
   return {
     adminCompanyIds,

@@ -1614,6 +1614,54 @@ export type Database = {
           },
         ]
       }
+      employee_change_requests: {
+        Row: {
+          company_id: string
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          employee_id: string
+          field: string
+          id: string
+          new_value: string
+          old_value: string | null
+          reason: string | null
+          requested_by: string
+          status: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          employee_id: string
+          field: string
+          id?: string
+          new_value: string
+          old_value?: string | null
+          reason?: string | null
+          requested_by: string
+          status?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          employee_id?: string
+          field?: string
+          id?: string
+          new_value?: string
+          old_value?: string | null
+          reason?: string | null
+          requested_by?: string
+          status?: string
+        }
+        Relationships: []
+      }
       employee_certificates: {
         Row: {
           cert_name: string

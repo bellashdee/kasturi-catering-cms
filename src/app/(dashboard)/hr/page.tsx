@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SearchBox } from "@/components/SearchBox";
 import { getHrAccess } from "@/lib/hr/access";
+import { PendingChangeRequests } from "@/components/hr/ChangeRequestCards";
 import { canUsePayrollCentre } from "@/lib/hr/payrollAccess";
 
 function statusTone(status: string): "success" | "danger" | "neutral" {
@@ -119,9 +120,11 @@ export default async function HRPage({
 
       {!access.adminAnywhere && (
         <div className="rounded-xl border border-border bg-surface px-4 py-3 text-[13px] text-text-secondary shadow-sm">
-          You can see your own HR record only. The details of other staff are visible to the company admins.
+          You can see your own HR record only. The details of other staff are visible to Madam Penny and Nabilah only.
         </div>
       )}
+
+      {access.adminAnywhere && <PendingChangeRequests />}
 
       {access.adminAnywhere && <SearchBox placeholder="Search employees by name..." />}
 

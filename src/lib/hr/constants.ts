@@ -20,11 +20,18 @@ export const CERT_TYPE_LABEL: Record<string, string> = {
   medical_certificate: "Medical Certificate (MC)",
   confirmation_letter: "Confirmation Letter",
   loa: "Letter of Appointment (LOA)",
+  warning_letter: "Warning Letter",
+  show_cause_letter: "Show Cause Letter",
+  contract: "Employment Contract",
+  appraisal: "Performance Appraisal",
   other: "Other",
 };
 
 /** Employee document types that never expire, so no expiry date is asked for. */
-export const NO_EXPIRY_CERT_TYPES = ["confirmation_letter", "loa"];
+export const NO_EXPIRY_CERT_TYPES = ["confirmation_letter", "loa", "warning_letter", "show_cause_letter", "contract", "appraisal"];
+
+/** Letters and notices the company gives to a staff member (the staff member sees them in their own profile). */
+export const STAFF_LETTER_TYPES = ["warning_letter", "show_cause_letter", "appraisal"];
 
 export const COMPANY_DOC_TYPE_LABEL: Record<string, string> = {
   mbjb_licence: "MBJB Licence",
@@ -80,6 +87,6 @@ export function certificateUrgency(expiryDate: string | null): "expired" | "expi
 
 /** Bank account and KWSP numbers are only visible to / editable by these roles (also enforced by the database). */
 export function canManageStaffPrivateDetails(role: string): boolean {
-  return role === "super_admin" || role === "company_admin";
+  return role === "super_admin";
 }
 

@@ -57,7 +57,7 @@ async function savePrivateDetails(
     epf_no: input.epfNo?.trim() || null,
     updated_at: new Date().toISOString(),
   });
-  if (error) throw new Error("Only a Super Admin or Company Admin can save bank and KWSP details.");
+  if (error) throw new Error("Only Madam Penny or Nabilah can save bank and KWSP details.");
 }
 
 /** Date of birth, nationality, gender, race, religion, marital status and branch; the date of birth comes from the IC number when it is not typed. */
@@ -70,15 +70,15 @@ function personalColumns(input: Partial<EmployeeInput>) {
   return { date_of_birth: dob, nationality: text(input.nationality), gender, race: text(input.race), religion: text(input.religion), marital_status: text(input.maritalStatus), branch: text(input.branch), short_name: text(input.shortName)?.toUpperCase() ?? null };
 }
 
-/** The staff data of a company is for its admins: anyone else may only deal with their own record. */
-async function requireHrAdmin(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], companyId: string, message: string) {
-  const { data } = await supabase.rpc("user_is_company_admin", { target_company_id: companyId });
+/** The staff data is for Madam Penny and Nabilah only (the Super Admins): anyone else may only see their own record and ask for a change. */
+async function requireHrAdmin(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], _companyId: string, message: string) {
+  const { data } = await supabase.rpc("current_user_is_super_admin");
   if (data !== true) throw new Error(message);
 }
 
 export async function createEmployee(input: EmployeeInput) {
   const { supabase } = await requireUser();
-  await requireHrAdmin(supabase, input.companyId, "Only an admin of the company can add staff.");
+  await requireHrAdmin(supabase, input.companyId, "Only Madam Penny or Nabilah can add staff.");
 
   const { data, error } = await supabase
     .from("employees")
@@ -131,7 +131,7 @@ export async function attachEmployeeToCompanies(employeeId: string, companyIds: 
   const { supabase } = await requireUser();
   const { data: source, error } = await supabase.from("employees").select("*").eq("id", employeeId).single();
   if (error) throw error;
-  await requireHrAdmin(supabase, source.company_id, "Only an admin of the company can add staff to other companies.");
+  await requireHrAdmin(supabase, source.company_id, "Only Madam Penny or Nabilah can add staff to other companies.");
   const { data: sourcePrivate } = await supabase.from("employee_private_details").select("*").eq("employee_id", employeeId).maybeSingle();
   const created: string[] = [];
   for (const companyId of Array.from(new Set(companyIds))) {
@@ -180,7 +180,7 @@ export async function updateEmployee(employeeId: string, input: Partial<Employee
   // Changing a staff record (and linking a login to it) is for the admins of the company.
   const { data: target } = await supabase.from("employees").select("company_id").eq("id", employeeId).single();
   if (!target) throw new Error("This staff record was not found.");
-  await requireHrAdmin(supabase, target.company_id, input.userId !== undefined ? "Only an admin of the company can link a login account to a staff record." : "Only an admin of the company can change staff details.");
+  await requireHrAdmin(supabase, target.company_id, input.userId !== undefined ? "Only Madam Penny or Nabilah can link a login account to a staff record." : "Only Madam Penny or Nabilah can change staff details. Ask them in My Profile (Request a change).");
 
   const { error } = await supabase
     .from("employees")
@@ -230,7 +230,7 @@ export type BulkEmployeeRow = {
 
 export async function bulkImportEmployees(companyId: string, rows: BulkEmployeeRow[]) {
   const { supabase } = await requireUser();
-  await requireHrAdmin(supabase, companyId, "Only an admin of the company can import staff.");
+  await requireHrAdmin(supabase, companyId, "Only Madam Penny or Nabilah can import staff.");
 
   const payload = rows
     .filter((r) => r.fullName?.trim())
@@ -287,7 +287,7 @@ export type CertificateInput = {
 
 export async function createCertificate(input: CertificateInput) {
   const { supabase, userId } = await requireUser();
-  await requireHrAdmin(supabase, input.companyId, "Only an admin of the company can add staff documents.");
+  await requireHrAdmin(supabase, input.companyId, "Only Madam Penny or Nabilah can add staff documents.");
 
   const { data, error } = await supabase
     .from("employee_certificates")
@@ -334,7 +334,7 @@ export async function updateCertificate(id: string, input: CertificateEdit): Pro
     const { supabase } = await requireUser();
     const { data: before } = await supabase.from("employee_certificates").select("*").eq("id", id).maybeSingle();
     if (!before) throw new Error("This document was not found (it may have been deleted).");
-    await requireHrAdmin(supabase, before.company_id, "Only an admin of the company can change staff documents.");
+    await requireHrAdmin(supabase, before.company_id, "Only Madam Penny or Nabilah can change staff documents.");
     const name = input.certName?.trim();
     if (!name) throw new Error("Write the name of the document.");
     for (const d of [input.issuedDate, input.expiryDate]) if (d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) throw new Error("Enter valid dates.");
@@ -363,7 +363,7 @@ export async function deleteCertificate(id: string): Promise<ActionResult<{ row:
     const { supabase } = await requireUser();
     const { data: before } = await supabase.from("employee_certificates").select("*").eq("id", id).maybeSingle();
     if (!before) throw new Error("This document was not found (it may already be deleted).");
-    await requireHrAdmin(supabase, before.company_id, "Only an admin of the company can delete staff documents.");
+    await requireHrAdmin(supabase, before.company_id, "Only Madam Penny or Nabilah can delete staff documents.");
     const { data: removed, error } = await supabase.from("employee_certificates").delete().eq("id", id).select("id");
     if (error || !removed?.length) throw new Error("Could not delete the document.");
     await recordAudit({ companyId: before.company_id, relatedTable: "employee_certificates", relatedId: id, action: "deleted", previousValue: `${before.cert_type} · ${before.cert_name} · ${before.expiry_date ?? "no expiry"}`, newValue: "Deleted" });
@@ -378,7 +378,7 @@ export async function restoreCertificate(row: CertificateRow): Promise<ActionRes
   return runAction(async () => {
     const { supabase } = await requireUser();
     if (!row?.id || !row.company_id || !row.employee_id) throw new Error("There is nothing to put back.");
-    await requireHrAdmin(supabase, row.company_id, "Only an admin of the company can put a staff document back.");
+    await requireHrAdmin(supabase, row.company_id, "Only Madam Penny or Nabilah can put a staff document back.");
     const { error } = await supabase.from("employee_certificates").insert(row);
     if (error) throw new Error("Could not put the document back.");
     await recordAudit({ companyId: row.company_id, relatedTable: "employee_certificates", relatedId: row.id, action: "restored", newValue: `${row.cert_name} put back after it was deleted` });
