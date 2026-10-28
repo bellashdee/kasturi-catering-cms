@@ -3973,7 +3973,8 @@ const dictionary: Record<string, string> = {
  "Open My Claims": "আমার দাবিসমূহ খুলুন",
  "Open Company Spending on the left, then My Claims (this page). Choose the company you work for, the date you bought it and the amount you paid, exactly as on the receipt.": "বাঁ দিকে কোম্পানির ব্যয় খুলুন, তারপর আমার দাবিসমূহ (এই পাতা)। যে কোম্পানিতে কাজ করেন, কেনার তারিখ এবং যত টাকা দিয়েছেন তা রসিদ অনুযায়ী ঠিক যেমন আছে তেমন বেছে নিন।",
  "for staff who paid with their own money first. Send it in My Claims (under Company Spending): you choose Penny Chan or Nabilah to pay you back.": "যারা আগে নিজের টাকায় খরচ করেছেন তাদের জন্য। কোম্পানির ব্যয়-এর অধীনে আমার দাবিসমূহ-এ পাঠান: আপনাকে ফেরত দেবেন এমন Penny Chan বা Nabilah বেছে নিন।",
- "Claim back what you bought for the company with your own money": "কোম্পানির জন্য নিজের টাকায় যা কিনেছেন তা ফেরত দাবি করুন"
+ "Claim back what you bought for the company with your own money": "কোম্পানির জন্য নিজের টাকায় যা কিনেছেন তা ফেরত দাবি করুন",
+ "Open this date to see every event of the day": "এই তারিখ খুলে সেদিনের সব ইভেন্ট দেখুন"
 };
 
 export default dictionary;

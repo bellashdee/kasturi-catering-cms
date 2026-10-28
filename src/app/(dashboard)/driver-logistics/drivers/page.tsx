@@ -91,7 +91,7 @@ export default async function DriversPage({
                 >
                   <div className="font-semibold text-text">{d.employees?.full_name}</div>
                   <div className="text-text-secondary">{joined(group.map((g) => g.employees?.phone ?? g.employees?.email))}</div>
-                  <div className="text-text-secondary">{joined(group.map((g) => g.companies?.name))}</div>
+                  <div className="text-text-secondary">{new Set(group.map((g) => g.company_id)).size >= companies.length ? "All companies" : joined(group.map((g) => g.companies?.name))}</div>
                   <div className="flex items-center gap-2 text-text-secondary">
                     {expiry ?? "—"}
                     {isExpiringSoon(expiry) && <StatusBadge tone="warning">Expiring</StatusBadge>}

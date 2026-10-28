@@ -3980,7 +3980,8 @@ const dictionary: Record<string, string> = {
  "Open My Claims": "打开我的报销",
  "Open Company Spending on the left, then My Claims (this page). Choose the company you work for, the date you bought it and the amount you paid, exactly as on the receipt.": "点击左侧的“公司支出”，然后选择“我的报销”（本页）。选择您所在的公司、购买日期和您支付的金额，须与收据完全一致。",
  "for staff who paid with their own money first. Send it in My Claims (under Company Spending): you choose Penny Chan or Nabilah to pay you back.": "适用于先自己垫付的员工。请在“公司支出”下的“我的报销”中提交：选择由 Penny Chan 或 Nabilah 还款给您。",
- "Claim back what you bought for the company with your own money": "报销您用自己的钱为公司购买的物品"
+ "Claim back what you bought for the company with your own money": "报销您用自己的钱为公司购买的物品",
+ "Open this date to see every event of the day": "点击此日期查看当天所有活动"
 };
 
 export default dictionary;

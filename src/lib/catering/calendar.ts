@@ -42,6 +42,8 @@ export type CalendarEntry = {
   status: string;
   phase: EventPhase;
   companyName: string;
+  /** the customer who ordered the event ("" when it has none) */
+  customerName: string;
   date: string;
   /** "HH:MM" or "" */
   eventTime: string;
@@ -124,7 +126,7 @@ const QUOTATION_RANK: Record<string, number> = { accepted: 4, sent: 3, draft: 2,
  */
 export async function loadCalendarEntries(supabase: DB, companyIds: string[], start: string, end: string, today: string): Promise<CalendarEntry[]> {
   if (companyIds.length === 0) return [];
-  const eventSelect = "id, event_name, status, location, pic_name, pax_count, event_date, event_time, setup_time, meal_types, menu_description, company_id, second_service_type, service_pax, companies(name)";
+  const eventSelect = "id, event_name, status, location, pic_name, pax_count, event_date, event_time, setup_time, meal_types, menu_description, company_id, second_service_type, service_pax, companies(name), customers(name)";
 
   const [{ data: inRange, error: e1 }, { data: dayRows, error: e2 }, { data: requests, error: e3 }] = await Promise.all([
     supabase.from("catering_events").select(eventSelect).in("company_id", companyIds).gte("event_date", start).lte("event_date", end),
@@ -134,7 +136,7 @@ export async function loadCalendarEntries(supabase: DB, companyIds: string[], st
       .in("company_id", companyIds)
       .gte("day_date", start)
       .lte("day_date", end),
-    supabase.from("quotation_requests").select("id, company_id, event_name, location, pic_name, days, companies(name)").in("company_id", companyIds).eq("status", "pending"),
+    supabase.from("quotation_requests").select("id, company_id, event_name, customer_name, location, pic_name, days, companies(name)").in("company_id", companyIds).eq("status", "pending"),
   ]);
   if (e1) throw e1;
   if (e2) throw e2;
@@ -170,6 +172,7 @@ export async function loadCalendarEntries(supabase: DB, companyIds: string[], st
         status: ev.status,
         phase: phaseOf(ev.status),
         companyName: ev.companies?.name ?? "",
+        customerName: ev.customers?.name ?? "",
         date: d.day_date,
         eventTime: hhmm(d.event_time),
         setupTime: hhmm(d.setup_time),
@@ -199,6 +202,7 @@ export async function loadCalendarEntries(supabase: DB, companyIds: string[], st
       status: ev.status,
       phase: phaseOf(ev.status),
       companyName: ev.companies?.name ?? "",
+      customerName: ev.customers?.name ?? "",
       date: ev.event_date,
       eventTime: hhmm(ev.event_time),
       setupTime: hhmm(ev.setup_time),
@@ -231,6 +235,7 @@ export async function loadCalendarEntries(supabase: DB, companyIds: string[], st
         status: "request",
         phase: "request",
         companyName: r.companies?.name ?? "",
+        customerName: r.customer_name ?? "",
         date: d.dayDate,
         eventTime: d.eventTime ?? "",
         setupTime: d.setupTime ?? "",

@@ -42,18 +42,27 @@ function totalPax(list: CalendarEntry[]) {
   return list.filter((e) => e.phase !== "cancelled").reduce((t, e) => t + e.pax, 0);
 }
 
-function Chip({ e, eventHref }: { e: CalendarEntry; eventHref: Props["eventHref"] }) {
+const mealsText = (e: CalendarEntry) => (e.mealTypes.length > 0 ? `${e.mealTypes.length} meal${e.mealTypes.length === 1 ? "" : "s"}` : "");
+
+/** What a date of the month shows for an event: who ordered it, how many pax and how many meals. The full detail opens when the date is pressed. */
+function Chip({ e, eventHref, plain = false }: { e: CalendarEntry; eventHref: Props["eventHref"]; plain?: boolean }) {
+  const title = `${e.customerName ? `${e.customerName} · ` : ""}${e.eventName} · ${e.kind === "request" ? "Quotation request" : EVENT_STATUS_LABEL[e.status] ?? e.status} · ${e.pax} pax${e.venue ? ` · ${e.venue}` : ""}`;
+  const className = `block rounded px-1.5 py-1 text-[11.5px] font-semibold leading-tight ${plain ? "" : "hover:opacity-80"} ${PHASE_STYLE[e.phase]}`;
+  const detail = [e.pax > 0 ? `${e.pax} pax` : "", mealsText(e), e.eventTime].filter(Boolean).join(" · ");
+  const body = (
+    <>
+      <span className="block truncate">
+        <span aria-hidden="true">{PHASE_MARK[e.phase]} </span>
+        {e.customerName || e.eventName}
+        {e.alert ? " ⚠" : ""}
+      </span>
+      {detail && <span className="block truncate text-[10.5px] font-medium opacity-80">{detail}</span>}
+    </>
+  );
+  if (plain) return <div title={title} className={className}>{body}</div>;
   return (
-    <Link
-      href={e.kind === "request" ? "/catering/quotation-requests" : eventHref(e.eventId)}
-      title={`${e.eventName} · ${e.kind === "request" ? "Quotation request" : EVENT_STATUS_LABEL[e.status] ?? e.status} · ${e.pax} pax${e.venue ? ` · ${e.venue}` : ""}`}
-      className={`block truncate rounded px-1.5 py-1 text-[11.5px] font-semibold leading-tight hover:opacity-80 ${PHASE_STYLE[e.phase]}`}
-    >
-      <span aria-hidden="true">{PHASE_MARK[e.phase]} </span>
-      {e.eventTime ? `${e.eventTime} ` : ""}
-      {e.eventName}
-      {e.pax > 0 ? ` · ${e.pax}` : ""}
-      {e.alert ? " ⚠" : ""}
+    <Link href={e.kind === "request" ? "/catering/quotation-requests" : eventHref(e.eventId)} title={title} className={className}>
+      {body}
     </Link>
   );
 }
@@ -63,7 +72,7 @@ function EntryCard({ e, eventHref, canDelete, query }: { e: CalendarEntry; event
     <div className={`rounded-xl px-4 py-3 shadow-sm ${PHASE_STYLE[e.phase]} ${e.phase === "cancelled" ? "" : "border border-border"}`}>
       <Link href={e.kind === "request" ? `/catering/quotation-requests${query}` : eventHref(e.eventId)} className="block hover:opacity-90">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[15px] font-extrabold">{e.eventName}</span>
+          <span className="text-[15px] font-extrabold">{e.customerName ? `${e.customerName} — ${e.eventName}` : e.eventName}</span>
           <span className="rounded-full bg-surface px-2 py-0.5 text-[11.5px] font-bold text-text-secondary">{e.kind === "request" ? "Quotation request" : EVENT_STATUS_LABEL[e.status] ?? e.status}</span>
           {e.quotation && (
             <span className="rounded-full bg-surface px-2 py-0.5 text-[11.5px] font-semibold text-text-secondary">{`Quotation ${e.quotation.number} · ${QUOTATION_LABEL[e.quotation.status] ?? e.quotation.status}`}</span>
@@ -72,14 +81,15 @@ function EntryCard({ e, eventHref, canDelete, query }: { e: CalendarEntry; event
           <span className="ml-auto text-[12px] text-text-muted">{e.companyName}</span>
         </div>
         <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1 text-[12.5px] text-text-secondary sm:grid-cols-4">
+          <span>{`Customer: ${e.customerName || "—"}`}</span>
           <span>{`Pax: ${e.pax > 0 ? e.pax : "—"}`}</span>
           <span>{`Food ready: ${e.eventTime || "—"}`}</span>
           <span>{`Set-up (kitchen): ${e.setupTime || "—"}`}</span>
           <span>{`Kitchen PIC: ${e.pic || "—"}`}</span>
         </div>
         {e.venue && <div className="mt-1 text-[12.5px] text-text-secondary">{`Venue: ${e.venue}`}</div>}
-        {e.mealTypes.length > 0 && <div className="mt-1 text-[12.5px] text-text-secondary">{`Meals: ${e.mealTypes.map((m) => MEAL_TYPE_LABEL[m] ?? m).join(", ")}`}</div>}
-        {e.menu && <div className="mt-1 line-clamp-2 whitespace-pre-line text-[12.5px] text-text">{e.menu}</div>}
+        {e.mealTypes.length > 0 && <div className="mt-1 text-[12.5px] text-text-secondary">{`Meals (${e.mealTypes.length}): ${e.mealTypes.map((m) => MEAL_TYPE_LABEL[m] ?? m).join(", ")}`}</div>}
+        {e.menu && <div className="mt-1 whitespace-pre-line text-[12.5px] text-text">{e.menu}</div>}
         {e.alert && <div className="mt-1.5 text-[12.5px] font-bold text-danger">{`⚠ ${e.alert}`}</div>}
       </Link>
       <CalendarEntryActions
@@ -114,24 +124,23 @@ export function EventCalendarView({ view, date, today, entries, href, eventHref,
                 const list = byDate.get(d) ?? [];
                 const inMonth = d.startsWith(month);
                 return (
-                  <div key={d} className={`min-h-[104px] border-r border-border p-1.5 last:border-r-0 ${inMonth ? "" : "bg-surface-alt/60"} ${d === today ? "ring-2 ring-inset ring-primary/60" : ""}`}>
+                  <Link
+                    key={d}
+                    href={href("day", d)}
+                    title="Open this date to see every event of the day"
+                    className={`block min-h-[104px] border-r border-border p-1.5 last:border-r-0 hover:bg-surface-alt ${inMonth ? "" : "bg-surface-alt/60"} ${d === today ? "ring-2 ring-inset ring-primary/60" : ""}`}
+                  >
                     <div className="mb-1 flex items-center justify-between">
-                      <Link href={href("day", d)} className={`text-[12px] font-bold hover:underline ${inMonth ? "text-text" : "text-text-muted"}`}>
-                        {Number(d.slice(8))}
-                      </Link>
+                      <span className={`text-[12px] font-bold ${inMonth ? "text-text" : "text-text-muted"}`}>{Number(d.slice(8))}</span>
                       {totalPax(list) > 0 && <span className="text-[10.5px] font-semibold text-text-muted">{`${totalPax(list)} pax`}</span>}
                     </div>
                     <div className="flex flex-col gap-1">
                       {list.slice(0, 3).map((e) => (
-                        <Chip key={e.key} e={e} eventHref={eventHref} />
+                        <Chip key={e.key} e={e} eventHref={eventHref} plain />
                       ))}
-                      {list.length > 3 && (
-                        <Link href={href("day", d)} className="text-[11px] font-semibold text-primary hover:underline">
-                          {`+${list.length - 3} more`}
-                        </Link>
-                      )}
+                      {list.length > 3 && <span className="text-[11px] font-semibold text-primary">{`+${list.length - 3} more`}</span>}
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>
