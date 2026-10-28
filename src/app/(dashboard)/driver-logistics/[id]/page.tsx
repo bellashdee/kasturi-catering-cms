@@ -39,7 +39,7 @@ export default async function DeliveryDetailPage({
 
   const [{ data: allCompanies }, { data: events }, { data: vehicles }, deliveryPersons, proofs, auditLog] = await Promise.all([
     supabase.from("companies").select("id, name").order("name"),
-    supabase.from("catering_events").select("id, event_name, company_id").eq("company_id", delivery.company_id).order("event_date", { ascending: false }),
+    supabase.from("catering_events").select("id, event_name, company_id, event_date, customers(name)").eq("company_id", delivery.company_id).order("event_date", { ascending: false }),
     supabase.from("vehicles").select("id, plate_number, vehicle_type, company_id").eq("company_id", delivery.company_id).order("plate_number"),
     listDeliveryPersons(supabase, [delivery.company_id]),
     listTaskProofs(supabase, "deliveries", id),

@@ -3909,7 +3909,8 @@ const dictionary: Record<string, string> = {
  "Companies": "公司",
  "Your staff record is not linked to your login yet. Please ask the HR admin to link it, then your staff details, documents, leave and overtime will show here.": "您的员工记录尚未与登录账号关联。请联系人事管理员进行关联，之后您的员工资料、文件、请假和加班记录将显示在此。",
  "+ Add menu item": "+ 添加菜单项",
- "Press Enter for the next item.": "按 Enter 键输入下一项。"
+ "Press Enter for the next item.": "按 Enter 键输入下一项。",
+ "Catering Event (the customer who ordered)": "餐饮活动（下单的客户）"
 };
 
 export default dictionary;

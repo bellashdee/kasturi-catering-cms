@@ -12,7 +12,13 @@ import { attachTaskProof } from "@/lib/taskProofs/actions";
 import { Select } from "@/components/ui/Select";
 
 type Company = { id: string; name: string };
-type Event = { id: string; event_name: string; company_id: string };
+type Event = { id: string; event_name: string; company_id: string; event_date?: string | null; customers?: { name: string } | null };
+
+/** An event is chosen by the customer who ordered it: "Customer name — Event name · date". */
+function eventLabel(ev: Event): string {
+  const customer = ev.customers?.name?.trim();
+  return [customer ? `${customer} — ${ev.event_name}` : ev.event_name, ev.event_date].filter(Boolean).join(" · ");
+}
 type Vehicle = { id: string; plate_number: string; vehicle_type?: string | null; company_id: string };
 
 const inputClass =
@@ -149,10 +155,10 @@ export function DeliveryForm({
           </Select>
         </div>
         <div>
-          <label className={labelClass}>Catering Event</label>
+          <label className={labelClass}>Catering Event (the customer who ordered)</label>
           <Select value={form.cateringEventId} disabled={!!deliveryId} onChange={(e) => set("cateringEventId", e.target.value)} className={inputClass}>
             <option value="">Not linked to an event</option>
-            {eventsForCompany.map((ev) => <option key={ev.id} value={ev.id}>{ev.event_name}</option>)}
+            {eventsForCompany.map((ev) => <option key={ev.id} value={ev.id}>{eventLabel(ev)}</option>)}
           </Select>
         </div>
       </div>
