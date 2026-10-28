@@ -82,7 +82,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen bg-surface">
       <GuestLanguageBar />
-      <div className="hidden w-[480px] shrink-0 flex-col justify-between bg-gradient-to-br from-[#fbd9bb] via-[#f6c9a6] to-[#cfe6d6] p-14 text-[#4a2c18] lg:flex">
+      <div className="hidden w-[480px] shrink-0 flex-col justify-between bg-gradient-to-br from-[#fbdcc3] to-[#f6c8a6] p-14 text-[#4a2c18] lg:flex">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent text-sm font-extrabold text-white">
             CM

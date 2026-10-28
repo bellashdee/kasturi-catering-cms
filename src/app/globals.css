@@ -1,28 +1,28 @@
 @import "tailwindcss";
 
 :root {
-  /* Peach and apricot with fresh mint and a little butter: warm like fresh food, the one palette of the whole system */
-  --color-bg: #fff6ee;
+  /* One pastel colour for the whole system: soft peach (apricot). Every tint and shade below is the same colour, lighter or deeper */
+  --color-bg: #fff5ec;
   --color-surface: #fffdfa;
-  --color-surface-alt: #fdf0e4;
-  --color-border: #f1dcc6;
-  --color-border-strong: #e5c8aa;
+  --color-surface-alt: #fdeee0;
+  --color-border: #f3dcc6;
+  --color-border-strong: #e8c7a8;
 
   --color-navy-900: #c27545;
   --color-navy-800: #ad6738;
   --color-navy-700: #eab68d;
 
-  --color-sidebar: #cfe6d6;
-  --color-sidebar-text: #25402f;
-  --color-sidebar-line: rgba(0, 0, 0, 0.1);
+  --color-sidebar: #f8dcc3;
+  --color-sidebar-text: #4a2c18;
+  --color-sidebar-line: rgba(74, 44, 24, 0.12);
   --color-sidebar-field: rgba(255, 255, 255, 0.6);
-  --color-sidebar-active: rgba(255, 255, 255, 0.7);
-  --color-sidebar-active-text: #25402f;
+  --color-sidebar-active: rgba(255, 255, 255, 0.75);
+  --color-sidebar-active-text: #4a2c18;
 
   /* the soft banner, greeting avatar, page wash, card shadow, leaf and chart colours */
   --soft-a: #fde6d3;
   --soft-b: #fff0e2;
-  --soft-c: #e8f4ec;
+  --soft-c: #fbeadb;
   --soft-page-a: #fffaf4;
   --soft-page-b: #fdeee0;
   --soft-avatar-a: #f0b48a;
@@ -30,20 +30,20 @@
   --soft-shadow: rgba(180, 95, 51, 0.12);
   --soft-leaf: #b45f33;
   --soft-label: #c98258;
-  --chart-1: #7fbf9c;
-  --chart-2: #f2a97c;
-  --chart-3: #e9c46a;
-  --chart-4: #b45f33;
-  --chart-5: #bfe0c8;
-  --chart-6: #f6c9a8;
-  --chart-7: #a07856;
-  --chart-8: #e58f7c;
-  --chart-9: #86b3a8;
-  --chart-10: #c9b79c;
+  --chart-1: #e08a55;
+  --chart-2: #f6c9a8;
+  --chart-3: #b45f33;
+  --chart-4: #efae82;
+  --chart-5: #8a4a26;
+  --chart-6: #fbdcc3;
+  --chart-7: #cf7440;
+  --chart-8: #f2bb94;
+  --chart-9: #9c5630;
+  --chart-10: #e9a173;
 
   --color-primary: #b45f33;
   --color-primary-hover: #9c4f28;
-  --color-accent: #7fbf9c;
+  --color-accent: #e9a97a;
 
   --color-success: #3f6b43;
   --color-success-bg: #e4eee2;
@@ -60,13 +60,13 @@
   --color-company-all: #334155;
   --color-company-signature: #2563a6;
   --color-company-kasturi: #7a8b4a;
-  --color-company-o2life: #c4622d;
+  --color-company-o2life: #d96a6a;
 }
 
 
 /*
  * One look per company, chosen by the company being viewed (the page sets data-theme on <html>):
- *   Kasturi Indah: mint and teal, white cards, light sidebar   O2 Life: warm cream, dusty pink and brown
+ *   Kasturi Indah: mint and teal, white cards, light sidebar   O2 Life: soft red
  *   Signature Solution: navy and indigo blue with a navy sidebar   (all companies together keeps the blush and sage look above)
  */
 html[data-theme="kasturi"] {
@@ -113,46 +113,47 @@ html[data-theme="kasturi"] {
 }
 
 html[data-theme="o2life"] {
-  --color-bg: #fbf5ee;
-  --color-surface: #fffdf9;
-  --color-surface-alt: #fbf3ea;
-  --color-border: #eadccb;
-  --color-border-strong: #d8c3ab;
-  --color-navy-900: #8a6a52;
-  --color-navy-800: #755a46;
-  --color-navy-700: #c4a58b;
-  --color-sidebar: #efe2d2;
-  --color-sidebar-text: #4a3a2c;
-  --color-sidebar-line: #d9c6b0;
-  --color-sidebar-field: #f8efe3;
-  --color-sidebar-active: #fffaf3;
-  --color-sidebar-active-text: #5b4332;
-  --color-primary: #8a6048;
-  --color-primary-hover: #744f3b;
-  --color-accent: #d99a9a;
-  --color-success: #4d6f43;
-  --color-success-bg: #e9efdf;
-  --color-info-bg: #f6e8dc;
-  --soft-a: #f6e6dc;
-  --soft-b: #fbefe6;
-  --soft-c: #f3ede0;
-  --soft-page-a: #fdf8f2;
-  --soft-page-b: #f6eadd;
-  --soft-avatar-a: #d9a5a5;
-  --soft-avatar-b: #8a6048;
-  --soft-shadow: rgba(138, 96, 72, 0.12);
-  --soft-leaf: #8a6a52;
-  --soft-label: #a98062;
-  --chart-1: #8a6048;
-  --chart-2: #d99a9a;
-  --chart-3: #c4a58b;
-  --chart-4: #b0786a;
-  --chart-5: #e8c4b8;
-  --chart-6: #a39270;
-  --chart-7: #c98f6f;
-  --chart-8: #d4b5a0;
-  --chart-9: #9c7b6b;
-  --chart-10: #8c8c76;
+  /* O2 Life: one soft red (rose red), every tint and shade the same colour */
+  --color-bg: #fff3f2;
+  --color-surface: #fffcfb;
+  --color-surface-alt: #fdeae8;
+  --color-border: #f4d3d0;
+  --color-border-strong: #e9b7b3;
+  --color-navy-900: #c24f4f;
+  --color-navy-800: #a94242;
+  --color-navy-700: #ec9d9a;
+  --color-sidebar: #f9d5d2;
+  --color-sidebar-text: #4d2220;
+  --color-sidebar-line: rgba(77, 34, 32, 0.12);
+  --color-sidebar-field: rgba(255, 255, 255, 0.6);
+  --color-sidebar-active: rgba(255, 255, 255, 0.75);
+  --color-sidebar-active-text: #4d2220;
+  --color-primary: #c04848;
+  --color-primary-hover: #a73a3a;
+  --color-accent: #ea9b98;
+  --color-success: #3f6b43;
+  --color-success-bg: #e4eee2;
+  --color-info-bg: #fde3e1;
+  --soft-a: #fde0dd;
+  --soft-b: #fff0ee;
+  --soft-c: #fbe6e3;
+  --soft-page-a: #fff8f7;
+  --soft-page-b: #fdebe9;
+  --soft-avatar-a: #f2a9a5;
+  --soft-avatar-b: #c04848;
+  --soft-shadow: rgba(192, 72, 72, 0.12);
+  --soft-leaf: #c04848;
+  --soft-label: #cd7a76;
+  --chart-1: #de6f6b;
+  --chart-2: #f7c4c1;
+  --chart-3: #b03e3e;
+  --chart-4: #f0a5a1;
+  --chart-5: #8a2f30;
+  --chart-6: #fbd9d6;
+  --chart-7: #cc5a56;
+  --chart-8: #f3b3af;
+  --chart-9: #9c3636;
+  --chart-10: #e88c88;
 }
 
 html[data-theme="signature"] {
