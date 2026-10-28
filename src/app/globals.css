@@ -1,49 +1,49 @@
 @import "tailwindcss";
 
 :root {
-  /* One pastel colour for the whole system: soft peach (apricot). Every tint and shade below is the same colour, lighter or deeper */
-  --color-bg: #fff5ec;
-  --color-surface: #fffdfa;
-  --color-surface-alt: #fdeee0;
-  --color-border: #f3dcc6;
-  --color-border-strong: #e8c7a8;
+  /* Blush pink and sage green with a little gold on warm cream (the Expense Planner look): the look of the sign-in page and of all companies together */
+  --color-bg: #fcf6ee;
+  --color-surface: #fffdf9;
+  --color-surface-alt: #f8efe6;
+  --color-border: #ecdcd3;
+  --color-border-strong: #dcc7bc;
 
-  --color-navy-900: #c27545;
-  --color-navy-800: #ad6738;
-  --color-navy-700: #eab68d;
+  --color-navy-900: #b06a77;
+  --color-navy-800: #9a5a67;
+  --color-navy-700: #e6b8bf;
 
-  --color-sidebar: #f8dcc3;
-  --color-sidebar-text: #4a2c18;
-  --color-sidebar-line: rgba(74, 44, 24, 0.12);
+  --color-sidebar: #b8c7ad;
+  --color-sidebar-text: #2f3e2b;
+  --color-sidebar-line: rgba(47, 62, 43, 0.14);
   --color-sidebar-field: rgba(255, 255, 255, 0.6);
-  --color-sidebar-active: rgba(255, 255, 255, 0.75);
-  --color-sidebar-active-text: #4a2c18;
+  --color-sidebar-active: rgba(255, 253, 249, 0.85);
+  --color-sidebar-active-text: #2f3e2b;
 
   /* the soft banner, greeting avatar, page wash, card shadow, leaf and chart colours */
-  --soft-a: #fde6d3;
-  --soft-b: #fff0e2;
-  --soft-c: #fbeadb;
-  --soft-page-a: #fffaf4;
-  --soft-page-b: #fdeee0;
-  --soft-avatar-a: #f0b48a;
-  --soft-avatar-b: #b45f33;
-  --soft-shadow: rgba(180, 95, 51, 0.12);
-  --soft-leaf: #b45f33;
-  --soft-label: #c98258;
-  --chart-1: #e08a55;
-  --chart-2: #f6c9a8;
-  --chart-3: #b45f33;
-  --chart-4: #efae82;
-  --chart-5: #8a4a26;
-  --chart-6: #fbdcc3;
-  --chart-7: #cf7440;
-  --chart-8: #f2bb94;
-  --chart-9: #9c5630;
-  --chart-10: #e9a173;
+  --soft-a: #f7dcdc;
+  --soft-b: #fbeae6;
+  --soft-c: #e8efe2;
+  --soft-page-a: #fdf8f2;
+  --soft-page-b: #f9ece6;
+  --soft-avatar-a: #e7b3b9;
+  --soft-avatar-b: #a85d6b;
+  --soft-shadow: rgba(168, 93, 107, 0.12);
+  --soft-leaf: #8aa37f;
+  --soft-label: #c08a8f;
+  --chart-1: #a9bd9f;
+  --chart-2: #eeb4ba;
+  --chart-3: #d8bf86;
+  --chart-4: #b46a78;
+  --chart-5: #cdd9c4;
+  --chart-6: #f6d3d6;
+  --chart-7: #c9b69a;
+  --chart-8: #7f9a79;
+  --chart-9: #e9c8c4;
+  --chart-10: #b8b18a;
 
-  --color-primary: #b45f33;
-  --color-primary-hover: #9c4f28;
-  --color-accent: #e9a97a;
+  --color-primary: #a85d6b;
+  --color-primary-hover: #924d5b;
+  --color-accent: #c9a56a;
 
   --color-success: #3f6b43;
   --color-success-bg: #e4eee2;
@@ -51,7 +51,7 @@
   --color-warning-bg: #f8ecd6;
   --color-danger: #b0382f;
   --color-danger-bg: #fae6e4;
-  --color-info-bg: #fde8d6;
+  --color-info-bg: #f9e3e1;
 
   --color-text: #16212e;
   --color-text-secondary: #3f4b5b;

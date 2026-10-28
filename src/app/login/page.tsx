@@ -7,14 +7,14 @@ import { createClient } from "@/lib/supabase/client";
 import { resolveLoginIdentifier } from "@/lib/users/actions";
 import { PasswordInput } from "@/components/shared/PasswordInput";
 
-/** Strawberry matcha: the colours of the sign-in page (strawberry pink for the button, matcha green for the links and the focus). */
-const STRAWBERRY_MATCHA = {
-  "--color-primary": "#c9435f",
-  "--color-primary-hover": "#b13652",
-  "--color-accent": "#7fa05a",
-  "--color-border-strong": "#efc4cd",
-  "--color-text": "#3b1d28",
-  "--color-text-secondary": "#6a4552",
+/** Blush pink and sage green with a little gold on cream: the colours of the sign-in page (blush rose for the button, sage green for the links and the focus). */
+const BLUSH_SAGE = {
+  "--color-primary": "#a85d6b",
+  "--color-primary-hover": "#924d5b",
+  "--color-accent": "#c9a56a",
+  "--color-border-strong": "#e3c9c4",
+  "--color-text": "#33262b",
+  "--color-text-secondary": "#62504f",
 } as Record<string, string>;
 
 export default function LoginPage() {
@@ -90,15 +90,15 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#fffafb]" style={STRAWBERRY_MATCHA as React.CSSProperties}>
+    <div className="flex min-h-screen bg-[#fcf6ee]" style={BLUSH_SAGE as React.CSSProperties}>
       <GuestLanguageBar />
-      <div className="relative hidden w-[480px] shrink-0 flex-col justify-between overflow-hidden bg-gradient-to-br from-[#fbc4d0] via-[#fde2e2] to-[#d2e4b3] p-14 text-[#4a2030] lg:flex">
+      <div className="relative hidden w-[480px] shrink-0 flex-col justify-between overflow-hidden bg-gradient-to-b from-[#c3d0b8] via-[#e3dcc8] to-[#f6d6d8] p-14 text-[#33402e] lg:flex">
         {/* soft strawberry and matcha shapes */}
-        <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-[#f7a3b6]/45" />
-        <div aria-hidden="true" className="pointer-events-none absolute -bottom-20 -left-12 h-72 w-72 rounded-full bg-[#a9c880]/45" />
-        <div aria-hidden="true" className="pointer-events-none absolute bottom-40 right-8 h-24 w-24 rounded-full bg-[#fff]/35" />
+        <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-[#f1c3c8]/60" />
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-20 -left-12 h-72 w-72 rounded-full bg-[#a9bd9f]/50" />
+        <div aria-hidden="true" className="pointer-events-none absolute bottom-40 right-8 h-24 w-24 rounded-full bg-[#d8bf86]/40" />
         <div className="relative z-10 flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-[#e0607d] to-[#7fa05a] text-sm font-extrabold text-white">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-[#a85d6b] to-[#c9a56a] text-sm font-extrabold text-white">
             CM
           </div>
           <span className="text-base font-bold">Central Management System</span>
@@ -107,12 +107,12 @@ export default function LoginPage() {
           <p className="max-w-[380px] text-3xl font-extrabold leading-snug">
             One system for Signature Solution, Kasturi Indah and O2 Life.
           </p>
-          <p className="mt-4 max-w-[360px] text-sm text-[#4a2030]/80">
+          <p className="mt-4 max-w-[360px] text-sm text-[#33402e]/80">
             Dashboards, catering operations, kitchen production, logistics, suppliers
             and finance — all in one place, filtered by company.
           </p>
         </div>
-        <p className="relative z-10 text-xs text-[#4a2030]/60">
+        <p className="relative z-10 text-xs text-[#33402e]/60">
           &copy; {new Date().getFullYear()} Central Management System — internal use only
         </p>
       </div>
@@ -159,7 +159,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@company.com.my or username"
-                className="mt-1.5 h-11 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-[#7fa05a] focus:ring-4 focus:ring-[#7fa05a]/20"
+                className="mt-1.5 h-11 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-[#8aa37f] focus:ring-4 focus:ring-[#8aa37f]/25"
                 suppressHydrationWarning
               />
 
@@ -172,7 +172,7 @@ export default function LoginPage() {
                 onChange={setPassword}
                 placeholder="••••••••••"
                 autoComplete="current-password"
-                className="mt-1.5 h-11 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-[#7fa05a] focus:ring-4 focus:ring-[#7fa05a]/20"
+                className="mt-1.5 h-11 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-[#8aa37f] focus:ring-4 focus:ring-[#8aa37f]/25"
               />
 
               <button
@@ -189,7 +189,7 @@ export default function LoginPage() {
                   setMode("magic-link");
                   setError(null);
                 }}
-                className="mt-4 w-full text-center text-[12.5px] font-semibold text-[#5f7d3f]"
+                className="mt-4 w-full text-center text-[12.5px] font-semibold text-[#5f7a55]"
               >
                 Sign in without a password
               </button>
@@ -221,7 +221,7 @@ export default function LoginPage() {
                 value={magicLinkEmail}
                 onChange={(e) => setMagicLinkEmail(e.target.value)}
                 placeholder="you@company.com.my or username"
-                className="mt-1.5 h-11 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-[#7fa05a] focus:ring-4 focus:ring-[#7fa05a]/20"
+                className="mt-1.5 h-11 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-[#8aa37f] focus:ring-4 focus:ring-[#8aa37f]/25"
               />
 
               <button
@@ -238,7 +238,7 @@ export default function LoginPage() {
                   setMode("password");
                   setMagicLinkError(null);
                 }}
-                className="mt-4 w-full text-center text-[12.5px] font-semibold text-[#5f7d3f]"
+                className="mt-4 w-full text-center text-[12.5px] font-semibold text-[#5f7a55]"
               >
                 Sign in with a password instead
               </button>
