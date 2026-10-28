@@ -3968,7 +3968,8 @@ const dictionary: Record<string, string> = {
  "Open Company Spending on the left, then My Claims (this page). Choose the company you work for, the date you bought it and the amount you paid, exactly as on the receipt.": "ဘယ်ဘက်ရှိ ကုမ္ပဏီအသုံးစရိတ် ကိုဖွင့်ပြီး ကျွန်ုပ်၏ တောင်းဆိုမှုများ (ဤစာမျက်နှာ) ကို ရွေးပါ။ သင်အလုပ်လုပ်သည့် ကုမ္ပဏီ၊ ဝယ်ယူသည့်ရက်စွဲနှင့် ပေးခဲ့သည့်ပမာဏကို ဘောက်ချာအတိုင်း ရွေးပါ။",
  "for staff who paid with their own money first. Send it in My Claims (under Company Spending): you choose Penny Chan or Nabilah to pay you back.": "မိမိငွေဖြင့် ကြိုပေးထားသော ဝန်ထမ်းများအတွက်။ ကုမ္ပဏီအသုံးစရိတ် အောက်ရှိ ကျွန်ုပ်၏ တောင်းဆိုမှုများ တွင် ပို့ပါ၊ ပြန်ပေးမည့် Penny Chan သို့မဟုတ် Nabilah ကို ရွေးပါ။",
  "Claim back what you bought for the company with your own money": "ကုမ္ပဏီအတွက် သင့်ကိုယ်ပိုင်ငွေဖြင့် ဝယ်ယူခဲ့သည်များကို ပြန်လည်တောင်းခံပါ",
- "Open this date to see every event of the day": "ဤရက်စွဲကိုဖွင့်ပြီး ထိုနေ့၏ ပွဲအားလုံးကို ကြည့်ပါ"
+ "Open this date to see every event of the day": "ဤရက်စွဲကိုဖွင့်ပြီး ထိုနေ့၏ ပွဲအားလုံးကို ကြည့်ပါ",
+ "Open the records of this line to review and edit them": "ဤလိုင်း၏ မှတ်တမ်းများကို ဖွင့်ပြီး စစ်ဆေး၍ တည်းဖြတ်ပါ"
 };
 
 export default dictionary;

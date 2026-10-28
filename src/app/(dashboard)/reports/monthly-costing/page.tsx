@@ -62,10 +62,37 @@ export default async function MonthlyCostingReportPage({
   }
   const rows = Array.from(grouped.values()).sort((a, b) => b.amount - a.amount);
 
+  // where the records behind a line are kept (to review and edit them): the page of that module, for the same company and month
+  const companyQuery = requestedId ? `company=${requestedId}&` : "";
+  const periodMonth = range ? "all" : `${year}-${String(month).padStart(2, "0")}`;
+  const SOURCE_HREF: Record<string, string> = {
+    "Petty Cash": `/spending/petty-cash?${companyQuery}all=1&month=${periodMonth}`,
+    "Company Expenses": `/spending/expenses${query}`,
+    "Finance Payments": `/finance/payments${query}`,
+    Supplier: `/supplier-procurement/invoices${query}`,
+    Catering: `/catering${query}`,
+    Kitchen: `/kitchen/stock${query}`,
+    Driver: `/driver-logistics${query}`,
+    Marketing: `/marketing${query}`,
+    HR: `/hr${query}`,
+  };
+
   const { headers, tableRows } = buildReportRows(
     rows,
     [
-      { key: "source", label: "Module", exportValue: (r) => r.source },
+      {
+        key: "source",
+        label: "Module",
+        exportValue: (r) => r.source,
+        display: (r) =>
+          SOURCE_HREF[r.source] ? (
+            <Link href={SOURCE_HREF[r.source]} title="Open the records of this line to review and edit them" className="font-semibold text-primary hover:underline">
+              {r.source} →
+            </Link>
+          ) : (
+            r.source
+          ),
+      },
       { key: "category", label: "Category", exportValue: (r) => r.category },
       { key: "department", label: "Department", exportValue: (r) => r.department ?? "—" },
       { key: "amount", label: "Amount", exportValue: (r) => r.amount, display: (r) => formatCurrency(r.amount) },

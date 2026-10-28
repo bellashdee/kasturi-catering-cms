@@ -3915,7 +3915,8 @@ const dictionary: Record<string, string> = {
  "Open Company Spending on the left, then My Claims (this page). Choose the company you work for, the date you bought it and the amount you paid, exactly as on the receipt.": "Buka Perbelanjaan Syarikat di sebelah kiri, kemudian Tuntutan Saya (halaman ini). Pilih syarikat tempat anda bekerja, tarikh anda membeli dan jumlah yang anda bayar, tepat seperti pada resit.",
  "for staff who paid with their own money first. Send it in My Claims (under Company Spending): you choose Penny Chan or Nabilah to pay you back.": "untuk kakitangan yang menggunakan wang sendiri dahulu. Hantar dalam Tuntutan Saya (di bawah Perbelanjaan Syarikat): anda pilih Penny Chan atau Nabilah untuk membayar semula.",
  "Claim back what you bought for the company with your own money": "Tuntut semula apa yang anda beli untuk syarikat dengan wang sendiri",
- "Open this date to see every event of the day": "Buka tarikh ini untuk melihat semua acara pada hari itu"
+ "Open this date to see every event of the day": "Buka tarikh ini untuk melihat semua acara pada hari itu",
+ "Open the records of this line to review and edit them": "Buka rekod bagi baris ini untuk semak dan edit"
 };
 
 export default dictionary;
