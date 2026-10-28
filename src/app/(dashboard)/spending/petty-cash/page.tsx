@@ -23,7 +23,7 @@ import { UndoBanner } from "@/components/operationPettyCash/UndoBanner";
 import { SoftHeader, SoftPage } from "@/components/ui/Soft";
 import { buildOverview } from "@/lib/pettyCash/overview";
 import { chosenHolder, holdersOnly, likeExact, loadHolderNames, loadPersonOptions } from "@/lib/pettyCash/people";
-import { ownIdentity, pettyCashAccess } from "@/lib/pettyCash/access";
+import { claimPayers, ownIdentity, pettyCashAccess } from "@/lib/pettyCash/access";
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
 const dayLabel = (iso: string) => formatMalaysiaDate(`${iso}T12:00:00+08:00`);
@@ -82,7 +82,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
   if (targetCompanyIds.length === 0) return <EmptyRow text="You don't have access to any company yet." />;
   const defaultCompanyId = sp.company && accessibleIds.includes(sp.company) ? sp.company : selectable[0]?.id;
 
-  const [people, holderNames] = await Promise.all([loadPersonOptions(supabase), loadHolderNames(supabase)]);
+  const [people, holderNames, payers] = await Promise.all([loadPersonOptions(supabase), loadHolderNames(supabase), canClaims ? claimPayers() : Promise.resolve([])]);
   const holders = holdersOnly(people, holderNames);
   // whose petty cash this is: only that person's money, spending and claims are read, so nobody else's is ever mixed in.
   // Only Ms. Penny and Ms. Nabilah may choose another person or look at everyone's; everybody else is kept to their own.
@@ -238,6 +238,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
           listHref={listHref}
           people={people}
           holders={holders}
+          claimPayers={payers.map((p) => ({ name: p.name, position: holders.find((h) => h.name === p.name)?.position ?? p.position }))}
           holderName={who.name}
           holderPosition={who.position}
           allowBook={isHolder}
@@ -245,7 +246,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
           allowPayClaims={canClaims && seeAll}
           pendingClaims={rows
             .filter((r) => r.claim?.status === "pending_payment")
-            .map((r) => ({ id: r.claim!.id, label: `${r.claim!.claimant ?? "—"} · ${r.title} · RM ${r.amount.toFixed(2)} · ${r.date} · ${r.companyName}` }))}
+            .map((r) => ({ id: r.claim!.id, label: `${r.claim!.claimant ?? "—"} · ${r.title} · RM ${r.amount.toFixed(2)} · ${r.date} · ${r.companyName}`, claimant: r.claim!.claimant ?? "—", amount: r.amount, date: r.date, description: r.title, companyName: r.companyName }))}
           lockName={!seeAll}
         />
       )}

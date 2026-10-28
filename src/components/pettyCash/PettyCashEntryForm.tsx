@@ -21,7 +21,7 @@ type Company = { id: string; name: string };
 type EntryKind = "expense" | "top_up" | "claim" | "claim_payment";
 
 /** a staff claim that is still waiting to be paid (for the Staff claim payment) */
-export type PendingClaim = { id: string; label: string };
+export type PendingClaim = { id: string; label: string; claimant: string; amount: number; date: string; description: string; companyName: string };
 
 const inputClass = "mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px] outline-none focus:border-primary";
 const labelClass = "text-[12px] font-semibold text-text-secondary";
@@ -37,6 +37,7 @@ export function PettyCashEntryForm({
   listHref,
   people,
   holders,
+  claimPayers = [],
   holderName,
   holderPosition,
   allowBook,
@@ -52,6 +53,8 @@ export function PettyCashEntryForm({
   people: PersonOption[];
   /** the people who hold a petty cash */
   holders: PersonOption[];
+  /** the people a staff claim is claimed from (Ms. Penny and Ms. Nabilah) */
+  claimPayers?: { name: string; position: string }[];
   holderName: string;
   holderPosition: string;
   /** may record money received / spent (the cash book) */
@@ -92,9 +95,31 @@ export function PettyCashEntryForm({
   const isClaim = kind === "claim";
   const isReceived = kind === "top_up";
   const isPayment = kind === "claim_payment";
+  const paidClaim = pendingClaims.find((c) => c.id === payClaimId);
   const fillPosition = (name: string) => {
     const found = holders.find((p) => p.name === name);
     if (found?.position) setPersonPosition(found.position);
+  };
+  const isPayer = (name: string) => claimPayers.some((p) => p.name === name);
+  // a staff claim is claimed from Ms. Penny or Ms. Nabilah; leaving the claim, the person of the page comes back
+  const changeKind = (next: EntryKind) => {
+    const was = kind;
+    setKind(next);
+    if (lockName) return;
+    if (next === "claim") {
+      if (!isPayer(personName)) {
+        const only = claimPayers.length === 1 ? claimPayers[0] : undefined;
+        setPersonName(only?.name ?? "");
+        setPersonPosition(only?.position ?? "");
+      }
+    } else if (was === "claim") {
+      setPersonName(holderName);
+      setPersonPosition(holderPosition);
+    }
+  };
+  const pickPayer = (name: string) => {
+    setPersonName(name);
+    setPersonPosition(claimPayers.find((p) => p.name === name)?.position ?? "");
   };
 
   async function handleSubmit(e: React.FormEvent) {
@@ -104,10 +129,14 @@ export function PettyCashEntryForm({
         setError("Choose the staff claim that is paid.");
         return;
       }
+      if (!paymentReference.trim()) {
+        setError("Enter the reference ID of the payment.");
+        return;
+      }
       setSaving(true);
       setError(null);
       try {
-        await markPettyCashPaid({ transactionId: payClaimId, paymentDate, paymentReference: paymentReference.trim() || undefined, paymentRemarks: paymentRemarks.trim() || undefined });
+        await markPettyCashPaid({ transactionId: payClaimId, paymentDate, paymentReference: paymentReference.trim(), paymentRemarks: paymentRemarks.trim() || undefined });
         setPayClaimId("");
         setPaymentReference("");
         setPaymentRemarks("");
@@ -117,6 +146,10 @@ export function PettyCashEntryForm({
       } finally {
         setSaving(false);
       }
+      return;
+    }
+    if (isClaim && !lockName && !isPayer(personName)) {
+      setError("Choose who the claim is claimed from: Penny Chan or Nabilah.");
       return;
     }
     if (!personName.trim() || !personPosition.trim()) {
@@ -188,7 +221,7 @@ export function PettyCashEntryForm({
   const typeField = (
     <div>
       <label className={labelClass}>Type *</label>
-      <Select value={kind} disabled={!!editing} onChange={(e) => setKind(e.target.value as EntryKind)} className={inputClass}>
+      <Select value={kind} disabled={!!editing} onChange={(e) => changeKind(e.target.value as EntryKind)} className={inputClass}>
         {kinds.includes("top_up") && <option value="top_up">Received</option>}
         {kinds.includes("expense") && <option value="expense">Spent</option>}
         {kinds.includes("claim") && <option value="claim">Claimant</option>}
@@ -214,14 +247,34 @@ export function PettyCashEntryForm({
             </Select>
           </div>
         </div>
+        {paidClaim && (
+          <div className="grid grid-cols-1 gap-3 rounded-lg border border-border bg-surface-alt p-3 sm:grid-cols-4">
+            <div>
+              <div className={labelClass}>Staff name</div>
+              <div className="mt-1 text-[13.5px] font-bold text-text">{paidClaim.claimant}</div>
+            </div>
+            <div>
+              <div className={labelClass}>Amount</div>
+              <div className="mt-1 text-[13.5px] font-bold text-text">{`RM ${paidClaim.amount.toFixed(2)}`}</div>
+            </div>
+            <div>
+              <div className={labelClass}>Claim date</div>
+              <div className="mt-1 text-[13.5px] font-bold text-text">{paidClaim.date}</div>
+            </div>
+            <div>
+              <div className={labelClass}>Bought / spent on</div>
+              <div className="mt-1 text-[13.5px] text-text">{paidClaim.description}</div>
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
             <label className={labelClass}>Payment date *</label>
             <input type="date" required max={todayInMalaysia()} value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className={inputClass} />
           </div>
           <div>
-            <label className={labelClass}>Payment reference (optional)</label>
-            <input value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} className={inputClass} />
+            <label className={labelClass}>Reference ID *</label>
+            <input required value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} placeholder="e.g. transfer reference, or CASH" className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>Remarks (optional)</label>
@@ -250,7 +303,7 @@ export function PettyCashEntryForm({
         </div>
         <div>
           <label className={labelClass}>Type *</label>
-          <Select value={kind} disabled={!!editing} onChange={(e) => setKind(e.target.value as EntryKind)} className={inputClass}>
+          <Select value={kind} disabled={!!editing} onChange={(e) => changeKind(e.target.value as EntryKind)} className={inputClass}>
             {kinds.includes("top_up") && <option value="top_up">Received</option>}
             {kinds.includes("expense") && <option value="expense">Spent</option>}
             {kinds.includes("claim") && <option value="claim">Claimant</option>}
@@ -280,16 +333,27 @@ export function PettyCashEntryForm({
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label className={labelClass}>{isReceived ? "Received by (choose the name) *" : isClaim ? "Paid from the petty cash of (choose the name) *" : "Spent by (choose the name) *"}</label>
+          <label className={labelClass}>{isReceived ? "Received by (choose the name) *" : isClaim ? "Claim from (the staff paid with their own money first) *" : "Spent by (choose the name) *"}</label>
           {lockName ? (
             <input value={personName} readOnly className={`${inputClass} cursor-not-allowed bg-surface-alt`} />
+          ) : isClaim ? (
+            <Select value={personName} onChange={(e) => pickPayer(e.target.value)} required className={inputClass}>
+              <option value="">Select Penny Chan or Nabilah</option>
+              {claimPayers.map((p) => (
+                <option key={p.name} value={p.name}>{p.name}</option>
+              ))}
+            </Select>
           ) : (
             <SearchSelect value={personName} onChange={setPersonName} options={holders.map((p) => p.name)} onPick={fillPosition} className={inputClass} placeholder="Search or type a name" />
           )}
         </div>
         <div>
-          <label className={labelClass}>Position that holds the petty cash *</label>
-          <SearchSelect value={personPosition} onChange={setPersonPosition} options={positionOptions(holders)} className={inputClass} placeholder="Search or type a position" />
+          <label className={labelClass}>{isClaim ? "Position of the person who pays the claim *" : "Position that holds the petty cash *"}</label>
+          {isClaim && !lockName ? (
+            <input value={personPosition} readOnly className={`${inputClass} cursor-not-allowed bg-surface-alt`} />
+          ) : (
+            <SearchSelect value={personPosition} onChange={setPersonPosition} options={positionOptions(holders)} className={inputClass} placeholder="Search or type a position" />
+          )}
         </div>
       </div>
 
@@ -300,7 +364,7 @@ export function PettyCashEntryForm({
             <SearchSelect
               value={claimant}
               onChange={setClaimant}
-              options={people.map((p) => p.name)}
+              options={people.filter((p) => p.local).map((p) => p.name)}
               onPick={(name) => {
                 // the department of the person is filled in (it can still be changed)
                 const found = people.find((p) => p.name === name);

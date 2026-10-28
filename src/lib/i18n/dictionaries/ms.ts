@@ -3846,7 +3846,17 @@ const dictionary: Record<string, string> = {
  "Press Enter for the next item.": "Tekan Enter untuk item seterusnya.",
  "Catering Event (the customer who ordered)": "Acara Katering (pelanggan yang membuat tempahan)",
  "Category (choose one or more)": "Kategori (pilih satu atau lebih)",
- "Search category": "Cari kategori"
+ "Search category": "Cari kategori",
+ "Claim from (the staff paid with their own money first) *": "Tuntut daripada (kakitangan guna wang sendiri dahulu) *",
+ "Select Penny Chan or Nabilah": "Pilih Penny Chan atau Nabilah",
+ "Position of the person who pays the claim *": "Jawatan orang yang membayar tuntutan *",
+ "Choose who the claim is claimed from: Penny Chan or Nabilah.": "Pilih daripada siapa tuntutan dibuat: Penny Chan atau Nabilah.",
+ "A staff claim is claimed from the Director of Finance or her assistant. Choose one of them.": "Tuntutan kakitangan dibuat daripada Pengarah Kewangan atau pembantunya. Pilih salah seorang.",
+ "Enter the reference ID of the payment.": "Masukkan ID rujukan bayaran.",
+ "Claim date": "Tarikh tuntutan",
+ "Bought / spent on": "Dibeli / dibelanjakan untuk",
+ "Reference ID *": "ID Rujukan *",
+ "e.g. transfer reference, or CASH": "cth. rujukan pemindahan, atau TUNAI"
 };
 
 export default dictionary;

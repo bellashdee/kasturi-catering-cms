@@ -3905,7 +3905,17 @@ const dictionary: Record<string, string> = {
  "Press Enter for the next item.": "পরের আইটেমের জন্য Enter চাপুন।",
  "Catering Event (the customer who ordered)": "ক্যাটারিং ইভেন্ট (অর্ডারকারী গ্রাহক)",
  "Category (choose one or more)": "বিভাগ (এক বা একাধিক বেছে নিন)",
- "Search category": "বিভাগ খুঁজুন"
+ "Search category": "বিভাগ খুঁজুন",
+ "Claim from (the staff paid with their own money first) *": "কার কাছ থেকে দাবি (কর্মী আগে নিজের টাকা খরচ করেছেন) *",
+ "Select Penny Chan or Nabilah": "Penny Chan বা Nabilah বেছে নিন",
+ "Position of the person who pays the claim *": "দাবি পরিশোধকারীর পদবি *",
+ "Choose who the claim is claimed from: Penny Chan or Nabilah.": "কার কাছ থেকে দাবি করা হবে তা বেছে নিন: Penny Chan বা Nabilah।",
+ "A staff claim is claimed from the Director of Finance or her assistant. Choose one of them.": "কর্মীর দাবি অর্থ পরিচালক বা তাঁর সহকারীর কাছ থেকে করতে হবে। একজনকে বেছে নিন।",
+ "Enter the reference ID of the payment.": "পেমেন্টের রেফারেন্স আইডি লিখুন।",
+ "Claim date": "দাবির তারিখ",
+ "Bought / spent on": "যা কেনা / খরচ হয়েছে",
+ "Reference ID *": "রেফারেন্স আইডি *",
+ "e.g. transfer reference, or CASH": "যেমন ট্রান্সফার রেফারেন্স, অথবা CASH"
 };
 
 export default dictionary;

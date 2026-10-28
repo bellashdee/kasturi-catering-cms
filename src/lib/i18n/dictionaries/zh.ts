@@ -3912,7 +3912,17 @@ const dictionary: Record<string, string> = {
  "Press Enter for the next item.": "按 Enter 键输入下一项。",
  "Catering Event (the customer who ordered)": "餐饮活动（下单的客户）",
  "Category (choose one or more)": "类别（可选择一个或多个）",
- "Search category": "搜索类别"
+ "Search category": "搜索类别",
+ "Claim from (the staff paid with their own money first) *": "向谁申领（员工先自己垫付）*",
+ "Select Penny Chan or Nabilah": "选择 Penny Chan 或 Nabilah",
+ "Position of the person who pays the claim *": "支付报销者的职位 *",
+ "Choose who the claim is claimed from: Penny Chan or Nabilah.": "请选择向谁申领：Penny Chan 或 Nabilah。",
+ "A staff claim is claimed from the Director of Finance or her assistant. Choose one of them.": "员工报销须向财务总监或其助理申领，请选择其中一位。",
+ "Enter the reference ID of the payment.": "请输入付款参考编号。",
+ "Claim date": "申领日期",
+ "Bought / spent on": "购买/支出用途",
+ "Reference ID *": "参考编号 *",
+ "e.g. transfer reference, or CASH": "例如转账参考号，或 CASH"
 };
 
 export default dictionary;

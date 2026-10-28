@@ -3899,7 +3899,17 @@ const dictionary: Record<string, string> = {
  "Press Enter for the next item.": "နောက်တစ်ခုအတွက် Enter နှိပ်ပါ။",
  "Catering Event (the customer who ordered)": "ကေးတာရင်း ပွဲ (မှာယူသော ဖောက်သည်)",
  "Category (choose one or more)": "အမျိုးအစား (တစ်ခု သို့မဟုတ် တစ်ခုထက်ပို၍ ရွေးပါ)",
- "Search category": "အမျိုးအစား ရှာရန်"
+ "Search category": "အမျိုးအစား ရှာရန်",
+ "Claim from (the staff paid with their own money first) *": "မည်သူထံမှ ပြန်တောင်းမည် (ဝန်ထမ်းက မိမိငွေဖြင့် ကြိုပေးထားသည်) *",
+ "Select Penny Chan or Nabilah": "Penny Chan သို့မဟုတ် Nabilah ကို ရွေးပါ",
+ "Position of the person who pays the claim *": "တောင်းဆိုမှုကို ပေးချေသူ၏ရာထူး *",
+ "Choose who the claim is claimed from: Penny Chan or Nabilah.": "မည်သူထံမှ တောင်းမည်ကို ရွေးပါ: Penny Chan သို့မဟုတ် Nabilah။",
+ "A staff claim is claimed from the Director of Finance or her assistant. Choose one of them.": "ဝန်ထမ်းတောင်းဆိုမှုကို ဘဏ္ဍာရေးဒါရိုက်တာ သို့မဟုတ် လက်ထောက်ထံမှ တောင်းရပါမည်။ တစ်ဦးကို ရွေးပါ။",
+ "Enter the reference ID of the payment.": "ငွေပေးချေမှု၏ ရည်ညွှန်းနံပါတ်ကို ထည့်ပါ။",
+ "Claim date": "တောင်းဆိုသည့်ရက်စွဲ",
+ "Bought / spent on": "ဝယ်ယူ / သုံးစွဲသည့်အရာ",
+ "Reference ID *": "ရည်ညွှန်းနံပါတ် *",
+ "e.g. transfer reference, or CASH": "ဥပမာ ငွေလွှဲ ရည်ညွှန်းနံပါတ်၊ သို့မဟုတ် CASH"
 };
 
 export default dictionary;

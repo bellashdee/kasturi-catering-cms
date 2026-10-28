@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logTaskAudit } from "@/lib/taskProofs/actions";
 import { recordAudit } from "@/lib/audit";
 import { runAction, type ActionResult } from "@/lib/actionResult";
-import { assertOwnPerson, pettyCashAccess } from "@/lib/pettyCash/access";
+import { assertOwnPerson, claimPayers, pettyCashAccess } from "@/lib/pettyCash/access";
 import { confirmedPaymentDate, todayInMalaysia } from "@/lib/format";
 import { DUPLICATE_INVOICE_MESSAGE } from "@/lib/finance/constants";
 import type { Database } from "@/lib/supabase/types";
@@ -262,6 +262,14 @@ export async function createPettyCashTransaction(input: PettyCashInput): Promise
   if (input.type === "expense" && !input.claimantName?.trim()) throw new Error("Enter who is claiming this petty cash.");
   if (!input.personName?.trim() || !input.personPosition?.trim()) throw new Error("Choose whose petty cash this is: the name and the position.");
   await assertOwnPerson(supabase, userId, input.personName);
+  if (input.type === "expense") {
+    // a staff claim is claimed from Ms. Penny or Ms. Nabilah (the staff paid with their own money first)
+    const same = (a: string, b: string) => a.trim().replace(/\s+/g, " ").toUpperCase() === b.trim().replace(/\s+/g, " ").toUpperCase();
+    const payers = await claimPayers();
+    if (!payers.some((p) => same(p.name, input.personName ?? ""))) {
+      throw new Error("A staff claim is claimed from the Director of Finance or her assistant. Choose one of them.");
+    }
+  }
   const { data: created, error } = await supabase.from("petty_cash_transactions").insert({
     company_id: input.companyId,
     type: input.type,
