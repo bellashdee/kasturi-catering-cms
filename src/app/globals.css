@@ -296,6 +296,10 @@ html[data-font="times"] { --ui-font: "Times New Roman", Times, "Noto Sans Myanma
 html[data-font="tahoma"] { --ui-font: Tahoma, Geneva, Verdana, "Noto Sans Myanmar", "Myanmar Text", "Padauk", "Noto Sans Bengali", "Nirmala UI", "Vrinda", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif; }
 html[data-font] body, html[data-font] body :not(svg):not(svg *) { font-family: var(--ui-font) !important; }
 
+/* The side bar (every company's look): bold, full-strength letters so the menu is easy to read */
+aside :is(a, button, span, div, p) { font-weight: 700 !important; }
+aside :is(.text-sidebar-text\/75, .text-sidebar-text\/70, .text-sidebar-text\/60, .text-sidebar-text\/55) { color: var(--color-sidebar-text) !important; }
+
 /* Calm, consistent interaction feedback */
 a, button, select, input, textarea, summary { transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease; }
 :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }

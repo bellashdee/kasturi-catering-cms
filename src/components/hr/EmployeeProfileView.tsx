@@ -41,6 +41,7 @@ export async function EmployeeProfileView({
   supabase,
   query,
   backHref,
+  showHistory = false,
 }: {
   employee: EmployeeWithCompany;
   access: HrAccess;
@@ -49,6 +50,8 @@ export async function EmployeeProfileView({
   query: string;
   /** a link back to the Employee Database (left out on My Profile) */
   backHref?: string;
+  /** the edit history (who changed which detail): read on the HR staff page by Madam Penny and Nabilah only */
+  showHistory?: boolean;
 }) {
   const id = employee.id;
   const canSeePrivate = canManageStaffPrivateDetails(session.role);
@@ -216,7 +219,7 @@ export async function EmployeeProfileView({
           )}
         </SectionCard>
 
-        {isAdmin && (
+        {isAdmin && showHistory && (
           <div className="col-span-2">
             <EditHistoryCard employeeIds={recordIds} />
           </div>

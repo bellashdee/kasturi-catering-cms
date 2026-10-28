@@ -2,17 +2,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { HISTORY_LABEL } from "@/lib/hr/changeFields";
 import { formatMalaysiaDate } from "@/lib/format";
 import { SectionCard, EmptyRow } from "@/components/dashboard/SectionCard";
-import { MyDetailsEdit } from "@/components/hr/MyDetailsEdit";
-
-/** My Profile: a staff member changes their own details here. */
-export function MyDetailsCard({ employeeId }: { employeeId: string }) {
-  return (
-    <SectionCard title="Change my details">
-      <p className="mb-4 text-[13.5px] text-text-secondary">Choose the detail and write what it should be. It is saved straight away, and every change is recorded with your name. Only Madam Penny and Nabilah can read the edit history.</p>
-      <MyDetailsEdit employeeId={employeeId} />
-    </SectionCard>
-  );
-}
 
 const when = (iso: string) => {
   const time = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kuala_Lumpur", hour: "numeric", minute: "2-digit", hour12: true }).format(new Date(iso));

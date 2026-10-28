@@ -32,5 +32,5 @@ export default async function EmployeeProfilePage({
   // other staff's details are for the company admins only
   if (!access.canSee(employee)) notFound();
 
-  return <EmployeeProfileView employee={employee} access={access} session={session} supabase={supabase} query={query} backHref={`/hr${query}`} />;
+  return <EmployeeProfileView employee={employee} access={access} session={session} supabase={supabase} query={query} backHref={`/hr${query}`} showHistory />;
 }
