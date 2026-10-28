@@ -59,8 +59,8 @@
 
   --color-company-all: #334155;
   --color-company-signature: #2563a6;
-  --color-company-kasturi: #7a8b4a;
-  --color-company-o2life: #d96a6a;
+  --color-company-kasturi: #1f6a36;
+  --color-company-o2life: #c62828;
 }
 
 
@@ -70,90 +70,91 @@
  *   Signature Solution: navy and indigo blue with a navy sidebar   (all companies together keeps the blush and sage look above)
  */
 html[data-theme="kasturi"] {
-  --color-bg: #eff8f6;
+  /* Kasturi Indah: one colour, dark green (hijau tua), every tint and shade the same colour */
+  --color-bg: #f1f7f2;
   --color-surface: #ffffff;
-  --color-surface-alt: #f5fbf9;
-  --color-border: #d3e8e2;
-  --color-border-strong: #b3d4cb;
-  --color-navy-900: #11796b;
-  --color-navy-800: #0e675b;
-  --color-navy-700: #3fb7a2;
-  --color-sidebar: #fbfefd;
-  --color-sidebar-text: #1f4d47;
-  --color-sidebar-line: #d3e8e2;
-  --color-sidebar-field: #eef8f5;
-  --color-sidebar-active: #d3efe8;
-  --color-sidebar-active-text: #0e675b;
-  --color-primary: #14806f;
-  --color-primary-hover: #0f6a5c;
-  --color-accent: #4fc3ad;
+  --color-surface-alt: #f4f9f5;
+  --color-border: #d3e5d7;
+  --color-border-strong: #b2cfb8;
+  --color-navy-900: #1f6a36;
+  --color-navy-800: #17552a;
+  --color-navy-700: #5fae78;
+  --color-sidebar: #1d4a2c;
+  --color-sidebar-text: #eaf5ec;
+  --color-sidebar-line: #33653f;
+  --color-sidebar-field: #285a38;
+  --color-sidebar-active: #ffffff;
+  --color-sidebar-active-text: #1d4a2c;
+  --color-primary: #1f6a36;
+  --color-primary-hover: #17552a;
+  --color-accent: #5fae78;
   --color-success: #1f7a4d;
   --color-success-bg: #dff3e8;
-  --color-info-bg: #dff3ee;
-  --soft-a: #dcf2ec;
-  --soft-b: #eaf7f4;
-  --soft-c: #f1f8e9;
-  --soft-page-a: #f6fcfa;
-  --soft-page-b: #e6f4f0;
-  --soft-avatar-a: #5fcfba;
-  --soft-avatar-b: #14806f;
-  --soft-shadow: rgba(20, 128, 111, 0.12);
-  --soft-leaf: #14806f;
-  --soft-label: #3f8c80;
-  --chart-1: #14806f;
-  --chart-2: #4fc3ad;
-  --chart-3: #8fd9c8;
-  --chart-4: #2f9e8a;
-  --chart-5: #b6e5da;
-  --chart-6: #6fb3d9;
-  --chart-7: #d6c47a;
-  --chart-8: #7aa08f;
-  --chart-9: #a8d0c5;
-  --chart-10: #5f8f87;
+  --color-info-bg: #dcefe1;
+  --soft-a: #d9eddf;
+  --soft-b: #e8f4ec;
+  --soft-c: #eef6ee;
+  --soft-page-a: #f6faf7;
+  --soft-page-b: #e4f1e8;
+  --soft-avatar-a: #6fbd88;
+  --soft-avatar-b: #1f6a36;
+  --soft-shadow: rgba(31, 106, 54, 0.12);
+  --soft-leaf: #1f6a36;
+  --soft-label: #4c8a62;
+  --chart-1: #1f6a36;
+  --chart-2: #7fc097;
+  --chart-3: #2f8a4c;
+  --chart-4: #b4dcc2;
+  --chart-5: #14492a;
+  --chart-6: #98cfae;
+  --chart-7: #3f9a5e;
+  --chart-8: #cfe9d8;
+  --chart-9: #276f40;
+  --chart-10: #5fae78;
 }
 
 html[data-theme="o2life"] {
-  /* O2 Life: one soft red (rose red), every tint and shade the same colour */
-  --color-bg: #fff3f2;
+  /* O2 Life: one colour, red, every tint and shade the same colour */
+  --color-bg: #fff1f0;
   --color-surface: #fffcfb;
-  --color-surface-alt: #fdeae8;
-  --color-border: #f4d3d0;
-  --color-border-strong: #e9b7b3;
-  --color-navy-900: #c24f4f;
-  --color-navy-800: #a94242;
-  --color-navy-700: #ec9d9a;
-  --color-sidebar: #f9d5d2;
-  --color-sidebar-text: #4d2220;
-  --color-sidebar-line: rgba(77, 34, 32, 0.12);
+  --color-surface-alt: #fde7e5;
+  --color-border: #f3c9c6;
+  --color-border-strong: #e6a8a4;
+  --color-navy-900: #b92b2b;
+  --color-navy-800: #9d2323;
+  --color-navy-700: #e57373;
+  --color-sidebar: #f5bcb8;
+  --color-sidebar-text: #4a1514;
+  --color-sidebar-line: rgba(74, 21, 20, 0.14);
   --color-sidebar-field: rgba(255, 255, 255, 0.6);
-  --color-sidebar-active: rgba(255, 255, 255, 0.75);
-  --color-sidebar-active-text: #4d2220;
-  --color-primary: #c04848;
-  --color-primary-hover: #a73a3a;
-  --color-accent: #ea9b98;
+  --color-sidebar-active: rgba(255, 255, 255, 0.8);
+  --color-sidebar-active-text: #4a1514;
+  --color-primary: #c62828;
+  --color-primary-hover: #a91f1f;
+  --color-accent: #e57373;
   --color-success: #3f6b43;
   --color-success-bg: #e4eee2;
-  --color-info-bg: #fde3e1;
-  --soft-a: #fde0dd;
-  --soft-b: #fff0ee;
-  --soft-c: #fbe6e3;
-  --soft-page-a: #fff8f7;
-  --soft-page-b: #fdebe9;
-  --soft-avatar-a: #f2a9a5;
-  --soft-avatar-b: #c04848;
-  --soft-shadow: rgba(192, 72, 72, 0.12);
-  --soft-leaf: #c04848;
-  --soft-label: #cd7a76;
-  --chart-1: #de6f6b;
-  --chart-2: #f7c4c1;
-  --chart-3: #b03e3e;
-  --chart-4: #f0a5a1;
-  --chart-5: #8a2f30;
-  --chart-6: #fbd9d6;
-  --chart-7: #cc5a56;
-  --chart-8: #f3b3af;
-  --chart-9: #9c3636;
-  --chart-10: #e88c88;
+  --color-info-bg: #fde0de;
+  --soft-a: #fcd9d6;
+  --soft-b: #ffeceb;
+  --soft-c: #fbe3e1;
+  --soft-page-a: #fff7f6;
+  --soft-page-b: #fde6e4;
+  --soft-avatar-a: #ef8f8a;
+  --soft-avatar-b: #c62828;
+  --soft-shadow: rgba(198, 40, 40, 0.13);
+  --soft-leaf: #c62828;
+  --soft-label: #cf6460;
+  --chart-1: #d84545;
+  --chart-2: #f5b5b1;
+  --chart-3: #a82222;
+  --chart-4: #ee8d89;
+  --chart-5: #7d1a1a;
+  --chart-6: #fad2cf;
+  --chart-7: #c93a3a;
+  --chart-8: #f2a29d;
+  --chart-9: #911f1f;
+  --chart-10: #e57373;
 }
 
 html[data-theme="signature"] {

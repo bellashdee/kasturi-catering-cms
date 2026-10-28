@@ -1,4 +1,4 @@
-/** The details of a staff record that a staff member may ask to change. The company sets the rest (position, department, start date, type). */
+/** The details of a staff record that a staff member may change themselves (every change is written in the edit history with who made it). */
 export type ChangeField = { key: string; label: string; source: "employee" | "private"; column: string };
 
 export const CHANGE_FIELDS: ChangeField[] = [
@@ -20,4 +20,16 @@ export const CHANGE_FIELDS: ChangeField[] = [
 
 export const changeFieldByKey = (key: string) => CHANGE_FIELDS.find((f) => f.key === key);
 
-export const CHANGE_STATUS_LABEL: Record<string, string> = { pending: "Waiting for approval", approved: "Approved", rejected: "Rejected" };
+/** Every detail that is written in the edit history (the ones above, and the ones only Madam Penny and Nabilah set). */
+export const HISTORY_LABEL: Record<string, string> = {
+  ...Object.fromEntries(CHANGE_FIELDS.map((f) => [f.key, f.label])),
+  department: "Department",
+  position: "Position",
+  employment_type: "Employment Type",
+  status: "Status",
+  join_date: "Start Date",
+};
+
+/** The columns of the staff record that are compared before and after an edit by Madam Penny or Nabilah. */
+export const TRACKED_EMPLOYEE_COLUMNS = ["full_name", "department", "position", "employment_type", "status", "join_date", "ic_passport_no", "phone", "email", "date_of_birth", "nationality", "gender", "race", "religion", "marital_status", "short_name"] as const;
+export const TRACKED_PRIVATE_COLUMNS = ["bank_name", "bank_account_no", "epf_no"] as const;

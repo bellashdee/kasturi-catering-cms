@@ -4032,7 +4032,15 @@ const dictionary: Record<string, string> = {
  "Employment Contract": "劳动合同",
  "Performance Appraisal": "绩效评估",
  "You can see your own HR record only. The details of other staff are visible to Madam Penny and Nabilah only.": "您只能查看自己的人事记录。其他员工的资料只有 Penny 女士和 Nabilah 可以查看。",
- "Only Madam Penny or Nabilah can change staff details. Ask them in My Profile (Request a change).": "只有 Penny 女士或 Nabilah 可以更改员工资料。请在“我的资料”中申请更改。"
+ "Only Madam Penny or Nabilah can change staff details. Ask them in My Profile (Request a change).": "只有 Penny 女士或 Nabilah 可以更改员工资料。请在“我的资料”中申请更改。",
+ "Change my details": "更改我的资料",
+ "Choose the detail and write what it should be. It is saved straight away, and every change is recorded with your name. Only Madam Penny and Nabilah can read the edit history.": "选择资料并填写应改成的内容。会立即保存，每次更改都会记录您的姓名。只有 Penny 女士和 Nabilah 可以查看修改记录。",
+ "Save change": "保存更改",
+ "Saved. The change is recorded with your name.": "已保存。更改已记录您的姓名。",
+ "Edit History (who changed what)": "修改记录（谁改了什么）",
+ "No detail has been changed yet.": "尚未更改任何资料。",
+ "That value is already used.": "该内容已被使用。",
+ "You can only change your own details.": "您只能更改自己的资料。"
 };
 
 export default dictionary;

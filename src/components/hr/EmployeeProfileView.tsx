@@ -19,6 +19,7 @@ import {
   STAFF_LETTER_TYPES,
 } from "@/lib/hr/constants";
 import { likeExact } from "@/lib/pettyCash/people";
+import { EditHistoryCard } from "@/components/hr/EditHistoryCards";
 import { formatCurrency } from "@/lib/format";
 import { dobFromIc } from "@/lib/hr/ic";
 import { shortNameOf } from "@/lib/hr/shortName";
@@ -214,6 +215,12 @@ export async function EmployeeProfileView({
             </div>
           )}
         </SectionCard>
+
+        {isAdmin && (
+          <div className="col-span-2">
+            <EditHistoryCard employeeIds={recordIds} />
+          </div>
+        )}
 
         {canSeePayroll && (
         <SectionCard title="Payroll" action={<Link href={`/hr/${id}/payroll/new${query}`} className="text-[12.5px] font-semibold text-primary">+ Add Record</Link>}>

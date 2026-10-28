@@ -9,7 +9,6 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SearchBox } from "@/components/SearchBox";
 import { getHrAccess } from "@/lib/hr/access";
-import { PendingChangeRequests } from "@/components/hr/ChangeRequestCards";
 import { canUsePayrollCentre } from "@/lib/hr/payrollAccess";
 
 function statusTone(status: string): "success" | "danger" | "neutral" {
@@ -123,8 +122,6 @@ export default async function HRPage({
           You can see your own HR record only. The details of other staff are visible to Madam Penny and Nabilah only.
         </div>
       )}
-
-      {access.adminAnywhere && <PendingChangeRequests />}
 
       {access.adminAnywhere && <SearchBox placeholder="Search employees by name..." />}
 

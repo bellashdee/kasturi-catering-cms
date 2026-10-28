@@ -4025,7 +4025,15 @@ const dictionary: Record<string, string> = {
  "Employment Contract": "চাকরির চুক্তি",
  "Performance Appraisal": "কর্মদক্ষতা মূল্যায়ন",
  "You can see your own HR record only. The details of other staff are visible to Madam Penny and Nabilah only.": "আপনি শুধু নিজের HR রেকর্ড দেখতে পারবেন। অন্য কর্মীদের তথ্য শুধু Madam Penny ও Nabilah দেখতে পারেন।",
- "Only Madam Penny or Nabilah can change staff details. Ask them in My Profile (Request a change).": "কর্মীদের তথ্য শুধু Madam Penny বা Nabilah বদলাতে পারেন। আমার প্রোফাইলে অনুরোধ করুন।"
+ "Only Madam Penny or Nabilah can change staff details. Ask them in My Profile (Request a change).": "কর্মীদের তথ্য শুধু Madam Penny বা Nabilah বদলাতে পারেন। আমার প্রোফাইলে অনুরোধ করুন।",
+ "Change my details": "আমার তথ্য বদলান",
+ "Choose the detail and write what it should be. It is saved straight away, and every change is recorded with your name. Only Madam Penny and Nabilah can read the edit history.": "তথ্য বেছে নিয়ে কী হওয়া উচিত লিখুন। এটি সঙ্গে সঙ্গে সংরক্ষিত হয়, এবং প্রতিটি পরিবর্তন আপনার নামসহ রেকর্ড হয়। সম্পাদনার ইতিহাস শুধু Madam Penny ও Nabilah পড়তে পারেন।",
+ "Save change": "পরিবর্তন সংরক্ষণ",
+ "Saved. The change is recorded with your name.": "সংরক্ষিত। পরিবর্তন আপনার নামসহ রেকর্ড হয়েছে।",
+ "Edit History (who changed what)": "সম্পাদনার ইতিহাস (কে কী বদলেছে)",
+ "No detail has been changed yet.": "এখনও কোনো তথ্য বদলানো হয়নি।",
+ "That value is already used.": "এই মানটি ইতিমধ্যে ব্যবহৃত।",
+ "You can only change your own details.": "আপনি শুধু নিজের তথ্য বদলাতে পারেন।"
 };
 
 export default dictionary;

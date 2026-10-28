@@ -3966,7 +3966,15 @@ const dictionary: Record<string, string> = {
  "Employment Contract": "Kontrak Pekerjaan",
  "Performance Appraisal": "Penilaian Prestasi",
  "You can see your own HR record only. The details of other staff are visible to Madam Penny and Nabilah only.": "Anda hanya boleh melihat rekod HR anda sendiri. Butiran kakitangan lain hanya boleh dilihat oleh Madam Penny dan Nabilah.",
- "Only Madam Penny or Nabilah can change staff details. Ask them in My Profile (Request a change).": "Hanya Madam Penny atau Nabilah boleh mengubah butiran kakitangan. Minta di Profil Saya (Minta ubah)."
+ "Only Madam Penny or Nabilah can change staff details. Ask them in My Profile (Request a change).": "Hanya Madam Penny atau Nabilah boleh mengubah butiran kakitangan. Minta di Profil Saya (Minta ubah).",
+ "Change my details": "Ubah butiran saya",
+ "Choose the detail and write what it should be. It is saved straight away, and every change is recorded with your name. Only Madam Penny and Nabilah can read the edit history.": "Pilih butiran dan tulis apa yang sepatutnya. Ia disimpan serta-merta, dan setiap perubahan direkodkan bersama nama anda. Hanya Madam Penny dan Nabilah boleh membaca sejarah suntingan.",
+ "Save change": "Simpan perubahan",
+ "Saved. The change is recorded with your name.": "Disimpan. Perubahan direkodkan bersama nama anda.",
+ "Edit History (who changed what)": "Sejarah Suntingan (siapa mengubah apa)",
+ "No detail has been changed yet.": "Belum ada butiran yang diubah.",
+ "That value is already used.": "Nilai itu sudah digunakan.",
+ "You can only change your own details.": "Anda hanya boleh mengubah butiran anda sendiri."
 };
 
 export default dictionary;

@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext, ROLE_LABEL } from "@/lib/auth";
 import { getHrAccess } from "@/lib/hr/access";
 import { EmployeeProfileView } from "@/components/hr/EmployeeProfileView";
-import { MyChangeRequests } from "@/components/hr/ChangeRequestCards";
+import { MyDetailsCard } from "@/components/hr/EditHistoryCards";
 import { SectionCard, EmptyRow, StatRow } from "@/components/dashboard/SectionCard";
 
 /**
@@ -65,7 +65,7 @@ export default async function MyProfilePage({ searchParams }: { searchParams: Pr
         </div>
       )}
       <EmployeeProfileView employee={employee} access={access} session={session} supabase={supabase} query="" />
-      <MyChangeRequests employeeId={employee.id} userId={session.userId} />
+      <MyDetailsCard employeeId={employee.id} />
     </div>
   );
 }

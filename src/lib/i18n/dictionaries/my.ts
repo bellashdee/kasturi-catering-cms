@@ -4019,7 +4019,15 @@ const dictionary: Record<string, string> = {
  "Employment Contract": "အလုပ်ခန့်စာချုပ်",
  "Performance Appraisal": "စွမ်းဆောင်ရည် အကဲဖြတ်ချက်",
  "You can see your own HR record only. The details of other staff are visible to Madam Penny and Nabilah only.": "သင့်ကိုယ်ပိုင် HR မှတ်တမ်းကိုသာ မြင်နိုင်သည်။ အခြားဝန်ထမ်းများ၏ အချက်အလက်ကို Madam Penny နှင့် Nabilah သာ မြင်နိုင်သည်။",
- "Only Madam Penny or Nabilah can change staff details. Ask them in My Profile (Request a change).": "ဝန်ထမ်းအချက်အလက်ကို Madam Penny သို့မဟုတ် Nabilah သာ ပြောင်းနိုင်သည်။ ကျွန်ုပ်၏ပရိုဖိုင်တွင် တောင်းဆိုပါ။"
+ "Only Madam Penny or Nabilah can change staff details. Ask them in My Profile (Request a change).": "ဝန်ထမ်းအချက်အလက်ကို Madam Penny သို့မဟုတ် Nabilah သာ ပြောင်းနိုင်သည်။ ကျွန်ုပ်၏ပရိုဖိုင်တွင် တောင်းဆိုပါ။",
+ "Change my details": "ကျွန်ုပ်၏အချက်အလက် ပြောင်းရန်",
+ "Choose the detail and write what it should be. It is saved straight away, and every change is recorded with your name. Only Madam Penny and Nabilah can read the edit history.": "အချက်အလက်ကို ရွေးပြီး ဖြစ်သင့်သည်ကို ရေးပါ။ ချက်ချင်းသိမ်းပြီး ပြောင်းလဲမှုတိုင်းကို သင့်အမည်ဖြင့် မှတ်တမ်းတင်သည်။ တည်းဖြတ်မှုမှတ်တမ်းကို Madam Penny နှင့် Nabilah သာ ဖတ်နိုင်သည်။",
+ "Save change": "ပြောင်းလဲမှု သိမ်းရန်",
+ "Saved. The change is recorded with your name.": "သိမ်းပြီးပါပြီ။ ပြောင်းလဲမှုကို သင့်အမည်ဖြင့် မှတ်တမ်းတင်ထားသည်။",
+ "Edit History (who changed what)": "တည်းဖြတ်မှုမှတ်တမ်း (ဘယ်သူ ဘာပြောင်းသလဲ)",
+ "No detail has been changed yet.": "မည်သည့်အချက်အလက်မျှ မပြောင်းရသေးပါ။",
+ "That value is already used.": "ထိုတန်ဖိုးကို သုံးပြီးဖြစ်သည်။",
+ "You can only change your own details.": "သင့်ကိုယ်ပိုင်အချက်အလက်ကိုသာ ပြောင်းနိုင်သည်။"
 };
 
 export default dictionary;

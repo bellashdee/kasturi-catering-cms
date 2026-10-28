@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { diffChanges, recordEditHistory } from "@/lib/hr/editHistory";
+import { TRACKED_EMPLOYEE_COLUMNS, TRACKED_PRIVATE_COLUMNS } from "@/lib/hr/changeFields";
 import { createClient } from "@/lib/supabase/server";
 import { dobFromIc } from "@/lib/hr/ic";
 import { requirePayrollAccess } from "@/lib/hr/payrollAccess";
@@ -178,8 +180,9 @@ export async function updateEmployee(employeeId: string, input: Partial<Employee
   const { supabase } = await requireUser();
 
   // Changing a staff record (and linking a login to it) is for the admins of the company.
-  const { data: target } = await supabase.from("employees").select("company_id").eq("id", employeeId).single();
+  const { data: target } = await supabase.from("employees").select("*").eq("id", employeeId).single();
   if (!target) throw new Error("This staff record was not found.");
+  const { data: privateBefore } = await supabase.from("employee_private_details").select("*").eq("employee_id", employeeId).maybeSingle();
   await requireHrAdmin(supabase, target.company_id, input.userId !== undefined ? "Only Madam Penny or Nabilah can link a login account to a staff record." : "Only Madam Penny or Nabilah can change staff details. Ask them in My Profile (Request a change).");
 
   const { error } = await supabase
@@ -208,6 +211,21 @@ export async function updateEmployee(employeeId: string, input: Partial<Employee
     const { data: emp } = await supabase.from("employees").select("company_id").eq("id", employeeId).single();
     if (emp) await savePrivateDetails(supabase, employeeId, emp.company_id, input);
   }
+
+  // the edit history: who changed which detail, from what to what
+  const [{ data: after }, { data: privateAfter }] = await Promise.all([
+    supabase.from("employees").select("*").eq("id", employeeId).maybeSingle(),
+    supabase.from("employee_private_details").select("*").eq("employee_id", employeeId).maybeSingle(),
+  ]);
+  await recordEditHistory({
+    employeeId,
+    companyId: target.company_id,
+    editorId: (await requireUser()).userId,
+    changes: [
+      ...diffChanges(target as Record<string, unknown>, after as Record<string, unknown> | null, TRACKED_EMPLOYEE_COLUMNS),
+      ...diffChanges(privateBefore as Record<string, unknown> | null, privateAfter as Record<string, unknown> | null, TRACKED_PRIVATE_COLUMNS),
+    ],
+  });
 
   revalidatePath("/hr");
   revalidatePath(`/hr/${employeeId}`);

@@ -8,8 +8,6 @@ import { todayInMalaysia } from "@/lib/format";
 import { buildReminders, type Reminder } from "@/lib/notifications/reminders";
 import { canAccessModule } from "@/lib/modules";
 import { syncPriorityNotifications } from "@/lib/priority/sync";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { changeFieldByKey } from "@/lib/hr/changeFields";
 
 export type RemindersResult = { ok: true; items: Reminder[] } | { ok: false; error: string };
 
@@ -31,20 +29,6 @@ export async function getReminders(companyId: string | null): Promise<RemindersR
     if (canAccessModule(session.allowedModules, "finance-admin")) {
       const { count } = await supabase.from("payment_proof_submissions").select("id", { count: "exact", head: true }).in("company_id", targetCompanyIds).eq("status", "pending");
       if (count && count > 0) items.unshift({ severity: "warning", title: `Payment proofs waiting for review: ${count}`, meta: "Admin & Finance · Payment Proofs", href: "/finance/payment-proofs" });
-    }
-    // staff change requests: waiting for Madam Penny or Nabilah; and the answers the person got in the last 3 days
-    try {
-      const admin = createAdminClient();
-      const { data: isSuper } = await supabase.rpc("current_user_is_super_admin");
-      if (isSuper === true) {
-        const { count } = await admin.from("employee_change_requests").select("id", { count: "exact", head: true }).eq("status", "pending");
-        if (count && count > 0) items.unshift({ severity: "warning", title: `Staff change requests waiting for approval: ${count}`, meta: "HR · Staff change requests", href: "/hr#change-requests" });
-      }
-      const since = new Date(Date.now() - 3 * 86_400_000).toISOString();
-      const { data: answered } = await admin.from("employee_change_requests").select("id, field, status").eq("requested_by", session.userId).neq("status", "pending").gte("decided_at", since);
-      for (const a of answered ?? []) items.unshift({ severity: a.status === "approved" ? "info" : "warning", title: `Your request to change ${changeFieldByKey(a.field)?.label ?? a.field} was ${a.status}`, meta: "My Profile · Request a change", href: "/profile" });
-    } catch {
-      /* the bell still works without these lines */
     }
     // reminders of Madam Penny's Priority Centre (tasks, supplier payments, approvals): created when due, shown until read
     try {
