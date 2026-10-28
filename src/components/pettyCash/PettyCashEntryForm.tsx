@@ -7,7 +7,7 @@ import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/docum
 import { errorMessage } from "@/lib/actionResult";
 import { todayInMalaysia } from "@/lib/format";
 import { createPettyCashEntry, updatePettyCashEntry } from "@/lib/operationPettyCash/actions";
-import { createPettyCashTransaction, markPettyCashPaid } from "@/lib/finance/actions";
+import { createPettyCashTransaction, createSplitPettyCashClaims, markPettyCashPaid } from "@/lib/finance/actions";
 import { PAYMENT_METHOD_LABEL, PETTY_CASH_CATEGORIES, joinCategories, splitCategories, type OperationPettyCashRow } from "@/lib/operationPettyCash/constants";
 import { DescriptionInput } from "@/components/DescriptionInput";
 import { SearchSelect } from "@/components/ui/SearchSelect";
@@ -84,6 +84,8 @@ export function PettyCashEntryForm({
   const [description, setDescription] = useState(editing?.description ?? "");
   const [personName, setPersonName] = useState(editing?.person_name ?? holderName);
   const [personPosition, setPersonPosition] = useState(editing?.person_position ?? holderPosition);
+  // a claim for more than one company is split: how much belongs to each company (kept as typed; empty = shared equally)
+  const [shareText, setShareText] = useState<Record<string, string>>({});
   const [claimant, setClaimant] = useState("");
   const [department, setDepartment] = useState("");
   const [receipt, setReceipt] = useState<File | null>(null);
@@ -93,6 +95,17 @@ export function PettyCashEntryForm({
   const chosenCompanies = companies.filter((c) => companyIds.includes(c.id));
   const { companyId: firstCompanyId, alsoCompanyIds } = splitCompanies(chosenCompanies.map((c) => c.id), editing?.company_id);
   const isClaim = kind === "claim";
+  const splitClaim = isClaim && !editing && chosenCompanies.length > 1;
+  // the amount shared equally (the cents that are left go to the first companies), unless a company's share was typed
+  const equalShares = (() => {
+    const cents = Math.round(Number(amount) * 100);
+    if (!Number.isFinite(cents) || cents <= 0 || chosenCompanies.length === 0) return chosenCompanies.map(() => 0);
+    const base = Math.floor(cents / chosenCompanies.length);
+    const extra = cents - base * chosenCompanies.length;
+    return chosenCompanies.map((_, i) => (base + (i < extra ? 1 : 0)) / 100);
+  })();
+  const sharesList = chosenCompanies.map((c, i) => ({ companyId: c.id, text: shareText[c.id] ?? (equalShares[i] ? equalShares[i].toFixed(2) : "") }));
+  const sharesTotalCents = sharesList.reduce((t, s) => t + Math.round(Number(s.text || 0) * 100), 0);
   const isReceived = kind === "top_up";
   const isPayment = kind === "claim_payment";
   const paidClaim = pendingClaims.find((c) => c.id === payClaimId);
@@ -160,6 +173,10 @@ export function PettyCashEntryForm({
       setError("Enter who is claiming this petty cash.");
       return;
     }
+    if (splitClaim && sharesTotalCents !== Math.round(Number(amount) * 100)) {
+      setError("The shares of the companies must add up to the total amount of the claim.");
+      return;
+    }
     if (isReceived && !paymentMethod) {
       setError("Choose how the money was received: cash or online transfer.");
       return;
@@ -172,7 +189,19 @@ export function PettyCashEntryForm({
         const doc = await uploadDocument({ companyId: firstCompanyId, module: isClaim ? "finance" : "driver-logistics", fileType: fileTypeFromMime(receipt), file: receipt, skipMarkdown: !isClaim });
         documentId = doc.id;
       }
-      const result = isClaim
+      const result = splitClaim
+        ? await createSplitPettyCashClaims({
+            claimantName: claimant.trim(),
+            claimantDepartment: department.trim() || undefined,
+            category: category || undefined,
+            description: description || undefined,
+            transactionDate: date,
+            documentId,
+            personName: personName.trim(),
+            personPosition: personPosition.trim(),
+            shares: sharesList.map((s) => ({ companyId: s.companyId, amount: Math.round(Number(s.text) * 100) / 100 })),
+          })
+        : isClaim
         ? await createPettyCashTransaction({
             companyId: firstCompanyId,
             alsoCompanyIds,
@@ -202,6 +231,7 @@ export function PettyCashEntryForm({
         setCategory("");
         setDescription("");
         setClaimant("");
+        setShareText({});
         setDepartment("");
         setPersonName(holderName);
         setPersonPosition(holderPosition);
@@ -315,8 +345,8 @@ export function PettyCashEntryForm({
           <input type="date" required max={todayInMalaysia()} value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} />
         </div>
         <div>
-          <label className={labelClass}>Amount (RM) *</label>
-          <input type="number" min="0.01" step="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} className={inputClass} />
+          <label className={labelClass}>{splitClaim ? "Total amount of the claim (RM) *" : "Amount (RM) *"}</label>
+          <input type="number" min="0.01" step="0.01" required value={amount} onChange={(e) => { setAmount(e.target.value); setShareText({}); }} className={inputClass} />
         </div>
         {isReceived && (
           <div>
@@ -356,6 +386,28 @@ export function PettyCashEntryForm({
           )}
         </div>
       </div>
+
+      {splitClaim && (
+        <div className="rounded-lg border border-border bg-surface-alt p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className={labelClass}>Split the amount between the companies (RM) *</div>
+            <button type="button" onClick={() => setShareText({})} className="text-[12px] font-semibold text-primary">
+              Share equally
+            </button>
+          </div>
+          <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {chosenCompanies.map((c, i) => (
+              <div key={c.id}>
+                <label className={labelClass}>{c.name}</label>
+                <input type="number" min="0.01" step="0.01" value={sharesList[i].text} onChange={(e) => setShareText((p) => ({ ...p, [c.id]: e.target.value }))} className={inputClass} />
+              </div>
+            ))}
+          </div>
+          <div className={`mt-2 text-[12px] font-semibold ${sharesTotalCents === Math.round(Number(amount || 0) * 100) ? "text-success" : "text-danger"}`}>
+            {`Total of the shares: RM ${(sharesTotalCents / 100).toFixed(2)} of RM ${Number(amount || 0).toFixed(2)}`}
+          </div>
+        </div>
+      )}
 
       {isClaim && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

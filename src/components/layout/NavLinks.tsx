@@ -158,6 +158,11 @@ export function ProfileLink() {
   return <NavItem href="/profile" icon="profile" label="My Profile" />;
 }
 
+/** My Claims: any staff member claims back what they bought with their own money (open to everyone). */
+export function ClaimsLink() {
+  return <NavItem href="/claims" icon="petty-cash" label="My Claims" />;
+}
+
 export function MainDashboardLink() {
   return <NavItem href="/" icon="dashboard" label="Main Dashboard" />;
 }

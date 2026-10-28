@@ -302,6 +302,65 @@ export async function createPettyCashTransaction(input: PettyCashInput): Promise
   }, "Could not save. Please try again.");
 }
 
+export type SplitClaimInput = {
+  claimantName: string;
+  claimantDepartment?: string;
+  category?: string;
+  description?: string;
+  transactionDate: string;
+  documentId?: string;
+  personName: string;
+  personPosition: string;
+  /** how much of the claim belongs to each company (the money of each company is kept apart); together they are the whole claim */
+  shares: { companyId: string; amount: number }[];
+};
+
+/** A staff claim for more than one company: one claim for each company with its own share of the amount, all saved together or not at all. */
+export async function createSplitPettyCashClaims(input: SplitClaimInput): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase, userId } = await requireUser();
+    if (!input.claimantName?.trim()) throw new Error("Enter who is claiming this petty cash.");
+    if (!input.personName?.trim() || !input.personPosition?.trim()) throw new Error("Choose whose petty cash this is: the name and the position.");
+    const shares = input.shares ?? [];
+    if (shares.length < 2 || new Set(shares.map((s) => s.companyId)).size !== shares.length) throw new Error("Choose at least two different companies to split the claim.");
+    if (shares.some((s) => !Number.isFinite(s.amount) || s.amount <= 0)) throw new Error("Enter an amount more than 0 for each company.");
+    await assertOwnPerson(supabase, userId, input.personName);
+    const same = (a: string, b: string) => a.trim().replace(/\s+/g, " ").toUpperCase() === b.trim().replace(/\s+/g, " ").toUpperCase();
+    if (!(await claimPayers()).some((p) => same(p.name, input.personName))) {
+      throw new Error("A staff claim is claimed from the Director of Finance or her assistant. Choose one of them.");
+    }
+    const { data: created, error } = await supabase
+      .from("petty_cash_transactions")
+      .insert(
+        shares.map((s) => ({
+          company_id: s.companyId,
+          type: "expense" as const,
+          claimant_name: input.claimantName.trim(),
+          claimant_department: input.claimantDepartment?.trim() || null,
+          payment_status: "pending_payment" as const,
+          category: input.category || null,
+          description: input.description || null,
+          amount: s.amount,
+          transaction_date: input.transactionDate || todayInMalaysia(),
+          document_id: input.documentId || null,
+          person_name: input.personName.trim().slice(0, 200),
+          person_position: input.personPosition.trim().slice(0, 200),
+          shared_company_ids: [],
+          created_by: userId,
+        })),
+      )
+      .select("id, company_id, amount");
+    if (error) throw error;
+    for (const row of created ?? []) {
+      await recordAudit({ companyId: row.company_id, relatedTable: "petty_cash_transactions", relatedId: row.id, action: "claim_submitted", newValue: `RM ${Number(row.amount).toFixed(2)} (split claim) · ${input.claimantName} · ${input.personName}` });
+    }
+    revalidatePath("/spending/petty-cash");
+    revalidatePath("/admin");
+    revalidatePath("/");
+    return {};
+  }, "Could not save. Please try again.");
+}
+
 export type MarkPettyCashPaidInput = {
   transactionId: string;
   paymentDate: string;
