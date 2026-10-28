@@ -26,6 +26,39 @@ export type PendingClaim = { id: string; label: string; claimant: string; amount
 const inputClass = "mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px] outline-none focus:border-primary";
 const labelClass = "text-[12px] font-semibold text-text-secondary";
 
+/** What each Type is for, written for the person who fills the form (the Staff claim payment is shown only to the people who pay the claims). */
+function UsageGuide({ canPay, hasClaim }: { canPay: boolean; hasClaim: boolean }) {
+  return (
+    <details className="rounded-lg border border-border bg-surface-alt">
+      <summary className="cursor-pointer px-3 py-2 text-[13px] font-bold text-text">How to use this form (press to open)</summary>
+      <ul className="flex flex-col gap-2 border-t border-border px-4 py-3 text-[12.5px] text-text-secondary">
+        <li>
+          <strong className="text-text">Received</strong>: money given to the petty cash, for example the float from Ms. Penny. Choose the company (or both companies), the date, the amount and whether it was received by cash or online transfer.
+        </li>
+        <li>
+          <strong className="text-text">Spent</strong>: money spent from the petty cash. Choose the category (one or more), write what it was spent on and attach the receipt.
+        </li>
+        {hasClaim && (
+          <li>
+            <strong className="text-text">Claimant</strong>:{" "}
+            {canPay
+              ? "a staff member paid with their own money first and now claims it back. Choose the staff name, and under Claim from choose Penny Chan or Nabilah, who will pay. Staff can also send the claim themselves in My Claims."
+              : "for staff who paid with their own money first. Send it in My Claims (on the left): you choose Penny Chan or Nabilah to pay you back."}
+          </li>
+        )}
+        {canPay && (
+          <li>
+            <strong className="text-text">Staff claim payment</strong>: when Penny Chan or Nabilah has paid a staff claim, choose the claim, then enter the payment date and the Reference ID. The staff name, amount and date of the claim are shown.
+          </li>
+        )}
+        <li>
+          <strong className="text-text">More than one company</strong>: tick all the companies the money is for. Received and Spent are keyed once with one amount. A Claimant is split: you write how much belongs to each company.
+        </li>
+      </ul>
+    </details>
+  );
+}
+
 /**
  * One form for the petty cash: money received, money spent (with the receipt) or a staff claim that still has to be paid. It always
  * belongs to one person's petty cash (the name and the position chosen at the top). Also used to edit a cash book entry.
@@ -264,6 +297,7 @@ export function PettyCashEntryForm({
     return (
       <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-5 shadow-sm">
         <div className="text-[15px] font-bold text-text">New entry</div>
+        <UsageGuide canPay hasClaim={kinds.includes("claim")} />
         {error && <div role="alert" className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-xs text-danger">{error}</div>}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
           {typeField}
@@ -321,9 +355,28 @@ export function PettyCashEntryForm({
   }
 
 
+  // a claim is claimed from Penny Chan or Nabilah and is sent by the staff themselves in My Claims: the others are pointed there
+  if (isClaim && lockName) {
+    return (
+      <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-5 shadow-sm">
+        <div className="text-[15px] font-bold text-text">New entry</div>
+        <UsageGuide canPay={allowPayClaims} hasClaim />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">{typeField}</div>
+        <div className="rounded-lg border border-border bg-surface-alt p-4 text-[13px] text-text-secondary">
+          <div className="font-bold text-text">Claimant is sent in My Claims</div>
+          <p className="mt-1">If you paid with your own money first, send your claim in My Claims: choose Penny Chan or Nabilah to pay you back, add the receipt, and you can follow when it is paid.</p>
+          <Link href="/claims" className="mt-3 inline-block rounded-lg bg-primary px-4 py-2 text-[13px] font-bold text-white">
+            Open My Claims
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-5 shadow-sm">
       <div className="text-[15px] font-bold text-text">{editing ? "Edit entry" : "New entry"}</div>
+      {!editing && <UsageGuide canPay={allowPayClaims} hasClaim={kinds.includes("claim")} />}
       {error && <div role="alert" className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-xs text-danger">{error}</div>}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">

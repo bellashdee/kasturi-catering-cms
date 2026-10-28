@@ -3900,7 +3900,18 @@ const dictionary: Record<string, string> = {
  "Choose at least two different companies to split the claim.": "Pilih sekurang-kurangnya dua syarikat berbeza untuk membahagikan tuntutan.",
  "Enter an amount more than 0 for each company.": "Masukkan jumlah lebih daripada 0 untuk setiap syarikat.",
  "Spent by each company": "Dibelanjakan oleh setiap syarikat",
- "(all time)": "(sepanjang masa)"
+ "(all time)": "(sepanjang masa)",
+ "How to use this form (press to open)": "Cara guna borang ini (tekan untuk buka)",
+ ": money given to the petty cash, for example the float from Ms. Penny. Choose the company (or both companies), the date, the amount and whether it was received by cash or online transfer.": ": wang yang diberikan kepada petty cash, contohnya float daripada Ms. Penny. Pilih syarikat (atau kedua-dua syarikat), tarikh, jumlah dan sama ada diterima secara tunai atau pemindahan dalam talian.",
+ ": money spent from the petty cash. Choose the category (one or more), write what it was spent on and attach the receipt.": ": wang yang dibelanjakan daripada petty cash. Pilih kategori (satu atau lebih), tulis untuk apa dibelanjakan dan lampirkan resit.",
+ "a staff member paid with their own money first and now claims it back. Choose the staff name, and under Claim from choose Penny Chan or Nabilah, who will pay. Staff can also send the claim themselves in My Claims.": "kakitangan menggunakan wang sendiri dahulu dan kini menuntutnya semula. Pilih nama kakitangan, dan di bawah Tuntut daripada pilih Penny Chan atau Nabilah, yang akan membayar. Kakitangan juga boleh menghantar tuntutan sendiri dalam Tuntutan Saya.",
+ "for staff who paid with their own money first. Send it in My Claims (on the left): you choose Penny Chan or Nabilah to pay you back.": "untuk kakitangan yang menggunakan wang sendiri dahulu. Hantar dalam Tuntutan Saya (di sebelah kiri): anda pilih Penny Chan atau Nabilah untuk membayar semula.",
+ ": when Penny Chan or Nabilah has paid a staff claim, choose the claim, then enter the payment date and the Reference ID. The staff name, amount and date of the claim are shown.": ": apabila Penny Chan atau Nabilah telah membayar tuntutan kakitangan, pilih tuntutan itu, kemudian masukkan tarikh bayaran dan ID Rujukan. Nama kakitangan, jumlah dan tarikh tuntutan dipaparkan.",
+ "More than one company": "Lebih daripada satu syarikat",
+ ": tick all the companies the money is for. Received and Spent are keyed once with one amount. A Claimant is split: you write how much belongs to each company.": ": tandakan semua syarikat yang berkaitan dengan wang itu. Diterima dan Dibelanjakan dimasukkan sekali dengan satu jumlah. Penuntut dibahagikan: anda tulis berapa bahagian setiap syarikat.",
+ "Claimant is sent in My Claims": "Penuntut dihantar dalam Tuntutan Saya",
+ "If you paid with your own money first, send your claim in My Claims: choose Penny Chan or Nabilah to pay you back, add the receipt, and you can follow when it is paid.": "Jika anda menggunakan wang sendiri dahulu, hantar tuntutan anda dalam Tuntutan Saya: pilih Penny Chan atau Nabilah untuk membayar semula, tambah resit, dan anda boleh melihat bila ia dibayar.",
+ "Open My Claims": "Buka Tuntutan Saya"
 };
 
 export default dictionary;

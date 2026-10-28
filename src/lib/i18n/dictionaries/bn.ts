@@ -3959,7 +3959,18 @@ const dictionary: Record<string, string> = {
  "Choose at least two different companies to split the claim.": "দাবি ভাগ করতে কমপক্ষে দুটি আলাদা কোম্পানি বেছে নিন।",
  "Enter an amount more than 0 for each company.": "প্রতিটি কোম্পানির জন্য 0-এর বেশি পরিমাণ লিখুন।",
  "Spent by each company": "প্রতিটি কোম্পানির খরচ",
- "(all time)": "(সব সময়)"
+ "(all time)": "(সব সময়)",
+ "How to use this form (press to open)": "এই ফর্ম কীভাবে ব্যবহার করবেন (খুলতে চাপুন)",
+ ": money given to the petty cash, for example the float from Ms. Penny. Choose the company (or both companies), the date, the amount and whether it was received by cash or online transfer.": ": পেটি ক্যাশে দেওয়া টাকা, যেমন Ms. Penny-র ফ্লোট। কোম্পানি (বা দুটোই), তারিখ, পরিমাণ এবং নগদ না অনলাইন ট্রান্সফারে পেয়েছেন তা বেছে নিন।",
+ ": money spent from the petty cash. Choose the category (one or more), write what it was spent on and attach the receipt.": ": পেটি ক্যাশ থেকে খরচ হওয়া টাকা। বিভাগ (এক বা একাধিক) বেছে নিন, কীসে খরচ হয়েছে লিখুন এবং রসিদ যুক্ত করুন।",
+ "a staff member paid with their own money first and now claims it back. Choose the staff name, and under Claim from choose Penny Chan or Nabilah, who will pay. Staff can also send the claim themselves in My Claims.": "কর্মী আগে নিজের টাকায় খরচ করে এখন ফেরত দাবি করছেন। কর্মীর নাম বেছে নিন এবং কার কাছ থেকে দাবি-তে যিনি টাকা দেবেন সেই Penny Chan বা Nabilah বেছে নিন। কর্মীরা আমার দাবিসমূহ-এ নিজেও দাবি পাঠাতে পারেন।",
+ "for staff who paid with their own money first. Send it in My Claims (on the left): you choose Penny Chan or Nabilah to pay you back.": "যারা আগে নিজের টাকায় খরচ করেছেন তাদের জন্য। বাঁ দিকে আমার দাবিসমূহ-এ পাঠান: আপনাকে ফেরত দেবেন এমন Penny Chan বা Nabilah বেছে নিন।",
+ ": when Penny Chan or Nabilah has paid a staff claim, choose the claim, then enter the payment date and the Reference ID. The staff name, amount and date of the claim are shown.": ": Penny Chan বা Nabilah কর্মীর দাবি পরিশোধ করলে দাবিটি বেছে নিন, তারপর পরিশোধের তারিখ ও রেফারেন্স আইডি দিন। কর্মীর নাম, পরিমাণ ও তারিখ দেখানো হবে।",
+ "More than one company": "একাধিক কোম্পানি",
+ ": tick all the companies the money is for. Received and Spent are keyed once with one amount. A Claimant is split: you write how much belongs to each company.": ": টাকাটি যেসব কোম্পানির জন্য সবগুলো টিক দিন। প্রাপ্ত ও খরচ একবারই এক পরিমাণে লিখতে হয়। দাবিদার ভাগ করতে হয়: প্রতিটি কোম্পানির ভাগ লিখুন।",
+ "Claimant is sent in My Claims": "দাবিদার আমার দাবিসমূহ-এ পাঠান",
+ "If you paid with your own money first, send your claim in My Claims: choose Penny Chan or Nabilah to pay you back, add the receipt, and you can follow when it is paid.": "আগে নিজের টাকায় খরচ করে থাকলে আমার দাবিসমূহ-এ দাবি পাঠান: ফেরত দেবেন এমন Penny Chan বা Nabilah বেছে নিন, রসিদ যুক্ত করুন এবং কখন পরিশোধ হলো তা দেখুন।",
+ "Open My Claims": "আমার দাবিসমূহ খুলুন"
 };
 
 export default dictionary;

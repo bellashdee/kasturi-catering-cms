@@ -3966,7 +3966,18 @@ const dictionary: Record<string, string> = {
  "Choose at least two different companies to split the claim.": "请至少选择两家不同的公司来分摊报销。",
  "Enter an amount more than 0 for each company.": "请为每家公司输入大于 0 的金额。",
  "Spent by each company": "各公司支出",
- "(all time)": "（全部时间）"
+ "(all time)": "（全部时间）",
+ "How to use this form (press to open)": "如何使用此表单（点击展开）",
+ ": money given to the petty cash, for example the float from Ms. Penny. Choose the company (or both companies), the date, the amount and whether it was received by cash or online transfer.": "：给予零用金的款项，例如 Ms. Penny 的备用金。选择公司（或两家公司）、日期、金额，以及以现金还是网上转账收到。",
+ ": money spent from the petty cash. Choose the category (one or more), write what it was spent on and attach the receipt.": "：从零用金中支出的款项。选择类别（可多选），写明用途并附上收据。",
+ "a staff member paid with their own money first and now claims it back. Choose the staff name, and under Claim from choose Penny Chan or Nabilah, who will pay. Staff can also send the claim themselves in My Claims.": "员工先用自己的钱垫付，现在申领报销。选择员工姓名，并在“向谁申领”中选择将付款的 Penny Chan 或 Nabilah。员工也可以自己在“我的报销”中提交。",
+ "for staff who paid with their own money first. Send it in My Claims (on the left): you choose Penny Chan or Nabilah to pay you back.": "适用于先自己垫付的员工。请在左侧的“我的报销”中提交：选择由 Penny Chan 或 Nabilah 还款给您。",
+ ": when Penny Chan or Nabilah has paid a staff claim, choose the claim, then enter the payment date and the Reference ID. The staff name, amount and date of the claim are shown.": "：Penny Chan 或 Nabilah 付款后，选择该报销，然后输入付款日期和参考编号。系统会显示员工姓名、金额和申领日期。",
+ "More than one company": "多家公司",
+ ": tick all the companies the money is for. Received and Spent are keyed once with one amount. A Claimant is split: you write how much belongs to each company.": "：勾选款项所属的所有公司。收款和支出只需输入一次、一个金额。报销则要分摊：写明每家公司各占多少。",
+ "Claimant is sent in My Claims": "报销请在“我的报销”提交",
+ "If you paid with your own money first, send your claim in My Claims: choose Penny Chan or Nabilah to pay you back, add the receipt, and you can follow when it is paid.": "如果您先用自己的钱垫付，请在“我的报销”中提交：选择由 Penny Chan 或 Nabilah 还款，附上收据，即可跟踪付款进度。",
+ "Open My Claims": "打开我的报销"
 };
 
 export default dictionary;

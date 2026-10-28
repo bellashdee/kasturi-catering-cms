@@ -3953,7 +3953,18 @@ const dictionary: Record<string, string> = {
  "Choose at least two different companies to split the claim.": "တောင်းဆိုမှုကို ခွဲရန် မတူညီသော ကုမ္ပဏီ အနည်းဆုံး နှစ်ခု ရွေးပါ။",
  "Enter an amount more than 0 for each company.": "ကုမ္ပဏီတစ်ခုစီအတွက် 0 ထက်များသော ပမာဏ ထည့်ပါ။",
  "Spent by each company": "ကုမ္ပဏီတစ်ခုစီ သုံးစွဲမှု",
- "(all time)": "(အချိန်တစ်လျှောက်လုံး)"
+ "(all time)": "(အချိန်တစ်လျှောက်လုံး)",
+ "How to use this form (press to open)": "ဤပုံစံ အသုံးပြုပုံ (ဖွင့်ရန်နှိပ်ပါ)",
+ ": money given to the petty cash, for example the float from Ms. Penny. Choose the company (or both companies), the date, the amount and whether it was received by cash or online transfer.": "။ petty cash သို့ ပေးထားသော ငွေ၊ ဥပမာ Ms. Penny ထံမှ float။ ကုမ္ပဏီ (သို့မဟုတ် ကုမ္ပဏီနှစ်ခုလုံး)၊ ရက်စွဲ၊ ပမာဏနှင့် ငွေသား သို့မဟုတ် အွန်လိုင်းလွှဲဖြင့် ရရှိသည်ကို ရွေးပါ။",
+ ": money spent from the petty cash. Choose the category (one or more), write what it was spent on and attach the receipt.": "။ petty cash မှ သုံးစွဲသော ငွေ။ အမျိုးအစား (တစ်ခု သို့မဟုတ် ပိုများ) ကို ရွေးပြီး ဘာအတွက်သုံးသည်ကို ရေးကာ ဘောက်ချာ ပူးတွဲပါ။",
+ "a staff member paid with their own money first and now claims it back. Choose the staff name, and under Claim from choose Penny Chan or Nabilah, who will pay. Staff can also send the claim themselves in My Claims.": "ဝန်ထမ်းက မိမိငွေဖြင့် ကြိုပေးထားပြီး ယခု ပြန်တောင်းခြင်း။ ဝန်ထမ်းအမည်ကို ရွေးပြီး မည်သူထံမှ တောင်းမည် တွင် ပေးချေမည့် Penny Chan သို့မဟုတ် Nabilah ကို ရွေးပါ။ ဝန်ထမ်းများသည် ကျွန်ုပ်၏ တောင်းဆိုမှုများ တွင် ကိုယ်တိုင်လည်း ပို့နိုင်သည်။",
+ "for staff who paid with their own money first. Send it in My Claims (on the left): you choose Penny Chan or Nabilah to pay you back.": "မိမိငွေဖြင့် ကြိုပေးထားသော ဝန်ထမ်းများအတွက်။ ဘယ်ဘက်ရှိ ကျွန်ုပ်၏ တောင်းဆိုမှုများ တွင် ပို့ပါ၊ ပြန်ပေးမည့် Penny Chan သို့မဟုတ် Nabilah ကို ရွေးပါ။",
+ ": when Penny Chan or Nabilah has paid a staff claim, choose the claim, then enter the payment date and the Reference ID. The staff name, amount and date of the claim are shown.": "။ Penny Chan သို့မဟုတ် Nabilah က ဝန်ထမ်းတောင်းဆိုမှုကို ပေးချေပြီးလျှင် တောင်းဆိုမှုကိုရွေးပြီး ပေးချေသည့်ရက်စွဲနှင့် ရည်ညွှန်းနံပါတ်ထည့်ပါ။ ဝန်ထမ်းအမည်၊ ပမာဏနှင့် ရက်စွဲ ပြပါမည်။",
+ "More than one company": "ကုမ္ပဏီ တစ်ခုထက်ပို",
+ ": tick all the companies the money is for. Received and Spent are keyed once with one amount. A Claimant is split: you write how much belongs to each company.": "။ ငွေနှင့်သက်ဆိုင်သော ကုမ္ပဏီအားလုံးကို အမှန်ခြစ်ပါ။ လက်ခံရရှိနှင့် သုံးစွဲတို့ကို ပမာဏတစ်ခုဖြင့် တစ်ကြိမ်သာ ထည့်ပါ။ တောင်းဆိုသူကို ခွဲရမည်၊ ကုမ္ပဏီတစ်ခုစီ၏ ဝေစုကို ရေးပါ။",
+ "Claimant is sent in My Claims": "တောင်းဆိုသူကို ကျွန်ုပ်၏ တောင်းဆိုမှုများ တွင် ပို့ပါ",
+ "If you paid with your own money first, send your claim in My Claims: choose Penny Chan or Nabilah to pay you back, add the receipt, and you can follow when it is paid.": "မိမိငွေဖြင့် ကြိုပေးထားလျှင် ကျွန်ုပ်၏ တောင်းဆိုမှုများ တွင် ပို့ပါ: ပြန်ပေးမည့် Penny Chan သို့မဟုတ် Nabilah ကိုရွေးပြီး ဘောက်ချာထည့်ပါ၊ ပေးချေချိန်ကိုလည်း လိုက်ကြည့်နိုင်သည်။",
+ "Open My Claims": "ကျွန်ုပ်၏ တောင်းဆိုမှုများ ဖွင့်ရန်"
 };
 
 export default dictionary;
