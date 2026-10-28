@@ -3916,7 +3916,18 @@ const dictionary: Record<string, string> = {
  "for staff who paid with their own money first. Send it in My Claims (under Company Spending): you choose Penny Chan or Nabilah to pay you back.": "untuk kakitangan yang menggunakan wang sendiri dahulu. Hantar dalam Tuntutan Saya (di bawah Perbelanjaan Syarikat): anda pilih Penny Chan atau Nabilah untuk membayar semula.",
  "Claim back what you bought for the company with your own money": "Tuntut semula apa yang anda beli untuk syarikat dengan wang sendiri",
  "Open this date to see every event of the day": "Buka tarikh ini untuk melihat semua acara pada hari itu",
- "Open the records of this line to review and edit them": "Buka rekod bagi baris ini untuk semak dan edit"
+ "Open the records of this line to review and edit them": "Buka rekod bagi baris ini untuk semak dan edit",
+ "Display": "Paparan",
+ "Text size": "Saiz tulisan",
+ "Makes everything on every page bigger: the words, the buttons and the boxes.": "Membesarkan semua di setiap halaman: tulisan, butang dan kotak.",
+ "Normal": "Biasa",
+ "Large": "Besar",
+ "Extra large": "Sangat besar",
+ "Easy-to-read letters": "Huruf mudah dibaca",
+ "Uses letters that are made to be clear for people who find small or similar letters hard to read.": "Menggunakan huruf yang direka supaya jelas bagi mereka yang sukar membaca huruf kecil atau huruf yang nampak serupa.",
+ "Normal letters": "Huruf biasa",
+ "This is kept on this computer or phone. Choose it again on another device.": "Ini disimpan pada komputer atau telefon ini. Pilih semula pada peranti lain.",
+ "Only you can see these tasks: the tasks assigned to you, and the ones you made for yourself.": "Hanya anda yang boleh melihat tugasan ini: tugasan yang diberikan kepada anda, dan yang anda buat untuk diri sendiri."
 };
 
 export default dictionary;

@@ -3982,7 +3982,18 @@ const dictionary: Record<string, string> = {
  "for staff who paid with their own money first. Send it in My Claims (under Company Spending): you choose Penny Chan or Nabilah to pay you back.": "适用于先自己垫付的员工。请在“公司支出”下的“我的报销”中提交：选择由 Penny Chan 或 Nabilah 还款给您。",
  "Claim back what you bought for the company with your own money": "报销您用自己的钱为公司购买的物品",
  "Open this date to see every event of the day": "点击此日期查看当天所有活动",
- "Open the records of this line to review and edit them": "打开此行的记录以查看和编辑"
+ "Open the records of this line to review and edit them": "打开此行的记录以查看和编辑",
+ "Display": "显示",
+ "Text size": "文字大小",
+ "Makes everything on every page bigger: the words, the buttons and the boxes.": "放大每个页面上的所有内容：文字、按钮和输入框。",
+ "Normal": "正常",
+ "Large": "大",
+ "Extra large": "特大",
+ "Easy-to-read letters": "易读字体",
+ "Uses letters that are made to be clear for people who find small or similar letters hard to read.": "使用专为清晰易读而设计的字体，方便觉得小字或相似字母难读的人。",
+ "Normal letters": "普通字体",
+ "This is kept on this computer or phone. Choose it again on another device.": "此设置保存在这台电脑或手机上。换设备后请重新选择。",
+ "Only you can see these tasks: the tasks assigned to you, and the ones you made for yourself.": "只有您能看到这些任务：分配给您的任务，以及您为自己创建的任务。"
 };
 
 export default dictionary;

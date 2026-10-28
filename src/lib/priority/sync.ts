@@ -45,7 +45,7 @@ export async function syncPriorityNotifications(supabase: DB, session: SessionCo
   const access = await getPriorityAccess(supabase, session, accessibleIds);
   const [payables, tasks] = await Promise.all([
     access.canSeePayments ? loadPayables(supabase, access.adminCompanyIds, todayInMalaysia()) : Promise.resolve([]),
-    loadTasks(supabase, accessibleIds),
+    loadTasks(supabase, accessibleIds, session.userId),
   ]);
   await syncWithData(supabase, { access, payables, tasks });
 }

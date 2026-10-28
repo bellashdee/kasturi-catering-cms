@@ -3969,7 +3969,18 @@ const dictionary: Record<string, string> = {
  "for staff who paid with their own money first. Send it in My Claims (under Company Spending): you choose Penny Chan or Nabilah to pay you back.": "မိမိငွေဖြင့် ကြိုပေးထားသော ဝန်ထမ်းများအတွက်။ ကုမ္ပဏီအသုံးစရိတ် အောက်ရှိ ကျွန်ုပ်၏ တောင်းဆိုမှုများ တွင် ပို့ပါ၊ ပြန်ပေးမည့် Penny Chan သို့မဟုတ် Nabilah ကို ရွေးပါ။",
  "Claim back what you bought for the company with your own money": "ကုမ္ပဏီအတွက် သင့်ကိုယ်ပိုင်ငွေဖြင့် ဝယ်ယူခဲ့သည်များကို ပြန်လည်တောင်းခံပါ",
  "Open this date to see every event of the day": "ဤရက်စွဲကိုဖွင့်ပြီး ထိုနေ့၏ ပွဲအားလုံးကို ကြည့်ပါ",
- "Open the records of this line to review and edit them": "ဤလိုင်း၏ မှတ်တမ်းများကို ဖွင့်ပြီး စစ်ဆေး၍ တည်းဖြတ်ပါ"
+ "Open the records of this line to review and edit them": "ဤလိုင်း၏ မှတ်တမ်းများကို ဖွင့်ပြီး စစ်ဆေး၍ တည်းဖြတ်ပါ",
+ "Display": "ပြသမှု",
+ "Text size": "စာလုံးအရွယ်အစား",
+ "Makes everything on every page bigger: the words, the buttons and the boxes.": "စာမျက်နှာတိုင်းရှိ အရာအားလုံးကို ကြီးစေသည်: စာလုံး၊ ခလုတ်နှင့် ဘောက်စ်များ။",
+ "Normal": "ပုံမှန်",
+ "Large": "ကြီး",
+ "Extra large": "အလွန်ကြီး",
+ "Easy-to-read letters": "ဖတ်ရလွယ်သော စာလုံး",
+ "Uses letters that are made to be clear for people who find small or similar letters hard to read.": "စာလုံးသေးခြင်း သို့မဟုတ် ဆင်တူသော စာလုံးများကို ဖတ်ရခက်သူများအတွက် ရှင်းလင်းစွာ ပြုလုပ်ထားသော စာလုံးများကို သုံးသည်။",
+ "Normal letters": "ပုံမှန်စာလုံး",
+ "This is kept on this computer or phone. Choose it again on another device.": "ဤကွန်ပျူတာ သို့မဟုတ် ဖုန်းတွင် သိမ်းထားသည်။ အခြားစက်တွင် ပြန်ရွေးပါ။",
+ "Only you can see these tasks: the tasks assigned to you, and the ones you made for yourself.": "ဤလုပ်ငန်းတာဝန်များကို သင်တစ်ဦးတည်းသာ မြင်နိုင်သည်: သင့်အား ပေးထားသောတာဝန်များနှင့် သင်ကိုယ်တိုင် ဖန်တီးထားသည်များ။"
 };
 
 export default dictionary;

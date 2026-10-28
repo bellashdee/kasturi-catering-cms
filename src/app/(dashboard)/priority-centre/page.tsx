@@ -88,15 +88,18 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
   const inScope = new Set(targetCompanyIds);
 
   // everything the person may see, for every company, so reminders are worked out on the whole picture; the page then narrows to the chosen company
-  const [allPayables, allTasks, people, otherApprovalsAll, eventsAll, settings, notes] = await Promise.all([
+  const [allPayables, everyTask, people, otherApprovalsAll, eventsAll, settings, notes] = await Promise.all([
     access.canSeePayments ? loadPayables(supabase, access.adminCompanyIds, today) : Promise.resolve([]),
-    loadTasks(supabase, accessibleIds),
+    loadTasks(supabase, accessibleIds, session.userId),
     loadPeople(supabase),
     access.canSeePayments ? loadOtherPendingApprovals(supabase, access.adminCompanyIds) : Promise.resolve([]),
     access.canSeePayments ? loadEventsNeedingDecision(supabase, access.adminCompanyIds, today) : Promise.resolve([]),
     loadReminderSettings(supabase, session.userId),
     supabase.from("priority_notifications").select("id, severity, title, body, href, created_at").eq("user_id", session.userId).is("read_at", null).order("created_at", { ascending: false }).limit(50),
   ]);
+
+  // a task is private to the person who looks after it (loadTasks reads only theirs)
+  const allTasks = everyTask;
 
   // create the reminders that are due now (never twice for the same item and period), then read them
   let notifications = notes.data ?? [];
@@ -115,7 +118,6 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
 
   // ───────── figures (all from the records above) ─────────
   // the briefing and the figures are about the person's OWN tasks (given to them, or created by them and not given to anybody);
-  // the checklist below still lists every task of the companies they manage
   const myTasks = tasks.filter((t) => t.responsible_id === session.userId || (!t.responsible_id && t.created_by === session.userId));
   const taskSummary = summariseTasks(myTasks, now, today);
   const paySummary = summarisePayables(payables);
@@ -432,7 +434,7 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
       </section>
 
       {/* ───────── to-do checklist ───────── */}
-      <SectionBox id="tasks" title={access.canSeePayments ? "To-Do Checklist" : "My To-Do List"} subtitle={access.adminCompanyIds.length > 0 ? "Every task of the companies you manage, and the tasks assigned to you." : "The tasks assigned to you or created by you."}>
+      <SectionBox id="tasks" title={access.canSeePayments ? "To-Do Checklist" : "My To-Do List"} subtitle="Only you can see these tasks: the tasks assigned to you, and the ones you made for yourself.">
         <form method="get" className="mb-4 grid grid-cols-2 items-end gap-3 md:grid-cols-3 xl:grid-cols-7 print:hidden">
           <Hidden params={carry} keys={PAY_KEYS} />
           <div>

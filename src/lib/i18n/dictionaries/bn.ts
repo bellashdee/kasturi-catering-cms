@@ -3975,7 +3975,18 @@ const dictionary: Record<string, string> = {
  "for staff who paid with their own money first. Send it in My Claims (under Company Spending): you choose Penny Chan or Nabilah to pay you back.": "যারা আগে নিজের টাকায় খরচ করেছেন তাদের জন্য। কোম্পানির ব্যয়-এর অধীনে আমার দাবিসমূহ-এ পাঠান: আপনাকে ফেরত দেবেন এমন Penny Chan বা Nabilah বেছে নিন।",
  "Claim back what you bought for the company with your own money": "কোম্পানির জন্য নিজের টাকায় যা কিনেছেন তা ফেরত দাবি করুন",
  "Open this date to see every event of the day": "এই তারিখ খুলে সেদিনের সব ইভেন্ট দেখুন",
- "Open the records of this line to review and edit them": "এই লাইনের রেকর্ড খুলে দেখুন ও সম্পাদনা করুন"
+ "Open the records of this line to review and edit them": "এই লাইনের রেকর্ড খুলে দেখুন ও সম্পাদনা করুন",
+ "Display": "প্রদর্শন",
+ "Text size": "লেখার আকার",
+ "Makes everything on every page bigger: the words, the buttons and the boxes.": "প্রতিটি পাতার সবকিছু বড় করে: লেখা, বোতাম ও বাক্স।",
+ "Normal": "সাধারণ",
+ "Large": "বড়",
+ "Extra large": "অনেক বড়",
+ "Easy-to-read letters": "সহজে পড়ার অক্ষর",
+ "Uses letters that are made to be clear for people who find small or similar letters hard to read.": "যাদের ছোট বা একই রকম অক্ষর পড়তে কষ্ট হয় তাদের জন্য স্পষ্ট করে বানানো অক্ষর ব্যবহার করে।",
+ "Normal letters": "সাধারণ অক্ষর",
+ "This is kept on this computer or phone. Choose it again on another device.": "এটি এই কম্পিউটার বা ফোনে রাখা হয়। অন্য ডিভাইসে আবার বেছে নিন।",
+ "Only you can see these tasks: the tasks assigned to you, and the ones you made for yourself.": "এই কাজগুলো শুধু আপনিই দেখতে পারবেন: আপনাকে দেওয়া কাজ এবং আপনি নিজের জন্য যেগুলো বানিয়েছেন।"
 };
 
 export default dictionary;

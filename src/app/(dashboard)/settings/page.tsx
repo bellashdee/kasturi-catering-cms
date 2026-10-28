@@ -6,6 +6,7 @@ import { ASSIGNABLE_MODULES } from "@/lib/modules";
 import { SectionCard, EmptyRow } from "@/components/dashboard/SectionCard";
 import { AddMemberForm } from "@/components/settings/AddMemberForm";
 import { MemberActions } from "@/components/settings/MemberActions";
+import { DisplaySettings } from "@/components/settings/DisplaySettings";
 
 export default async function SettingsPage() {
   const session = await getSessionContext();
@@ -19,6 +20,9 @@ export default async function SettingsPage() {
     return (
       <div className="flex flex-col gap-5">
         <h1 className="text-[22px] font-extrabold text-text">Settings</h1>
+        <SectionCard title="Display">
+          <DisplaySettings />
+        </SectionCard>
         <EmptyRow text="Only a Super Admin can manage team members." />
       </div>
     );
@@ -37,6 +41,10 @@ export default async function SettingsPage() {
         </div>
         <AddMemberForm companies={companies} />
       </div>
+
+      <SectionCard title="Display">
+        <DisplaySettings />
+      </SectionCard>
 
       <SectionCard title={`Team Members (${members.length})`}>
         {members.length === 0 ? (

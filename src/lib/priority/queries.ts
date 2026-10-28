@@ -140,12 +140,14 @@ export async function loadPayables(supabase: DB, companyIds: string[], today: st
 
 export type PriorityTask = Database["public"]["Tables"]["priority_tasks"]["Row"] & { companies: { name: string } | null; document: { id: string; original_filename: string } | null };
 
-export async function loadTasks(supabase: DB, companyIds: string[]): Promise<PriorityTask[]> {
+/** The tasks of one person: given to them, or made by them and not given to anybody. A task is private to that person (also an admin does not see another person's). */
+export async function loadTasks(supabase: DB, companyIds: string[], userId: string): Promise<PriorityTask[]> {
   if (companyIds.length === 0) return [];
   const { data, error } = await supabase
     .from("priority_tasks")
     .select("*, companies(name), document:documents(id, original_filename)")
     .in("company_id", companyIds)
+    .or(`responsible_id.eq.${userId},and(responsible_id.is.null,created_by.eq.${userId})`)
     .order("due_at", { ascending: true, nullsFirst: false })
     .limit(1000);
   if (error) throw error;
