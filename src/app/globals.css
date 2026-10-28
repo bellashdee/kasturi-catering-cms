@@ -1,49 +1,49 @@
 @import "tailwindcss";
 
 :root {
-  /* Blush and rose with sage and a little gold: the one palette of the whole system */
-  --color-bg: #fbf3f1;
-  --color-surface: #fffcfb;
-  --color-surface-alt: #fbf1ef;
-  --color-border: #ecd9d6;
-  --color-border-strong: #dcc3c0;
+  /* Peach and apricot with fresh mint and a little butter: warm like fresh food, the one palette of the whole system */
+  --color-bg: #fff6ee;
+  --color-surface: #fffdfa;
+  --color-surface-alt: #fdf0e4;
+  --color-border: #f1dcc6;
+  --color-border-strong: #e5c8aa;
 
-  --color-navy-900: #a87372;
-  --color-navy-800: #946261;
-  --color-navy-700: #c99a99;
+  --color-navy-900: #c27545;
+  --color-navy-800: #ad6738;
+  --color-navy-700: #eab68d;
 
-  --color-sidebar: #b9c7af;
-  --color-sidebar-text: #2f3e2b;
+  --color-sidebar: #cfe6d6;
+  --color-sidebar-text: #25402f;
   --color-sidebar-line: rgba(0, 0, 0, 0.1);
-  --color-sidebar-field: rgba(255, 255, 255, 0.55);
-  --color-sidebar-active: rgba(255, 255, 255, 0.6);
-  --color-sidebar-active-text: #2f3e2b;
+  --color-sidebar-field: rgba(255, 255, 255, 0.6);
+  --color-sidebar-active: rgba(255, 255, 255, 0.7);
+  --color-sidebar-active-text: #25402f;
 
   /* the soft banner, greeting avatar, page wash, card shadow, leaf and chart colours */
-  --soft-a: #f6e4e1;
-  --soft-b: #fbeeea;
-  --soft-c: #eef2ea;
-  --soft-page-a: #fdf7f5;
-  --soft-page-b: #f8ebe8;
-  --soft-avatar-a: #c99a99;
-  --soft-avatar-b: #a87372;
-  --soft-shadow: rgba(168, 115, 114, 0.12);
-  --soft-leaf: #a87372;
-  --soft-label: #b98483;
-  --chart-1: #7f9a79;
-  --chart-2: #d98b97;
-  --chart-3: #c9a56a;
-  --chart-4: #a87372;
-  --chart-5: #a9bd9f;
-  --chart-6: #e9b3b8;
-  --chart-7: #8c6b52;
-  --chart-8: #c77086;
-  --chart-9: #7b9a91;
-  --chart-10: #a89a86;
+  --soft-a: #fde6d3;
+  --soft-b: #fff0e2;
+  --soft-c: #e8f4ec;
+  --soft-page-a: #fffaf4;
+  --soft-page-b: #fdeee0;
+  --soft-avatar-a: #f0b48a;
+  --soft-avatar-b: #b45f33;
+  --soft-shadow: rgba(180, 95, 51, 0.12);
+  --soft-leaf: #b45f33;
+  --soft-label: #c98258;
+  --chart-1: #7fbf9c;
+  --chart-2: #f2a97c;
+  --chart-3: #e9c46a;
+  --chart-4: #b45f33;
+  --chart-5: #bfe0c8;
+  --chart-6: #f6c9a8;
+  --chart-7: #a07856;
+  --chart-8: #e58f7c;
+  --chart-9: #86b3a8;
+  --chart-10: #c9b79c;
 
-  --color-primary: #94605f;
-  --color-primary-hover: #7f5150;
-  --color-accent: #8fa58a;
+  --color-primary: #b45f33;
+  --color-primary-hover: #9c4f28;
+  --color-accent: #7fbf9c;
 
   --color-success: #3f6b43;
   --color-success-bg: #e4eee2;
@@ -51,7 +51,7 @@
   --color-warning-bg: #f8ecd6;
   --color-danger: #b0382f;
   --color-danger-bg: #fae6e4;
-  --color-info-bg: #f5e3e1;
+  --color-info-bg: #fde8d6;
 
   --color-text: #16212e;
   --color-text-secondary: #3f4b5b;

@@ -82,9 +82,9 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen bg-surface">
       <GuestLanguageBar />
-      <div className="hidden w-[480px] shrink-0 flex-col justify-between bg-gradient-to-br from-navy-900 via-navy-800 to-navy-700 p-14 text-white lg:flex">
+      <div className="hidden w-[480px] shrink-0 flex-col justify-between bg-gradient-to-br from-[#fbd9bb] via-[#f6c9a6] to-[#cfe6d6] p-14 text-[#4a2c18] lg:flex">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent text-sm font-extrabold">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent text-sm font-extrabold text-white">
             CM
           </div>
           <span className="text-base font-bold">Central Management System</span>
@@ -93,12 +93,12 @@ export default function LoginPage() {
           <p className="max-w-[380px] text-3xl font-extrabold leading-snug">
             One system for Signature Solution, Kasturi Indah and O2 Life.
           </p>
-          <p className="mt-4 max-w-[360px] text-sm text-white/65">
+          <p className="mt-4 max-w-[360px] text-sm text-[#4a2c18]/75">
             Dashboards, catering operations, kitchen production, logistics, suppliers
             and finance — all in one place, filtered by company.
           </p>
         </div>
-        <p className="text-xs text-white/40">
+        <p className="text-xs text-[#4a2c18]/55">
           &copy; {new Date().getFullYear()} Central Management System — internal use only
         </p>
       </div>
