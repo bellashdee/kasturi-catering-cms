@@ -5,6 +5,7 @@ import { LiveClock } from "./LiveClock";
 import { NotificationBell } from "./NotificationBell";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { ProfileMenu } from "./ProfileMenu";
+import { TextSizeButtons } from "./TextSizeButtons";
 
 type Company = { id: string; name: string; legal_name: string };
 
@@ -19,6 +20,9 @@ export function Topbar({ session, companies, priorityTitle }: { session: Session
 
       <LiveClock />
       <div className="hidden h-8 w-px bg-border sm:block" />
+      <div className="hidden sm:block">
+        <TextSizeButtons />
+      </div>
       <LanguageSwitcher />
       <NotificationBell />
       <ProfileMenu fullName={session.fullName} email={session.email} roleLabel={ROLE_LABEL[session.role]} />

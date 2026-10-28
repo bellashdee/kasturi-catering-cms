@@ -4033,7 +4033,14 @@ const dictionary: Record<string, string> = {
  "Edit History (who changed what)": "সম্পাদনার ইতিহাস (কে কী বদলেছে)",
  "No detail has been changed yet.": "এখনও কোনো তথ্য বদলানো হয়নি।",
  "That value is already used.": "এই মানটি ইতিমধ্যে ব্যবহৃত।",
- "You can only change your own details.": "আপনি শুধু নিজের তথ্য বদলাতে পারেন।"
+ "You can only change your own details.": "আপনি শুধু নিজের তথ্য বদলাতে পারেন।",
+ "Font": "ফন্ট",
+ "Choose the letters you find easiest to read. Every page changes.": "যে অক্ষর পড়তে সবচেয়ে সহজ মনে হয় তা বেছে নিন। প্রতিটি পাতা বদলাবে।",
+ "Font size (10 to 25)": "ফন্টের আকার (10 থেকে 25)",
+ "Makes everything on every page bigger or smaller: the words, the buttons and the boxes.": "প্রতিটি পাতার সবকিছু বড় বা ছোট করে: লেখা, বোতাম ও বাক্স।",
+ "Usual size": "স্বাভাবিক আকার",
+ "Sample": "নমুনা",
+ "Standard (the system's own letters)": "স্ট্যান্ডার্ড (সিস্টেমের নিজস্ব অক্ষর)"
 };
 
 export default dictionary;

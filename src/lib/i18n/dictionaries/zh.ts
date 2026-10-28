@@ -4040,7 +4040,14 @@ const dictionary: Record<string, string> = {
  "Edit History (who changed what)": "修改记录（谁改了什么）",
  "No detail has been changed yet.": "尚未更改任何资料。",
  "That value is already used.": "该内容已被使用。",
- "You can only change your own details.": "您只能更改自己的资料。"
+ "You can only change your own details.": "您只能更改自己的资料。",
+ "Font": "字体",
+ "Choose the letters you find easiest to read. Every page changes.": "选择您觉得最易读的字体。所有页面都会改变。",
+ "Font size (10 to 25)": "字体大小（10 至 25）",
+ "Makes everything on every page bigger or smaller: the words, the buttons and the boxes.": "放大或缩小每个页面上的所有内容：文字、按钮和输入框。",
+ "Usual size": "常用大小",
+ "Sample": "示例",
+ "Standard (the system's own letters)": "标准（系统自带字体）"
 };
 
 export default dictionary;

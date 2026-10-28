@@ -3974,7 +3974,14 @@ const dictionary: Record<string, string> = {
  "Edit History (who changed what)": "Sejarah Suntingan (siapa mengubah apa)",
  "No detail has been changed yet.": "Belum ada butiran yang diubah.",
  "That value is already used.": "Nilai itu sudah digunakan.",
- "You can only change your own details.": "Anda hanya boleh mengubah butiran anda sendiri."
+ "You can only change your own details.": "Anda hanya boleh mengubah butiran anda sendiri.",
+ "Font": "Fon",
+ "Choose the letters you find easiest to read. Every page changes.": "Pilih huruf yang paling mudah anda baca. Setiap halaman berubah.",
+ "Font size (10 to 25)": "Saiz fon (10 hingga 25)",
+ "Makes everything on every page bigger or smaller: the words, the buttons and the boxes.": "Membesarkan atau mengecilkan semua di setiap halaman: tulisan, butang dan kotak.",
+ "Usual size": "Saiz biasa",
+ "Sample": "Contoh",
+ "Standard (the system's own letters)": "Standard (huruf asal sistem)"
 };
 
 export default dictionary;

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Atkinson_Hyperlegible, Manrope } from "next/font/google";
+import { Manrope } from "next/font/google";
 import "./globals.css";
 import { I18nProvider } from "@/components/i18n/I18nProvider";
 import { getServerLanguage } from "@/lib/i18n/server";
@@ -10,15 +10,8 @@ const manrope = Manrope({
   weight: ["400", "500", "600", "700", "800"],
 });
 
-// the easy-to-read letters (made for readers with low vision), used when the person chooses them in Settings
-const atkinson = Atkinson_Hyperlegible({
-  variable: "--font-atkinson",
-  subsets: ["latin"],
-  weight: ["400", "700"],
-});
-
-// the text size and the letters chosen in Settings are set before the page is shown, so it never jumps
-const DISPLAY_SCRIPT = `try{var d=document.documentElement,s=localStorage.getItem("cms-text-size"),f=localStorage.getItem("cms-easy-font");if(s==="large"||s==="xlarge")d.setAttribute("data-text-size",s);if(f==="on")d.setAttribute("data-easy-font","on")}catch(e){}`;
+// the font and the text size (10 to 25) chosen in Settings are set before the page is shown, so it never jumps; Arial unless another is chosen
+const DISPLAY_SCRIPT = `try{var d=document.documentElement,f=localStorage.getItem("cms-font")||"arial",n=parseInt(localStorage.getItem("cms-font-size"),10);if(f!=="standard")d.setAttribute("data-font",f);if(n>=10&&n<=25&&n!==14){d.setAttribute("data-font-size",String(n));d.style.setProperty("--ui-zoom",String(n/14))}}catch(e){}`;
 
 export const metadata: Metadata = {
   title: "Central Management System",
@@ -31,7 +24,7 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const lang = await getServerLanguage();
   return (
-    <html lang={lang} data-i18n={lang === "en" ? "ready" : "pending"} className={`${manrope.variable} ${atkinson.variable} h-full antialiased`} suppressHydrationWarning>
+    <html lang={lang} data-i18n={lang === "en" ? "ready" : "pending"} className={`${manrope.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: DISPLAY_SCRIPT }} />
       </head>

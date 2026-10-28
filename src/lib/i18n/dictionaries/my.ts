@@ -4027,7 +4027,14 @@ const dictionary: Record<string, string> = {
  "Edit History (who changed what)": "တည်းဖြတ်မှုမှတ်တမ်း (ဘယ်သူ ဘာပြောင်းသလဲ)",
  "No detail has been changed yet.": "မည်သည့်အချက်အလက်မျှ မပြောင်းရသေးပါ။",
  "That value is already used.": "ထိုတန်ဖိုးကို သုံးပြီးဖြစ်သည်။",
- "You can only change your own details.": "သင့်ကိုယ်ပိုင်အချက်အလက်ကိုသာ ပြောင်းနိုင်သည်။"
+ "You can only change your own details.": "သင့်ကိုယ်ပိုင်အချက်အလက်ကိုသာ ပြောင်းနိုင်သည်။",
+ "Font": "ဖောင့်",
+ "Choose the letters you find easiest to read. Every page changes.": "သင်အဖတ်လွယ်ဆုံး စာလုံးကို ရွေးပါ။ စာမျက်နှာအားလုံး ပြောင်းလဲမည်။",
+ "Font size (10 to 25)": "ဖောင့်အရွယ်အစား (၁၀ မှ ၂၅)",
+ "Makes everything on every page bigger or smaller: the words, the buttons and the boxes.": "စာမျက်နှာတိုင်းရှိ အရာအားလုံးကို ကြီးစေ/သေးစေသည်: စာလုံး၊ ခလုတ်နှင့် ဘောက်စ်များ။",
+ "Usual size": "ပုံမှန်အရွယ်",
+ "Sample": "နမူနာ",
+ "Standard (the system's own letters)": "စံ (စနစ်၏ ကိုယ်ပိုင်စာလုံး)"
 };
 
 export default dictionary;
