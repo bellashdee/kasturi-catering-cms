@@ -3911,7 +3911,10 @@ const dictionary: Record<string, string> = {
  ": tick all the companies the money is for. Received and Spent are keyed once with one amount. A Claimant is split: you write how much belongs to each company.": ": tandakan semua syarikat yang berkaitan dengan wang itu. Diterima dan Dibelanjakan dimasukkan sekali dengan satu jumlah. Penuntut dibahagikan: anda tulis berapa bahagian setiap syarikat.",
  "Claimant is sent in My Claims": "Penuntut dihantar dalam Tuntutan Saya",
  "If you paid with your own money first, send your claim in My Claims: choose Penny Chan or Nabilah to pay you back, add the receipt, and you can follow when it is paid.": "Jika anda menggunakan wang sendiri dahulu, hantar tuntutan anda dalam Tuntutan Saya: pilih Penny Chan atau Nabilah untuk membayar semula, tambah resit, dan anda boleh melihat bila ia dibayar.",
- "Open My Claims": "Buka Tuntutan Saya"
+ "Open My Claims": "Buka Tuntutan Saya",
+ "Open Company Spending on the left, then My Claims (this page). Choose the company you work for, the date you bought it and the amount you paid, exactly as on the receipt.": "Buka Perbelanjaan Syarikat di sebelah kiri, kemudian Tuntutan Saya (halaman ini). Pilih syarikat tempat anda bekerja, tarikh anda membeli dan jumlah yang anda bayar, tepat seperti pada resit.",
+ "for staff who paid with their own money first. Send it in My Claims (under Company Spending): you choose Penny Chan or Nabilah to pay you back.": "untuk kakitangan yang menggunakan wang sendiri dahulu. Hantar dalam Tuntutan Saya (di bawah Perbelanjaan Syarikat): anda pilih Penny Chan atau Nabilah untuk membayar semula.",
+ "Claim back what you bought for the company with your own money": "Tuntut semula apa yang anda beli untuk syarikat dengan wang sendiri"
 };
 
 export default dictionary;

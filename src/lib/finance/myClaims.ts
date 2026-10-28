@@ -52,7 +52,7 @@ async function checked(input: MyClaimInput, records: { full_name: string; depart
 }
 
 function revalidate() {
-  revalidatePath("/claims");
+  revalidatePath("/spending/my-claims");
   revalidatePath("/spending/petty-cash");
   revalidatePath("/admin");
   revalidatePath("/");

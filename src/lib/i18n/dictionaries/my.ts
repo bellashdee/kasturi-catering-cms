@@ -3964,7 +3964,10 @@ const dictionary: Record<string, string> = {
  ": tick all the companies the money is for. Received and Spent are keyed once with one amount. A Claimant is split: you write how much belongs to each company.": "။ ငွေနှင့်သက်ဆိုင်သော ကုမ္ပဏီအားလုံးကို အမှန်ခြစ်ပါ။ လက်ခံရရှိနှင့် သုံးစွဲတို့ကို ပမာဏတစ်ခုဖြင့် တစ်ကြိမ်သာ ထည့်ပါ။ တောင်းဆိုသူကို ခွဲရမည်၊ ကုမ္ပဏီတစ်ခုစီ၏ ဝေစုကို ရေးပါ။",
  "Claimant is sent in My Claims": "တောင်းဆိုသူကို ကျွန်ုပ်၏ တောင်းဆိုမှုများ တွင် ပို့ပါ",
  "If you paid with your own money first, send your claim in My Claims: choose Penny Chan or Nabilah to pay you back, add the receipt, and you can follow when it is paid.": "မိမိငွေဖြင့် ကြိုပေးထားလျှင် ကျွန်ုပ်၏ တောင်းဆိုမှုများ တွင် ပို့ပါ: ပြန်ပေးမည့် Penny Chan သို့မဟုတ် Nabilah ကိုရွေးပြီး ဘောက်ချာထည့်ပါ၊ ပေးချေချိန်ကိုလည်း လိုက်ကြည့်နိုင်သည်။",
- "Open My Claims": "ကျွန်ုပ်၏ တောင်းဆိုမှုများ ဖွင့်ရန်"
+ "Open My Claims": "ကျွန်ုပ်၏ တောင်းဆိုမှုများ ဖွင့်ရန်",
+ "Open Company Spending on the left, then My Claims (this page). Choose the company you work for, the date you bought it and the amount you paid, exactly as on the receipt.": "ဘယ်ဘက်ရှိ ကုမ္ပဏီအသုံးစရိတ် ကိုဖွင့်ပြီး ကျွန်ုပ်၏ တောင်းဆိုမှုများ (ဤစာမျက်နှာ) ကို ရွေးပါ။ သင်အလုပ်လုပ်သည့် ကုမ္ပဏီ၊ ဝယ်ယူသည့်ရက်စွဲနှင့် ပေးခဲ့သည့်ပမာဏကို ဘောက်ချာအတိုင်း ရွေးပါ။",
+ "for staff who paid with their own money first. Send it in My Claims (under Company Spending): you choose Penny Chan or Nabilah to pay you back.": "မိမိငွေဖြင့် ကြိုပေးထားသော ဝန်ထမ်းများအတွက်။ ကုမ္ပဏီအသုံးစရိတ် အောက်ရှိ ကျွန်ုပ်၏ တောင်းဆိုမှုများ တွင် ပို့ပါ၊ ပြန်ပေးမည့် Penny Chan သို့မဟုတ် Nabilah ကို ရွေးပါ။",
+ "Claim back what you bought for the company with your own money": "ကုမ္ပဏီအတွက် သင့်ကိုယ်ပိုင်ငွေဖြင့် ဝယ်ယူခဲ့သည်များကို ပြန်လည်တောင်းခံပါ"
 };
 
 export default dictionary;

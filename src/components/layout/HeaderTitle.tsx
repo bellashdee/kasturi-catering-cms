@@ -9,7 +9,6 @@ function pageTitle(pathname: string, priorityTitle: string): string {
   if (pathname === "/") return "Main Dashboard";
   if (pathname.startsWith("/settings")) return "Settings";
   if (pathname.startsWith("/profile")) return "My Profile";
-  if (pathname.startsWith("/claims")) return "My Claims";
   if (pathname.startsWith("/priority-centre")) return priorityTitle;
   if (pathname.startsWith("/payroll-centre")) return "Payroll Centre";
   if (pathname.startsWith("/bulletin")) return "Bulletin Board";

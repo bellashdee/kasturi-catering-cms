@@ -1,5 +1,9 @@
 import { redirect } from "next/navigation";
 import { getSessionContext } from "@/lib/auth";
+import { canAccessModule } from "@/lib/modules";
+import { pettyCashAccess } from "@/lib/pettyCash/access";
+import { SoftHeader, SoftPage } from "@/components/ui/Soft";
+import { SpendingSubNav } from "@/components/spending/SpendingSubNav";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { claimPayers } from "@/lib/pettyCash/access";
 import { loadPersonOptions } from "@/lib/pettyCash/people";
@@ -13,7 +17,7 @@ import { MyClaimActions, MyClaimForm } from "@/components/claims/MyClaims";
 
 const STEPS = [
   "Buy what the company needs with your own money first, and keep the receipt (or take a photo of it).",
-  "Open My Claims on the left (this page). Choose the company you work for, the date you bought it and the amount you paid, exactly as on the receipt.",
+  "Open Company Spending on the left, then My Claims (this page). Choose the company you work for, the date you bought it and the amount you paid, exactly as on the receipt.",
   "Under Claim from, choose Penny Chan or Nabilah: the one who will pay you back.",
   "Choose the category and write what you bought (for example: cooking gas for the Ahmad wedding). You can choose more than one category.",
   "Attach the photo of the receipt, then press Send claim.",
@@ -32,12 +36,14 @@ export default async function MyClaimsPage() {
 
   const admin = createAdminClient();
   const supabase = await createClient();
-  const [{ data: records }, { data: companyRows }, payers, people] = await Promise.all([
+  const [{ data: records }, { data: companyRows }, payers, people, access] = await Promise.all([
     admin.from("employees").select("company_id").eq("user_id", session.userId).eq("status", "active"),
     admin.from("companies").select("id, name").order("name"),
     claimPayers(),
     loadPersonOptions(supabase),
+    pettyCashAccess(supabase, session.userId),
   ]);
+  const hasFinance = canAccessModule(session.allowedModules, "finance-admin");
   const ownCompanyIds = Array.from(new Set((records ?? []).map((r) => r.company_id)));
   const companies = (companyRows ?? []).filter((c) => ownCompanyIds.includes(c.id));
   // the position shown for Penny Chan / Nabilah is the one on the list of petty cash holders
@@ -49,11 +55,9 @@ export default async function MyClaimsPage() {
   const pendingTotal = pending.reduce((t, c) => t + Number(c.amount), 0);
 
   return (
-    <div className="flex flex-col gap-5">
-      <div>
-        <div className="text-[20px] font-extrabold text-text">My Claims</div>
-        <div className="mt-0.5 text-[13px] text-text-secondary">Claim back what you bought for the company with your own money.</div>
-      </div>
+    <SoftPage>
+      <SoftHeader title="My Claims" subtitle="Claim back what you bought for the company with your own money" />
+      <SpendingSubNav hideFinance={!hasFinance} hidePettyCash={!hasFinance && !access.isHolder} />
 
       <details open className="rounded-2xl border border-border bg-surface shadow-sm">
         <summary className="cursor-pointer px-5 py-3.5 text-[15px] font-bold text-text">How to claim (step by step)</summary>
@@ -136,6 +140,6 @@ export default async function MyClaimsPage() {
           </div>
         )}
       </SectionCard>
-    </div>
+    </SoftPage>
   );
 }

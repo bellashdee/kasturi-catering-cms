@@ -17,6 +17,8 @@ const nextConfig: NextConfig = {
       { source: "/finance/expenses", destination: "/spending/expenses", permanent: false },
       { source: "/admin/budgets/:path*", destination: "/spending/budgets/:path*", permanent: false },
       { source: "/admin/budgets", destination: "/spending/budgets", permanent: false },
+      // My Claims moved into Company Spending
+      { source: "/claims", destination: "/spending/my-claims", permanent: false },
       // the Categories tab of Admin & Finance was removed
       { source: "/admin/categories", destination: "/admin", permanent: false },
     ];

@@ -158,11 +158,6 @@ export function ProfileLink() {
   return <NavItem href="/profile" icon="profile" label="My Profile" />;
 }
 
-/** My Claims: any staff member claims back what they bought with their own money (open to everyone). */
-export function ClaimsLink() {
-  return <NavItem href="/claims" icon="petty-cash" label="My Claims" />;
-}
-
 export function MainDashboardLink() {
   return <NavItem href="/" icon="dashboard" label="Main Dashboard" />;
 }
@@ -182,7 +177,7 @@ export function TopLinks({ taskLabel = "Priority Centre" }: { taskLabel?: string
  * (Operation Management), then paid and accounted for (Admin & Finance, Company Spending), then the staff (HR), the Reports and the AI Assistant.
  * The Payroll Centre is part of HR (a button on the HR page); only a payroll user who has no HR access gets its own entry.
  */
-export function ModuleLinks({ allowedModules, badges = {}, showPayroll = false, showSpending = false }: { allowedModules: string[] | null; badges?: Record<string, number>; showPayroll?: boolean; showSpending?: boolean }) {
+export function ModuleLinks({ allowedModules, badges = {}, showPayroll = false }: { allowedModules: string[] | null; badges?: Record<string, number>; showPayroll?: boolean }) {
   const show = (key: string) => !allowedModules || allowedModules.includes(key);
   const moduleLink = (key: string) => {
     const m = MODULES.find((x) => x.key === key);
@@ -195,7 +190,8 @@ export function ModuleLinks({ allowedModules, badges = {}, showPayroll = false, 
       {moduleLink("supplier-procurement")}
       {moduleLink("driver-logistics")}
       {moduleLink("finance-admin")}
-      {showSpending && <NavItem href="/spending" icon="petty-cash" label="Company Spending" matchPrefixes={["/spending"]} />}
+      {/* Company Spending is for everybody: staff send their own claims (My Claims) there; the finance and petty cash pages follow their own access */}
+      <NavItem href="/spending" icon="petty-cash" label="Company Spending" matchPrefixes={["/spending"]} />
       {moduleLink("hr")}
       {!show("hr") && showPayroll && <NavItem href="/payroll-centre" icon="payroll" label="Payroll Centre" />}
       {!show("hr") && show("overtime") && <NavItem href="/hr/overtime" icon="hr" label="Overtime (OT)" />}

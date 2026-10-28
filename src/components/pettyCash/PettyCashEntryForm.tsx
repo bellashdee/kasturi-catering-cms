@@ -43,7 +43,7 @@ function UsageGuide({ canPay, hasClaim }: { canPay: boolean; hasClaim: boolean }
             <strong className="text-text">Claimant</strong>:{" "}
             {canPay
               ? "a staff member paid with their own money first and now claims it back. Choose the staff name, and under Claim from choose Penny Chan or Nabilah, who will pay. Staff can also send the claim themselves in My Claims."
-              : "for staff who paid with their own money first. Send it in My Claims (on the left): you choose Penny Chan or Nabilah to pay you back."}
+              : "for staff who paid with their own money first. Send it in My Claims (under Company Spending): you choose Penny Chan or Nabilah to pay you back."}
           </li>
         )}
         {canPay && (
@@ -365,7 +365,7 @@ export function PettyCashEntryForm({
         <div className="rounded-lg border border-border bg-surface-alt p-4 text-[13px] text-text-secondary">
           <div className="font-bold text-text">Claimant is sent in My Claims</div>
           <p className="mt-1">If you paid with your own money first, send your claim in My Claims: choose Penny Chan or Nabilah to pay you back, add the receipt, and you can follow when it is paid.</p>
-          <Link href="/claims" className="mt-3 inline-block rounded-lg bg-primary px-4 py-2 text-[13px] font-bold text-white">
+          <Link href="/spending/my-claims" className="mt-3 inline-block rounded-lg bg-primary px-4 py-2 text-[13px] font-bold text-white">
             Open My Claims
           </Link>
         </div>

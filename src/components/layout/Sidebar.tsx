@@ -3,12 +3,12 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { CompanySelector, CompanyQuickLinks } from "./CompanySelector";
-import { ClaimsLink, MainDashboardLink, ModuleLinks, ProfileLink, TopLinks, SettingsLink } from "./NavLinks";
+import { MainDashboardLink, ModuleLinks, ProfileLink, TopLinks, SettingsLink } from "./NavLinks";
 import { useMobileNav } from "./MobileNavContext";
 
 type Company = { id: string; name: string; legal_name: string };
 
-export function Sidebar({ companies, allowedModules, badges, taskLinkLabel, showPayroll, showSpending }: { companies: Company[]; allowedModules: string[] | null; badges?: Record<string, number>; taskLinkLabel?: string; showPayroll?: boolean; showSpending?: boolean }) {
+export function Sidebar({ companies, allowedModules, badges, taskLinkLabel, showPayroll }: { companies: Company[]; allowedModules: string[] | null; badges?: Record<string, number>; taskLinkLabel?: string; showPayroll?: boolean }) {
   const { open, setOpen } = useMobileNav();
   const pathname = usePathname();
 
@@ -43,12 +43,11 @@ export function Sidebar({ companies, allowedModules, badges, taskLinkLabel, show
 
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-3">
           <ProfileLink />
-          <ClaimsLink />
           <MainDashboardLink />
           <TopLinks taskLabel={taskLinkLabel} />
           <CompanyQuickLinks companies={companies} />
           <div className="my-2 h-px bg-sidebar-line" />
-          <ModuleLinks allowedModules={allowedModules} badges={badges} showPayroll={showPayroll} showSpending={showSpending} />
+          <ModuleLinks allowedModules={allowedModules} badges={badges} showPayroll={showPayroll} />
         </nav>
 
         <div className="border-t border-sidebar-line p-3">

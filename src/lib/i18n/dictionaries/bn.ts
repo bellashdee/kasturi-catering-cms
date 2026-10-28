@@ -3970,7 +3970,10 @@ const dictionary: Record<string, string> = {
  ": tick all the companies the money is for. Received and Spent are keyed once with one amount. A Claimant is split: you write how much belongs to each company.": ": টাকাটি যেসব কোম্পানির জন্য সবগুলো টিক দিন। প্রাপ্ত ও খরচ একবারই এক পরিমাণে লিখতে হয়। দাবিদার ভাগ করতে হয়: প্রতিটি কোম্পানির ভাগ লিখুন।",
  "Claimant is sent in My Claims": "দাবিদার আমার দাবিসমূহ-এ পাঠান",
  "If you paid with your own money first, send your claim in My Claims: choose Penny Chan or Nabilah to pay you back, add the receipt, and you can follow when it is paid.": "আগে নিজের টাকায় খরচ করে থাকলে আমার দাবিসমূহ-এ দাবি পাঠান: ফেরত দেবেন এমন Penny Chan বা Nabilah বেছে নিন, রসিদ যুক্ত করুন এবং কখন পরিশোধ হলো তা দেখুন।",
- "Open My Claims": "আমার দাবিসমূহ খুলুন"
+ "Open My Claims": "আমার দাবিসমূহ খুলুন",
+ "Open Company Spending on the left, then My Claims (this page). Choose the company you work for, the date you bought it and the amount you paid, exactly as on the receipt.": "বাঁ দিকে কোম্পানির ব্যয় খুলুন, তারপর আমার দাবিসমূহ (এই পাতা)। যে কোম্পানিতে কাজ করেন, কেনার তারিখ এবং যত টাকা দিয়েছেন তা রসিদ অনুযায়ী ঠিক যেমন আছে তেমন বেছে নিন।",
+ "for staff who paid with their own money first. Send it in My Claims (under Company Spending): you choose Penny Chan or Nabilah to pay you back.": "যারা আগে নিজের টাকায় খরচ করেছেন তাদের জন্য। কোম্পানির ব্যয়-এর অধীনে আমার দাবিসমূহ-এ পাঠান: আপনাকে ফেরত দেবেন এমন Penny Chan বা Nabilah বেছে নিন।",
+ "Claim back what you bought for the company with your own money": "কোম্পানির জন্য নিজের টাকায় যা কিনেছেন তা ফেরত দাবি করুন"
 };
 
 export default dictionary;
