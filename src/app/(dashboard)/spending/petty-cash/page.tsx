@@ -138,20 +138,23 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
     })),
   ].sort((a, b) => a.date.localeCompare(b.date) || a.created.localeCompare(b.created));
 
-  // balance after each row, per company (the money of each company is kept apart)
-  const running = new Map<string, number>();
-  const withBalance = rows.map((r) => {
-    const next = (running.get(r.companyId) ?? 0) + (r.kind === "in" ? r.amount : -r.amount);
-    running.set(r.companyId, next);
-    return { ...r, balance: next };
-  });
-  const balanceByCompany = companies.filter((c) => running.has(c.id)).map((c) => ({ name: c.name, balance: running.get(c.id) ?? 0 }));
-  const totalBalance = Array.from(running.values()).reduce((t, v) => t + v, 0);
+  // one balance after each row: the money given to a person is one pot used for every company (for example the float of Ms. Nabilah for
+  // Kasturi Indah and Signature Solution), so it is not split into a balance for each company
+  const withBalance: (Row & { balance: number })[] = [];
+  for (const r of rows) {
+    const previous = withBalance.length > 0 ? withBalance[withBalance.length - 1].balance : 0;
+    withBalance.push({ ...r, balance: previous + (r.kind === "in" ? r.amount : -r.amount) });
+  }
+  const totalBalance = withBalance.length > 0 ? withBalance[withBalance.length - 1].balance : 0;
 
   const thisMonth = todayInMalaysia().slice(0, 7);
   const months = Array.from(new Set([thisMonth, ...rows.map((r) => r.date.slice(0, 7))])).sort().reverse();
   const month = sp.month === "all" ? "all" : sp.month && MONTH_RE.test(sp.month) ? sp.month : thisMonth;
   const inMonth = withBalance.filter((r) => month === "all" || r.date.startsWith(month));
+  // what each company used out of the pot in the month shown
+  const spentByCompany = companies
+    .map((c) => ({ name: c.name, spent: inMonth.filter((r) => r.kind === "out" && r.companyId === c.id).reduce((t, r) => t + r.amount, 0) }))
+    .filter((c) => c.spent > 0);
   const claimsInMonth = inMonth.filter((r) => r.source === "claim" && r.claim);
   const summary = summarizePettyCashClaims(claimsInMonth.map((r) => ({ amount: r.amount, payment_status: r.claim!.status })));
   const overdueCount = claimsInMonth.filter((r) => isPettyCashOverdue(r.date, r.claim!.status)).length;
@@ -219,11 +222,14 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
 
       {shownScope && <PettyCashOverview overview={overview} periodLabel={month === "all" ? "All time" : month} />}
 
-      {shownScope && balanceByCompany.length > 1 && (
+      {shownScope && spentByCompany.length > 1 && (
         <div className="flex flex-wrap gap-x-5 gap-y-1 text-[12.5px] text-text-secondary">
-          {balanceByCompany.map((b) => (
+          <span>
+            <span>Spent by each company</span> {month === "all" ? <span>(all time)</span> : `(${month})`}:
+          </span>
+          {spentByCompany.map((b) => (
             <span key={b.name}>
-              {b.name}: <strong className={b.balance < 0 ? "text-danger" : "text-text"}>{formatPrice(b.balance)}</strong>
+              {b.name}: <strong className="text-text">{formatPrice(b.spent)}</strong>
             </span>
           ))}
         </div>

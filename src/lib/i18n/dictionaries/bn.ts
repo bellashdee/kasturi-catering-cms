@@ -3957,7 +3957,9 @@ const dictionary: Record<string, string> = {
  "Share equally": "সমানভাবে ভাগ করুন",
  "The shares of the companies must add up to the total amount of the claim.": "কোম্পানিগুলোর ভাগের যোগফল দাবির মোট পরিমাণের সমান হতে হবে।",
  "Choose at least two different companies to split the claim.": "দাবি ভাগ করতে কমপক্ষে দুটি আলাদা কোম্পানি বেছে নিন।",
- "Enter an amount more than 0 for each company.": "প্রতিটি কোম্পানির জন্য 0-এর বেশি পরিমাণ লিখুন।"
+ "Enter an amount more than 0 for each company.": "প্রতিটি কোম্পানির জন্য 0-এর বেশি পরিমাণ লিখুন।",
+ "Spent by each company": "প্রতিটি কোম্পানির খরচ",
+ "(all time)": "(সব সময়)"
 };
 
 export default dictionary;

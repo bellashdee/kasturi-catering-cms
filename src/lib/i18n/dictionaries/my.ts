@@ -3951,7 +3951,9 @@ const dictionary: Record<string, string> = {
  "Share equally": "ညီတူခွဲရန်",
  "The shares of the companies must add up to the total amount of the claim.": "ကုမ္ပဏီတစ်ခုချင်းစီ၏ ဝေစုများ ပေါင်းလျှင် တောင်းဆိုမှုစုစုပေါင်းနှင့် ညီရမည်။",
  "Choose at least two different companies to split the claim.": "တောင်းဆိုမှုကို ခွဲရန် မတူညီသော ကုမ္ပဏီ အနည်းဆုံး နှစ်ခု ရွေးပါ။",
- "Enter an amount more than 0 for each company.": "ကုမ္ပဏီတစ်ခုစီအတွက် 0 ထက်များသော ပမာဏ ထည့်ပါ။"
+ "Enter an amount more than 0 for each company.": "ကုမ္ပဏီတစ်ခုစီအတွက် 0 ထက်များသော ပမာဏ ထည့်ပါ။",
+ "Spent by each company": "ကုမ္ပဏီတစ်ခုစီ သုံးစွဲမှု",
+ "(all time)": "(အချိန်တစ်လျှောက်လုံး)"
 };
 
 export default dictionary;

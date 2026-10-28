@@ -3898,7 +3898,9 @@ const dictionary: Record<string, string> = {
  "Share equally": "Bahagi sama rata",
  "The shares of the companies must add up to the total amount of the claim.": "Bahagian setiap syarikat mesti sama dengan jumlah keseluruhan tuntutan.",
  "Choose at least two different companies to split the claim.": "Pilih sekurang-kurangnya dua syarikat berbeza untuk membahagikan tuntutan.",
- "Enter an amount more than 0 for each company.": "Masukkan jumlah lebih daripada 0 untuk setiap syarikat."
+ "Enter an amount more than 0 for each company.": "Masukkan jumlah lebih daripada 0 untuk setiap syarikat.",
+ "Spent by each company": "Dibelanjakan oleh setiap syarikat",
+ "(all time)": "(sepanjang masa)"
 };
 
 export default dictionary;

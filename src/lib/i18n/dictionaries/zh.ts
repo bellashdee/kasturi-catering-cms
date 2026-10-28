@@ -3964,7 +3964,9 @@ const dictionary: Record<string, string> = {
  "Share equally": "平均分摊",
  "The shares of the companies must add up to the total amount of the claim.": "各公司的分摊金额之和必须等于报销总金额。",
  "Choose at least two different companies to split the claim.": "请至少选择两家不同的公司来分摊报销。",
- "Enter an amount more than 0 for each company.": "请为每家公司输入大于 0 的金额。"
+ "Enter an amount more than 0 for each company.": "请为每家公司输入大于 0 的金额。",
+ "Spent by each company": "各公司支出",
+ "(all time)": "（全部时间）"
 };
 
 export default dictionary;
