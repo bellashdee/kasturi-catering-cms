@@ -123,7 +123,7 @@ export const MEAL_TYPE_LABEL: Record<string, string> = {
   wedding: "Wedding",
 };
 
-/** The meal types that can be chosen, in alphabetical order. "Wedding" (chosen earlier) is no longer offered; it still shows on the bookings that have it. */
+/** The meal types that can be chosen, in alphabetical order. "Wedding", "Packed Meal", "Plated Meal" and "Supper" are no longer offered; they still show on a booking that has them. */
 export const MEAL_TYPE_KEYS = [
   "afternoon_tea",
   "breakfast",
@@ -135,10 +135,7 @@ export const MEAL_TYPE_KEYS = [
   "lunch",
   "morning_break",
   "morning_tea",
-  "packed_meal",
-  "plated_meal",
   "refreshment",
-  "supper",
   "tea_break",
 ];
 
