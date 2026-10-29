@@ -2,6 +2,7 @@ import { GuestLanguageBar } from "@/components/i18n/GuestLanguageBar";
 import { notFound } from "next/navigation";
 import { INTAKE_COMPANIES } from "@/lib/catering/intake";
 import { PublicPaymentProofForm } from "@/components/finance/PublicPaymentProofForm";
+import { PaymentProofTutorial } from "@/components/finance/PaymentProofTutorial";
 
 export const metadata = { title: "Customer Payment Details" };
 
@@ -18,6 +19,9 @@ export default async function PaymentProofFormPage({ params }: { params: Promise
       <p className="mt-1 text-[14px] text-text-secondary">
         When a customer has paid, fill in the payment details here. Our office will check them and record the payment.
       </p>
+      <div className="mt-3">
+        <PaymentProofTutorial />
+      </div>
       <div className="mt-5 rounded-xl border border-border bg-surface p-6 shadow-sm">
         <PublicPaymentProofForm companySlug={slug} />
       </div>

@@ -4052,7 +4052,16 @@ const dictionary: Record<string, string> = {
  "If the event is more than one day, press + Add next day to copy the day before, then change what is different. Use Remove day for a day you do not need.": "ইভেন্ট একদিনের বেশি হলে + পরের দিন যোগ করুন চাপুন, আগের দিনের কপি হবে, তারপর যা আলাদা তা বদলান। দরকার না হলে দিন মুছুন ব্যবহার করুন।",
  "Answer every Additional requirement: Yes (and the price if you know it), No, or Included in the food price.": "প্রতিটি অতিরিক্ত প্রয়োজনের উত্তর দিন: হ্যাঁ (জানলে দামসহ), না, বা খাবারের দামে অন্তর্ভুক্ত।",
  "Other extra items, Kitchen set-up, Catering set-up and Remarks are optional: fill in what the kitchen and the office need to know.": "অন্যান্য অতিরিক্ত আইটেম, রান্নাঘরের সেট-আপ, ক্যাটারিং সেট-আপ ও মন্তব্য ঐচ্ছিক: রান্নাঘর ও অফিসের যা জানা দরকার তা লিখুন।",
- "Check the Estimated total, then press Send quotation request. The office will check it and prepare the quotation. You can fill in another request straight away.": "আনুমানিক মোট পরীক্ষা করুন, তারপর কোটেশন অনুরোধ পাঠান চাপুন। অফিস যাচাই করে কোটেশন তৈরি করবে। আপনি সঙ্গে সঙ্গে আরেকটি অনুরোধ পূরণ করতে পারেন।"
+ "Check the Estimated total, then press Send quotation request. The office will check it and prepare the quotation. You can fill in another request straight away.": "আনুমানিক মোট পরীক্ষা করুন, তারপর কোটেশন অনুরোধ পাঠান চাপুন। অফিস যাচাই করে কোটেশন তৈরি করবে। আপনি সঙ্গে সঙ্গে আরেকটি অনুরোধ পূরণ করতে পারেন।",
+ "Choose your name under Sales agent.": "বিক্রয় এজেন্ট-এর অধীনে আপনার নাম বেছে নিন।",
+ "Check the Payment date (it is today by default) and change it if the customer paid on another day.": "পেমেন্টের তারিখ দেখুন (ডিফল্ট আজ) এবং গ্রাহক অন্য দিনে দিলে বদলান।",
+ "Choose the Payment method: how the customer paid.": "পেমেন্টের পদ্ধতি বেছে নিন: গ্রাহক কীভাবে দিয়েছেন।",
+ "Write the Reference / receipt no. (the transfer reference, the cheque number or the receipt number).": "রেফারেন্স / রসিদ নং লিখুন (ট্রান্সফার রেফারেন্স, চেক নম্বর বা রসিদ নম্বর)।",
+ "Write the Amount paid (RM) exactly as the customer paid it.": "গ্রাহক ঠিক যত দিয়েছেন তত পরিশোধিত পরিমাণ (RM) লিখুন।",
+ "Write the Customer invoice / order no. (the number on the customer's invoice or order).": "গ্রাহকের ইনভয়েস / অর্ডার নং লিখুন (গ্রাহকের ইনভয়েস বা অর্ডারের নম্বর)।",
+ "Under Remarks, choose Deposit or Full payment.": "মন্তব্য-এর অধীনে ডিপোজিট বা সম্পূর্ণ পেমেন্ট বেছে নিন।",
+ "Attach the photo or PDF of the receipt or proof of payment (optional, up to 10 MB).": "রসিদ বা পেমেন্টের প্রমাণের ছবি বা PDF যুক্ত করুন (ঐচ্ছিক, 10 MB পর্যন্ত)।",
+ "Press Send payment details. Our office will check them and record the payment. You can fill in another payment straight away.": "পেমেন্টের বিবরণ পাঠান চাপুন। আমাদের অফিস যাচাই করে পেমেন্ট রেকর্ড করবে। আপনি সঙ্গে সঙ্গে আরেকটি পেমেন্ট পূরণ করতে পারেন।"
 };
 
 export default dictionary;

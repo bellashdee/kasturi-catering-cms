@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { Dialog } from "@/components/priority/ui";
+import { StepGuideButton } from "@/components/shared/StepGuideButton";
 
 const STEPS = [
   "Choose your name under Sales agent, then write the customer or company name.",
@@ -16,31 +15,7 @@ const STEPS = [
   "Check the Estimated total, then press Send quotation request. The office will check it and prepare the quotation. You can fill in another request straight away.",
 ];
 
-/** The "Tutorial" button of the quotation request form: opens a step by step guide for the sales agent. */
+/** The "Tutorial" button of the quotation request form: a step by step guide for the sales agent. */
 export function QuotationFormTutorial() {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <button type="button" onClick={() => setOpen(true)} className="rounded-lg bg-primary px-4 py-2 text-[13px] font-bold text-white hover:bg-primary-hover">
-        Tutorial (step by step)
-      </button>
-      {open && (
-        <Dialog title="Tutorial (step by step)" onClose={() => setOpen(false)} wide>
-          <ol className="flex flex-col gap-3 text-[14px] text-text-secondary">
-            {STEPS.map((step, i) => (
-              <li key={step} className="flex gap-3">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-[13px] font-bold text-white">{i + 1}</span>
-                <span className="pt-0.5">{step}</span>
-              </li>
-            ))}
-          </ol>
-          <div className="mt-5 flex justify-end">
-            <button type="button" onClick={() => setOpen(false)} className="rounded-lg border border-border-strong bg-surface px-5 py-2 text-[13px] font-semibold text-text hover:bg-surface-alt">
-              Close
-            </button>
-          </div>
-        </Dialog>
-      )}
-    </>
-  );
+  return <StepGuideButton steps={STEPS} />;
 }

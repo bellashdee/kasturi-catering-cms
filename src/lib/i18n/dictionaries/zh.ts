@@ -4059,7 +4059,16 @@ const dictionary: Record<string, string> = {
  "If the event is more than one day, press + Add next day to copy the day before, then change what is different. Use Remove day for a day you do not need.": "如果活动超过一天，点击“+ 添加下一天”复制前一天，再修改不同之处。不需要的一天用“删除该天”。",
  "Answer every Additional requirement: Yes (and the price if you know it), No, or Included in the food price.": "回答每一项额外要求：是（如知道请填写价格）、否，或已包含在餐价中。",
  "Other extra items, Kitchen set-up, Catering set-up and Remarks are optional: fill in what the kitchen and the office need to know.": "其他额外项目、厨房布置、餐饮布置和备注均为选填：请填写厨房和办公室需要知道的内容。",
- "Check the Estimated total, then press Send quotation request. The office will check it and prepare the quotation. You can fill in another request straight away.": "核对预计总额，然后点击“发送报价申请”。办公室会核对并准备报价单。您可以马上再填写另一份申请。"
+ "Check the Estimated total, then press Send quotation request. The office will check it and prepare the quotation. You can fill in another request straight away.": "核对预计总额，然后点击“发送报价申请”。办公室会核对并准备报价单。您可以马上再填写另一份申请。",
+ "Choose your name under Sales agent.": "在“销售代理”中选择您的名字。",
+ "Check the Payment date (it is today by default) and change it if the customer paid on another day.": "核对付款日期（默认为今天），如客户在其他日期付款请更改。",
+ "Choose the Payment method: how the customer paid.": "选择付款方式：客户如何付款。",
+ "Write the Reference / receipt no. (the transfer reference, the cheque number or the receipt number).": "填写参考/收据号码（转账参考号、支票号码或收据号码）。",
+ "Write the Amount paid (RM) exactly as the customer paid it.": "按客户实际支付的金额准确填写已付金额 (RM)。",
+ "Write the Customer invoice / order no. (the number on the customer's invoice or order).": "填写客户发票/订单号码（客户发票或订单上的号码）。",
+ "Under Remarks, choose Deposit or Full payment.": "在“备注”中选择订金或全额付款。",
+ "Attach the photo or PDF of the receipt or proof of payment (optional, up to 10 MB).": "附上收据或付款证明的照片或 PDF（选填，最大 10 MB）。",
+ "Press Send payment details. Our office will check them and record the payment. You can fill in another payment straight away.": "点击“发送付款详情”。办公室会核对并记录付款。您可以马上再填写另一笔付款。"
 };
 
 export default dictionary;

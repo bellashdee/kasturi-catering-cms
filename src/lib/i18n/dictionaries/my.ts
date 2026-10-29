@@ -4046,7 +4046,16 @@ const dictionary: Record<string, string> = {
  "If the event is more than one day, press + Add next day to copy the day before, then change what is different. Use Remove day for a day you do not need.": "ပွဲသည် တစ်ရက်ထက်ပိုလျှင် + နောက်တစ်ရက်ထည့်ရန် ကိုနှိပ်ပြီး ယခင်နေ့ကို ကူးယူကာ ကွဲပြားသည်များကို ပြင်ပါ။ မလိုသောနေ့ကို ဖယ်ရှားပါ။",
  "Answer every Additional requirement: Yes (and the price if you know it), No, or Included in the food price.": "အပိုလိုအပ်ချက်တိုင်းကို ဖြေပါ: ဟုတ်ကဲ့ (သိလျှင် စျေးနှုန်းပါ)၊ မဟုတ်ပါ၊ သို့မဟုတ် အစားအစာစျေးတွင် ပါပြီး။",
  "Other extra items, Kitchen set-up, Catering set-up and Remarks are optional: fill in what the kitchen and the office need to know.": "အခြားအပိုပစ္စည်းများ၊ မီးဖိုချောင်ပြင်ဆင်မှု၊ ဧည့်ခံပြင်ဆင်မှုနှင့် မှတ်ချက်တို့သည် မဖြည့်လည်းရ: မီးဖိုချောင်နှင့် ရုံးသိရန်လိုသည်များကို ဖြည့်ပါ။",
- "Check the Estimated total, then press Send quotation request. The office will check it and prepare the quotation. You can fill in another request straight away.": "ခန့်မှန်းစုစုပေါင်းကို စစ်ပြီး စျေးနှုန်းတောင်းခံမှု ပို့ရန် ကိုနှိပ်ပါ။ ရုံးက စစ်ဆေးပြီး စျေးနှုန်းပြင်ဆင်ပေးမည်။ နောက်တောင်းဆိုမှုတစ်ခုကို ချက်ချင်း ဖြည့်နိုင်သည်။"
+ "Check the Estimated total, then press Send quotation request. The office will check it and prepare the quotation. You can fill in another request straight away.": "ခန့်မှန်းစုစုပေါင်းကို စစ်ပြီး စျေးနှုန်းတောင်းခံမှု ပို့ရန် ကိုနှိပ်ပါ။ ရုံးက စစ်ဆေးပြီး စျေးနှုန်းပြင်ဆင်ပေးမည်။ နောက်တောင်းဆိုမှုတစ်ခုကို ချက်ချင်း ဖြည့်နိုင်သည်။",
+ "Choose your name under Sales agent.": "အရောင်းကိုယ်စားလှယ် အောက်တွင် သင့်အမည်ကို ရွေးပါ။",
+ "Check the Payment date (it is today by default) and change it if the customer paid on another day.": "ငွေပေးချေသည့်ရက်စွဲ ကို စစ်ပါ (မူလအားဖြင့် ယနေ့) ဖောက်သည်က အခြားနေ့တွင် ပေးချေခဲ့လျှင် ပြောင်းပါ။",
+ "Choose the Payment method: how the customer paid.": "ငွေပေးချေမှုနည်းလမ်း ရွေးပါ: ဖောက်သည် ဘယ်လိုပေးချေခဲ့သလဲ။",
+ "Write the Reference / receipt no. (the transfer reference, the cheque number or the receipt number).": "ရည်ညွှန်း / ဘောက်ချာနံပါတ် ရေးပါ (ငွေလွှဲရည်ညွှန်းနံပါတ်၊ ချက်လက်မှတ်နံပါတ် သို့မဟုတ် ဘောက်ချာနံပါတ်)။",
+ "Write the Amount paid (RM) exactly as the customer paid it.": "ဖောက်သည်ပေးချေခဲ့သည့်အတိုင်း ပေးချေငွေ (RM) ကို အတိအကျ ရေးပါ။",
+ "Write the Customer invoice / order no. (the number on the customer's invoice or order).": "ဖောက်သည်၏ ငွေတောင်းခံလွှာ / အော်ဒါနံပါတ် ရေးပါ (ငွေတောင်းခံလွှာ သို့မဟုတ် အော်ဒါပေါ်ရှိ နံပါတ်)။",
+ "Under Remarks, choose Deposit or Full payment.": "မှတ်ချက် အောက်တွင် စပေါ်ငွေ သို့မဟုတ် ငွေအပြည့်ပေးချေမှု ရွေးပါ။",
+ "Attach the photo or PDF of the receipt or proof of payment (optional, up to 10 MB).": "ဘောက်ချာ သို့မဟုတ် ငွေပေးချေမှုအထောက်အထား၏ ဓာတ်ပုံ သို့မဟုတ် PDF ကို ပူးတွဲပါ (မဖြည့်လည်းရ၊ 10 MB အထိ)။",
+ "Press Send payment details. Our office will check them and record the payment. You can fill in another payment straight away.": "ငွေပေးချေမှုအသေးစိတ် ပို့ရန် ကိုနှိပ်ပါ။ ကျွန်ုပ်တို့၏ရုံးက စစ်ဆေးပြီး ငွေပေးချေမှုကို မှတ်တမ်းတင်မည်။ နောက်ငွေပေးချေမှုတစ်ခုကို ချက်ချင်း ဖြည့်နိုင်သည်။"
 };
 
 export default dictionary;

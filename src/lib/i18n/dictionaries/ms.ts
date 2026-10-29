@@ -3993,7 +3993,16 @@ const dictionary: Record<string, string> = {
  "If the event is more than one day, press + Add next day to copy the day before, then change what is different. Use Remove day for a day you do not need.": "Jika acara lebih daripada satu hari, tekan + Tambah hari seterusnya untuk menyalin hari sebelumnya, kemudian ubah yang berbeza. Guna Buang hari untuk hari yang tidak perlu.",
  "Answer every Additional requirement: Yes (and the price if you know it), No, or Included in the food price.": "Jawab setiap Keperluan tambahan: Ya (dan harga jika anda tahu), Tidak, atau Termasuk dalam harga makanan.",
  "Other extra items, Kitchen set-up, Catering set-up and Remarks are optional: fill in what the kitchen and the office need to know.": "Item tambahan lain, Persediaan dapur, Persediaan katering dan Catatan adalah pilihan: isi apa yang dapur dan pejabat perlu tahu.",
- "Check the Estimated total, then press Send quotation request. The office will check it and prepare the quotation. You can fill in another request straight away.": "Semak Anggaran jumlah, kemudian tekan Hantar permintaan sebut harga. Pejabat akan menyemaknya dan menyediakan sebut harga. Anda boleh terus mengisi permintaan lain."
+ "Check the Estimated total, then press Send quotation request. The office will check it and prepare the quotation. You can fill in another request straight away.": "Semak Anggaran jumlah, kemudian tekan Hantar permintaan sebut harga. Pejabat akan menyemaknya dan menyediakan sebut harga. Anda boleh terus mengisi permintaan lain.",
+ "Choose your name under Sales agent.": "Pilih nama anda di bawah Ejen jualan.",
+ "Check the Payment date (it is today by default) and change it if the customer paid on another day.": "Semak Tarikh bayaran (lalai hari ini) dan ubah jika pelanggan membayar pada hari lain.",
+ "Choose the Payment method: how the customer paid.": "Pilih Kaedah bayaran: bagaimana pelanggan membayar.",
+ "Write the Reference / receipt no. (the transfer reference, the cheque number or the receipt number).": "Tulis No. rujukan / resit (rujukan pemindahan, nombor cek atau nombor resit).",
+ "Write the Amount paid (RM) exactly as the customer paid it.": "Tulis Jumlah dibayar (RM) tepat seperti yang dibayar pelanggan.",
+ "Write the Customer invoice / order no. (the number on the customer's invoice or order).": "Tulis No. invois / pesanan pelanggan (nombor pada invois atau pesanan pelanggan).",
+ "Under Remarks, choose Deposit or Full payment.": "Di bawah Catatan, pilih Deposit atau Bayaran penuh.",
+ "Attach the photo or PDF of the receipt or proof of payment (optional, up to 10 MB).": "Lampirkan gambar atau PDF resit atau bukti bayaran (pilihan, sehingga 10 MB).",
+ "Press Send payment details. Our office will check them and record the payment. You can fill in another payment straight away.": "Tekan Hantar butiran bayaran. Pejabat kami akan menyemaknya dan merekod bayaran. Anda boleh terus mengisi bayaran lain."
 };
 
 export default dictionary;
