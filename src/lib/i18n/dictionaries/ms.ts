@@ -4028,7 +4028,11 @@ const dictionary: Record<string, string> = {
  "Choose the Scheduled time and write the Location.": "Pilih Masa dijadualkan dan tulis Lokasi.",
  "Choose the Vehicle. If the delivery is by Lalamove or another vendor, choose it and attach the booking or receipt (optional).": "Pilih Kenderaan. Jika penghantaran melalui Lalamove atau vendor lain, pilihnya dan lampirkan tempahan atau resit (pilihan).",
  "Write the Items to deliver and any notes.": "Tulis Item untuk dihantar dan apa-apa catatan.",
- "Press Create Delivery.": "Tekan Cipta penghantaran."
+ "Press Create Delivery.": "Tekan Cipta penghantaran.",
+ "Partial payment": "Bayaran separa",
+ "Partial payment, deposit or full payment": "Bayaran separa, deposit atau bayaran penuh",
+ "Select Partial payment, Deposit or Full payment.": "Pilih Bayaran separa, Deposit atau Bayaran penuh.",
+ "Under Remarks, choose Partial payment, Deposit or Full payment.": "Di bawah Catatan, pilih Bayaran separa, Deposit atau Bayaran penuh."
 };
 
 export default dictionary;

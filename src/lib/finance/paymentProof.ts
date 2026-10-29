@@ -17,7 +17,7 @@ export const PUBLIC_PAYMENT_METHODS: { key: string; label: string }[] = [
 ];
 
 /** What the payment is for. */
-export const PAYMENT_REMARK_OPTIONS = ["Deposit", "Full payment"];
+export const PAYMENT_REMARK_OPTIONS = ["Partial payment", "Deposit", "Full payment"];
 
 /** The proof can be a photo, a screenshot or a PDF, up to this size. */
 export const PROOF_MAX_BYTES = 10 * 1024 * 1024;

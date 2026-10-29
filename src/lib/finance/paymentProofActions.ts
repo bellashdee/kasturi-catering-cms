@@ -68,7 +68,7 @@ export async function submitPaymentProof(companySlug: string, input: PaymentProo
     const reference = clean(input.reference, 200);
     if (!reference) throw new Error("Enter the reference / receipt number.");
     const remarks = clean(input.remarks, 1000);
-    if (!remarks || !PAYMENT_REMARK_OPTIONS.includes(remarks)) throw new Error("Select Deposit or Full payment.");
+    if (!remarks || !PAYMENT_REMARK_OPTIONS.includes(remarks)) throw new Error("Select Partial payment, Deposit or Full payment.");
 
     const admin = createAdminClient();
 

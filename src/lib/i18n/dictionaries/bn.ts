@@ -4087,7 +4087,11 @@ const dictionary: Record<string, string> = {
  "Choose the Scheduled time and write the Location.": "নির্ধারিত সময় বেছে নিন এবং স্থান লিখুন।",
  "Choose the Vehicle. If the delivery is by Lalamove or another vendor, choose it and attach the booking or receipt (optional).": "যানবাহন বেছে নিন। Lalamove বা অন্য ভেন্ডরে ডেলিভারি হলে সেটি বেছে নিন এবং বুকিং বা রসিদ যুক্ত করুন (ঐচ্ছিক)।",
  "Write the Items to deliver and any notes.": "ডেলিভারির আইটেম ও কোনো নোট লিখুন।",
- "Press Create Delivery.": "ডেলিভারি তৈরি করুন চাপুন।"
+ "Press Create Delivery.": "ডেলিভারি তৈরি করুন চাপুন।",
+ "Partial payment": "আংশিক পেমেন্ট",
+ "Partial payment, deposit or full payment": "আংশিক পেমেন্ট, ডিপোজিট বা সম্পূর্ণ পেমেন্ট",
+ "Select Partial payment, Deposit or Full payment.": "আংশিক পেমেন্ট, ডিপোজিট বা সম্পূর্ণ পেমেন্ট বেছে নিন।",
+ "Under Remarks, choose Partial payment, Deposit or Full payment.": "মন্তব্য-এর অধীনে আংশিক পেমেন্ট, ডিপোজিট বা সম্পূর্ণ পেমেন্ট বেছে নিন।"
 };
 
 export default dictionary;

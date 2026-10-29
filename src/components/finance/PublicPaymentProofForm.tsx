@@ -134,7 +134,7 @@ export function PublicPaymentProofForm({ companySlug }: { companySlug: string })
         <div>
           <label className={labelClass} htmlFor="pp-remarks">Remarks *</label>
           <Select id="pp-remarks" required value={remarks} onChange={(e) => setRemarks(e.target.value)} className={inputClass}>
-            <option value="">Deposit or full payment</option>
+            <option value="">Partial payment, deposit or full payment</option>
             {PAYMENT_REMARK_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
           </Select>
         </div>

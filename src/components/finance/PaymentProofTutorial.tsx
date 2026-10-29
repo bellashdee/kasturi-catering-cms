@@ -9,7 +9,7 @@ const STEPS = [
   "Write the Reference / receipt no. (the transfer reference, the cheque number or the receipt number).",
   "Write the Amount paid (RM) exactly as the customer paid it.",
   "Write the Customer invoice / order no. (the number on the customer's invoice or order).",
-  "Under Remarks, choose Deposit or Full payment.",
+  "Under Remarks, choose Partial payment, Deposit or Full payment.",
   "Attach the photo or PDF of the receipt or proof of payment (optional, up to 10 MB).",
   "Press Send payment details. Our office will check them and record the payment. You can fill in another payment straight away.",
 ];

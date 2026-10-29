@@ -4094,7 +4094,11 @@ const dictionary: Record<string, string> = {
  "Choose the Scheduled time and write the Location.": "选择预定时间并填写地点。",
  "Choose the Vehicle. If the delivery is by Lalamove or another vendor, choose it and attach the booking or receipt (optional).": "选择车辆。如通过 Lalamove 或其他供应商送货，请选择它并附上订单或收据（选填）。",
  "Write the Items to deliver and any notes.": "填写要送的物品及备注。",
- "Press Create Delivery.": "点击“创建送货”。"
+ "Press Create Delivery.": "点击“创建送货”。",
+ "Partial payment": "部分付款",
+ "Partial payment, deposit or full payment": "部分付款、订金或全额付款",
+ "Select Partial payment, Deposit or Full payment.": "请选择部分付款、订金或全额付款。",
+ "Under Remarks, choose Partial payment, Deposit or Full payment.": "在“备注”中选择部分付款、订金或全额付款。"
 };
 
 export default dictionary;

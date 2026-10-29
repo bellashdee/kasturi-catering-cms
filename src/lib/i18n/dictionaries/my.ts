@@ -4081,7 +4081,11 @@ const dictionary: Record<string, string> = {
  "Choose the Scheduled time and write the Location.": "သတ်မှတ်ချိန် ရွေးပြီး တည်နေရာ ရေးပါ။",
  "Choose the Vehicle. If the delivery is by Lalamove or another vendor, choose it and attach the booking or receipt (optional).": "ယာဉ် ရွေးပါ။ Lalamove သို့မဟုတ် အခြားအရောင်းဝယ်လက်ဖြင့် ပို့လျှင် ၎င်းကိုရွေးပြီး ဘိုကင် သို့မဟုတ် ဘောက်ချာ ပူးတွဲပါ (မဖြည့်လည်းရ)။",
  "Write the Items to deliver and any notes.": "ပို့ရမည့် ပစ္စည်းများနှင့် မှတ်ချက်များ ရေးပါ။",
- "Press Create Delivery.": "ပို့ဆောင်မှုဖန်တီးရန် ကိုနှိပ်ပါ။"
+ "Press Create Delivery.": "ပို့ဆောင်မှုဖန်တီးရန် ကိုနှိပ်ပါ။",
+ "Partial payment": "တစ်စိတ်တစ်ပိုင်း ငွေပေးချေမှု",
+ "Partial payment, deposit or full payment": "တစ်စိတ်တစ်ပိုင်း၊ စပေါ်ငွေ သို့မဟုတ် ငွေအပြည့်ပေးချေမှု",
+ "Select Partial payment, Deposit or Full payment.": "တစ်စိတ်တစ်ပိုင်း၊ စပေါ်ငွေ သို့မဟုတ် ငွေအပြည့်ပေးချေမှု ရွေးပါ။",
+ "Under Remarks, choose Partial payment, Deposit or Full payment.": "မှတ်ချက် အောက်တွင် တစ်စိတ်တစ်ပိုင်း၊ စပေါ်ငွေ သို့မဟုတ် ငွေအပြည့်ပေးချေမှု ရွေးပါ။"
 };
 
 export default dictionary;
