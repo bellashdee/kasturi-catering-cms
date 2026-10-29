@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { EVENT_CLOCK_COMPANIES } from "@/lib/eventAttendance/rules";
 import { listEventDutyStaff } from "@/lib/eventAttendance/staff";
 import { EventClockForm } from "@/components/driver/EventClockForm";
+import { EventClockGuide } from "@/components/shared/FormGuides";
 
 export const metadata = { title: "Event Clock In / Out" };
 export const dynamic = "force-dynamic";
@@ -23,6 +24,9 @@ export default async function EventClockPage({ params }: { params: Promise<{ com
       <div className="text-[13px] font-bold uppercase tracking-wide text-text-secondary">{company.name}</div>
       <h1 className="mt-1 text-[24px] font-extrabold text-text">Event Clock In / Clock Out</h1>
       <p className="mt-1 text-[14px] text-text-secondary">For the staff on duty at an event. Choose your name, write the event location and press Clock In when you arrive and Clock Out when you finish.</p>
+      <div className="mt-3">
+        <EventClockGuide />
+      </div>
       <div className="mt-5 rounded-xl border border-border bg-surface p-6 shadow-sm">
         <EventClockForm companies={[{ slug, name: company.name }]} staff={staff} />
       </div>

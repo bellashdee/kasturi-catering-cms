@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { getEmployee } from "@/lib/hr/queries";
 import { LeaveRequestForm } from "@/components/hr/LeaveRequestForm";
+import { LeaveFormGuide } from "@/components/shared/FormGuides";
 import { getHrAccess } from "@/lib/hr/access";
 
 export default async function NewLeavePage({ params }: { params: Promise<{ id: string }> }) {
@@ -27,7 +28,10 @@ export default async function NewLeavePage({ params }: { params: Promise<{ id: s
       <Link href={`/hr/${id}`} className="text-[12.5px] font-semibold text-text-secondary">
         ← Back to {employee.full_name}
       </Link>
-      <h1 className="mt-2 text-[22px] font-extrabold text-text">Request Leave</h1>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-[22px] font-extrabold text-text">Request Leave</h1>
+        <LeaveFormGuide />
+      </div>
       <div className="mt-5 rounded-xl border border-border bg-surface p-6 shadow-sm">
         <LeaveRequestForm employeeId={id} companyId={employee.company_id} />
       </div>

@@ -2,6 +2,7 @@ import { GuestLanguageBar } from "@/components/i18n/GuestLanguageBar";
 import { notFound } from "next/navigation";
 import { INTAKE_COMPANIES } from "@/lib/catering/intake";
 import { PublicCustomerForm } from "@/components/catering/PublicCustomerForm";
+import { CustomerFormGuide } from "@/components/shared/FormGuides";
 
 export const metadata = { title: "Customer Details Form" };
 
@@ -18,6 +19,9 @@ export default async function CustomerFormPage({ params }: { params: Promise<{ c
       <p className="mt-1 text-[13px] text-text-secondary">
         Fill in your customer&apos;s details. Our office will check them before they are added to the system.
       </p>
+      <div className="mt-3">
+        <CustomerFormGuide />
+      </div>
       <div className="mt-5 rounded-xl border border-border bg-surface p-6 shadow-sm">
         <PublicCustomerForm companySlug={slug} />
       </div>

@@ -5,6 +5,7 @@ import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listOtStaffOptions } from "@/lib/hr/otStaff";
 import { todayInMalaysia } from "@/lib/driverAttendance/date";
+import { OvertimeFormGuide } from "@/components/shared/FormGuides";
 import { OvertimeForm } from "@/components/hr/OvertimeForm";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 
@@ -32,6 +33,9 @@ export default async function NewOvertimePage({
       <Link href={`/hr/overtime${query}`} className="text-[12.5px] font-semibold text-text-secondary">← Back to Overtime</Link>
       <h1 className="mt-2 text-[22px] font-extrabold text-text">Staff OT Form</h1>
       <p className="mt-0.5 text-[13px] text-text-secondary">Submit your daily overtime. The OT hours are calculated automatically from the start and end time.</p>
+      <div className="mt-3">
+        <OvertimeFormGuide />
+      </div>
       <div className="mt-5 rounded-xl border border-border bg-surface p-6 shadow-sm">
         <OvertimeForm staff={staff} defaultEmployeeId={staff.some((s) => s.id === employeeParam) ? employeeParam : undefined} maxDate={todayInMalaysia()} />
       </div>

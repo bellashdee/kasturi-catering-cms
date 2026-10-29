@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
+import { DeliveryFormGuide } from "@/components/shared/FormGuides";
 import { DeliveryForm } from "@/components/driver/DeliveryForm";
 import { listDeliveryPersons } from "@/lib/driver/queries";
 
@@ -30,7 +31,10 @@ export default async function NewDeliveryPage({
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="text-[22px] font-extrabold text-text">New Delivery</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-[22px] font-extrabold text-text">New Delivery</h1>
+        <DeliveryFormGuide />
+      </div>
       <div className="mt-5 rounded-xl border border-border bg-surface p-6 shadow-sm">
         <DeliveryForm
           companies={selectable}
