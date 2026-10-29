@@ -4035,7 +4035,18 @@ const dictionary: Record<string, string> = {
  "Usual size": "ပုံမှန်အရွယ်",
  "Sample": "နမူနာ",
  "Standard (the system's own letters)": "စံ (စနစ်၏ ကိုယ်ပိုင်စာလုံး)",
- "Open Company Spending on the left, then the My Claims tab. Choose the company you work for, the date you bought it and the amount you paid, exactly as on the receipt.": "ဘယ်ဘက်ရှိ ကုမ္ပဏီအသုံးစရိတ် ကိုဖွင့်ပြီး ကျွန်ုပ်၏ တောင်းဆိုမှုများ တဘ်ကို ရွေးပါ။ သင်အလုပ်လုပ်သည့် ကုမ္ပဏီ၊ ဝယ်ယူသည့်ရက်စွဲနှင့် ပေးခဲ့သည့်ပမာဏကို ဘောက်ချာအတိုင်း ရွေးပါ။"
+ "Open Company Spending on the left, then the My Claims tab. Choose the company you work for, the date you bought it and the amount you paid, exactly as on the receipt.": "ဘယ်ဘက်ရှိ ကုမ္ပဏီအသုံးစရိတ် ကိုဖွင့်ပြီး ကျွန်ုပ်၏ တောင်းဆိုမှုများ တဘ်ကို ရွေးပါ။ သင်အလုပ်လုပ်သည့် ကုမ္ပဏီ၊ ဝယ်ယူသည့်ရက်စွဲနှင့် ပေးခဲ့သည့်ပမာဏကို ဘောက်ချာအတိုင်း ရွေးပါ။",
+ "Tutorial (step by step)": "လမ်းညွှန် (အဆင့်ဆင့်)",
+ "Choose your name under Sales agent, then write the customer or company name.": "အရောင်းကိုယ်စားလှယ် အောက်တွင် သင့်အမည်ကို ရွေးပြီး ဖောက်သည် သို့မဟုတ် ကုမ္ပဏီအမည် ရေးပါ။",
+ "Write the Event name (for example: Annual Conference 2026) and choose the Event type.": "ပွဲအမည် (ဥပမာ နှစ်ပတ်လည်ညီလာခံ 2026) ရေးပြီး ပွဲအမျိုးအစား ရွေးပါ။",
+ "Write the Event location, then the PIC (the person in charge on the day) and the PIC contact number.": "ပွဲနေရာ ရေးပြီး PIC (ထိုနေ့တာဝန်ခံ) နှင့် PIC ဆက်သွယ်ရန်ဖုန်းနံပါတ် ရေးပါ။",
+ "Under Event days, fill in Day 1: the event date, the set-up time (when the kitchen must be ready to set up) and the event time (when the food must be ready).": "ပွဲရက်များ အောက်တွင် ပထမနေ့ကို ဖြည့်ပါ: ပွဲရက်စွဲ၊ ပြင်ဆင်ချိန် (မီးဖိုချောင်ပြင်ဆင်ရမည့်အချိန်) နှင့် ပွဲချိန် (အစားအစာအဆင်သင့်ရမည့်အချိန်)။",
+ "Choose the Meal type and the Service type, and write the Pax for that service. If two services are served, choose a Second service type and write its pax too.": "အစားအစာအမျိုးအစားနှင့် ဝန်ဆောင်မှုအမျိုးအစား ရွေးပြီး ထိုဝန်ဆောင်မှုအတွက် ဧည့်အရေအတွက် ရေးပါ။ ဝန်ဆောင်မှုနှစ်မျိုးဖြစ်လျှင် ဒုတိယဝန်ဆောင်မှုအမျိုးအစား ရွေးပြီး ၎င်း၏ အရေအတွက်ကိုလည်း ရေးပါ။",
+ "Under Menu details, write the menu one item at a time: press Enter for the next item, or paste a list. Write the Price per pax if you know it.": "မီနူးအသေးစိတ် အောက်တွင် မီနူးကို တစ်ခုချင်း ရေးပါ: နောက်တစ်ခုအတွက် Enter နှိပ်ပါ သို့မဟုတ် စာရင်းကို paste လုပ်ပါ။ သိလျှင် တစ်ဦးချင်းစျေးနှုန်း ရေးပါ။",
+ "If the event is more than one day, press + Add next day to copy the day before, then change what is different. Use Remove day for a day you do not need.": "ပွဲသည် တစ်ရက်ထက်ပိုလျှင် + နောက်တစ်ရက်ထည့်ရန် ကိုနှိပ်ပြီး ယခင်နေ့ကို ကူးယူကာ ကွဲပြားသည်များကို ပြင်ပါ။ မလိုသောနေ့ကို ဖယ်ရှားပါ။",
+ "Answer every Additional requirement: Yes (and the price if you know it), No, or Included in the food price.": "အပိုလိုအပ်ချက်တိုင်းကို ဖြေပါ: ဟုတ်ကဲ့ (သိလျှင် စျေးနှုန်းပါ)၊ မဟုတ်ပါ၊ သို့မဟုတ် အစားအစာစျေးတွင် ပါပြီး။",
+ "Other extra items, Kitchen set-up, Catering set-up and Remarks are optional: fill in what the kitchen and the office need to know.": "အခြားအပိုပစ္စည်းများ၊ မီးဖိုချောင်ပြင်ဆင်မှု၊ ဧည့်ခံပြင်ဆင်မှုနှင့် မှတ်ချက်တို့သည် မဖြည့်လည်းရ: မီးဖိုချောင်နှင့် ရုံးသိရန်လိုသည်များကို ဖြည့်ပါ။",
+ "Check the Estimated total, then press Send quotation request. The office will check it and prepare the quotation. You can fill in another request straight away.": "ခန့်မှန်းစုစုပေါင်းကို စစ်ပြီး စျေးနှုန်းတောင်းခံမှု ပို့ရန် ကိုနှိပ်ပါ။ ရုံးက စစ်ဆေးပြီး စျေးနှုန်းပြင်ဆင်ပေးမည်။ နောက်တောင်းဆိုမှုတစ်ခုကို ချက်ချင်း ဖြည့်နိုင်သည်။"
 };
 
 export default dictionary;

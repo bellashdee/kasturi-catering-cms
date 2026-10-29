@@ -4041,7 +4041,18 @@ const dictionary: Record<string, string> = {
  "Usual size": "স্বাভাবিক আকার",
  "Sample": "নমুনা",
  "Standard (the system's own letters)": "স্ট্যান্ডার্ড (সিস্টেমের নিজস্ব অক্ষর)",
- "Open Company Spending on the left, then the My Claims tab. Choose the company you work for, the date you bought it and the amount you paid, exactly as on the receipt.": "বাঁ দিকে কোম্পানির ব্যয় খুলুন, তারপর আমার দাবিসমূহ ট্যাব। যে কোম্পানিতে কাজ করেন, কেনার তারিখ এবং যত টাকা দিয়েছেন তা রসিদ অনুযায়ী ঠিক যেমন আছে তেমন বেছে নিন।"
+ "Open Company Spending on the left, then the My Claims tab. Choose the company you work for, the date you bought it and the amount you paid, exactly as on the receipt.": "বাঁ দিকে কোম্পানির ব্যয় খুলুন, তারপর আমার দাবিসমূহ ট্যাব। যে কোম্পানিতে কাজ করেন, কেনার তারিখ এবং যত টাকা দিয়েছেন তা রসিদ অনুযায়ী ঠিক যেমন আছে তেমন বেছে নিন।",
+ "Tutorial (step by step)": "টিউটোরিয়াল (ধাপে ধাপে)",
+ "Choose your name under Sales agent, then write the customer or company name.": "বিক্রয় এজেন্ট-এর অধীনে আপনার নাম বেছে নিন, তারপর গ্রাহক বা কোম্পানির নাম লিখুন।",
+ "Write the Event name (for example: Annual Conference 2026) and choose the Event type.": "ইভেন্টের নাম লিখুন (যেমন: বার্ষিক সম্মেলন 2026) এবং ইভেন্টের ধরন বেছে নিন।",
+ "Write the Event location, then the PIC (the person in charge on the day) and the PIC contact number.": "ইভেন্টের স্থান লিখুন, তারপর PIC (সেদিনের দায়িত্বপ্রাপ্ত ব্যক্তি) ও PIC-এর যোগাযোগ নম্বর লিখুন।",
+ "Under Event days, fill in Day 1: the event date, the set-up time (when the kitchen must be ready to set up) and the event time (when the food must be ready).": "ইভেন্টের দিন-এর অধীনে দিন 1 পূরণ করুন: ইভেন্টের তারিখ, সেট-আপের সময় (রান্নাঘর কখন প্রস্তুত থাকবে) এবং ইভেন্টের সময় (খাবার কখন প্রস্তুত থাকবে)।",
+ "Choose the Meal type and the Service type, and write the Pax for that service. If two services are served, choose a Second service type and write its pax too.": "খাবারের ধরন ও সার্ভিসের ধরন বেছে নিন এবং সেই সার্ভিসের Pax লিখুন। দুটি সার্ভিস হলে দ্বিতীয় সার্ভিসের ধরন বেছে নিয়ে তার pax-ও লিখুন।",
+ "Under Menu details, write the menu one item at a time: press Enter for the next item, or paste a list. Write the Price per pax if you know it.": "মেনুর বিবরণ-এর অধীনে মেনু একটি একটি করে লিখুন: পরের আইটেমের জন্য Enter চাপুন, বা তালিকা পেস্ট করুন। জানলে প্রতি pax-এর দাম লিখুন।",
+ "If the event is more than one day, press + Add next day to copy the day before, then change what is different. Use Remove day for a day you do not need.": "ইভেন্ট একদিনের বেশি হলে + পরের দিন যোগ করুন চাপুন, আগের দিনের কপি হবে, তারপর যা আলাদা তা বদলান। দরকার না হলে দিন মুছুন ব্যবহার করুন।",
+ "Answer every Additional requirement: Yes (and the price if you know it), No, or Included in the food price.": "প্রতিটি অতিরিক্ত প্রয়োজনের উত্তর দিন: হ্যাঁ (জানলে দামসহ), না, বা খাবারের দামে অন্তর্ভুক্ত।",
+ "Other extra items, Kitchen set-up, Catering set-up and Remarks are optional: fill in what the kitchen and the office need to know.": "অন্যান্য অতিরিক্ত আইটেম, রান্নাঘরের সেট-আপ, ক্যাটারিং সেট-আপ ও মন্তব্য ঐচ্ছিক: রান্নাঘর ও অফিসের যা জানা দরকার তা লিখুন।",
+ "Check the Estimated total, then press Send quotation request. The office will check it and prepare the quotation. You can fill in another request straight away.": "আনুমানিক মোট পরীক্ষা করুন, তারপর কোটেশন অনুরোধ পাঠান চাপুন। অফিস যাচাই করে কোটেশন তৈরি করবে। আপনি সঙ্গে সঙ্গে আরেকটি অনুরোধ পূরণ করতে পারেন।"
 };
 
 export default dictionary;

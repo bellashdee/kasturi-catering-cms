@@ -3982,7 +3982,18 @@ const dictionary: Record<string, string> = {
  "Usual size": "Saiz biasa",
  "Sample": "Contoh",
  "Standard (the system's own letters)": "Standard (huruf asal sistem)",
- "Open Company Spending on the left, then the My Claims tab. Choose the company you work for, the date you bought it and the amount you paid, exactly as on the receipt.": "Buka Perbelanjaan Syarikat di sebelah kiri, kemudian tab Tuntutan Saya. Pilih syarikat tempat anda bekerja, tarikh anda membeli dan jumlah yang anda bayar, tepat seperti pada resit."
+ "Open Company Spending on the left, then the My Claims tab. Choose the company you work for, the date you bought it and the amount you paid, exactly as on the receipt.": "Buka Perbelanjaan Syarikat di sebelah kiri, kemudian tab Tuntutan Saya. Pilih syarikat tempat anda bekerja, tarikh anda membeli dan jumlah yang anda bayar, tepat seperti pada resit.",
+ "Tutorial (step by step)": "Tutorial (langkah demi langkah)",
+ "Choose your name under Sales agent, then write the customer or company name.": "Pilih nama anda di bawah Ejen jualan, kemudian tulis nama pelanggan atau syarikat.",
+ "Write the Event name (for example: Annual Conference 2026) and choose the Event type.": "Tulis Nama acara (contoh: Konferens Tahunan 2026) dan pilih Jenis acara.",
+ "Write the Event location, then the PIC (the person in charge on the day) and the PIC contact number.": "Tulis Lokasi acara, kemudian PIC (orang yang bertanggungjawab pada hari itu) dan nombor telefon PIC.",
+ "Under Event days, fill in Day 1: the event date, the set-up time (when the kitchen must be ready to set up) and the event time (when the food must be ready).": "Di bawah Hari acara, isi Hari 1: tarikh acara, masa persediaan (bila dapur mesti bersedia) dan masa acara (bila makanan mesti siap).",
+ "Choose the Meal type and the Service type, and write the Pax for that service. If two services are served, choose a Second service type and write its pax too.": "Pilih Jenis hidangan dan Jenis perkhidmatan, dan tulis Pax untuk perkhidmatan itu. Jika dua perkhidmatan dihidangkan, pilih Jenis perkhidmatan kedua dan tulis pax-nya juga.",
+ "Under Menu details, write the menu one item at a time: press Enter for the next item, or paste a list. Write the Price per pax if you know it.": "Di bawah Butiran menu, tulis menu satu item demi satu item: tekan Enter untuk item seterusnya, atau tampal senarai. Tulis Harga setiap pax jika anda tahu.",
+ "If the event is more than one day, press + Add next day to copy the day before, then change what is different. Use Remove day for a day you do not need.": "Jika acara lebih daripada satu hari, tekan + Tambah hari seterusnya untuk menyalin hari sebelumnya, kemudian ubah yang berbeza. Guna Buang hari untuk hari yang tidak perlu.",
+ "Answer every Additional requirement: Yes (and the price if you know it), No, or Included in the food price.": "Jawab setiap Keperluan tambahan: Ya (dan harga jika anda tahu), Tidak, atau Termasuk dalam harga makanan.",
+ "Other extra items, Kitchen set-up, Catering set-up and Remarks are optional: fill in what the kitchen and the office need to know.": "Item tambahan lain, Persediaan dapur, Persediaan katering dan Catatan adalah pilihan: isi apa yang dapur dan pejabat perlu tahu.",
+ "Check the Estimated total, then press Send quotation request. The office will check it and prepare the quotation. You can fill in another request straight away.": "Semak Anggaran jumlah, kemudian tekan Hantar permintaan sebut harga. Pejabat akan menyemaknya dan menyediakan sebut harga. Anda boleh terus mengisi permintaan lain."
 };
 
 export default dictionary;

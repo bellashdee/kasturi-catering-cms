@@ -4048,7 +4048,18 @@ const dictionary: Record<string, string> = {
  "Usual size": "常用大小",
  "Sample": "示例",
  "Standard (the system's own letters)": "标准（系统自带字体）",
- "Open Company Spending on the left, then the My Claims tab. Choose the company you work for, the date you bought it and the amount you paid, exactly as on the receipt.": "点击左侧的“公司支出”，然后选择“我的报销”标签。选择您所在的公司、购买日期和您支付的金额，须与收据完全一致。"
+ "Open Company Spending on the left, then the My Claims tab. Choose the company you work for, the date you bought it and the amount you paid, exactly as on the receipt.": "点击左侧的“公司支出”，然后选择“我的报销”标签。选择您所在的公司、购买日期和您支付的金额，须与收据完全一致。",
+ "Tutorial (step by step)": "教程（逐步说明）",
+ "Choose your name under Sales agent, then write the customer or company name.": "在“销售代理”中选择您的名字，然后填写客户或公司名称。",
+ "Write the Event name (for example: Annual Conference 2026) and choose the Event type.": "填写活动名称（例如：2026 年度大会）并选择活动类型。",
+ "Write the Event location, then the PIC (the person in charge on the day) and the PIC contact number.": "填写活动地点，然后填写负责人（当天负责的人）及其联系电话。",
+ "Under Event days, fill in Day 1: the event date, the set-up time (when the kitchen must be ready to set up) and the event time (when the food must be ready).": "在“活动日期”中填写第 1 天：活动日期、布置时间（厨房须准备好的时间）和活动时间（食物须备好的时间）。",
+ "Choose the Meal type and the Service type, and write the Pax for that service. If two services are served, choose a Second service type and write its pax too.": "选择餐别和服务类型，并填写该服务的人数。如果提供两种服务，请选择第二种服务类型并填写其人数。",
+ "Under Menu details, write the menu one item at a time: press Enter for the next item, or paste a list. Write the Price per pax if you know it.": "在“菜单详情”中逐项填写菜单：按 Enter 填写下一项，或粘贴列表。如知道，请填写每人价格。",
+ "If the event is more than one day, press + Add next day to copy the day before, then change what is different. Use Remove day for a day you do not need.": "如果活动超过一天，点击“+ 添加下一天”复制前一天，再修改不同之处。不需要的一天用“删除该天”。",
+ "Answer every Additional requirement: Yes (and the price if you know it), No, or Included in the food price.": "回答每一项额外要求：是（如知道请填写价格）、否，或已包含在餐价中。",
+ "Other extra items, Kitchen set-up, Catering set-up and Remarks are optional: fill in what the kitchen and the office need to know.": "其他额外项目、厨房布置、餐饮布置和备注均为选填：请填写厨房和办公室需要知道的内容。",
+ "Check the Estimated total, then press Send quotation request. The office will check it and prepare the quotation. You can fill in another request straight away.": "核对预计总额，然后点击“发送报价申请”。办公室会核对并准备报价单。您可以马上再填写另一份申请。"
 };
 
 export default dictionary;
