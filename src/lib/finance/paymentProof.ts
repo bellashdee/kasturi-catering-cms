@@ -19,6 +19,13 @@ export const PUBLIC_PAYMENT_METHODS: { key: string; label: string }[] = [
 /** What the payment is for. */
 export const PAYMENT_REMARK_OPTIONS = ["Partial payment", "Deposit", "Full payment"];
 
+/** What each choice means, written for the sales agent (the short name above is what is saved). */
+export const PAYMENT_REMARK_LABEL: Record<string, string> = {
+  "Partial payment": "Partial payment: part of the total is paid now, the balance is still to be paid",
+  Deposit: "Deposit: advance payment to confirm the booking",
+  "Full payment": "Full payment: the whole amount is paid",
+};
+
 /** The proof can be a photo, a screenshot or a PDF, up to this size. */
 export const PROOF_MAX_BYTES = 10 * 1024 * 1024;
 export const PROOF_ALLOWED_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "heic", "pdf"];

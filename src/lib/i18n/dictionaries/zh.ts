@@ -4098,7 +4098,10 @@ const dictionary: Record<string, string> = {
  "Partial payment": "部分付款",
  "Partial payment, deposit or full payment": "部分付款、订金或全额付款",
  "Select Partial payment, Deposit or Full payment.": "请选择部分付款、订金或全额付款。",
- "Under Remarks, choose Partial payment, Deposit or Full payment.": "在“备注”中选择部分付款、订金或全额付款。"
+ "Under Remarks, choose Partial payment, Deposit or Full payment.": "在“备注”中选择部分付款、订金或全额付款。",
+ "Partial payment: part of the total is paid now, the balance is still to be paid": "部分付款：现在支付总额的一部分，余额仍须支付",
+ "Deposit: advance payment to confirm the booking": "订金：为确认预订而预先支付的款项",
+ "Full payment: the whole amount is paid": "全额付款：已支付全部金额"
 };
 
 export default dictionary;

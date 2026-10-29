@@ -4032,7 +4032,10 @@ const dictionary: Record<string, string> = {
  "Partial payment": "Bayaran separa",
  "Partial payment, deposit or full payment": "Bayaran separa, deposit atau bayaran penuh",
  "Select Partial payment, Deposit or Full payment.": "Pilih Bayaran separa, Deposit atau Bayaran penuh.",
- "Under Remarks, choose Partial payment, Deposit or Full payment.": "Di bawah Catatan, pilih Bayaran separa, Deposit atau Bayaran penuh."
+ "Under Remarks, choose Partial payment, Deposit or Full payment.": "Di bawah Catatan, pilih Bayaran separa, Deposit atau Bayaran penuh.",
+ "Partial payment: part of the total is paid now, the balance is still to be paid": "Bayaran separa: sebahagian jumlah dibayar sekarang, baki masih perlu dibayar",
+ "Deposit: advance payment to confirm the booking": "Deposit: bayaran pendahuluan untuk mengesahkan tempahan",
+ "Full payment: the whole amount is paid": "Bayaran penuh: seluruh jumlah telah dibayar"
 };
 
 export default dictionary;

@@ -4085,7 +4085,10 @@ const dictionary: Record<string, string> = {
  "Partial payment": "တစ်စိတ်တစ်ပိုင်း ငွေပေးချေမှု",
  "Partial payment, deposit or full payment": "တစ်စိတ်တစ်ပိုင်း၊ စပေါ်ငွေ သို့မဟုတ် ငွေအပြည့်ပေးချေမှု",
  "Select Partial payment, Deposit or Full payment.": "တစ်စိတ်တစ်ပိုင်း၊ စပေါ်ငွေ သို့မဟုတ် ငွေအပြည့်ပေးချေမှု ရွေးပါ။",
- "Under Remarks, choose Partial payment, Deposit or Full payment.": "မှတ်ချက် အောက်တွင် တစ်စိတ်တစ်ပိုင်း၊ စပေါ်ငွေ သို့မဟုတ် ငွေအပြည့်ပေးချေမှု ရွေးပါ။"
+ "Under Remarks, choose Partial payment, Deposit or Full payment.": "မှတ်ချက် အောက်တွင် တစ်စိတ်တစ်ပိုင်း၊ စပေါ်ငွေ သို့မဟုတ် ငွေအပြည့်ပေးချေမှု ရွေးပါ။",
+ "Partial payment: part of the total is paid now, the balance is still to be paid": "တစ်စိတ်တစ်ပိုင်း ငွေပေးချေမှု: စုစုပေါင်း၏ တစ်စိတ်တစ်ပိုင်းကို ယခုပေးချေပြီး ကျန်ငွေ ပေးရန်ကျန်သေးသည်",
+ "Deposit: advance payment to confirm the booking": "စပေါ်ငွေ: ဘိုကင်အတည်ပြုရန် ကြိုတင်ပေးချေငွေ",
+ "Full payment: the whole amount is paid": "ငွေအပြည့်ပေးချေမှု: ပမာဏအားလုံး ပေးချေပြီး"
 };
 
 export default dictionary;

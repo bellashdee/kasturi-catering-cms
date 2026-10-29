@@ -4091,7 +4091,10 @@ const dictionary: Record<string, string> = {
  "Partial payment": "আংশিক পেমেন্ট",
  "Partial payment, deposit or full payment": "আংশিক পেমেন্ট, ডিপোজিট বা সম্পূর্ণ পেমেন্ট",
  "Select Partial payment, Deposit or Full payment.": "আংশিক পেমেন্ট, ডিপোজিট বা সম্পূর্ণ পেমেন্ট বেছে নিন।",
- "Under Remarks, choose Partial payment, Deposit or Full payment.": "মন্তব্য-এর অধীনে আংশিক পেমেন্ট, ডিপোজিট বা সম্পূর্ণ পেমেন্ট বেছে নিন।"
+ "Under Remarks, choose Partial payment, Deposit or Full payment.": "মন্তব্য-এর অধীনে আংশিক পেমেন্ট, ডিপোজিট বা সম্পূর্ণ পেমেন্ট বেছে নিন।",
+ "Partial payment: part of the total is paid now, the balance is still to be paid": "আংশিক পেমেন্ট: মোটের একটি অংশ এখন দেওয়া হলো, বাকিটা এখনও দিতে হবে",
+ "Deposit: advance payment to confirm the booking": "ডিপোজিট: বুকিং নিশ্চিত করতে অগ্রিম পেমেন্ট",
+ "Full payment: the whole amount is paid": "সম্পূর্ণ পেমেন্ট: পুরো টাকা পরিশোধ হয়েছে"
 };
 
 export default dictionary;

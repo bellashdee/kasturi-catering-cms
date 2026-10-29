@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { SALES_AGENTS } from "@/lib/catering/constants";
 import { requestProofUpload, submitPaymentProof } from "@/lib/finance/paymentProofActions";
-import { PAYMENT_REMARK_OPTIONS, PROOF_ACCEPT, PROOF_MAX_BYTES, PUBLIC_PAYMENT_METHODS } from "@/lib/finance/paymentProof";
+import { PAYMENT_REMARK_LABEL, PAYMENT_REMARK_OPTIONS, PROOF_ACCEPT, PROOF_MAX_BYTES, PUBLIC_PAYMENT_METHODS } from "@/lib/finance/paymentProof";
 import { todayInMalaysia } from "@/lib/format";
 import { Select } from "@/components/ui/Select";
 
@@ -135,7 +135,7 @@ export function PublicPaymentProofForm({ companySlug }: { companySlug: string })
           <label className={labelClass} htmlFor="pp-remarks">Remarks *</label>
           <Select id="pp-remarks" required value={remarks} onChange={(e) => setRemarks(e.target.value)} className={inputClass}>
             <option value="">Partial payment, deposit or full payment</option>
-            {PAYMENT_REMARK_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+            {PAYMENT_REMARK_OPTIONS.map((r) => <option key={r} value={r}>{PAYMENT_REMARK_LABEL[r] ?? r}</option>)}
           </Select>
         </div>
       </div>
