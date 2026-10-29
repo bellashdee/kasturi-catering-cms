@@ -17,7 +17,9 @@ type Event = { id: string; event_name: string; company_id: string; event_date?: 
 /** An event is chosen by the customer who ordered it: "Customer name — Event name · date". */
 function eventLabel(ev: Event): string {
   const customer = ev.customers?.name?.trim();
-  return [customer ? `${customer} — ${ev.event_name}` : ev.event_name, ev.event_date].filter(Boolean).join(" · ");
+  // an event named after its customer is written once
+  const same = customer && customer.toUpperCase() === ev.event_name.trim().toUpperCase();
+  return [customer && !same ? `${customer} — ${ev.event_name}` : ev.event_name, ev.event_date].filter(Boolean).join(" · ");
 }
 type Vehicle = { id: string; plate_number: string; vehicle_type?: string | null; company_id: string };
 

@@ -72,7 +72,7 @@ function EntryCard({ e, eventHref, canDelete, query }: { e: CalendarEntry; event
     <div className={`rounded-xl px-4 py-3 shadow-sm ${PHASE_STYLE[e.phase]} ${e.phase === "cancelled" ? "" : "border border-border"}`}>
       <Link href={e.kind === "request" ? `/catering/quotation-requests${query}` : eventHref(e.eventId)} className="block hover:opacity-90">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[15px] font-extrabold">{e.customerName ? `${e.customerName} — ${e.eventName}` : e.eventName}</span>
+          <span className="text-[15px] font-extrabold">{e.customerName && e.customerName.trim().toUpperCase() !== e.eventName.trim().toUpperCase() ? `${e.customerName} — ${e.eventName}` : e.eventName}</span>
           <span className="rounded-full bg-surface px-2 py-0.5 text-[11.5px] font-bold text-text-secondary">{e.kind === "request" ? "Quotation request" : EVENT_STATUS_LABEL[e.status] ?? e.status}</span>
           {e.quotation && (
             <span className="rounded-full bg-surface px-2 py-0.5 text-[11.5px] font-semibold text-text-secondary">{`Quotation ${e.quotation.number} · ${QUOTATION_LABEL[e.quotation.status] ?? e.quotation.status}`}</span>
