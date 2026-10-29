@@ -7,15 +7,18 @@ import { getDocumentSignedUrl } from "@/lib/documents/actions";
  * Opens a private "documents" bucket file in a new tab via a freshly
  * generated signed URL. Reusable anywhere a document/photo needs viewing —
  * attendance photos, delivery proof, receipts, certificates, etc.
+ * With `download` the file is saved to the computer (under its original name) instead of opened.
  */
 export function DocumentViewLink({
   documentId,
   label = "📷 View",
   className,
+  download = false,
 }: {
   documentId: string;
   label?: string;
   className?: string;
+  download?: boolean;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -24,8 +27,9 @@ export function DocumentViewLink({
     setLoading(true);
     setError(false);
     try {
-      const url = await getDocumentSignedUrl(documentId);
-      window.open(url, "_blank", "noopener,noreferrer");
+      const url = await getDocumentSignedUrl(documentId, download);
+      if (download) window.location.assign(url);
+      else window.open(url, "_blank", "noopener,noreferrer");
     } catch {
       setError(true);
     } finally {

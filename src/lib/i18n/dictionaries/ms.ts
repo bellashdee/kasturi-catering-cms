@@ -4150,7 +4150,22 @@ const dictionary: Record<string, string> = {
  "You can attach a photo or a file for it to read.": "Anda boleh melampirkan gambar atau fail untuk dibaca olehnya.",
  "Display: choose the font and the font size (10 to 25) for every page. It is kept on this computer or phone.": "Display: pilih fon dan saiz fon (10 hingga 25) untuk setiap halaman. Pilihan ini disimpan pada komputer atau telefon ini.",
  "Only a Super Admin can add, change or remove team members and their access.": "Hanya Super Admin boleh menambah, menukar atau membuang ahli pasukan dan akses mereka.",
- "Use the left menu to open a section, and the tabs under the page title to move inside it.": "Gunakan menu kiri untuk membuka satu bahagian, dan tab di bawah tajuk halaman untuk bergerak di dalamnya."
+ "Use the left menu to open a section, and the tabs under the page title to move inside it.": "Gunakan menu kiri untuk membuka satu bahagian, dan tab di bawah tajuk halaman untuk bergerak di dalamnya.",
+  "MOF Registration (Ministry of Finance)": "Pendaftaran MOF (Kementerian Kewangan)",
+  "SSM / Companies Act Document": "Dokumen SSM / Akta Syarikat",
+  "Food Premises Registration (FoSIM)": "Pendaftaran Premis Makanan (FoSIM)",
+  "Download": "Muat turun",
+  "No expiry": "Tiada tarikh tamat",
+  "Licences, registrations (MBJB, Halal, MOF, SSM, FoSIM), tenancy agreements and similar —": "Lesen, pendaftaran (MBJB, Halal, MOF, SSM, FoSIM), perjanjian penyewaan dan yang seumpamanya —",
+  "All types": "Semua jenis",
+  "Clear filters": "Kosongkan penapis",
+  "No document matches these filters.": "Tiada dokumen yang sepadan dengan penapis ini.",
+  "Title, reference or notes": "Tajuk, rujukan atau nota",
+  "Showing {0} of {1}": "Memaparkan {0} daripada {1}",
+  "Secure staff sign-in": "Log masuk staf yang selamat",
+  "Catering, kitchen and delivery in one place": "Katering, dapur dan penghantaran di satu tempat",
+  "Finance, petty cash and staff claims": "Kewangan, tunai runcit dan tuntutan staf",
+  "HR, licences and company records": "HR, lesen dan rekod syarikat"
 };
 
 export default dictionary;

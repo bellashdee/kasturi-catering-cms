@@ -4216,7 +4216,22 @@ const dictionary: Record<string, string> = {
  "You can attach a photo or a file for it to read.": "你可以附上照片或文件，让它来读取。",
  "Display: choose the font and the font size (10 to 25) for every page. It is kept on this computer or phone.": "显示：为每一页选择字体和字体大小（10 到 25）。设定会保存在这台电脑或手机上。",
  "Only a Super Admin can add, change or remove team members and their access.": "只有 Super Admin 可以新增、更改或删除团队成员及他们的权限。",
- "Use the left menu to open a section, and the tabs under the page title to move inside it.": "使用左边的菜单打开一个部分，再用页面标题下面的标签在里面切换。"
+ "Use the left menu to open a section, and the tabs under the page title to move inside it.": "使用左边的菜单打开一个部分，再用页面标题下面的标签在里面切换。",
+  "MOF Registration (Ministry of Finance)": "MOF 注册（财政部）",
+  "SSM / Companies Act Document": "SSM / 公司法文件",
+  "Food Premises Registration (FoSIM)": "食品场所注册（FoSIM）",
+  "Download": "下载",
+  "No expiry": "无到期日",
+  "Licences, registrations (MBJB, Halal, MOF, SSM, FoSIM), tenancy agreements and similar —": "执照、注册（MBJB、Halal、MOF、SSM、FoSIM）、租约及类似文件 —",
+  "All types": "所有类型",
+  "Clear filters": "清除筛选",
+  "No document matches these filters.": "没有符合这些筛选条件的文件。",
+  "Title, reference or notes": "标题、编号或备注",
+  "Showing {0} of {1}": "显示 {0} / {1}",
+  "Secure staff sign-in": "员工安全登录",
+  "Catering, kitchen and delivery in one place": "餐饮、厨房和配送集中在一处",
+  "Finance, petty cash and staff claims": "财务、零用金和员工报销",
+  "HR, licences and company records": "人事、执照和公司记录"
 };
 
 export default dictionary;

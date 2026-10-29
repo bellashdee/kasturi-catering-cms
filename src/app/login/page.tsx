@@ -17,6 +17,16 @@ const BLUSH_SAGE = {
   "--color-text-secondary": "#62504f",
 } as Record<string, string>;
 
+const FEATURES = [
+  "Catering, kitchen and delivery in one place",
+  "Finance, petty cash and staff claims",
+  "HR, licences and company records",
+];
+
+/** The look of the two sign-in boxes (also keeps the browser's autofill from painting them blue). */
+const FIELD =
+  "mt-1.5 h-11 w-full rounded-lg border border-border-strong bg-[#fffdfb] px-3 text-sm outline-none focus:border-[#8aa37f] focus:ring-4 focus:ring-[#8aa37f]/25 [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_100px_#fffdfb_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:#33262b]";
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -111,15 +121,47 @@ export default function LoginPage() {
             Dashboards, catering operations, kitchen production, logistics, suppliers
             and finance — all in one place, filtered by company.
           </p>
+          <ul className="mt-8 flex max-w-[380px] flex-col gap-3.5 text-[13.5px] font-semibold">
+            {FEATURES.map((text) => (
+              <li key={text} className="flex items-center gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/70 text-[#5f7a55]">
+                  <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M4 10.5l4 4 8-9" />
+                  </svg>
+                </span>
+                {text}
+              </li>
+            ))}
+          </ul>
         </div>
-        <p className="relative z-10 text-xs text-[#33402e]/60">
-          &copy; {new Date().getFullYear()} Central Management System — internal use only
-        </p>
+        <div className="relative z-10">
+          <div className="flex items-center gap-4 text-xs font-semibold text-[#33402e]/80">
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#2f6b45]" />Kasturi Indah</span>
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#8f2a35]" />O2 Life</span>
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#3b6fb6]" />Signature Solution</span>
+          </div>
+          <p className="mt-3 text-xs text-[#33402e]/60">
+            &copy; {new Date().getFullYear()} Central Management System — internal use only
+          </p>
+        </div>
       </div>
 
-      <div className="flex flex-1 items-center justify-center p-10">
-        <div className="w-full max-w-sm">
-          <h1 className="text-2xl font-extrabold text-text">Welcome back</h1>
+      <div className="flex flex-1 items-center justify-center p-5 sm:p-10">
+        <div className="w-full max-w-[420px] rounded-2xl border border-[#ecd9d2] bg-white p-7 shadow-[0_20px_50px_-20px_rgba(120,70,70,0.25)] sm:p-9">
+          <div className="mb-6 flex items-center gap-3 lg:hidden">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-[#a85d6b] to-[#c9a56a] text-sm font-extrabold text-white">
+              CM
+            </div>
+            <span className="text-base font-bold text-text">Central Management System</span>
+          </div>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#eef3ea] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-[#5f7a55]">
+            <svg viewBox="0 0 20 20" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="4" y="9" width="12" height="8" rx="2" />
+              <path d="M7 9V6.5a3 3 0 016 0V9" />
+            </svg>
+            Secure staff sign-in
+          </span>
+          <h1 className="mt-3 text-2xl font-extrabold text-text">Welcome back</h1>
           <p className="mt-1.5 text-sm text-text-secondary">
             Sign in to continue to your dashboard.
           </p>
@@ -159,7 +201,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@company.com.my or username"
-                className="mt-1.5 h-11 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-[#8aa37f] focus:ring-4 focus:ring-[#8aa37f]/25"
+                className={FIELD}
                 suppressHydrationWarning
               />
 
@@ -172,7 +214,7 @@ export default function LoginPage() {
                 onChange={setPassword}
                 placeholder="••••••••••"
                 autoComplete="current-password"
-                className="mt-1.5 h-11 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-[#8aa37f] focus:ring-4 focus:ring-[#8aa37f]/25"
+                className={FIELD}
               />
 
               <button
@@ -221,7 +263,7 @@ export default function LoginPage() {
                 value={magicLinkEmail}
                 onChange={(e) => setMagicLinkEmail(e.target.value)}
                 placeholder="you@company.com.my or username"
-                className="mt-1.5 h-11 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-[#8aa37f] focus:ring-4 focus:ring-[#8aa37f]/25"
+                className={FIELD}
               />
 
               <button

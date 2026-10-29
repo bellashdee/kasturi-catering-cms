@@ -4203,7 +4203,22 @@ const dictionary: Record<string, string> = {
  "You can attach a photo or a file for it to read.": "ဖတ်ခိုင်းဖို့ ဓာတ်ပုံ ဒါမှမဟုတ် ဖိုင်ကို တွဲပို့လို့ ရပါတယ်။",
  "Display: choose the font and the font size (10 to 25) for every page. It is kept on this computer or phone.": "Display: စာမျက်နှာတိုင်းအတွက် ဖောင့်နဲ့ ဖောင့်အရွယ်အစား (10 ကနေ 25) ကို ရွေးပါ။ ဒီကွန်ပျူတာ ဒါမှမဟုတ် ဖုန်းမှာ မှတ်ထားပါမယ်။",
  "Only a Super Admin can add, change or remove team members and their access.": "Super Admin ပဲ အဖွဲ့ဝင်တွေနဲ့ သူတို့ရဲ့ ဝင်ခွင့်ကို ထည့်တာ၊ ပြောင်းတာ၊ ဖယ်ရှားတာ လုပ်နိုင်ပါတယ်။",
- "Use the left menu to open a section, and the tabs under the page title to move inside it.": "အပိုင်းတစ်ခုကို ဖွင့်ဖို့ ဘယ်ဘက်မီနူးကို သုံးပါ၊ အဲဒီအပိုင်းထဲမှာ ကူးဖို့ စာမျက်နှာခေါင်းစဉ်အောက်က tab တွေကို သုံးပါ။"
+ "Use the left menu to open a section, and the tabs under the page title to move inside it.": "အပိုင်းတစ်ခုကို ဖွင့်ဖို့ ဘယ်ဘက်မီနူးကို သုံးပါ၊ အဲဒီအပိုင်းထဲမှာ ကူးဖို့ စာမျက်နှာခေါင်းစဉ်အောက်က tab တွေကို သုံးပါ။",
+  "MOF Registration (Ministry of Finance)": "MOF မှတ်ပုံတင်ခြင်း (ဘဏ္ဍာရေးဝန်ကြီးဌာန)",
+  "SSM / Companies Act Document": "SSM / ကုမ္ပဏီများအက်ဥပဒေ စာရွက်စာတမ်း",
+  "Food Premises Registration (FoSIM)": "အစားအစာနေရာ မှတ်ပုံတင်ခြင်း (FoSIM)",
+  "Download": "ဒေါင်းလုဒ်လုပ်ရန်",
+  "No expiry": "သက်တမ်းကုန်ဆုံးရက် မရှိ",
+  "Licences, registrations (MBJB, Halal, MOF, SSM, FoSIM), tenancy agreements and similar —": "လိုင်စင်များ၊ မှတ်ပုံတင်များ (MBJB, Halal, MOF, SSM, FoSIM)၊ အိမ်ငှားစာချုပ်များနှင့် အလားတူစာရွက်စာတမ်းများ —",
+  "All types": "အမျိုးအစားအားလုံး",
+  "Clear filters": "စစ်ထုတ်မှုများကို ရှင်းလင်းရန်",
+  "No document matches these filters.": "ဤစစ်ထုတ်မှုများနှင့် ကိုက်ညီသော စာရွက်စာတမ်း မရှိပါ။",
+  "Title, reference or notes": "ခေါင်းစဉ်၊ ရည်ညွှန်းနံပါတ် သို့မဟုတ် မှတ်ချက်",
+  "Showing {0} of {1}": "{1} ခုအနက် {0} ခု ပြသနေသည်",
+  "Secure staff sign-in": "ဝန်ထမ်းများအတွက် လုံခြုံသော လော့ဂ်အင်",
+  "Catering, kitchen and delivery in one place": "စားသောက်ဆက်သွယ်ရေး၊ မီးဖိုချောင်နှင့် ပို့ဆောင်ရေးကို တစ်နေရာတည်းတွင်",
+  "Finance, petty cash and staff claims": "ဘဏ္ဍာရေး၊ ပိုက်ဆံသေးနှင့် ဝန်ထမ်းတောင်းဆိုမှုများ",
+  "HR, licences and company records": "HR၊ လိုင်စင်များနှင့် ကုမ္ပဏီမှတ်တမ်းများ"
 };
 
 export default dictionary;

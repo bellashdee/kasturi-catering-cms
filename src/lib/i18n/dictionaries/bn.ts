@@ -4209,7 +4209,22 @@ const dictionary: Record<string, string> = {
  "You can attach a photo or a file for it to read.": "পড়ার জন্য আপনি একটি ছবি বা ফাইল জুড়ে দিতে পারেন।",
  "Display: choose the font and the font size (10 to 25) for every page. It is kept on this computer or phone.": "Display: সব পেজের জন্য ফন্ট ও ফন্টের আকার (10 থেকে 25) বেছে নিন। এটি এই কম্পিউটার বা ফোনে সংরক্ষিত থাকে।",
  "Only a Super Admin can add, change or remove team members and their access.": "শুধু Super Admin টিমের সদস্য এবং তাদের অ্যাক্সেস যোগ, বদল বা মুছে ফেলতে পারেন।",
- "Use the left menu to open a section, and the tabs under the page title to move inside it.": "কোনো বিভাগ খুলতে বাম মেনু ব্যবহার করুন, আর তার ভেতরে যেতে পেজের শিরোনামের নিচের ট্যাবগুলো ব্যবহার করুন।"
+ "Use the left menu to open a section, and the tabs under the page title to move inside it.": "কোনো বিভাগ খুলতে বাম মেনু ব্যবহার করুন, আর তার ভেতরে যেতে পেজের শিরোনামের নিচের ট্যাবগুলো ব্যবহার করুন।",
+  "MOF Registration (Ministry of Finance)": "MOF নিবন্ধন (অর্থ মন্ত্রণালয়)",
+  "SSM / Companies Act Document": "SSM / কোম্পানি আইনের নথি",
+  "Food Premises Registration (FoSIM)": "খাদ্য প্রাঙ্গণ নিবন্ধন (FoSIM)",
+  "Download": "ডাউনলোড",
+  "No expiry": "মেয়াদ শেষের তারিখ নেই",
+  "Licences, registrations (MBJB, Halal, MOF, SSM, FoSIM), tenancy agreements and similar —": "লাইসেন্স, নিবন্ধন (MBJB, Halal, MOF, SSM, FoSIM), ভাড়া চুক্তি ও অনুরূপ নথি —",
+  "All types": "সব ধরন",
+  "Clear filters": "ফিল্টার মুছুন",
+  "No document matches these filters.": "এই ফিল্টারের সাথে মেলে এমন কোনো নথি নেই।",
+  "Title, reference or notes": "শিরোনাম, রেফারেন্স বা নোট",
+  "Showing {0} of {1}": "{1}টির মধ্যে {0}টি দেখানো হচ্ছে",
+  "Secure staff sign-in": "কর্মীদের নিরাপদ সাইন-ইন",
+  "Catering, kitchen and delivery in one place": "ক্যাটারিং, রান্নাঘর ও ডেলিভারি এক জায়গায়",
+  "Finance, petty cash and staff claims": "অর্থ, ক্ষুদ্র নগদ ও কর্মীদের দাবি",
+  "HR, licences and company records": "এইচআর, লাইসেন্স ও কোম্পানির রেকর্ড"
 };
 
 export default dictionary;

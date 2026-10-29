@@ -12,7 +12,7 @@ export const KIND_PROMPTS: Record<string, string> = {
 If a field is not visible or you are not confident, use null for it rather than guessing.`,
   company_document: `You are reading a company licence or agreement: an MBJB (Majlis Bandaraya Johor Bahru) business licence, a Halal certificate/licence, a tenancy agreement, or a similar document. Extract the following fields and respond with ONLY a JSON object, no other text:
 {
-  "doc_type": one of "mbjb_licence" | "halal_licence" | "tenancy_agreement" | "other",
+  "doc_type": one of "mbjb_licence" | "halal_licence" | "tenancy_agreement" | "mof_registration" | "ssm_document" | "food_premises_registration" | "other",
   "title": the document's title or the premises/business it covers, as printed,
   "reference_number": the licence/certificate/agreement number if visible, else null,
   "issued_date": ISO date (YYYY-MM-DD) the licence starts or the agreement is dated, if visible, else null,

@@ -37,6 +37,9 @@ export const COMPANY_DOC_TYPE_LABEL: Record<string, string> = {
   mbjb_licence: "MBJB Licence",
   halal_licence: "Halal Licence",
   tenancy_agreement: "Tenancy Agreement",
+  mof_registration: "MOF Registration (Ministry of Finance)",
+  ssm_document: "SSM / Companies Act Document",
+  food_premises_registration: "Food Premises Registration (FoSIM)",
   other: "Other",
 };
 

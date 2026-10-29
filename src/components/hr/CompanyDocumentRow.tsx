@@ -116,15 +116,22 @@ export function CompanyDocumentRow({ doc }: { doc: CompanyDocData }) {
 
   return (
     <div className="grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr_1.1fr] items-center border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0">
-      <div className="font-semibold text-text">
-        {doc.title}
-        {doc.documentId && <DocumentViewLink documentId={doc.documentId} className="ml-2 text-xs" />}
+      <div className="pr-3">
+        <div className="font-semibold text-text">{doc.title}</div>
+        {doc.documentId && (
+          <div className="mt-1 flex gap-3 text-xs">
+            <DocumentViewLink documentId={doc.documentId} label="View" className="font-semibold text-primary hover:underline disabled:opacity-50" />
+            <DocumentViewLink documentId={doc.documentId} label="Download" download className="font-semibold text-primary hover:underline disabled:opacity-50" />
+          </div>
+        )}
+        {doc.notes && <div className="mt-1 text-[12px] text-text-muted">{doc.notes}</div>}
       </div>
       <div className="text-text-secondary">{COMPANY_DOC_TYPE_LABEL[doc.docType] ?? doc.docType}</div>
       <div className="text-text-secondary">{doc.companyName}</div>
       <div className="text-text-secondary">{doc.referenceNumber ?? "—"}</div>
       <div className="flex flex-col items-start gap-1">
-        <span className="text-text-secondary">{doc.expiryDate ?? "—"}</span>
+        <span className="text-text-secondary">{doc.expiryDate ?? "No expiry"}</span>
+        {doc.issuedDate && <span className="text-[12px] text-text-muted">Issued {doc.issuedDate}</span>}
         {doc.urgency === "expired" && <StatusBadge tone="danger">Expired</StatusBadge>}
         {doc.urgency === "expiring_soon" && <StatusBadge tone="warning">Expiring soon</StatusBadge>}
         {doc.urgency === "valid" && <StatusBadge tone="success">Valid</StatusBadge>}
