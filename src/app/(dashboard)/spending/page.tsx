@@ -10,8 +10,7 @@ export default async function SpendingPage({ searchParams }: { searchParams: Pro
   if (!session) redirect("/login");
   const { company } = await searchParams;
   const query = company ? `?company=${company}` : "";
-  if (canAccessModule(session.allowedModules, "finance-admin")) redirect(`/spending/expenses${query}`);
   const { isHolder } = await pettyCashAccess(await createClient(), session.userId);
-  // a petty cash holder lands on the petty cash; every other staff member lands on their own claims
-  redirect(isHolder ? `/spending/petty-cash${query}` : `/spending/my-claims${query}`);
+  // the first tab is the Petty Cash (for a petty cash holder and for Admin & Finance); every other staff member lands on their own claims
+  redirect(isHolder || canAccessModule(session.allowedModules, "finance-admin") ? `/spending/petty-cash${query}` : `/spending/my-claims${query}`);
 }

@@ -4,11 +4,11 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
 const TABS = [
-  { href: "/spending/expenses", label: "Company Expenses", finance: true, match: (p: string) => p.startsWith("/spending/expenses") },
   { href: "/spending/petty-cash", label: "Petty Cash", finance: false, pettyCash: true, match: (p: string) => p.startsWith("/spending/petty-cash") },
-  { href: "/spending/budgets", label: "Budgets", finance: true, match: (p: string) => p.startsWith("/spending/budgets") },
   // every staff member sends their own claim here
   { href: "/spending/my-claims", label: "My Claims", finance: false, pettyCash: false, match: (p: string) => p.startsWith("/spending/my-claims") },
+  { href: "/spending/expenses", label: "Company Expenses", finance: true, match: (p: string) => p.startsWith("/spending/expenses") },
+  { href: "/spending/budgets", label: "Budgets", finance: true, match: (p: string) => p.startsWith("/spending/budgets") },
 ];
 
 /**
