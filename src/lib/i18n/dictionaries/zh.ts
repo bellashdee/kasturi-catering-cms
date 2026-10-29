@@ -4047,7 +4047,8 @@ const dictionary: Record<string, string> = {
  "Makes everything on every page bigger or smaller: the words, the buttons and the boxes.": "放大或缩小每个页面上的所有内容：文字、按钮和输入框。",
  "Usual size": "常用大小",
  "Sample": "示例",
- "Standard (the system's own letters)": "标准（系统自带字体）"
+ "Standard (the system's own letters)": "标准（系统自带字体）",
+ "Open Company Spending on the left, then the My Claims tab. Choose the company you work for, the date you bought it and the amount you paid, exactly as on the receipt.": "点击左侧的“公司支出”，然后选择“我的报销”标签。选择您所在的公司、购买日期和您支付的金额，须与收据完全一致。"
 };
 
 export default dictionary;

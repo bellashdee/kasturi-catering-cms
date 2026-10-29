@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { HowToClaimButton } from "@/components/spending/HowToClaimButton";
 
 const TABS = [
   { href: "/spending/petty-cash", label: "Petty Cash", finance: false, pettyCash: true, match: (p: string) => p.startsWith("/spending/petty-cash") },
@@ -20,7 +21,8 @@ export function SpendingSubNav({ hideFinance = false, hidePettyCash = false }: {
   const searchParams = useSearchParams();
   const company = searchParams.get("company");
   return (
-    <div className="flex flex-wrap gap-1 border-b border-border">
+    <div className="flex flex-wrap items-end justify-between gap-2 border-b border-border">
+      <div className="flex flex-wrap gap-1">
       {TABS.filter((t) => !(hideFinance && t.finance) && !(hidePettyCash && t.pettyCash)).map((tab) => (
         <Link
           key={tab.href}
@@ -30,6 +32,8 @@ export function SpendingSubNav({ hideFinance = false, hidePettyCash = false }: {
           {tab.label}
         </Link>
       ))}
+      </div>
+      <HowToClaimButton />
     </div>
   );
 }

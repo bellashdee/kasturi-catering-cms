@@ -4034,7 +4034,8 @@ const dictionary: Record<string, string> = {
  "Makes everything on every page bigger or smaller: the words, the buttons and the boxes.": "စာမျက်နှာတိုင်းရှိ အရာအားလုံးကို ကြီးစေ/သေးစေသည်: စာလုံး၊ ခလုတ်နှင့် ဘောက်စ်များ။",
  "Usual size": "ပုံမှန်အရွယ်",
  "Sample": "နမူနာ",
- "Standard (the system's own letters)": "စံ (စနစ်၏ ကိုယ်ပိုင်စာလုံး)"
+ "Standard (the system's own letters)": "စံ (စနစ်၏ ကိုယ်ပိုင်စာလုံး)",
+ "Open Company Spending on the left, then the My Claims tab. Choose the company you work for, the date you bought it and the amount you paid, exactly as on the receipt.": "ဘယ်ဘက်ရှိ ကုမ္ပဏီအသုံးစရိတ် ကိုဖွင့်ပြီး ကျွန်ုပ်၏ တောင်းဆိုမှုများ တဘ်ကို ရွေးပါ။ သင်အလုပ်လုပ်သည့် ကုမ္ပဏီ၊ ဝယ်ယူသည့်ရက်စွဲနှင့် ပေးခဲ့သည့်ပမာဏကို ဘောက်ချာအတိုင်း ရွေးပါ။"
 };
 
 export default dictionary;

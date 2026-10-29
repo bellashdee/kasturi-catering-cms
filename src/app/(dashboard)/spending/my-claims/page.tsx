@@ -15,15 +15,6 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 import { MyClaimActions, MyClaimForm } from "@/components/claims/MyClaims";
 
-const STEPS = [
-  "Buy what the company needs with your own money first, and keep the receipt (or take a photo of it).",
-  "Open Company Spending on the left, then My Claims (this page). Choose the company you work for, the date you bought it and the amount you paid, exactly as on the receipt.",
-  "Under Claim from, choose Penny Chan or Nabilah: the one who will pay you back.",
-  "Choose the category and write what you bought (for example: cooking gas for the Ahmad wedding). You can choose more than one category.",
-  "Attach the photo of the receipt, then press Send claim.",
-  "Your claim shows below as Pending Payment. Penny Chan or Nabilah is told, checks it and pays you. When it is paid, the status changes to Paid with the payment date and the Reference ID.",
-  "Made a mistake? Press Edit or Delete on your claim while it is still Pending Payment. A claim that is already paid cannot be changed.",
-];
 
 /**
  * My Claims: any staff member claims back, from Penny Chan or Nabilah, what they bought with their own money. A person sees and works on
@@ -58,18 +49,6 @@ export default async function MyClaimsPage() {
     <SoftPage>
       <SoftHeader title="My Claims" subtitle="Claim back what you bought for the company with your own money" />
       <SpendingSubNav hideFinance={!hasFinance} hidePettyCash={!hasFinance && !access.isHolder} />
-
-      <details open className="rounded-2xl border border-border bg-surface shadow-sm">
-        <summary className="cursor-pointer px-5 py-3.5 text-[15px] font-bold text-text">How to claim (step by step)</summary>
-        <ol className="flex flex-col gap-2 border-t border-border px-5 py-4 text-[13.5px] text-text-secondary">
-          {STEPS.map((step, i) => (
-            <li key={step} className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-[12px] font-bold text-white">{i + 1}</span>
-              <span className="pt-0.5">{step}</span>
-            </li>
-          ))}
-        </ol>
-      </details>
 
       {companies.length === 0 ? (
         <EmptyRow text="Your staff record is not linked to your login yet. Please ask the HR admin to link it, then you can send your claims here." />

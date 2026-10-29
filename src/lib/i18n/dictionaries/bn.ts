@@ -4040,7 +4040,8 @@ const dictionary: Record<string, string> = {
  "Makes everything on every page bigger or smaller: the words, the buttons and the boxes.": "প্রতিটি পাতার সবকিছু বড় বা ছোট করে: লেখা, বোতাম ও বাক্স।",
  "Usual size": "স্বাভাবিক আকার",
  "Sample": "নমুনা",
- "Standard (the system's own letters)": "স্ট্যান্ডার্ড (সিস্টেমের নিজস্ব অক্ষর)"
+ "Standard (the system's own letters)": "স্ট্যান্ডার্ড (সিস্টেমের নিজস্ব অক্ষর)",
+ "Open Company Spending on the left, then the My Claims tab. Choose the company you work for, the date you bought it and the amount you paid, exactly as on the receipt.": "বাঁ দিকে কোম্পানির ব্যয় খুলুন, তারপর আমার দাবিসমূহ ট্যাব। যে কোম্পানিতে কাজ করেন, কেনার তারিখ এবং যত টাকা দিয়েছেন তা রসিদ অনুযায়ী ঠিক যেমন আছে তেমন বেছে নিন।"
 };
 
 export default dictionary;

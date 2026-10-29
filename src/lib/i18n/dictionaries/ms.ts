@@ -3981,7 +3981,8 @@ const dictionary: Record<string, string> = {
  "Makes everything on every page bigger or smaller: the words, the buttons and the boxes.": "Membesarkan atau mengecilkan semua di setiap halaman: tulisan, butang dan kotak.",
  "Usual size": "Saiz biasa",
  "Sample": "Contoh",
- "Standard (the system's own letters)": "Standard (huruf asal sistem)"
+ "Standard (the system's own letters)": "Standard (huruf asal sistem)",
+ "Open Company Spending on the left, then the My Claims tab. Choose the company you work for, the date you bought it and the amount you paid, exactly as on the receipt.": "Buka Perbelanjaan Syarikat di sebelah kiri, kemudian tab Tuntutan Saya. Pilih syarikat tempat anda bekerja, tarikh anda membeli dan jumlah yang anda bayar, tepat seperti pada resit."
 };
 
 export default dictionary;
