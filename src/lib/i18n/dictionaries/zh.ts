@@ -4231,7 +4231,10 @@ const dictionary: Record<string, string> = {
   "Secure staff sign-in": "员工安全登录",
   "Catering, kitchen and delivery in one place": "餐饮、厨房和配送集中在一处",
   "Finance, petty cash and staff claims": "财务、零用金和员工报销",
-  "HR, licences and company records": "人事、执照和公司记录"
+  "HR, licences and company records": "人事、执照和公司记录",
+  "View original": "查看原件",
+  "Download original": "下载原件",
+  "Download summary (PDF)": "下载摘要（PDF）"
 };
 
 export default dictionary;

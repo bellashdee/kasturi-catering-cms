@@ -87,6 +87,22 @@ export function CompanyDocumentList({ docs }: { docs: CompanyDocData[] }) {
             Clear filters
           </button>
         )}
+        <button
+          type="button"
+          disabled={shown.length === 0}
+          onClick={async () => {
+            const note = [
+              company !== "all" ? companies.find(([id]) => id === company)?.[1] : null,
+              type !== "all" ? COMPANY_DOC_TYPE_LABEL[type] ?? type : null,
+              status !== "all" ? STATUS_LABEL[status] : null,
+              q ? `search: ${search.trim()}` : null,
+            ].filter(Boolean).join(" | ");
+            (await import("@/lib/hr/licenceSummaryPdf")).downloadRegisterPdf(shown, note);
+          }}
+          className="h-9 rounded-lg bg-primary px-3 text-[13px] font-bold text-white disabled:opacity-50"
+        >
+          Download summary (PDF)
+        </button>
       </div>
       {filtering && (
         <div className="border-b border-border px-5 py-2 text-[12.5px] text-text-secondary">

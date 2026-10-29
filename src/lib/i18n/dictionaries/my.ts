@@ -4218,7 +4218,10 @@ const dictionary: Record<string, string> = {
   "Secure staff sign-in": "ဝန်ထမ်းများအတွက် လုံခြုံသော လော့ဂ်အင်",
   "Catering, kitchen and delivery in one place": "စားသောက်ဆက်သွယ်ရေး၊ မီးဖိုချောင်နှင့် ပို့ဆောင်ရေးကို တစ်နေရာတည်းတွင်",
   "Finance, petty cash and staff claims": "ဘဏ္ဍာရေး၊ ပိုက်ဆံသေးနှင့် ဝန်ထမ်းတောင်းဆိုမှုများ",
-  "HR, licences and company records": "HR၊ လိုင်စင်များနှင့် ကုမ္ပဏီမှတ်တမ်းများ"
+  "HR, licences and company records": "HR၊ လိုင်စင်များနှင့် ကုမ္ပဏီမှတ်တမ်းများ",
+  "View original": "မူရင်းကို ကြည့်ရန်",
+  "Download original": "မူရင်းကို ဒေါင်းလုဒ်လုပ်ရန်",
+  "Download summary (PDF)": "အကျဉ်းချုပ်ကို ဒေါင်းလုဒ်လုပ်ရန် (PDF)"
 };
 
 export default dictionary;

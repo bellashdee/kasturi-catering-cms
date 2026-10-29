@@ -118,12 +118,21 @@ export function CompanyDocumentRow({ doc }: { doc: CompanyDocData }) {
     <div className="grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr_1.1fr] items-center border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0">
       <div className="pr-3">
         <div className="font-semibold text-text">{doc.title}</div>
-        {doc.documentId && (
-          <div className="mt-1 flex gap-3 text-xs">
-            <DocumentViewLink documentId={doc.documentId} label="View" className="font-semibold text-primary hover:underline disabled:opacity-50" />
-            <DocumentViewLink documentId={doc.documentId} label="Download" download className="font-semibold text-primary hover:underline disabled:opacity-50" />
-          </div>
-        )}
+        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+          <button
+            type="button"
+            onClick={async () => (await import("@/lib/hr/licenceSummaryPdf")).downloadDocumentSummaryPdf(doc)}
+            className="font-semibold text-primary hover:underline"
+          >
+            Download
+          </button>
+          {doc.documentId && (
+            <>
+              <DocumentViewLink documentId={doc.documentId} label="View original" className="font-semibold text-primary hover:underline disabled:opacity-50" />
+              <DocumentViewLink documentId={doc.documentId} label="Download original" download className="font-semibold text-primary hover:underline disabled:opacity-50" />
+            </>
+          )}
+        </div>
         {doc.notes && <div className="mt-1 text-[12px] text-text-muted">{doc.notes}</div>}
       </div>
       <div className="text-text-secondary">{COMPANY_DOC_TYPE_LABEL[doc.docType] ?? doc.docType}</div>

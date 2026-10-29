@@ -4224,7 +4224,10 @@ const dictionary: Record<string, string> = {
   "Secure staff sign-in": "কর্মীদের নিরাপদ সাইন-ইন",
   "Catering, kitchen and delivery in one place": "ক্যাটারিং, রান্নাঘর ও ডেলিভারি এক জায়গায়",
   "Finance, petty cash and staff claims": "অর্থ, ক্ষুদ্র নগদ ও কর্মীদের দাবি",
-  "HR, licences and company records": "এইচআর, লাইসেন্স ও কোম্পানির রেকর্ড"
+  "HR, licences and company records": "এইচআর, লাইসেন্স ও কোম্পানির রেকর্ড",
+  "View original": "মূল নথি দেখুন",
+  "Download original": "মূল নথি ডাউনলোড",
+  "Download summary (PDF)": "সারসংক্ষেপ ডাউনলোড (PDF)"
 };
 
 export default dictionary;

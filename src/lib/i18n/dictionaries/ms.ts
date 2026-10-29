@@ -4165,7 +4165,10 @@ const dictionary: Record<string, string> = {
   "Secure staff sign-in": "Log masuk staf yang selamat",
   "Catering, kitchen and delivery in one place": "Katering, dapur dan penghantaran di satu tempat",
   "Finance, petty cash and staff claims": "Kewangan, tunai runcit dan tuntutan staf",
-  "HR, licences and company records": "HR, lesen dan rekod syarikat"
+  "HR, licences and company records": "HR, lesen dan rekod syarikat",
+  "View original": "Lihat dokumen asal",
+  "Download original": "Muat turun dokumen asal",
+  "Download summary (PDF)": "Muat turun ringkasan (PDF)"
 };
 
 export default dictionary;
