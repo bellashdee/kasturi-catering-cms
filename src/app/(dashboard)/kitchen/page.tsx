@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
-import { listProductionOrders } from "@/lib/kitchen/queries";
+import { listProductionOrders, orderMenuItems } from "@/lib/kitchen/queries";
 import { PRODUCTION_STATUS_LABEL } from "@/lib/kitchen/constants";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
@@ -62,7 +62,7 @@ export default async function KitchenPage({
           <div>
             <div className="grid grid-cols-[1fr_1.4fr_0.8fr_0.8fr_1.4fr_1fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
               <div>Planned Date</div>
-              <div>Recipe</div>
+              <div>Menu</div>
               <div>Pax</div>
               <div>Company</div>
               <div>Linked Event</div>
@@ -75,7 +75,15 @@ export default async function KitchenPage({
                 className="grid grid-cols-[1fr_1.4fr_0.8fr_0.8fr_1.4fr_1fr] px-5 py-3.5 text-[13.5px] hover:bg-surface-alt"
               >
                 <div className="text-text-secondary">{o.planned_date}</div>
-                <div className="font-semibold text-text">{o.recipes?.name ?? o.menu_plan_dishes?.name ?? "—"}</div>
+                <div className="font-semibold text-text">
+                  {o.recipes?.name ?? o.menu_plan_dishes?.name ?? (
+                    // an event's order has no recipe of its own: show the menu entered in Catering
+                    (() => {
+                      const menu = orderMenuItems(o);
+                      return menu.length ? menu.map((m, i) => <div key={i}>{m}</div>) : "—";
+                    })()
+                  )}
+                </div>
                 <div className="text-text-secondary">{o.pax_count ?? "—"}</div>
                 <div className="text-text-secondary">{o.companies?.name}</div>
                 <div className="text-text-secondary">{o.catering_events?.event_name ?? "—"}</div>

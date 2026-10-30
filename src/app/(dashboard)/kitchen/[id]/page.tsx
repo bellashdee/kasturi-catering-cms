@@ -2,9 +2,8 @@ import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
-import { getProductionOrder, getRecipe } from "@/lib/kitchen/queries";
-import { getMenuPlanDishWithIngredients } from "@/lib/menuPlan/queries";
-import { PRODUCTION_STATUS_LABEL } from "@/lib/kitchen/constants";
+import { getProductionOrder, getRecipe, orderMenuItems } from "@/lib/kitchen/queries";
+import { getMenuPlanDishWithIngredients } from "@/lib/menuPlan/queries";import { PRODUCTION_STATUS_LABEL } from "@/lib/kitchen/constants";
 import { SectionCard } from "@/components/dashboard/SectionCard";
 import { ProductionOrderStatusSelect } from "@/components/kitchen/ProductionOrderStatusSelect";
 import { RecipePaxCalculator } from "@/components/kitchen/RecipePaxCalculator";
@@ -35,7 +34,8 @@ export default async function ProductionOrderDetailPage({
 
   const recipe = order.recipe_id ? await getRecipe(supabase, order.recipe_id) : null;
   const menuPlanDish = order.menu_plan_dish_id ? await getMenuPlanDishWithIngredients(supabase, order.menu_plan_dish_id) : null;
-  const targetPax = order.pax_count ?? order.catering_events?.pax_count ?? recipe?.yield_pax ?? 0;
+  const eventMenu = orderMenuItems(order);
+  const targetPax =order.pax_count ?? order.catering_events?.pax_count ?? recipe?.yield_pax ?? 0;
   // the kitchen's times: those of the event day this order is for, or of the event itself (single-day event)
   const setupTime = (order.catering_event_days?.setup_time ?? order.catering_events?.setup_time)?.slice(0, 5) ?? null;
   const eventTime = (order.catering_event_days?.event_time ?? order.catering_events?.event_time)?.slice(0, 5) ?? null;
@@ -107,6 +107,16 @@ export default async function ProductionOrderDetailPage({
           <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-text-muted">Notes</div>
           {order.notes}
         </div>
+      )}
+
+      {eventMenu.length > 0 && (
+        <SectionCard title="Menu (from Catering)">
+          <ul className="list-disc pl-5 text-[13.5px] text-text">
+            {eventMenu.map((m, i) => (
+              <li key={i}>{m}</li>
+            ))}
+          </ul>
+        </SectionCard>
       )}
 
       <SectionCard title="Ingredient Requirements">

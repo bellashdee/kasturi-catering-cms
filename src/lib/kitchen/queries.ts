@@ -1,12 +1,31 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
+import { menuRows } from "@/lib/catering/days";
 
 type DB = SupabaseClient<Database>;
+
+/**
+ * The menu items the Catering quotation lists for a production order: those of its own event day, else of the
+ * event day on the order's planned date (older orders have no day link), else the event's only day, else the event's menu text.
+ */
+export function orderMenuItems(order: {
+  planned_date: string | null;
+  catering_event_days?: { menu_details: string | null } | null;
+  catering_events?: { menu_description: string | null; catering_event_days?: { day_date: string; menu_details: string | null }[] | null } | null;
+}): string[] {
+  const days = order.catering_events?.catering_event_days ?? [];
+  const text =
+    order.catering_event_days?.menu_details ||
+    days.find((d) => d.day_date === order.planned_date)?.menu_details ||
+    (days.length === 1 ? days[0].menu_details : null) ||
+    order.catering_events?.menu_description;
+  return menuRows(text);
+}
 
 export async function listProductionOrders(supabase: DB, companyIds: string[]) {
   const { data, error } = await supabase
     .from("production_orders")
-    .select("*, catering_events(event_name), recipes(name), menu_plan_dishes(name), companies(name)")
+    .select("*, catering_events(event_name, menu_description, catering_event_days(day_date, menu_details)), catering_event_days(menu_details), recipes(name), menu_plan_dishes(name), companies(name)")
     .in("company_id", companyIds)
     .order("planned_date", { ascending: false });
   if (error) throw error;
@@ -16,7 +35,7 @@ export async function listProductionOrders(supabase: DB, companyIds: string[]) {
 export async function getProductionOrder(supabase: DB, id: string) {
   const { data, error } = await supabase
     .from("production_orders")
-    .select("*, catering_events(event_name, pax_count, event_date, setup_time, event_time), catering_event_days(day_date, setup_time, event_time), recipes(id, name, yield_pax), companies(name)")
+    .select("*, catering_events(event_name, pax_count, event_date, setup_time, event_time, menu_description, catering_event_days(day_date, menu_details)), catering_event_days(day_date, setup_time, event_time, menu_details), recipes(id, name, yield_pax), companies(name)")
     .eq("id", id)
     .single();
   if (error) throw error;
