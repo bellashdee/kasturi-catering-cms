@@ -95,7 +95,10 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
   let book: Awaited<ReturnType<typeof readBook>> = [];
   let transactions: Awaited<ReturnType<typeof listPettyCashTransactions>> = [];
   if (shownScope) {
-    [book, transactions] = await Promise.all([isHolder ? readBook(supabase, targetCompanyIds, pattern) : Promise.resolve([]), canClaims ? listPettyCashTransactions(supabase, targetCompanyIds, pattern || undefined) : Promise.resolve([])]);
+    // the money given to a person is one pot for every company they spend for (Ms. Nabilah's float is for Signature Solution and
+    // Kasturi Indah), so it is read across all the companies the signed-in person can open, not only the one chosen at the top;
+    // otherwise money received under one company shows as RM 0 while another company is chosen
+    [book, transactions] = await Promise.all([isHolder ? readBook(supabase, accessibleIds, pattern) : Promise.resolve([]), canClaims ? listPettyCashTransactions(supabase, accessibleIds, pattern || undefined) : Promise.resolve([])]);
   }
 
   // an entry keyed in once for more than one company is listed with all of them ("Signature Solution + Kasturi Indah"), its amount counted once
