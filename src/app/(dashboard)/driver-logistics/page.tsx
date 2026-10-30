@@ -78,7 +78,7 @@ export default async function DriverLogisticsPage({
               >
                 <div className="text-text-secondary">{formatMalaysiaDateTime(d.scheduled_time)}</div>
                 <div>
-                  <div className="font-semibold text-text">{d.catering_events?.event_name ?? d.location ?? "—"}</div>
+                  <div className="font-semibold text-text">{d.catering_events?.customers?.name ?? d.catering_events?.event_name ?? d.location ?? "—"}</div>
                   {(d.catering_events?.location ?? (d.catering_events ? d.location : null)) && (
                     <div className="text-[12px] text-text-muted">{d.catering_events?.location ?? d.location}</div>
                   )}

@@ -68,7 +68,7 @@ export default async function DriverDashboardPage({
     supabase.from("driver_attendance").select("*").eq("driver_id", driverId).eq("attendance_date", today).maybeSingle(),
     supabase
       .from("deliveries")
-      .select("id, status, proof_status, scheduled_time, location, catering_events(event_name, location)")
+      .select("id, status, proof_status, scheduled_time, location, catering_events(event_name, location, customers(name))")
       .eq("driver_id", driverId)
       .in("company_id", targetCompanyIds)
       .gte("scheduled_time", `${today}T00:00:00+08:00`)
@@ -151,7 +151,7 @@ export default async function DriverDashboardPage({
             {deliveries.map((d) => (
               <a key={d.id} href={`/driver-logistics/${d.id}${query}`} className="flex items-center justify-between rounded-lg border border-border px-3.5 py-2.5 text-[13px] hover:bg-bg">
                 <div>
-                  <div className="font-semibold text-text">{d.catering_events?.event_name ?? d.location ?? "Delivery"}</div>
+                  <div className="font-semibold text-text">{d.catering_events?.customers?.name ?? d.catering_events?.event_name ?? d.location ?? "Delivery"}</div>
                   <div className="text-[11.5px] text-text-muted">{formatMalaysiaTime(d.scheduled_time)}{(d.catering_events?.location ?? d.location) && ` · ${d.catering_events?.location ?? d.location}`}</div>
                 </div>
                 <StatusBadge tone={d.status === "delivered" ? "success" : d.status === "cancelled" ? "danger" : "warning"}>{d.status}</StatusBadge>
