@@ -8,7 +8,11 @@ import { formatCurrency, malaysiaYearMonth } from "@/lib/format";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { MonthlySalesForm } from "@/components/finance/MonthlySalesForm";
+import { SplitSalesForm } from "@/components/finance/SplitSalesForm";
 import { Select } from "@/components/ui/Select";
+
+/** Signature Solution records its sales as catering events and daily sales. */
+const SPLIT_SALES_COMPANY_NAME = "Signature Solution";
 
 function currentYearMonth() {
   return malaysiaYearMonth();
@@ -56,6 +60,7 @@ export default async function AdminPage({
   const pct = (value: number) => (revenue > 0 ? `${((value / revenue) * 100).toFixed(2)}%` : "—");
   const profitPct = revenue > 0 ? (net / revenue) * 100 : null;
   const singleCompanyId = targetCompanyIds.length === 1 ? targetCompanyIds[0] : null;
+  const isSplitSalesCompany = companies.some((c) => c.id === singleCompanyId && c.name.startsWith(SPLIT_SALES_COMPANY_NAME));
 
   const bySource = new Map<string, number>();
   const byCategory = new Map<string, { source: string; amount: number }>();
@@ -107,7 +112,18 @@ export default async function AdminPage({
         <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply Filters</button>
       </form>
 
-      {singleCompanyId && (
+      {singleCompanyId && isSplitSalesCompany && (
+        <SplitSalesForm
+          key={`${singleCompanyId}-${year}-${month}-${sales.split ? "split" : "single"}`}
+          companyId={singleCompanyId}
+          year={year}
+          month={month}
+          monthLabel={MONTH_LABEL[month - 1]}
+          current={sales.split}
+          earlierTotal={sales.recorded && !sales.split ? revenue : null}
+        />
+      )}
+      {singleCompanyId && !isSplitSalesCompany && (
         <MonthlySalesForm
           key={`${singleCompanyId}-${year}-${month}`}
           companyId={singleCompanyId}
@@ -122,6 +138,12 @@ export default async function AdminPage({
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
           <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Sales</div>
           <div className="mt-1 text-xl font-extrabold text-text">{formatCurrency(revenue)}</div>
+          {sales.split && (
+            <div className="mt-1 space-y-0.5 text-[11px] text-text-muted">
+              <div className="flex justify-between gap-2"><span>Catering</span><span>{formatCurrency(sales.split.catering)}</span></div>
+              <div className="flex justify-between gap-2"><span>Daily</span><span>{formatCurrency(sales.split.daily)}</span></div>
+            </div>
+          )}
           {!sales.recorded && <div className="mt-0.5 text-[11px] text-text-muted">From payments received (no monthly sales entered)</div>}
         </div>
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">

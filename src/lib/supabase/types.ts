@@ -3274,6 +3274,7 @@ export type Database = {
           month: number
           notes: string | null
           sales_amount: number
+          sales_type: string
           updated_at: string
           updated_by: string | null
           year: number
@@ -3284,6 +3285,7 @@ export type Database = {
           month: number
           notes?: string | null
           sales_amount: number
+          sales_type?: string
           updated_at?: string
           updated_by?: string | null
           year: number
@@ -3294,6 +3296,7 @@ export type Database = {
           month?: number
           notes?: string | null
           sales_amount?: number
+          sales_type?: string
           updated_at?: string
           updated_by?: string | null
           year?: number

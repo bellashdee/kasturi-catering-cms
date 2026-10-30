@@ -303,13 +303,17 @@ export async function getCustomerInvoice(supabase: DB, id: string) {
 export async function getMonthlySales(supabase: DB, companyIds: string[], year: number, month: number, range?: DateRange) {
   const { data } = await supabase
     .from("monthly_sales")
-    .select("company_id, sales_amount")
+    .select("company_id, sales_type, sales_amount")
     .in("company_id", companyIds)
     .eq("year", year)
     .eq("month", month);
   const recorded = data ?? [];
+  const sumOf = (type: string) => recorded.filter((r) => r.sales_type === type).reduce((t, r) => t + Number(r.sales_amount), 0);
+  const catering = sumOf("catering");
+  const daily = sumOf("daily");
+  const split = recorded.some((r) => r.sales_type !== "total") ? { catering, daily } : null;
   if (recorded.length > 0) {
-    return { amount: recorded.reduce((t, r) => t + Number(r.sales_amount), 0), recorded: true };
+    return { amount: recorded.reduce((t, r) => t + Number(r.sales_amount), 0), recorded: true, split };
   }
-  return { amount: await getMonthlyRevenue(supabase, companyIds, year, month, range), recorded: false };
+  return { amount: await getMonthlyRevenue(supabase, companyIds, year, month, range), recorded: false, split };
 }

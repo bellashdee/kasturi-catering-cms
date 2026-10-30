@@ -597,14 +597,45 @@ export async function saveMonthlySales(input: { companyId: string; year: number;
       company_id: input.companyId,
       year: input.year,
       month: input.month,
+      sales_type: "total",
       sales_amount: input.salesAmount,
       notes: input.notes?.trim() || null,
       updated_by: userId,
       updated_at: new Date().toISOString(),
     },
-    { onConflict: "company_id,year,month" },
+    { onConflict: "company_id,year,month,sales_type" },
   );
   if (error) throw error;
+
+  revalidatePath("/admin");
+  revalidatePath("/reports/monthly-costing");
+}
+
+/** Signature Solution: the month's sales kept as catering events and daily sales. Replaces any single total entered before. */
+export async function saveSplitMonthlySales(input: { companyId: string; year: number; month: number; cateringAmount: number; dailyAmount: number }) {
+  const { supabase, userId } = await requireUser();
+  for (const amount of [input.cateringAmount, input.dailyAmount]) {
+    if (!Number.isFinite(amount) || amount < 0) throw new Error("Enter a valid sales amount.");
+  }
+
+  const now = new Date().toISOString();
+  const { error } = await supabase.from("monthly_sales").upsert(
+    [
+      { sales_type: "catering", sales_amount: input.cateringAmount },
+      { sales_type: "daily", sales_amount: input.dailyAmount },
+    ].map((r) => ({ company_id: input.companyId, year: input.year, month: input.month, ...r, updated_by: userId, updated_at: now })),
+    { onConflict: "company_id,year,month,sales_type" },
+  );
+  if (error) throw error;
+
+  const { error: clearError } = await supabase
+    .from("monthly_sales")
+    .delete()
+    .eq("company_id", input.companyId)
+    .eq("year", input.year)
+    .eq("month", input.month)
+    .eq("sales_type", "total");
+  if (clearError) throw clearError;
 
   revalidatePath("/admin");
   revalidatePath("/reports/monthly-costing");
