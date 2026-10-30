@@ -7,7 +7,7 @@ import { todayInMalaysia } from "@/lib/format";
 import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/documents/upload";
 import { deleteMyClaim, restoreMyClaim, submitMyClaim, updateMyClaim, type MyClaimInput } from "@/lib/finance/myClaims";
 import type { PettyCashTransactionRow } from "@/lib/finance/actions";
-import { PETTY_CASH_CATEGORIES, joinCategories, splitCategories } from "@/lib/operationPettyCash/constants";
+import { PAYMENT_METHOD_LABEL, PETTY_CASH_CATEGORIES, joinCategories, splitCategories } from "@/lib/operationPettyCash/constants";
 import { DescriptionInput } from "@/components/DescriptionInput";
 import { Select } from "@/components/ui/Select";
 import { MultiChoiceSelect } from "@/components/ui/MultiChoiceSelect";
@@ -16,7 +16,7 @@ import { BTN_GHOST, Dialog } from "@/components/priority/ui";
 
 type Company = { id: string; name: string };
 type Payer = { name: string; position: string };
-export type ClaimValues = { companyId: string; date: string; amount: string; payer: string; category: string; description: string };
+export type ClaimValues = { companyId: string; date: string; amount: string; payer: string; paymentMethod: string; category: string; description: string };
 
 const inputClass = "mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px] outline-none focus:border-primary";
 const labelClass = "text-[12px] font-semibold text-text-secondary";
@@ -58,6 +58,10 @@ function ClaimFields({
       setError("Choose who you claim from: Penny Chan or Nabilah.");
       return;
     }
+    if (!v.paymentMethod) {
+      setError("Choose how you paid: cash or online transfer.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -66,7 +70,7 @@ function ClaimFields({
         const doc = await uploadDocument({ companyId: v.companyId, module: "finance", fileType: fileTypeFromMime(receipt), file: receipt, skipMarkdown: true });
         documentId = doc.id;
       }
-      const result = await onSubmit({ companyId: v.companyId, date: v.date, amount: Number(v.amount), payer: v.payer, category: v.category || undefined, description: v.description || undefined, documentId });
+      const result = await onSubmit({ companyId: v.companyId, date: v.date, amount: Number(v.amount), payer: v.payer, paymentMethod: v.paymentMethod, category: v.category || undefined, description: v.description || undefined, documentId });
       if (!result.ok) {
         setError(result.error);
         return;
@@ -112,7 +116,16 @@ function ClaimFields({
           <input type="number" min="0.01" step="0.01" required value={v.amount} onChange={(e) => set({ amount: e.target.value })} className={inputClass} />
         </div>
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div>
+          <label className={labelClass}>You paid by *</label>
+          <Select value={v.paymentMethod} onChange={(e) => set({ paymentMethod: e.target.value })} required className={inputClass}>
+            <option value="">Select cash or online transfer</option>
+            {Object.entries(PAYMENT_METHOD_LABEL).map(([value, text]) => (
+              <option key={value} value={value}>{text}</option>
+            ))}
+          </Select>
+        </div>
         <div>
           <label className={labelClass}>Claim from *</label>
           <Select value={v.payer} onChange={(e) => set({ payer: e.target.value })} required className={inputClass}>
@@ -156,7 +169,7 @@ export function MyClaimForm({ companies, payers }: { companies: Company[]; payer
     <ClaimFields
       companies={companies}
       payers={payers}
-      initial={{ companyId: companies[0]?.id ?? "", date: todayInMalaysia(), amount: "", payer: payers.length === 1 ? payers[0].name : "", category: "", description: "" }}
+      initial={{ companyId: companies[0]?.id ?? "", date: todayInMalaysia(), amount: "", payer: payers.length === 1 ? payers[0].name : "", paymentMethod: "", category: "", description: "" }}
       submitLabel="Send claim"
       onSubmit={submitMyClaim}
       onSaved={() => undefined}

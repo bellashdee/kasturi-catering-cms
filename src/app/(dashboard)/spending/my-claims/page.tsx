@@ -105,7 +105,7 @@ export default async function MyClaimsPage() {
                           <span className="text-[12px] text-text-muted">—</span>
                         ) : (
                           <MyClaimActions
-                            claim={{ id: c.id, companyId: c.company_id, date: c.transaction_date, amount: String(c.amount), amountText: Number(c.amount).toFixed(2), payer: c.person_name ?? "", category: c.category ?? "", description: c.description ?? "", hasReceipt: !!c.document_id }}
+                            claim={{ id: c.id, companyId: c.company_id, date: c.transaction_date, amount: String(c.amount), amountText: Number(c.amount).toFixed(2), payer: c.person_name ?? "", paymentMethod: c.payment_method ?? "", category: c.category ?? "", description: c.description ?? "", hasReceipt: !!c.document_id }}
                             companies={companies}
                             payers={payerList}
                           />

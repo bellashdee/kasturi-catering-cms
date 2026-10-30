@@ -36,7 +36,7 @@ function UsageGuide({ canPay, hasClaim }: { canPay: boolean; hasClaim: boolean }
           <strong className="text-text">Received</strong>: money given to the petty cash, for example the float from Ms. Penny. Choose the company (or both companies), the date, the amount and whether it was received by cash or online transfer.
         </li>
         <li>
-          <strong className="text-text">Spent</strong>: money spent from the petty cash. Choose the category (one or more), write what it was spent on and attach the receipt.
+          <strong className="text-text">Spent</strong>: money spent from the petty cash. Choose the category (one or more), whether it was paid by cash or online transfer, write what it was spent on and attach the receipt.
         </li>
         {hasClaim && (
           <li>
@@ -48,7 +48,7 @@ function UsageGuide({ canPay, hasClaim }: { canPay: boolean; hasClaim: boolean }
         )}
         {canPay && (
           <li>
-            <strong className="text-text">Staff claim payment</strong>: when Penny Chan or Nabilah has paid a staff claim, choose the claim, then enter the payment date and the Reference ID. The staff name, amount and date of the claim are shown.
+            <strong className="text-text">Staff claim payment</strong>: when Penny Chan or Nabilah has paid a staff claim, choose the claim, then enter the payment date, whether it was paid by cash or online transfer, and the Reference ID. The staff name, amount and date of the claim are shown.
           </li>
         )}
         <li>
@@ -175,6 +175,10 @@ export function PettyCashEntryForm({
         setError("Choose the staff claim that is paid.");
         return;
       }
+      if (!paymentMethod) {
+        setError("Choose how the claim was paid: cash or online transfer.");
+        return;
+      }
       if (!paymentReference.trim()) {
         setError("Enter the reference ID of the payment.");
         return;
@@ -182,8 +186,9 @@ export function PettyCashEntryForm({
       setSaving(true);
       setError(null);
       try {
-        await markPettyCashPaid({ transactionId: payClaimId, paymentDate, paymentReference: paymentReference.trim(), paymentRemarks: paymentRemarks.trim() || undefined });
+        await markPettyCashPaid({ transactionId: payClaimId, paymentDate, paymentMethod, paymentReference: paymentReference.trim(), paymentRemarks: paymentRemarks.trim() || undefined });
         setPayClaimId("");
+        setPaymentMethod("");
         setPaymentReference("");
         setPaymentRemarks("");
         router.refresh();
@@ -210,8 +215,8 @@ export function PettyCashEntryForm({
       setError("The shares of the companies must add up to the total amount of the claim.");
       return;
     }
-    if (isReceived && !paymentMethod) {
-      setError("Choose how the money was received: cash or online transfer.");
+    if (!paymentMethod) {
+      setError(isReceived ? "Choose how the money was received: cash or online transfer." : "Choose how it was paid: cash or online transfer.");
       return;
     }
     setSaving(true);
@@ -232,6 +237,7 @@ export function PettyCashEntryForm({
             documentId,
             personName: personName.trim(),
             personPosition: personPosition.trim(),
+            paymentMethod,
             shares: sharesList.map((s) => ({ companyId: s.companyId, amount: Math.round(Number(s.text) * 100) / 100 })),
           })
         : isClaim
@@ -248,10 +254,11 @@ export function PettyCashEntryForm({
             documentId,
             personName: personName.trim(),
             personPosition: personPosition.trim(),
+            paymentMethod,
           })
         : editing
-          ? await updatePettyCashEntry(editing.id, { companyId: firstCompanyId, alsoCompanyIds, paymentMethod: isReceived ? paymentMethod : undefined, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, amount: Number(amount), documentId, personName: personName || undefined, personPosition: personPosition || undefined })
-          : await createPettyCashEntry({ companyId: firstCompanyId, alsoCompanyIds, paymentMethod: isReceived ? paymentMethod : undefined, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, amount: Number(amount), documentId, personName: personName || undefined, personPosition: personPosition || undefined });
+          ? await updatePettyCashEntry(editing.id, { companyId: firstCompanyId, alsoCompanyIds, paymentMethod, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, amount: Number(amount), documentId, personName: personName || undefined, personPosition: personPosition || undefined })
+          : await createPettyCashEntry({ companyId: firstCompanyId, alsoCompanyIds, paymentMethod, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, amount: Number(amount), documentId, personName: personName || undefined, personPosition: personPosition || undefined });
       if (!result.ok) {
         setError(result.error);
         return;
@@ -280,6 +287,20 @@ export function PettyCashEntryForm({
   }
 
   if (kinds.length === 0) return null;
+
+  // cash or online transfer, asked for every type: how the money was received, spent, paid by the staff member or paid back to them
+  const methodLabel = isReceived ? "Payment received by *" : isClaim ? "Staff paid by *" : isPayment ? "Claim paid by *" : "Paid by *";
+  const methodField = (
+    <div>
+      <label className={labelClass}>{methodLabel}</label>
+      <Select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} required className={inputClass}>
+        <option value="">Select cash or online transfer</option>
+        {Object.entries(PAYMENT_METHOD_LABEL).map(([value, text]) => (
+          <option key={value} value={value}>{text}</option>
+        ))}
+      </Select>
+    </div>
+  );
 
   const typeField = (
     <div>
@@ -331,11 +352,12 @@ export function PettyCashEntryForm({
             </div>
           </div>
         )}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
           <div>
             <label className={labelClass}>Payment date *</label>
             <input type="date" required max={todayInMalaysia()} value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className={inputClass} />
           </div>
+          {methodField}
           <div>
             <label className={labelClass}>Reference ID *</label>
             <input required value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} placeholder="e.g. transfer reference, or CASH" className={inputClass} />
@@ -401,17 +423,7 @@ export function PettyCashEntryForm({
           <label className={labelClass}>{splitClaim ? "Total amount of the claim (RM) *" : "Amount (RM) *"}</label>
           <input type="number" min="0.01" step="0.01" required value={amount} onChange={(e) => { setAmount(e.target.value); setShareText({}); }} className={inputClass} />
         </div>
-        {isReceived && (
-          <div>
-            <label className={labelClass}>Payment received by *</label>
-            <Select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} required className={inputClass}>
-              <option value="">Select cash or online transfer</option>
-              {Object.entries(PAYMENT_METHOD_LABEL).map(([value, text]) => (
-                <option key={value} value={value}>{text}</option>
-              ))}
-            </Select>
-          </div>
-        )}
+        {methodField}
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

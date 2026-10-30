@@ -8,6 +8,7 @@ import { runAction, type ActionResult } from "@/lib/actionResult";
 import { claimPayers } from "@/lib/pettyCash/access";
 import { todayInMalaysia } from "@/lib/format";
 import type { PettyCashTransactionRow } from "@/lib/finance/actions";
+import { isPaymentMethod } from "@/lib/operationPettyCash/constants";
 
 /**
  * My Claims: any staff member claims back what they bought with their own money, from Ms. Penny or Ms. Nabilah. The staff have no
@@ -21,6 +22,8 @@ export type MyClaimInput = {
   amount: number;
   /** the person the claim is claimed from (Penny Chan or Nabilah) */
   payer: string;
+  /** cash or online transfer: how the staff member paid */
+  paymentMethod?: string;
   category?: string;
   description?: string;
   documentId?: string;
@@ -46,6 +49,7 @@ async function checked(input: MyClaimInput, records: { full_name: string; depart
   if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("Enter an amount more than 0.");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) throw new Error("Choose the date you bought it.");
   if (input.date > todayInMalaysia()) throw new Error("The date cannot be in the future.");
+  if (!isPaymentMethod(input.paymentMethod)) throw new Error("Choose how you paid: cash or online transfer.");
   const payer = (await claimPayers()).find((p) => norm(p.name) === norm(input.payer));
   if (!payer) throw new Error("Choose who you claim from: Penny Chan or Nabilah.");
   return { record, payer };
@@ -78,6 +82,7 @@ export async function submitMyClaim(input: MyClaimInput): Promise<ActionResult> 
         person_name: payer.name,
         person_position: payer.position || null,
         shared_company_ids: [],
+        payment_method: input.paymentMethod,
         created_by: userId,
       })
       .select("id")
@@ -113,6 +118,7 @@ export async function updateMyClaim(id: string, input: MyClaimInput): Promise<Ac
         transaction_date: input.date,
         person_name: payer.name,
         person_position: payer.position || null,
+        payment_method: input.paymentMethod,
         ...(input.documentId ? { document_id: input.documentId } : {}),
       })
       .eq("id", id)
@@ -157,6 +163,7 @@ export async function restoreMyClaim(row: PettyCashTransactionRow): Promise<Acti
       person_name: row.person_name,
       person_position: row.person_position,
       shared_company_ids: [],
+      payment_method: row.payment_method,
       created_by: userId,
     });
     if (error) throw new Error("Could not put the claim back.");

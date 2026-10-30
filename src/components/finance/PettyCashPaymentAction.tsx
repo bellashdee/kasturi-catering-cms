@@ -4,6 +4,7 @@ import { todayInMalaysia } from "@/lib/format";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { markPettyCashPaid } from "@/lib/finance/actions";
+import { PAYMENT_METHOD_LABEL } from "@/lib/operationPettyCash/constants";
 
 function todayIso(): string {
   return todayInMalaysia();
@@ -13,6 +14,7 @@ export function PettyCashPaymentAction({ transactionId, paymentStatus }: { trans
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [paymentDate, setPaymentDate] = useState(todayIso());
+  const [paymentMethod, setPaymentMethod] = useState("");
   const [paymentReference, setPaymentReference] = useState("");
   const [paymentRemarks, setPaymentRemarks] = useState("");
   const [saving, setSaving] = useState(false);
@@ -34,7 +36,7 @@ export function PettyCashPaymentAction({ transactionId, paymentStatus }: { trans
     setSaving(true);
     setError(null);
     try {
-      await markPettyCashPaid({ transactionId, paymentDate, paymentReference: paymentReference || undefined, paymentRemarks: paymentRemarks || undefined });
+      await markPettyCashPaid({ transactionId, paymentDate, paymentMethod, paymentReference: paymentReference || undefined, paymentRemarks: paymentRemarks || undefined });
       router.refresh();
       setOpen(false);
     } catch (err) {
@@ -53,6 +55,15 @@ export function PettyCashPaymentAction({ transactionId, paymentStatus }: { trans
         <input type="date" required value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className="mt-0.5 h-8 w-full rounded-md border border-border-strong px-2 text-[12.5px]" />
       </div>
       <div>
+        <label className="text-[11px] font-semibold text-text-secondary">Claim paid by *</label>
+        <select required value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="mt-0.5 h-8 w-full rounded-md border border-border-strong bg-white px-2 text-[12.5px]">
+          <option value="">Cash or online transfer</option>
+          {Object.entries(PAYMENT_METHOD_LABEL).map(([value, text]) => (
+            <option key={value} value={value}>{text}</option>
+          ))}
+        </select>
+      </div>
+      <div>
         <label className="text-[11px] font-semibold text-text-secondary">Payment Reference (optional)</label>
         <input value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} className="mt-0.5 h-8 w-full rounded-md border border-border-strong px-2 text-[12.5px]" />
       </div>
@@ -64,7 +75,7 @@ export function PettyCashPaymentAction({ transactionId, paymentStatus }: { trans
         <button onClick={() => setOpen(false)} disabled={saving} className="rounded-md px-2.5 py-1 text-[12px] font-semibold text-text-secondary">
           Cancel
         </button>
-        <button onClick={confirm} disabled={saving || !paymentDate} className="rounded-md bg-success px-3 py-1 text-[12px] font-bold text-white disabled:opacity-50">
+        <button onClick={confirm} disabled={saving || !paymentDate || !paymentMethod} className="rounded-md bg-success px-3 py-1 text-[12px] font-bold text-white disabled:opacity-50">
           {saving ? "Saving..." : "Confirm Paid"}
         </button>
       </div>

@@ -1,13 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
+import { shortNameOf } from "@/lib/hr/shortName";
 
 type DB = SupabaseClient<Database>;
 
-export type PersonOption = { name: string; position: string; department: string; userId: string | null; /** a Malaysian (local) staff member: only local staff hold the petty cash */ local: boolean };
+export type PersonOption = { name: string; position: string; department: string; userId: string | null; /** a Malaysian (local) staff member: only local staff hold the petty cash */ local: boolean; /** the name the person is called at work (SYAMIE) */ shortName: string };
 
 /** The active staff with their position, department and whether they are local (what the signed-in person may read; A to Z). */
 export async function loadPersonOptions(supabase: DB): Promise<PersonOption[]> {
-  const { data } = await supabase.from("employees").select("full_name, position, department, nationality, user_id").eq("status", "active").order("full_name").limit(1000);
+  const { data } = await supabase.from("employees").select("full_name, short_name, position, department, nationality, user_id").eq("status", "active").order("full_name").limit(1000);
   const seen = new Set<string>();
   const list: PersonOption[] = [];
   for (const e of data ?? []) {
@@ -20,7 +21,7 @@ export async function loadPersonOptions(supabase: DB): Promise<PersonOption[]> {
       continue;
     }
     seen.add(name.toUpperCase());
-    list.push({ name, position: e.position?.trim() ?? "", department: e.department?.trim() ?? "", userId: e.user_id ?? null, local: /^malay/i.test(e.nationality?.trim() ?? "") });
+    list.push({ name, position: e.position?.trim() ?? "", department: e.department?.trim() ?? "", userId: e.user_id ?? null, local: /^malay/i.test(e.nationality?.trim() ?? ""), shortName: shortNameOf(name, e.short_name) });
   }
   return list;
 }
@@ -50,4 +51,14 @@ export function chosenHolder(sp: { holder?: string; position?: string }, holders
   if (sp.holder !== undefined) return { name: sp.holder.trim(), position: (sp.position ?? "").trim() };
   const own = ownHolder(holders, userId);
   return { name: own?.name ?? "", position: own?.position ?? "" };
+}
+
+/** The short name of a person written on a petty cash record (KHAIRUL ADLAN BIN SAGIMAN gives ADLAN): the one on their staff record, otherwise worked out from the name. */
+export function shortNameIn(people: PersonOption[]) {
+  const byName = new Map(people.map((p) => [p.name.toUpperCase(), p.shortName]));
+  return (name: string | null | undefined) => {
+    const full = name?.trim();
+    if (!full) return "";
+    return byName.get(full.toUpperCase()) ?? shortNameOf(full);
+  };
 }

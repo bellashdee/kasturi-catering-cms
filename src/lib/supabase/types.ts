@@ -3911,6 +3911,7 @@ export type Database = {
         Row: {
           amount: number
           category: string | null
+          claim_payment_method: string | null
           claimant_department: string | null
           claimant_employee_id: string | null
           claimant_name: string | null
@@ -3921,6 +3922,7 @@ export type Database = {
           document_id: string | null
           id: string
           paid_by: string | null
+          payment_method: string | null
           payment_date: string | null
           payment_reference: string | null
           payment_remarks: string | null
@@ -3935,6 +3937,7 @@ export type Database = {
         Insert: {
           amount: number
           category?: string | null
+          claim_payment_method?: string | null
           claimant_department?: string | null
           claimant_employee_id?: string | null
           claimant_name?: string | null
@@ -3945,6 +3948,7 @@ export type Database = {
           document_id?: string | null
           id?: string
           paid_by?: string | null
+          payment_method?: string | null
           payment_date?: string | null
           payment_reference?: string | null
           payment_remarks?: string | null
@@ -3959,6 +3963,7 @@ export type Database = {
         Update: {
           amount?: number
           category?: string | null
+          claim_payment_method?: string | null
           claimant_department?: string | null
           claimant_employee_id?: string | null
           claimant_name?: string | null
@@ -3969,6 +3974,7 @@ export type Database = {
           document_id?: string | null
           id?: string
           paid_by?: string | null
+          payment_method?: string | null
           payment_date?: string | null
           payment_reference?: string | null
           payment_remarks?: string | null

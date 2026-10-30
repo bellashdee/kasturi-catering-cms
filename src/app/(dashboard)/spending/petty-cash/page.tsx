@@ -7,7 +7,7 @@ import { canAccessModule } from "@/lib/modules";
 import { formatPrice, formatMalaysiaDate, todayInMalaysia } from "@/lib/format";
 import { listPettyCashTransactions, summarizePettyCashClaims } from "@/lib/finance/queries";
 import { PETTY_CASH_OVERDUE_DAYS, PETTY_CASH_PAYMENT_STATUS_LABEL, isPettyCashOverdue, pettyCashDaysPending } from "@/lib/finance/constants";
-import { ENTRY_TYPE_LABEL, PAYMENT_METHOD_LABEL, type EntryType, type OperationPettyCashRow, type PaymentMethod } from "@/lib/operationPettyCash/constants";
+import { ENTRY_TYPE_LABEL, paymentMethodLabel, type EntryType, type OperationPettyCashRow } from "@/lib/operationPettyCash/constants";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SpendingSubNav } from "@/components/spending/SpendingSubNav";
@@ -22,11 +22,12 @@ import { PettyCashClaimActions } from "@/components/finance/FinanceRecordActions
 import { UndoBanner } from "@/components/operationPettyCash/UndoBanner";
 import { SoftHeader, SoftPage } from "@/components/ui/Soft";
 import { buildOverview } from "@/lib/pettyCash/overview";
-import { chosenHolder, holdersOnly, likeExact, loadHolderNames, loadPersonOptions } from "@/lib/pettyCash/people";
+import { chosenHolder, holdersOnly, likeExact, loadHolderNames, loadPersonOptions, shortNameIn } from "@/lib/pettyCash/people";
 import { claimPayers, ownIdentity, pettyCashAccess } from "@/lib/pettyCash/access";
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
 const dayLabel = (iso: string) => formatMalaysiaDate(`${iso}T12:00:00+08:00`);
+const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 type Row = {
   key: string;
@@ -39,12 +40,13 @@ type Row = {
   amount: number;
   title: string;
   category: string | null;
-  /** cash or online transfer, for money received */
+  /** cash or online transfer: how the money was received, spent or paid by the staff member */
   method?: string | null;
   person: string;
   documentId: string | null;
   bookId?: string;
-  claim?: { id: string; status: string; paymentDate: string | null; claimant: string | null; department: string | null };
+  /** a staff claim; paidMethod is how the claim was paid back to the staff member */
+  claim?: { id: string; status: string; paymentDate: string | null; claimant: string | null; department: string | null; paidMethod: string | null };
   /** a row that comes from the claims / top-ups table (it can be edited and deleted here) */
   tx?: { id: string; type: "expense" | "top_up"; claimant: string; department: string; category: string; description: string; companyId: string; sharedCompanyIds: string[] };
 };
@@ -84,6 +86,8 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
 
   const [people, holderNames, payers] = await Promise.all([loadPersonOptions(supabase), loadHolderNames(supabase), canClaims ? claimPayers() : Promise.resolve([])]);
   const holders = holdersOnly(people, holderNames);
+  // the records show the short name of each person (the Short Name on the staff record), without the position
+  const short = shortNameIn(people);
   // whose petty cash this is: only that person's money, spending and claims are read, so nobody else's is ever mixed in.
   // Only Ms. Penny and Ms. Nabilah may choose another person or look at everyone's; everybody else is kept to their own.
   const own = ownIdentity(people, session.userId, session.fullName);
@@ -118,8 +122,8 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
       amount: Number(e.amount),
       title: e.description || (e.entry_type === "top_up" ? ENTRY_TYPE_LABEL.top_up : "—"),
       category: e.category,
-      method: e.entry_type === "top_up" ? e.payment_method : null,
-      person: [e.person_name, e.person_position].filter(Boolean).join(" · "),
+      method: e.payment_method,
+      person: short(e.person_name),
       documentId: e.document_id,
       bookId: e.id,
     })),
@@ -134,9 +138,10 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
       amount: Number(t.amount),
       title: t.description || (t.type === "top_up" ? ENTRY_TYPE_LABEL.top_up : "—"),
       category: t.category,
-      person: [t.person_name, t.person_position].filter(Boolean).join(" · "),
+      method: t.payment_method,
+      person: short(t.person_name),
       documentId: t.document_id,
-      claim: t.type === "expense" ? { id: t.id, status: t.payment_status, paymentDate: t.payment_date, claimant: t.claimant_name, department: t.claimant_department } : undefined,
+      claim: t.type === "expense" ? { id: t.id, status: t.payment_status, paymentDate: t.payment_date, claimant: short(t.claimant_name), department: t.claimant_department, paidMethod: t.claim_payment_method } : undefined,
       tx: { id: t.id, type: t.type === "expense" ? "expense" : "top_up", claimant: t.claimant_name ?? "", department: t.claimant_department ?? "", category: t.category ?? "", description: t.description ?? "", companyId: t.company_id, sharedCompanyIds: t.shared_company_ids ?? [] },
     })),
   ].sort((a, b) => a.date.localeCompare(b.date) || a.created.localeCompare(b.created));
@@ -146,7 +151,8 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
   const withBalance: (Row & { balance: number })[] = [];
   for (const r of rows) {
     const previous = withBalance.length > 0 ? withBalance[withBalance.length - 1].balance : 0;
-    withBalance.push({ ...r, balance: previous + (r.kind === "in" ? r.amount : -r.amount) });
+    // rounded to the sen at each step, so no 1720.0500000000002 shows
+    withBalance.push({ ...r, balance: round2(previous + (r.kind === "in" ? r.amount : -r.amount)) });
   }
   const totalBalance = withBalance.length > 0 ? withBalance[withBalance.length - 1].balance : 0;
 
@@ -156,7 +162,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
   const inMonth = withBalance.filter((r) => month === "all" || r.date.startsWith(month));
   // what each company used out of the pot in the month shown
   const spentByCompany = companies
-    .map((c) => ({ name: c.name, spent: inMonth.filter((r) => r.kind === "out" && r.companyId === c.id).reduce((t, r) => t + r.amount, 0) }))
+    .map((c) => ({ name: c.name, spent: round2(inMonth.filter((r) => r.kind === "out" && r.companyId === c.id).reduce((t, r) => t + r.amount, 0)) }))
     .filter((c) => c.spent > 0);
   const claimsInMonth = inMonth.filter((r) => r.source === "claim" && r.claim);
   const summary = summarizePettyCashClaims(claimsInMonth.map((r) => ({ amount: r.amount, payment_status: r.claim!.status })));
@@ -180,19 +186,21 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
   const editHref = (id: string) => `${listHref}${statusParam ? `&status=${statusParam}` : ""}&edit=${id}`;
   const statusHref = (status?: string) => `${listHref}${status ? `&status=${status}` : ""}`;
 
-  const exportHeaders = ["Date", "Company", "Kind", "Category", "Payment received by", "Details", "Name / position", "Claimant", "Claim status", "Received (RM)", "Spent (RM)", "Balance (RM)"];
+  const exportHeaders = ["Date", "Company", "Kind", "Category", "Payment method", "Details", "Name", "Claimant", "Claim status", "Claim paid by", "Received (RM)", "Spent (RM)", "Balance (RM)"];
+  const moneyColumns = ["Received (RM)", "Spent (RM)", "Balance (RM)"];
   const exportRows = [...shown].reverse().map((r): (string | number)[] => [
     r.date,
     r.companyName,
     r.source === "claim" ? "Staff claim" : r.kind === "in" ? "Received" : "Spent",
     r.category ?? "",
-    r.method ? (PAYMENT_METHOD_LABEL[r.method as PaymentMethod] ?? r.method) : "",
+    paymentMethodLabel(r.method),
     r.title,
     r.person,
     r.claim?.claimant ?? "",
     r.claim ? (PETTY_CASH_PAYMENT_STATUS_LABEL[r.claim.status] ?? r.claim.status) : "",
-    r.kind === "in" ? r.amount : "",
-    r.kind === "out" ? r.amount : "",
+    paymentMethodLabel(r.claim?.paidMethod),
+    r.kind === "in" ? round2(r.amount) : "",
+    r.kind === "out" ? round2(r.amount) : "",
     r.balance,
   ]);
 
@@ -255,7 +263,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
           allowPayClaims={canClaims && seeAll}
           pendingClaims={rows
             .filter((r) => r.claim?.status === "pending_payment")
-            .map((r) => ({ id: r.claim!.id, label: `${r.claim!.claimant ?? "—"} · ${r.title} · RM ${r.amount.toFixed(2)} · ${r.date} · ${r.companyName}`, claimant: r.claim!.claimant ?? "—", amount: r.amount, date: r.date, description: r.title, companyName: r.companyName }))}
+            .map((r) => ({ id: r.claim!.id, label: `${r.claim!.claimant || "—"} · ${r.title} · RM ${r.amount.toFixed(2)} · ${r.date} · ${r.companyName}`, claimant: r.claim!.claimant || "—", amount: r.amount, date: r.date, description: r.title, companyName: r.companyName }))}
           lockName={!seeAll}
         />
       )}
@@ -278,7 +286,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
                   </Link>
                 </div>
               )}
-              <ExportListButtons filenameBase={`petty-cash-${month}`} headers={exportHeaders} rows={exportRows} />
+              <ExportListButtons filenameBase={`petty-cash-${month}`} headers={exportHeaders} rows={exportRows} moneyColumns={moneyColumns} />
             </div>
           </div>
 
@@ -313,12 +321,10 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
                           {r.category && <div className="text-[11.5px] text-text-muted">{r.category}</div>}
                           {r.method && (
                             <div className="flex gap-1 text-[11.5px] font-semibold text-text-secondary">
-                              <span>Payment received by:</span> <span>{PAYMENT_METHOD_LABEL[r.method as PaymentMethod] ?? r.method}</span>
+                              <span>{r.kind === "in" ? "Payment received by:" : r.claim ? "Staff paid by:" : "Paid by:"}</span> <span>{paymentMethodLabel(r.method)}</span>
                             </div>
                           )}
-                          {r.claim && (
-                            <div className="text-[11.5px] text-text-secondary">{`Claimed by: ${[r.claim.claimant, r.claim.department].filter(Boolean).join(" · ") || "—"}`}</div>
-                          )}
+                          {r.claim && <div className="text-[11.5px] text-text-secondary">{`Claimed by: ${r.claim.claimant || "—"}`}</div>}
                           {r.person && <div className="text-[11.5px] text-text-secondary">{`${r.kind === "in" ? "Received by" : r.claim ? "Paid from the petty cash of" : "Spent by"}: ${r.person}`}</div>}
                         </td>
                         <td className="px-4 py-2.5 text-right font-semibold text-success">{r.kind === "in" ? formatPrice(r.amount) : ""}</td>
@@ -333,6 +339,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
                               </StatusBadge>
                               {days !== null && <div className={`mt-1 text-[11px] ${overdue ? "font-semibold text-danger" : "text-text-muted"}`}>{days} day{days === 1 ? "" : "s"} pending</div>}
                               {r.claim.paymentDate && <div className="mt-1 text-[11px] text-text-muted">{dayLabel(r.claim.paymentDate)}</div>}
+                              {r.claim.paidMethod && <div className="mt-1 text-[11px] text-text-muted">{`Paid by: ${paymentMethodLabel(r.claim.paidMethod)}`}</div>}
                             </>
                           ) : (
                             <span className="text-text-muted">—</span>

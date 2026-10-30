@@ -38,14 +38,14 @@ export type PettyCashEntryInput = {
   personPosition?: string;
   /** the other companies the entry is also for (keyed in once, counted once) */
   alsoCompanyIds?: string[];
-  /** how the money was received: required for a top-up */
+  /** cash or online transfer: how the money was received (a top-up) or paid (spent); required for both */
   paymentMethod?: string;
 };
 
 function validate(input: PettyCashEntryInput) {
   if (!input.personName?.trim() || !input.personPosition?.trim()) throw new Error("Choose whose petty cash this is: the name and the position.");
   if (input.entryType !== "top_up" && input.entryType !== "expense") throw new Error("Choose whether the money was received or spent.");
-  if (input.entryType === "top_up" && input.paymentMethod !== "cash" && input.paymentMethod !== "online_transfer") throw new Error("Choose how the money was received: cash or online transfer.");
+  if (input.paymentMethod !== "cash" && input.paymentMethod !== "online_transfer") throw new Error(input.entryType === "top_up" ? "Choose how the money was received: cash or online transfer." : "Choose how the money was paid: cash or online transfer.");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.entryDate)) throw new Error("Select the date.");
   if (input.entryDate > todayInMalaysia()) throw new Error("The date cannot be in the future.");
   if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("Enter an amount more than 0.");
@@ -76,7 +76,7 @@ export async function createPettyCashEntry(input: PettyCashEntryInput): Promise<
         person_name: input.personName?.trim().slice(0, 200) || null,
         person_position: input.personPosition?.trim().slice(0, 200) || null,
         shared_company_ids: (input.alsoCompanyIds ?? []).filter((id) => id !== input.companyId),
-        payment_method: input.entryType === "top_up" ? input.paymentMethod : null,
+        payment_method: input.paymentMethod,
         created_by: userId,
       })
       .select("id")
@@ -108,7 +108,7 @@ export async function updatePettyCashEntry(id: string, input: PettyCashEntryInpu
         document_id: input.documentId ?? before.document_id,
         person_name: input.personName?.trim().slice(0, 200) || null,
         person_position: input.personPosition?.trim().slice(0, 200) || null,
-        payment_method: input.entryType === "top_up" ? input.paymentMethod : null,
+        payment_method: input.paymentMethod,
         // the other companies are only changed when they are sent
         ...(input.alsoCompanyIds ? { shared_company_ids: input.alsoCompanyIds.filter((id) => id !== input.companyId) } : {}),
         updated_at: new Date().toISOString(),

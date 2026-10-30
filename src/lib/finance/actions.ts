@@ -8,6 +8,7 @@ import { recordAudit } from "@/lib/audit";
 import { runAction, type ActionResult } from "@/lib/actionResult";
 import { assertOwnPerson, claimPayers, pettyCashAccess } from "@/lib/pettyCash/access";
 import { confirmedPaymentDate, todayInMalaysia } from "@/lib/format";
+import { isPaymentMethod } from "@/lib/operationPettyCash/constants";
 import { DUPLICATE_INVOICE_MESSAGE } from "@/lib/finance/constants";
 import type { Database } from "@/lib/supabase/types";
 
@@ -253,6 +254,8 @@ export type PettyCashInput = {
   personPosition?: string;
   /** the other companies the claim is also for (keyed in once, counted once) */
   alsoCompanyIds?: string[];
+  /** cash or online transfer: how the staff member paid (a claim) or how the money was received (a top-up) */
+  paymentMethod?: string;
 };
 
 export async function createPettyCashTransaction(input: PettyCashInput): Promise<ActionResult> {
@@ -260,6 +263,7 @@ export async function createPettyCashTransaction(input: PettyCashInput): Promise
   const { supabase, userId } = await requireUser();
   if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("Enter an amount more than 0.");
   if (input.type === "expense" && !input.claimantName?.trim()) throw new Error("Enter who is claiming this petty cash.");
+  if (!isPaymentMethod(input.paymentMethod)) throw new Error("Choose how it was paid: cash or online transfer.");
   if (!input.personName?.trim() || !input.personPosition?.trim()) throw new Error("Choose whose petty cash this is: the name and the position.");
   await assertOwnPerson(supabase, userId, input.personName);
   if (input.type === "expense") {
@@ -285,6 +289,7 @@ export async function createPettyCashTransaction(input: PettyCashInput): Promise
     person_name: input.personName?.trim().slice(0, 200) || null,
     person_position: input.personPosition?.trim().slice(0, 200) || null,
     shared_company_ids: (input.alsoCompanyIds ?? []).filter((id) => id !== input.companyId),
+    payment_method: input.paymentMethod,
     created_by: userId,
   }).select("id").single();
   if (error) throw error;
@@ -313,6 +318,8 @@ export type SplitClaimInput = {
   personPosition: string;
   /** how much of the claim belongs to each company (the money of each company is kept apart); together they are the whole claim */
   shares: { companyId: string; amount: number }[];
+  /** cash or online transfer: how the staff member paid */
+  paymentMethod?: string;
 };
 
 /** A staff claim for more than one company: one claim for each company with its own share of the amount, all saved together or not at all. */
@@ -321,6 +328,8 @@ export async function createSplitPettyCashClaims(input: SplitClaimInput): Promis
     const { supabase, userId } = await requireUser();
     if (!input.claimantName?.trim()) throw new Error("Enter who is claiming this petty cash.");
     if (!input.personName?.trim() || !input.personPosition?.trim()) throw new Error("Choose whose petty cash this is: the name and the position.");
+    if (!isPaymentMethod(input.paymentMethod)) throw new Error("Choose how it was paid: cash or online transfer.");
+    const paymentMethod = input.paymentMethod;
     const shares = input.shares ?? [];
     if (shares.length < 2 || new Set(shares.map((s) => s.companyId)).size !== shares.length) throw new Error("Choose at least two different companies to split the claim.");
     if (shares.some((s) => !Number.isFinite(s.amount) || s.amount <= 0)) throw new Error("Enter an amount more than 0 for each company.");
@@ -346,6 +355,7 @@ export async function createSplitPettyCashClaims(input: SplitClaimInput): Promis
           person_name: input.personName.trim().slice(0, 200),
           person_position: input.personPosition.trim().slice(0, 200),
           shared_company_ids: [],
+          payment_method: paymentMethod,
           created_by: userId,
         })),
       )
@@ -366,6 +376,8 @@ export type MarkPettyCashPaidInput = {
   paymentDate: string;
   paymentReference?: string;
   paymentRemarks?: string;
+  /** cash or online transfer: how the claim was paid back to the staff member */
+  paymentMethod?: string;
 };
 
 export async function markPettyCashPaid(input: MarkPettyCashPaidInput) {
@@ -374,6 +386,7 @@ export async function markPettyCashPaid(input: MarkPettyCashPaidInput) {
   const { seeAll } = await pettyCashAccess(supabase, userId);
   if (!seeAll) throw new Error("Only the Director of Finance and her assistant can record the payment of a staff claim.");
   const paymentDate = confirmedPaymentDate(input.paymentDate);
+  if (!isPaymentMethod(input.paymentMethod)) throw new Error("Choose how the claim was paid: cash or online transfer.");
   const { data: before } = await supabase.from("petty_cash_transactions").select("company_id, amount, payment_status").eq("id", input.transactionId).single();
   const { error } = await supabase
     .from("petty_cash_transactions")
@@ -382,6 +395,7 @@ export async function markPettyCashPaid(input: MarkPettyCashPaidInput) {
       payment_date: paymentDate,
       payment_reference: input.paymentReference || null,
       payment_remarks: input.paymentRemarks || null,
+      claim_payment_method: input.paymentMethod,
       paid_by: userId,
     })
     .eq("id", input.transactionId);
