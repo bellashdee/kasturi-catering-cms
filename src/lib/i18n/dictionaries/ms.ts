@@ -4180,8 +4180,9 @@ const dictionary: Record<string, string> = {
   "Email (optional)": "E-mel (pilihan)",
   "Set by the person (use Edit to set a new one)": "Ditetapkan oleh orang itu (guna Edit untuk tetapkan yang baharu)",
   "My Profile, Main Dashboard, Priority Centre, Bulletin Board, Company Spending and the AI Assistant are in the menu of everyone.": "Profil Saya, Papan Pemuka Utama, Pusat Keutamaan, Papan Buletin, Perbelanjaan Syarikat dan Pembantu AI ada dalam menu semua orang.",
-  "Centralized Catering, Kitchen, Finance & HR System": "Sistem Berpusat Katering, Dapur, Kewangan & HR",
-  "Log Out": "Log Keluar"
+  "Log Out": "Log Keluar",
+  "Open the side menu": "Buka menu sisi",
+  "Close the side menu": "Tutup menu sisi"
 };
 
 export default dictionary;

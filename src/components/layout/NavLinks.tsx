@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { createContext, useContext, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { MODULES } from "@/lib/constants";
@@ -134,27 +134,38 @@ function Icon({ name }: { name: string }) {
   );
 }
 
+/** True while the side bar is closed to its icons (only on a computer: the phone menu always shows the words). */
+export const SidebarCollapsedContext = createContext(false);
+export const useSidebarCollapsed = () => useContext(SidebarCollapsedContext);
+
+/** The words of a link: they disappear while the side bar is closed. */
+export const labelClass = (collapsed: boolean) => (collapsed ? "md:hidden" : "");
+
 /** The page you are on: a filled tan pill with dark text, the same in every company look. */
 export const ACTIVE_PILL = "bg-[#d2b185] font-bold text-[#2b2318] shadow-sm";
 
 /** A group of links that opens and closes (chevron on the right); the links inside hang from a thin line on the left. */
 export function NavGroup({ icon, label, children, defaultOpen = true, hasActive = false }: { icon: string; label: string; children: React.ReactNode; defaultOpen?: boolean; hasActive?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
+  const collapsed = useSidebarCollapsed();
   return (
     <div className="flex flex-col">
       <button
         type="button"
         aria-expanded={open}
+        title={label}
         onClick={() => setOpen((v) => !v)}
-        className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-[13.5px] font-medium transition hover:bg-sidebar-field ${hasActive ? "bg-sidebar-field text-sidebar-text" : "text-sidebar-text/75"}`}
+        className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-[13.5px] font-medium transition hover:bg-sidebar-field ${collapsed ? "md:justify-center md:px-0" : ""} ${hasActive ? "bg-sidebar-field text-sidebar-text" : "text-sidebar-text/75"}`}
       >
         <Icon name={icon} />
-        <span className="flex-1">{label}</span>
-        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`shrink-0 transition-transform ${open ? "" : "rotate-180"}`} aria-hidden="true">
+        <span className={`flex-1 ${labelClass(collapsed)}`}>{label}</span>
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`shrink-0 transition-transform ${open ? "" : "rotate-180"} ${labelClass(collapsed)}`} aria-hidden="true">
           <path d="M5 12.5l5-5 5 5" />
         </svg>
       </button>
-      {open && <div className="ml-[22px] mt-0.5 flex flex-col gap-0.5 border-l border-sidebar-line pl-2.5">{children}</div>}
+      {(open || collapsed) && (
+        <div className={`ml-[22px] mt-0.5 flex flex-col gap-0.5 border-l border-sidebar-line pl-2.5 ${collapsed ? "md:ml-0 md:items-center md:border-l-0 md:pl-0" : ""}`}>{children}</div>
+      )}
     </div>
   );
 }
@@ -165,18 +176,20 @@ function NavItem({ href, icon, label, matchPrefixes, badge }: { href: string; ic
   const active = pathname === href || (matchPrefixes?.some((p) => pathname === p || pathname.startsWith(`${p}/`)) ?? false);
   const company = searchParams.get("company");
   const fullHref = company ? `${href}?company=${company}` : href;
+  const collapsed = useSidebarCollapsed();
 
   return (
     <Link
       href={fullHref}
-      className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13.5px] transition ${
+      title={label}
+      className={`relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13.5px] transition ${collapsed ? "md:justify-center md:px-0" : ""} ${
         active ? ACTIVE_PILL : "font-medium text-sidebar-text/75 hover:bg-sidebar-field hover:text-sidebar-text"
       }`}
     >
       <Icon name={icon} />
-      <span>{label}</span>
+      <span className={labelClass(collapsed)}>{label}</span>
       {badge ? (
-        <span title="Waiting for your review" className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full border border-current bg-danger px-1.5 text-[11px] font-bold text-white">
+        <span title="Waiting for your review" className={`ml-auto flex h-5 min-w-5 items-center justify-center rounded-full border border-current bg-danger px-1.5 text-[11px] font-bold text-white ${collapsed ? "md:absolute md:right-1 md:top-0.5 md:h-4 md:min-w-4 md:px-1 md:text-[9px]" : ""}`}>
           {badge}
         </span>
       ) : null}

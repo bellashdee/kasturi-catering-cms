@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ALL_COMPANIES_OPTION, COMPANY_STYLE } from "@/lib/constants";
-import { ACTIVE_PILL, NavGroup } from "./NavLinks";
+import { ACTIVE_PILL, NavGroup, labelClass, useSidebarCollapsed } from "./NavLinks";
 
 type Company = { id: string; name: string; legal_name: string };
 
@@ -92,6 +92,7 @@ export function CompanyQuickLinks({ companies }: { companies: Company[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedId = searchParams.get("company") ?? "all";
+  const collapsed = useSidebarCollapsed();
 
   function select(id: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -106,8 +107,9 @@ export function CompanyQuickLinks({ companies }: { companies: Company[] }) {
         return (
           <button
             key={c.id}
+            title={c.name}
             onClick={() => select(c.id)}
-            className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left text-[13px] transition ${
+            className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left text-[13px] transition ${collapsed ? "md:justify-center md:px-2.5" : ""} ${
               selectedId === c.id ? ACTIVE_PILL : "font-medium text-sidebar-text/75 hover:bg-sidebar-field hover:text-sidebar-text"
             }`}
           >
@@ -115,7 +117,7 @@ export function CompanyQuickLinks({ companies }: { companies: Company[] }) {
               className="h-2 w-2 shrink-0 rounded-full"
               style={{ background: style?.colorVar ?? "var(--color-company-all)" }}
             />
-            <span className="truncate">{c.name}</span>
+            <span className={`truncate ${labelClass(collapsed)}`}>{c.name}</span>
           </button>
         );
       })}

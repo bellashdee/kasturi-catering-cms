@@ -4246,8 +4246,9 @@ const dictionary: Record<string, string> = {
   "Email (optional)": "电邮（可选）",
   "Set by the person (use Edit to set a new one)": "由本人设置（用 Edit 设置新的密码）",
   "My Profile, Main Dashboard, Priority Centre, Bulletin Board, Company Spending and the AI Assistant are in the menu of everyone.": "我的资料、主面板、优先中心、公告板、公司开支和 AI 助手会出现在每个人的菜单里。",
-  "Centralized Catering, Kitchen, Finance & HR System": "餐饮、厨房、财务与人事集中管理系统",
-  "Log Out": "退出登录"
+  "Log Out": "退出登录",
+  "Open the side menu": "展开侧边菜单",
+  "Close the side menu": "收起侧边菜单"
 };
 
 export default dictionary;
