@@ -1,11 +1,12 @@
 import { PieChart, sumBy } from "@/components/reports/PieChart";
-import { parseDateRange } from "@/lib/finance/constants";
+import { monthDateRange, parseDateRange, resolvePeriod } from "@/lib/finance/constants";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
-import { getMonthlyCostBreakdown, listCostCategories, sameLabel, uniqueCategories } from "@/lib/finance/queries";
+import { getMonthlyCostBreakdown, getMonthlySales, listCostCategories, listSpending, sameLabel, uniqueCategories } from "@/lib/finance/queries";
+import { CostingCharts, type CostingMonth } from "@/components/reports/CostingCharts";
 import { formatCurrency, malaysiaYearMonth } from "@/lib/format";
 import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { ReportTable } from "@/components/reports/ReportTable";
@@ -14,6 +15,21 @@ import { EmptyRow } from "@/components/dashboard/SectionCard";
 
 function currentYearMonth() {
   return malaysiaYearMonth();
+}
+
+/** The month `back` months before year / month, as { year, month }. */
+function monthsBefore(year: number, month: number, back: number) {
+  const d = new Date(Date.UTC(year, month - 1 - back, 1));
+  return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1 };
+}
+
+/** Every day from start to end (YYYY-MM-DD), at most 120 days. */
+function daysBetween(start: string, end: string): string[] {
+  const days: string[] = [];
+  for (let d = new Date(`${start}T00:00:00Z`); d.toISOString().slice(0, 10) <= end && days.length < 120; d.setUTCDate(d.getUTCDate() + 1)) {
+    days.push(d.toISOString().slice(0, 10));
+  }
+  return days;
 }
 
 export default async function MonthlyCostingReportPage({
@@ -53,6 +69,25 @@ export default async function MonthlyCostingReportPage({
     return true;
   });
   const total = filteredRows.reduce((t, r) => t + r.amount, 0);
+
+  // the charts: the period shown, and the 6 months up to the month the period ends in (same company and filters), with their sales
+  const period = resolvePeriod(year, month, range);
+  const endYear = Number(period.end.slice(0, 4));
+  const endMonth = Number(period.end.slice(5, 7));
+  const trendMonths = Array.from({ length: 6 }, (_, i) => monthsBefore(endYear, endMonth, 5 - i));
+  const trendStart = monthDateRange(trendMonths[0].year, trendMonths[0].month).start;
+  const trendEnd = monthDateRange(endYear, endMonth).end;
+  const [trendRows, trendSales] = await Promise.all([
+    listSpending(supabase, targetCompanyIds, trendStart, trendEnd),
+    Promise.all(trendMonths.map((m) => getMonthlySales(supabase, targetCompanyIds, m.year, m.month))),
+  ]);
+  const keep = (r: { department: string | null; category: string }) => (!departmentParam || sameLabel(r.department, departmentParam)) && (!categoryParam || sameLabel(r.category, categoryParam));
+  const months: CostingMonth[] = trendMonths.map((m, i) => {
+    const ym = `${m.year}-${String(m.month).padStart(2, "0")}`;
+    return { month: ym, sales: trendSales[i].amount, rows: trendRows.filter((r) => r.date.startsWith(ym) && keep(r)) };
+  });
+  const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const periodLabel = range ? `${period.start} to ${period.end}` : `${MONTH_NAMES[month - 1]} ${year}`;
 
   const grouped = new Map<string, { source: string; category: string; department: string | null; amount: number }>();
   for (const r of filteredRows) {
@@ -118,6 +153,15 @@ export default async function MonthlyCostingReportPage({
         departmentOptions={departments.map((d) => ({ value: d, label: d }))}
         category={categoryParam}
         categoryOptions={uniqueCategories(categories).map((c) => ({ value: c.name, label: c.name }))}
+      />
+
+      <CostingCharts
+        rows={filteredRows.map((r) => ({ date: r.date, source: r.source, category: r.category, department: r.department, amount: r.amount }))}
+        months={months}
+        chosenMonth={period.end.slice(0, 7)}
+        periodLabel={periodLabel}
+        periodDays={daysBetween(period.start, period.end)}
+        sales={range ? null : (months[months.length - 1]?.sales ?? null)}
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
