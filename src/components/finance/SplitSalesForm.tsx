@@ -52,11 +52,11 @@ export function SplitSalesForm({
     <form onSubmit={handleSave} className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 shadow-sm">
       <div className="flex flex-wrap items-end gap-3">
         <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Signature Solution Catering – {monthLabel} {year} (RM)</label>
+          <label className="text-[12px] font-semibold text-text-secondary">Signature Solution Catering</label>
           <input type="number" step="0.01" min="0" required value={catering} onChange={(e) => setCatering(e.target.value)} className={input} />
         </div>
         <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Signature Solution Sdn Bhd (daily) – {monthLabel} {year} (RM)</label>
+          <label className="text-[12px] font-semibold text-text-secondary">Signature Solution Sdn Bhd</label>
           <input type="number" step="0.01" min="0" required value={daily} onChange={(e) => setDaily(e.target.value)} className={input} />
         </div>
         <div className="pb-1.5 text-[13px] text-text-secondary">
