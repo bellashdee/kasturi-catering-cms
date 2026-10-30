@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createMember } from "@/lib/users/actions";
 import { ModulePicker } from "@/components/settings/ModulePicker";
+import { CompanyPicker } from "@/components/settings/CompanyPicker";
 import { PasswordInput } from "@/components/shared/PasswordInput";
 import { ROLE_LABEL } from "@/lib/users/constants";
 import type { Database } from "@/lib/supabase/types";
@@ -31,7 +32,8 @@ export function AddMemberForm({ companies }: { companies: Company[] }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState(randomPassword());
   const [role, setRole] = useState<UserRole>("staff");
-  const [companyId, setCompanyId] = useState<string>("");
+  const [allCompanies, setAllCompanies] = useState(false);
+  const [companyIds, setCompanyIds] = useState<string[]>([]);
   const [modules, setModules] = useState<string[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +50,8 @@ export function AddMemberForm({ companies }: { companies: Company[] }) {
         email,
         password,
         role,
-        companyId: companyId || null,
+        allCompanies,
+        companyIds,
         allowedModules: modules,
       });
       setCreated({ fullName, username, email, password });
@@ -57,7 +60,8 @@ export function AddMemberForm({ companies }: { companies: Company[] }) {
       setEmail("");
       setPassword(randomPassword());
       setRole("staff");
-      setCompanyId("");
+      setAllCompanies(false);
+      setCompanyIds([]);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create member.");
@@ -122,21 +126,23 @@ export function AddMemberForm({ companies }: { companies: Company[] }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className={labelClass}>Role *</label>
-          <Select value={role} onChange={(e) => setRole(e.target.value as UserRole)} className={inputClass}>
-            {Object.entries(ROLE_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-          </Select>
-        </div>
-        <div>
-          <label className={labelClass}>Company Access</label>
-          <Select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={inputClass}>
-            <option value="">All Companies</option>
-            {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </Select>
-        </div>
+      <div>
+        <label className={labelClass}>Role *</label>
+        <Select value={role} onChange={(e) => setRole(e.target.value as UserRole)} className={inputClass}>
+          {Object.entries(ROLE_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </Select>
       </div>
+
+      <CompanyPicker
+        companies={companies}
+        allCompanies={allCompanies}
+        companyIds={companyIds}
+        forceAll={role === "super_admin"}
+        onChange={(next) => {
+          setAllCompanies(next.allCompanies);
+          setCompanyIds(next.companyIds);
+        }}
+      />
 
       <ModulePicker value={modules} onChange={setModules} />
 

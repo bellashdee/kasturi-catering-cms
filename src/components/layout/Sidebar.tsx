@@ -8,7 +8,7 @@ import { useMobileNav } from "./MobileNavContext";
 
 type Company = { id: string; name: string; legal_name: string };
 
-export function Sidebar({ companies, allowedModules, badges, taskLinkLabel, showPayroll }: { companies: Company[]; allowedModules: string[] | null; badges?: Record<string, number>; taskLinkLabel?: string; showPayroll?: boolean }) {
+export function Sidebar({ companies, allowedModules, badges, taskLinkLabel, showPayroll, scopedToOwnCompanies }: { companies: Company[]; allowedModules: string[] | null; badges?: Record<string, number>; taskLinkLabel?: string; showPayroll?: boolean; scopedToOwnCompanies?: boolean }) {
   const { open, setOpen } = useMobileNav();
   const pathname = usePathname();
 
@@ -39,7 +39,7 @@ export function Sidebar({ companies, allowedModules, badges, taskLinkLabel, show
           <span className="text-[13.5px] font-bold">Central Mgmt System</span>
         </div>
 
-        <CompanySelector companies={companies} />
+        <CompanySelector companies={companies} scopedToOwnCompanies={scopedToOwnCompanies} />
 
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-3">
           <ProfileLink />

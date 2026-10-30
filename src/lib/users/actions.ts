@@ -7,11 +7,20 @@ import type { Database } from "@/lib/supabase/types";
 
 type UserRole = Database["public"]["Enums"]["user_role"];
 
+// Only a Super Admin who can open every company may manage members, so only they can hand out "All Companies".
 async function requireSuperAdmin() {
   const session = await getSessionContext();
   if (!session) throw new Error("Not signed in.");
-  if (session.role !== "super_admin") throw new Error("Only a Super Admin can manage team members.");
+  if (session.role !== "super_admin" || !session.hasAllCompaniesAccess) throw new Error("Only a Super Admin can manage team members.");
   return session;
+}
+
+/** The company_id values to store: [null] = every company, otherwise one row per chosen company. */
+function companyGrants(role: UserRole, allCompanies: boolean, companyIds: string[]): (string | null)[] {
+  if (role === "super_admin" || allCompanies) return [null];
+  const unique = [...new Set(companyIds)];
+  if (unique.length === 0) throw new Error("Choose at least one company, or All companies.");
+  return unique;
 }
 
 export type CreateMemberInput = {
@@ -20,13 +29,16 @@ export type CreateMemberInput = {
   email: string;
   password: string;
   role: UserRole;
-  companyId: string | null;
+  /** true = every company (Super Admin only ever gets this). */
+  allCompanies: boolean;
+  companyIds: string[];
   /** null = every module. */
   allowedModules?: string[] | null;
 };
 
 export async function createMember(input: CreateMemberInput) {
   await requireSuperAdmin();
+  const grants = companyGrants(input.role, input.allCompanies, input.companyIds);
   const admin = createAdminClient();
 
   const { data: existingUsername } = await admin.from("profiles").select("id").eq("username", input.username).maybeSingle();
@@ -44,12 +56,14 @@ export async function createMember(input: CreateMemberInput) {
   const { error: profileError } = await admin.from("profiles").update({ username: input.username }).eq("id", userId);
   if (profileError) throw profileError;
 
-  const { error: accessError } = await admin.from("user_company_access").insert({
-    user_id: userId,
-    company_id: input.companyId,
-    role: input.role,
-    allowed_modules: input.allowedModules ?? null,
-  });
+  const { error: accessError } = await admin.from("user_company_access").insert(
+    grants.map((companyId) => ({
+      user_id: userId,
+      company_id: companyId,
+      role: input.role,
+      allowed_modules: input.allowedModules ?? null,
+    })),
+  );
   if (accessError) throw accessError;
 
   revalidatePath("/settings");
@@ -60,15 +74,21 @@ export type UpdateMemberInput = {
   fullName?: string;
   username?: string;
   role?: UserRole;
-  companyId?: string | null;
+  allCompanies?: boolean;
+  companyIds?: string[];
   /** null = every module; a list = only those modules. */
   allowedModules?: string[] | null;
   newPassword?: string;
 };
 
 export async function updateMember(userId: string, input: UpdateMemberInput) {
-  await requireSuperAdmin();
+  const session = await requireSuperAdmin();
   const admin = createAdminClient();
+
+  if (input.role !== undefined && userId === session.userId && input.role !== "super_admin") {
+    throw new Error("You can't remove your own Super Admin access.");
+  }
+  const grants = input.role !== undefined ? companyGrants(input.role, input.allCompanies ?? false, input.companyIds ?? []) : null;
 
   if (input.username) {
     const { data: existingUsername } = await admin
@@ -91,23 +111,19 @@ export async function updateMember(userId: string, input: UpdateMemberInput) {
     if (error) throw error;
   }
 
-  if (input.role !== undefined) {
-    const { data: existingAccess } = await admin.from("user_company_access").select("id").eq("user_id", userId).maybeSingle();
-    if (existingAccess) {
-      const { error } = await admin
-        .from("user_company_access")
-        .update({ role: input.role, company_id: input.companyId ?? null, ...(input.allowedModules !== undefined ? { allowed_modules: input.allowedModules } : {}) })
-        .eq("id", existingAccess.id);
-      if (error) throw error;
-    } else {
-      const { error } = await admin.from("user_company_access").insert({
-        user_id: userId,
-        company_id: input.companyId ?? null,
-        role: input.role,
-        allowed_modules: input.allowedModules ?? null,
-      });
-      if (error) throw error;
+  if (input.role !== undefined && grants) {
+    // keep the current module choice when the form did not send one
+    let modules = input.allowedModules;
+    if (modules === undefined) {
+      const { data: current } = await admin.from("user_company_access").select("allowed_modules").eq("user_id", userId).limit(1).maybeSingle();
+      modules = current?.allowed_modules ?? null;
     }
+    const { error: deleteError } = await admin.from("user_company_access").delete().eq("user_id", userId);
+    if (deleteError) throw deleteError;
+    const { error } = await admin.from("user_company_access").insert(
+      grants.map((companyId) => ({ user_id: userId, company_id: companyId, role: input.role!, allowed_modules: modules })),
+    );
+    if (error) throw error;
   }
 
   if (input.newPassword) {

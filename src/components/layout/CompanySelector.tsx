@@ -6,7 +6,7 @@ import { ALL_COMPANIES_OPTION, COMPANY_STYLE } from "@/lib/constants";
 
 type Company = { id: string; name: string; legal_name: string };
 
-export function CompanySelector({ companies }: { companies: Company[] }) {
+export function CompanySelector({ companies, scopedToOwnCompanies }: { companies: Company[]; scopedToOwnCompanies?: boolean }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -15,7 +15,7 @@ export function CompanySelector({ companies }: { companies: Company[] }) {
   const selectedId = searchParams.get("company") ?? "all";
 
   const options = [
-    { id: "all", label: ALL_COMPANIES_OPTION.name, colorVar: ALL_COMPANIES_OPTION.colorVar, short: ALL_COMPANIES_OPTION.short },
+    { id: "all", label: scopedToOwnCompanies ? "All my companies" : ALL_COMPANIES_OPTION.name, colorVar: ALL_COMPANIES_OPTION.colorVar, short: ALL_COMPANIES_OPTION.short },
     ...companies.map((c) => ({
       id: c.id,
       label: c.name,

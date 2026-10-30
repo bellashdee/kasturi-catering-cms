@@ -6,6 +6,7 @@ import { updateMember, deleteMember } from "@/lib/users/actions";
 import { PasswordInput } from "@/components/shared/PasswordInput";
 import { ROLE_LABEL } from "@/lib/users/constants";
 import { ModulePicker } from "@/components/settings/ModulePicker";
+import { CompanyPicker } from "@/components/settings/CompanyPicker";
 import type { Database } from "@/lib/supabase/types";
 import { Select } from "@/components/ui/Select";
 
@@ -22,14 +23,15 @@ export function MemberActions({
 }: {
   userId: string;
   companies: Company[];
-  initial: { fullName: string; username: string; role: UserRole; companyId: string | null; allowedModules: string[] | null };
+  initial: { fullName: string; username: string; role: UserRole; allCompanies: boolean; companyIds: string[]; allowedModules: string[] | null };
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [fullName, setFullName] = useState(initial.fullName);
   const [username, setUsername] = useState(initial.username);
   const [role, setRole] = useState<UserRole>(initial.role);
-  const [companyId, setCompanyId] = useState(initial.companyId ?? "");
+  const [allCompanies, setAllCompanies] = useState(initial.allCompanies);
+  const [companyIds, setCompanyIds] = useState<string[]>(initial.companyIds);
   const [modules, setModules] = useState<string[] | null>(initial.allowedModules);
   const [newPassword, setNewPassword] = useState("");
   const [saving, setSaving] = useState(false);
@@ -49,7 +51,8 @@ export function MemberActions({
         fullName,
         username,
         role,
-        companyId: companyId || null,
+        allCompanies,
+        companyIds,
         allowedModules: modules,
         newPassword: newPassword || undefined,
       });
@@ -103,7 +106,7 @@ export function MemberActions({
   return (
     <div className="col-span-5 mt-2 rounded-lg border border-border-strong bg-surface-alt p-3">
       {error && <div className="mb-2 rounded-lg border border-danger/30 bg-danger-bg px-2 py-1.5 text-xs text-danger">{error}</div>}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <div>
           <label className={labelClass}>Full Name</label>
           <input value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputClass} />
@@ -118,13 +121,18 @@ export function MemberActions({
             {Object.entries(ROLE_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </Select>
         </div>
-        <div>
-          <label className={labelClass}>Company Access</label>
-          <Select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={inputClass}>
-            <option value="">All Companies</option>
-            {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </Select>
-        </div>
+      </div>
+      <div className="mt-2">
+        <CompanyPicker
+          companies={companies}
+          allCompanies={allCompanies}
+          companyIds={companyIds}
+          forceAll={role === "super_admin"}
+          onChange={(next) => {
+            setAllCompanies(next.allCompanies);
+            setCompanyIds(next.companyIds);
+          }}
+        />
       </div>
       <ModulePicker value={modules} onChange={setModules} />
       <div className="mt-2">

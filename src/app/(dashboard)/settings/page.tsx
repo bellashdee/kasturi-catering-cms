@@ -16,7 +16,7 @@ export default async function SettingsPage() {
   const { data: allCompanies } = await supabase.from("companies").select("id, name").order("name");
   const companies = allCompanies ?? [];
 
-  if (session.role !== "super_admin") {
+  if (session.role !== "super_admin" || !session.hasAllCompaniesAccess) {
     return (
       <div className="flex flex-col gap-5">
         <h1 className="text-[22px] font-extrabold text-text">Settings</h1>
@@ -59,7 +59,10 @@ export default async function SettingsPage() {
               <div></div>
             </div>
             {members.map((m) => {
-              const access = m.user_company_access[0];
+              const rows = m.user_company_access;
+              const access = rows.find((r) => r.company_id === null) ?? rows[0];
+              const hasAll = rows.some((r) => r.company_id === null);
+              const companyLabel = hasAll ? "All Companies" : rows.map((r) => r.companies?.name).filter(Boolean).join(", ");
               return (
                 <div key={m.id} className="grid grid-cols-5 items-center gap-4 border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0">
                   <div className="font-semibold text-text">
@@ -69,7 +72,7 @@ export default async function SettingsPage() {
                   <div className="text-text-secondary">{m.username ?? "—"}</div>
                   <div className="text-text-secondary">{m.email}</div>
                   <div className="text-text-secondary">
-                    {access ? `${ROLE_LABEL[access.role]} · ${access.companies?.name ?? "All Companies"}` : "No access yet"}
+                    {access ? `${ROLE_LABEL[access.role]} · ${companyLabel}` : "No access yet"}
                     {access?.allowed_modules && (
                       <div className="mt-0.5 text-[11.5px] text-text-muted">Modules: {access.allowed_modules.map((k) => ASSIGNABLE_MODULES.find((m) => m.key === k)?.label ?? k).join(", ")}</div>
                     )}
@@ -81,7 +84,8 @@ export default async function SettingsPage() {
                       fullName: m.full_name,
                       username: m.username ?? "",
                       role: access?.role ?? "staff",
-                      companyId: access?.company_id ?? null,
+                      allCompanies: hasAll,
+                      companyIds: rows.map((r) => r.company_id).filter((id): id is string => id !== null),
                       allowedModules: access?.allowed_modules ?? null,
                     }}
                   />
