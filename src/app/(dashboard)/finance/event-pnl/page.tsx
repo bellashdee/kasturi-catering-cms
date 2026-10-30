@@ -135,7 +135,6 @@ export default async function MonthlyEventPnlPage({ searchParams }: { searchPara
           <div className="text-[12px] text-text-muted">Report generated {formatMalaysiaDateTime(new Date().toISOString())} · events counted by event date · actual figures only</div>
         </div>
         <div className="flex gap-2 print:hidden">
-          <a href={`/finance/event-pnl/export?${exportQuery.toString()}&format=csv`} className="rounded-lg border border-border-strong px-3 py-2 text-[12.5px] font-semibold text-text">Export CSV</a>
           <a href={`/finance/event-pnl/export?${exportQuery.toString()}&format=xlsx`} className="rounded-lg border border-border-strong px-3 py-2 text-[12.5px] font-semibold text-text">Export Excel</a>
           <PrintButton />
         </div>

@@ -8,6 +8,7 @@ import { SUPPLIER_STATUS_LABEL } from "@/lib/procurement/constants";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SearchBox } from "@/components/SearchBox";
+import { ExportButtons } from "@/components/shared/ExportButtons";
 import { SupplierProcurementSubNav } from "@/components/procurement/SupplierProcurementSubNav";
 
 function statusTone(status: string): "success" | "neutral" | "danger" {
@@ -59,7 +60,24 @@ export default async function SupplierProcurementPage({
             {records.length !== suppliers.length ? ` (${records.length} company records)` : ""}
           </p>
         </div>
-        <div className="flex gap-2.5">
+        <div className="flex flex-wrap gap-2.5">
+          <ExportButtons
+            table={{
+              title: "Suppliers",
+              subtitle: `${suppliers.length} supplier${suppliers.length === 1 ? "" : "s"}${q ? ` matching "${q}"` : ""}`,
+              columns: ["Name", "Category", "Contact", "Phone", "Payment terms", "Company", "Status"],
+              rows: suppliers.map((group) => [
+                group[0].name,
+                joined(group.map((g) => g.category)),
+                joined(group.map((g) => g.contact_person)),
+                joined(group.map((g) => g.phone)),
+                joined(group.map((g) => g.payment_terms)),
+                joined(group.map((g) => g.companies?.name)),
+                Array.from(new Set(group.map((g) => SUPPLIER_STATUS_LABEL[g.status] ?? g.status))).join(" / "),
+              ]),
+              landscape: true,
+            }}
+          />
           <Link href={`/supplier-procurement/import${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text">
             Import Excel/CSV
           </Link>

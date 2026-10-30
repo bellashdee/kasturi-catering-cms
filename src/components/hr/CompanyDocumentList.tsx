@@ -90,18 +90,34 @@ export function CompanyDocumentList({ docs }: { docs: CompanyDocData[] }) {
         <button
           type="button"
           disabled={shown.length === 0}
+          onClick={async () =>
+            (await import("@/lib/export/tableExport")).downloadTableExcel({
+              title: "Licences and Documents",
+              columns: ["Document", "Type", "Company", "Reference", "Issued", "Expires", "Status", "Notes"],
+              rows: shown.map((d) => [d.title, COMPANY_DOC_TYPE_LABEL[d.docType] ?? d.docType, d.companyName, d.referenceNumber ?? "", d.issuedDate ?? "", d.expiryDate ?? "No expiry", STATUS_LABEL[d.urgency] ?? d.urgency, d.notes ?? ""]),
+            })
+          }
+          className="h-9 rounded-lg border border-border-strong bg-surface px-3 text-[13px] font-semibold text-text hover:bg-surface-alt disabled:opacity-50"
+        >
+          Export Excel
+        </button>
+        <button
+          type="button"
+          disabled={shown.length === 0}
           onClick={async () => {
+            // the window is opened by the click itself so that a pop-up blocker lets it through
+            const target = window.open("", "_blank");
             const note = [
               company !== "all" ? companies.find(([id]) => id === company)?.[1] : null,
               type !== "all" ? COMPANY_DOC_TYPE_LABEL[type] ?? type : null,
               status !== "all" ? STATUS_LABEL[status] : null,
               q ? `search: ${search.trim()}` : null,
             ].filter(Boolean).join(" | ");
-            (await import("@/lib/hr/licenceSummaryPdf")).downloadRegisterPdf(shown, note);
+            (await import("@/lib/hr/licenceSummaryPdf")).printRegisterPdf(shown, note, target);
           }}
           className="h-9 rounded-lg bg-primary px-3 text-[13px] font-bold text-white disabled:opacity-50"
         >
-          Download summary (PDF)
+          Print
         </button>
       </div>
       {filtering && (

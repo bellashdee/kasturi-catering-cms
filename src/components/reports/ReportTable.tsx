@@ -1,6 +1,6 @@
 "use client";
 
-import { exportTableToExcel, exportTableToCsv } from "@/lib/reports/export";
+import { exportTableToExcel } from "@/lib/reports/export";
 
 /**
  * Server Components can pass plain data and already-rendered JSX to a Client
@@ -37,18 +37,11 @@ export function ReportTable({
           Export Excel
         </button>
         <button
-          onClick={() => exportTableToCsv(filenameBase, headers, exportRows)}
-          disabled={rows.length === 0}
-          className="rounded-lg border border-border-strong bg-surface px-3.5 py-2 text-[12.5px] font-semibold text-text disabled:opacity-50"
-        >
-          Export CSV
-        </button>
-        <button
           onClick={() => window.print()}
           disabled={rows.length === 0}
           className="rounded-lg border border-border-strong bg-surface px-3.5 py-2 text-[12.5px] font-semibold text-text disabled:opacity-50"
         >
-          Export PDF
+          Print
         </button>
       </div>
 

@@ -4227,7 +4227,10 @@ const dictionary: Record<string, string> = {
   "HR, licences and company records": "এইচআর, লাইসেন্স ও কোম্পানির রেকর্ড",
   "View original": "মূল নথি দেখুন",
   "Download original": "মূল নথি ডাউনলোড",
-  "Download summary (PDF)": "সারসংক্ষেপ ডাউনলোড (PDF)"
+  "Download summary (PDF)": "সারসংক্ষেপ ডাউনলোড (PDF)",
+  "Print PDF": "PDF প্রিন্ট করুন",
+  "Use Export Excel to download the list, or Print to print it.": "তালিকাটি ডাউনলোড করতে Export Excel ব্যবহার করুন, অথবা প্রিন্ট করতে Print ব্যবহার করুন।",
+  "Use Export Excel to download the report, or Print to print it.": "রিপোর্ট ডাউনলোড করতে Export Excel ব্যবহার করুন, অথবা প্রিন্ট করতে Print ব্যবহার করুন।"
 };
 
 export default dictionary;

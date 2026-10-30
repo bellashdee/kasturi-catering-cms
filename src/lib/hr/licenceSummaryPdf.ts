@@ -184,3 +184,12 @@ export function buildRegisterPdf(docs: CompanyDocData[], filterNote: string): js
 }
 
 export const downloadRegisterPdf = (docs: CompanyDocData[], filterNote: string) => buildRegisterPdf(docs, filterNote).save(`licences-and-documents-summary-${todayInMalaysia()}.pdf`);
+
+/** Opens the register in the window that was opened by the click and asks to print it. */
+export function printRegisterPdf(docs: CompanyDocData[], filterNote: string, target: Window | null): void {
+  const doc = buildRegisterPdf(docs, filterNote);
+  doc.autoPrint();
+  const url = String(doc.output("bloburl"));
+  if (target && !target.closed) target.location.href = url;
+  else window.open(url, "_blank");
+}

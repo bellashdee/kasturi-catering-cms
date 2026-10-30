@@ -4234,7 +4234,10 @@ const dictionary: Record<string, string> = {
   "HR, licences and company records": "人事、执照和公司记录",
   "View original": "查看原件",
   "Download original": "下载原件",
-  "Download summary (PDF)": "下载摘要（PDF）"
+  "Download summary (PDF)": "下载摘要（PDF）",
+  "Print PDF": "打印 PDF",
+  "Use Export Excel to download the list, or Print to print it.": "使用 Export Excel 下载这份列表，或用 Print 打印。",
+  "Use Export Excel to download the report, or Print to print it.": "使用 Export Excel 下载报告，或用 Print 打印。"
 };
 
 export default dictionary;

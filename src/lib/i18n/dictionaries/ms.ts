@@ -4168,7 +4168,10 @@ const dictionary: Record<string, string> = {
   "HR, licences and company records": "HR, lesen dan rekod syarikat",
   "View original": "Lihat dokumen asal",
   "Download original": "Muat turun dokumen asal",
-  "Download summary (PDF)": "Muat turun ringkasan (PDF)"
+  "Download summary (PDF)": "Muat turun ringkasan (PDF)",
+  "Print PDF": "Cetak PDF",
+  "Use Export Excel to download the list, or Print to print it.": "Gunakan Export Excel untuk memuat turun senarai, atau Print untuk mencetaknya.",
+  "Use Export Excel to download the report, or Print to print it.": "Gunakan Export Excel untuk memuat turun laporan, atau Print untuk mencetaknya."
 };
 
 export default dictionary;

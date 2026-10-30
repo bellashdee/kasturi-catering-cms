@@ -98,7 +98,6 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
         </div>
         <div className="flex items-center gap-2 print:hidden">
           <StatusBadge tone={VERDICT_TONE[pnl.verdict]}>{VERDICT_LABEL[pnl.verdict]}</StatusBadge>
-          <a href={`/finance/event-pnl/export?event=${id}&format=csv`} className="rounded-lg border border-border-strong px-3 py-2 text-[12.5px] font-semibold text-text">Export CSV</a>
           <a href={`/finance/event-pnl/export?event=${id}&format=xlsx`} className="rounded-lg border border-border-strong px-3 py-2 text-[12.5px] font-semibold text-text">Export Excel</a>
           <PrintButton />
         </div>

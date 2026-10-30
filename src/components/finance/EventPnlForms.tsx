@@ -29,7 +29,7 @@ const num = (v: string): number | undefined => (v.trim() === "" ? undefined : Nu
 export function PrintButton() {
   return (
     <button type="button" onClick={() => window.print()} className="rounded-lg border border-border-strong px-3 py-2 text-[12.5px] font-semibold text-text">
-      Print / Save as PDF
+      Print
     </button>
   );
 }

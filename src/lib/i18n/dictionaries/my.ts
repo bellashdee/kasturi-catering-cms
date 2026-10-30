@@ -4221,7 +4221,10 @@ const dictionary: Record<string, string> = {
   "HR, licences and company records": "HR၊ လိုင်စင်များနှင့် ကုမ္ပဏီမှတ်တမ်းများ",
   "View original": "မူရင်းကို ကြည့်ရန်",
   "Download original": "မူရင်းကို ဒေါင်းလုဒ်လုပ်ရန်",
-  "Download summary (PDF)": "အကျဉ်းချုပ်ကို ဒေါင်းလုဒ်လုပ်ရန် (PDF)"
+  "Download summary (PDF)": "အကျဉ်းချုပ်ကို ဒေါင်းလုဒ်လုပ်ရန် (PDF)",
+  "Print PDF": "PDF ပရင့်ထုတ်ရန်",
+  "Use Export Excel to download the list, or Print to print it.": "စာရင်းကို ဒေါင်းလုဒ်လုပ်ဖို့ Export Excel ကို သုံးပါ၊ ပရင့်ထုတ်ဖို့ Print ကို သုံးပါ။",
+  "Use Export Excel to download the report, or Print to print it.": "အစီရင်ခံစာကို ဒေါင်းလုဒ်လုပ်ဖို့ Export Excel ကို သုံးပါ၊ ပရင့်ထုတ်ဖို့ Print ကို သုံးပါ။"
 };
 
 export default dictionary;

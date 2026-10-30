@@ -11,7 +11,7 @@ const COMMON: Record<Feature, string> = {
   search: "Type in the search box and press Search to find a record.",
   new: "Press the button that starts with + at the top right (for example + New Supplier) to add a record, fill in the form and save it.",
   edit: "Press Edit on a record to change it, then Save or Cancel. Delete asks first, and you can press Undo straight after.",
-  export: "Use Export Excel or Export CSV to download the list.",
+  export: "Use Export Excel to download the list, or Print to print it.",
 };
 
 const DISPLAY = "Press A A A at the top to make all the text bigger, and change the language beside it. More choices are in Settings.";
@@ -76,7 +76,7 @@ const GUIDES: Guide[] = [
   { prefix: "/hr", title: "Employee Database", steps: ["The Employee Database lists the staff. A person who works for several companies is listed once with all the companies.", "Press a name to see every detail, the documents, the warning letters, the leave and the edit history of that person.", "Use the buttons at the top for the Birthday Calendar, Payroll Centre, Leave Requests, Overtime, Licences & Documents and to import staff."], features: ["company", "search"] },
   { prefix: "/payroll-centre", title: "Payroll Centre", steps: ["The Payroll Centre shows the payroll records of the staff for the month.", "Choose the month, then open a record to see it or mark it as paid."], features: ["company"] },
   { prefix: "/marketing", title: "Marketing", steps: [TABS.marketing, "Open a record to see or change it."], features: ["company", "new", "edit"] },
-  { prefix: "/reports", title: "Reports", steps: ["Choose a report from the list.", "Choose the year and the month, or two dates, and the department or category, then press Apply Filters.", "Use Export Excel, Export CSV or Export PDF to download the report. In Monthly Costing, press a module name to open its records."], features: ["company"] },
+  { prefix: "/reports", title: "Reports", steps: ["Choose a report from the list.", "Choose the year and the month, or two dates, and the department or category, then press Apply Filters.", "Use Export Excel to download the report, or Print to print it. In Monthly Costing, press a module name to open its records."], features: ["company"] },
   { prefix: "/ai-assistant", title: "AI Assistant", steps: ["Type your question in the box and send it. The assistant answers short and step by step.", "You can attach a photo or a file for it to read."] },
   { prefix: "/settings", title: "Settings", steps: ["Display: choose the font and the font size (10 to 25) for every page. It is kept on this computer or phone.", "Only a Super Admin can add, change or remove team members and their access."] },
 ];
