@@ -9,6 +9,7 @@ import { canUsePayrollCentre } from "@/lib/hr/payrollAccess";
 import { canAccessModule } from "@/lib/modules";
 import { countPendingSubmissions } from "@/lib/catering/pending";
 import { LanguageBootstrap } from "@/components/i18n/LanguageBootstrap";
+import { SessionGuard } from "@/components/auth/SessionGuard";
 import { CompanyTheme, CompanyThemeScript } from "@/components/layout/CompanyTheme";
 import { Suspense } from "react";
 
@@ -37,6 +38,7 @@ export default async function DashboardLayout({
   return (
     <MobileNavProvider>
       <LanguageBootstrap profileLanguage={profile?.language ?? null} />
+      <SessionGuard />
       <CompanyThemeScript companies={companies ?? []} />
       <Suspense fallback={null}>
         <CompanyTheme companies={companies ?? []} />

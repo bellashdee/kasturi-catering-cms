@@ -4248,7 +4248,24 @@ const dictionary: Record<string, string> = {
   "My Profile, Main Dashboard, Priority Centre, Bulletin Board, Company Spending and the AI Assistant are in the menu of everyone.": "我的资料、主面板、优先中心、公告板、公司开支和 AI 助手会出现在每个人的菜单里。",
   "Log Out": "退出登录",
   "Open the side menu": "展开侧边菜单",
-  "Close the side menu": "收起侧边菜单"
+  "Close the side menu": "收起侧边菜单",
+  "Catering, made simple.": "餐饮服务，简单省心。",
+  "Every event, every meal, in one place.": "每场活动、每一餐，都在同一个地方。",
+  "Keep me signed in": "保持登录",
+  "Forgot Password?": "忘记密码？",
+  "Log In": "登录",
+  "Don't have an account?": "还没有账号？",
+  "Sign Up": "注册",
+  "Forgot your password?": "忘记密码了吗？",
+  "Passwords are issued and reset by the Administrator only. Ask Madam Penny or Nabilah to set a new password for you.": "密码只由管理员发放和重设。请联系 Penny 女士或 Nabilah 为您设置新密码。",
+  "Sign in with an email link instead": "改用电邮链接登录",
+  "Back to Log In": "返回登录",
+  "Create account": "创建账号",
+  "Accounts are made by the Administrator, so there is nothing to fill in here. Send Madam Penny or Nabilah your full name and the short name you want to use. They will give you your username and password.": "账号由管理员创建，所以这里不需要填写任何资料。请把您的全名和想用的简称告诉 Penny 女士或 Nabilah，他们会给您用户名和密码。",
+  "Tell the Administrator your full name and short name.": "把您的全名和简称告诉管理员。",
+  "Receive your username and password.": "收到您的用户名和密码。",
+  "Log in with your email or username, then your password.": "用电邮或用户名登录，然后输入密码。",
+  "Already have an account?": "已经有账号？"
 };
 
 export default dictionary;

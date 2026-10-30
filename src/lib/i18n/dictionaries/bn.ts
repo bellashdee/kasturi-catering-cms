@@ -4241,7 +4241,24 @@ const dictionary: Record<string, string> = {
   "My Profile, Main Dashboard, Priority Centre, Bulletin Board, Company Spending and the AI Assistant are in the menu of everyone.": "আমার প্রোফাইল, প্রধান ড্যাশবোর্ড, অগ্রাধিকার কেন্দ্র, বুলেটিন বোর্ড, কোম্পানির খরচ ও এআই সহকারী সবার মেনুতে থাকে।",
   "Log Out": "লগ আউট",
   "Open the side menu": "পাশের মেনু খুলুন",
-  "Close the side menu": "পাশের মেনু বন্ধ করুন"
+  "Close the side menu": "পাশের মেনু বন্ধ করুন",
+  "Catering, made simple.": "ক্যাটারিং, সহজ করে।",
+  "Every event, every meal, in one place.": "প্রতিটি অনুষ্ঠান, প্রতিটি খাবার, এক জায়গায়।",
+  "Keep me signed in": "আমাকে সাইন ইন রাখুন",
+  "Forgot Password?": "পাসওয়ার্ড ভুলে গেছেন?",
+  "Log In": "লগ ইন",
+  "Don't have an account?": "অ্যাকাউন্ট নেই?",
+  "Sign Up": "সাইন আপ",
+  "Forgot your password?": "পাসওয়ার্ড ভুলে গেছেন?",
+  "Passwords are issued and reset by the Administrator only. Ask Madam Penny or Nabilah to set a new password for you.": "পাসওয়ার্ড শুধু অ্যাডমিনিস্ট্রেটর দেন ও রিসেট করেন। ম্যাডাম Penny বা Nabilah-কে নতুন পাসওয়ার্ড দিতে বলুন।",
+  "Sign in with an email link instead": "এর বদলে ইমেইল লিংকে সাইন ইন করুন",
+  "Back to Log In": "লগ ইনে ফিরে যান",
+  "Create account": "অ্যাকাউন্ট তৈরি করুন",
+  "Accounts are made by the Administrator, so there is nothing to fill in here. Send Madam Penny or Nabilah your full name and the short name you want to use. They will give you your username and password.": "অ্যাকাউন্ট অ্যাডমিনিস্ট্রেটর তৈরি করেন, তাই এখানে কিছু পূরণ করতে হবে না। আপনার পুরো নাম ও পছন্দের ছোট নাম ম্যাডাম Penny বা Nabilah-কে পাঠান। তাঁরা আপনাকে ইউজারনেম ও পাসওয়ার্ড দেবেন।",
+  "Tell the Administrator your full name and short name.": "অ্যাডমিনিস্ট্রেটরকে আপনার পুরো নাম ও ছোট নাম বলুন।",
+  "Receive your username and password.": "আপনার ইউজারনেম ও পাসওয়ার্ড নিন।",
+  "Log in with your email or username, then your password.": "ইমেইল বা ইউজারনেম দিয়ে লগ ইন করুন, তারপর পাসওয়ার্ড দিন।",
+  "Already have an account?": "আগে থেকেই অ্যাকাউন্ট আছে?"
 };
 
 export default dictionary;

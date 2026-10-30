@@ -4235,7 +4235,24 @@ const dictionary: Record<string, string> = {
   "My Profile, Main Dashboard, Priority Centre, Bulletin Board, Company Spending and the AI Assistant are in the menu of everyone.": "ကျွန်ုပ်၏ပရိုဖိုင်၊ ပင်မဒက်ရှ်ဘုတ်၊ ဦးစားပေးစင်တာ၊ ကြေညာဘုတ်၊ ကုမ္ပဏီအသုံးစရိတ်နှင့် AI လက်ထောက်တို့ကို လူတိုင်း၏ မီနူးတွင် တွေ့ရမည်။",
   "Log Out": "ထွက်ရန်",
   "Open the side menu": "ဘေးမီနူးကို ဖွင့်ရန်",
-  "Close the side menu": "ဘေးမီနူးကို ပိတ်ရန်"
+  "Close the side menu": "ဘေးမီနူးကို ပိတ်ရန်",
+  "Catering, made simple.": "စားသောက်ဆက်သွယ်ရေး၊ လွယ်ကူစွာ။",
+  "Every event, every meal, in one place.": "ပွဲတိုင်း၊ အစားအစာတိုင်း၊ တစ်နေရာတည်းတွင်။",
+  "Keep me signed in": "ကျွန်ုပ်ကို လော့ဂ်အင်ဝင်ထားပါ",
+  "Forgot Password?": "စကားဝှက် မေ့နေပါသလား?",
+  "Log In": "လော့ဂ်အင်",
+  "Don't have an account?": "အကောင့် မရှိသေးဘူးလား?",
+  "Sign Up": "စာရင်းသွင်းရန်",
+  "Forgot your password?": "စကားဝှက် မေ့နေပါသလား?",
+  "Passwords are issued and reset by the Administrator only. Ask Madam Penny or Nabilah to set a new password for you.": "စကားဝှက်များကို စီမံခန့်ခွဲသူသာ ထုတ်ပေးပြီး ပြန်လည်သတ်မှတ်ပေးပါသည်။ Penny မမ သို့မဟုတ် Nabilah ကို စကားဝှက်အသစ် သတ်မှတ်ပေးရန် မေးပါ။",
+  "Sign in with an email link instead": "အီးမေးလ်လင့်ခ်ဖြင့် လော့ဂ်အင်ဝင်ရန်",
+  "Back to Log In": "လော့ဂ်အင်သို့ ပြန်သွားရန်",
+  "Create account": "အကောင့်ဖန်တီးရန်",
+  "Accounts are made by the Administrator, so there is nothing to fill in here. Send Madam Penny or Nabilah your full name and the short name you want to use. They will give you your username and password.": "အကောင့်များကို စီမံခန့်ခွဲသူက ဖန်တီးပေးသောကြောင့် ဤနေရာတွင် ဖြည့်စရာမရှိပါ။ သင့်အမည်အပြည့်အစုံနှင့် သုံးလိုသော အမည်တိုကို Penny မမ သို့မဟုတ် Nabilah ထံ ပို့ပါ။ သူတို့က သင့်အသုံးပြုသူအမည်နှင့် စကားဝှက်ကို ပေးပါလိမ့်မည်။",
+  "Tell the Administrator your full name and short name.": "သင့်အမည်အပြည့်အစုံနှင့် အမည်တိုကို စီမံခန့်ခွဲသူအား ပြောပါ။",
+  "Receive your username and password.": "သင့်အသုံးပြုသူအမည်နှင့် စကားဝှက်ကို ရယူပါ။",
+  "Log in with your email or username, then your password.": "အီးမေးလ် သို့မဟုတ် အသုံးပြုသူအမည်ဖြင့် လော့ဂ်အင်ဝင်ပြီး စကားဝှက်ထည့်ပါ။",
+  "Already have an account?": "အကောင့် ရှိပြီးသားလား?"
 };
 
 export default dictionary;

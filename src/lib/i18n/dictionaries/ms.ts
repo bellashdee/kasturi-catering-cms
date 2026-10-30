@@ -4182,7 +4182,24 @@ const dictionary: Record<string, string> = {
   "My Profile, Main Dashboard, Priority Centre, Bulletin Board, Company Spending and the AI Assistant are in the menu of everyone.": "Profil Saya, Papan Pemuka Utama, Pusat Keutamaan, Papan Buletin, Perbelanjaan Syarikat dan Pembantu AI ada dalam menu semua orang.",
   "Log Out": "Log Keluar",
   "Open the side menu": "Buka menu sisi",
-  "Close the side menu": "Tutup menu sisi"
+  "Close the side menu": "Tutup menu sisi",
+  "Catering, made simple.": "Katering, jadi mudah.",
+  "Every event, every meal, in one place.": "Setiap majlis, setiap hidangan, di satu tempat.",
+  "Keep me signed in": "Kekalkan saya log masuk",
+  "Forgot Password?": "Lupa Kata Laluan?",
+  "Log In": "Log Masuk",
+  "Don't have an account?": "Belum ada akaun?",
+  "Sign Up": "Daftar",
+  "Forgot your password?": "Lupa kata laluan anda?",
+  "Passwords are issued and reset by the Administrator only. Ask Madam Penny or Nabilah to set a new password for you.": "Kata laluan dikeluarkan dan ditetapkan semula oleh Pentadbir sahaja. Minta Puan Penny atau Nabilah tetapkan kata laluan baharu untuk anda.",
+  "Sign in with an email link instead": "Log masuk dengan pautan e-mel",
+  "Back to Log In": "Kembali ke Log Masuk",
+  "Create account": "Cipta akaun",
+  "Accounts are made by the Administrator, so there is nothing to fill in here. Send Madam Penny or Nabilah your full name and the short name you want to use. They will give you your username and password.": "Akaun dibuat oleh Pentadbir, jadi tiada apa yang perlu diisi di sini. Hantar nama penuh dan nama pendek yang anda mahu guna kepada Puan Penny atau Nabilah. Mereka akan beri anda username dan kata laluan.",
+  "Tell the Administrator your full name and short name.": "Beritahu Pentadbir nama penuh dan nama pendek anda.",
+  "Receive your username and password.": "Terima username dan kata laluan anda.",
+  "Log in with your email or username, then your password.": "Log masuk dengan e-mel atau username, kemudian kata laluan anda.",
+  "Already have an account?": "Sudah ada akaun?"
 };
 
 export default dictionary;
