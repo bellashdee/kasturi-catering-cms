@@ -4,11 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listCompanyExpenses, listCostCategories, uniqueCategories } from "@/lib/finance/queries";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatMalaysiaDate, todayInMalaysia } from "@/lib/format";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SpendingSubNav } from "@/components/spending/SpendingSubNav";
 import { CompanyExpenseTable } from "@/components/finance/CompanyExpenseTable";
 import { ExpenseFilterBar } from "@/components/finance/ExpenseFilterBar";
+import { CompanyExpenseOverview } from "@/components/finance/CompanyExpenseOverview";
 
 export default async function CompanyExpensesPage({
   searchParams,
@@ -35,15 +36,18 @@ export default async function CompanyExpensesPage({
   // search and filters: words in the category, notes, department, company or amount; the category and department; a date range
   const words = q.trim().toUpperCase().split(/\s+/).filter(Boolean);
   const same = (a: string | null | undefined, b: string) => (a ?? "").trim().toUpperCase() === b.trim().toUpperCase();
-  const expenses = everyExpense.filter((e) => {
+  const matching = everyExpense.filter((e) => {
     if (category && !same(e.category, category)) return false;
     if (department && !same(e.department, department)) return false;
-    if (from && e.expense_date < from) return false;
-    if (to && e.expense_date > to) return false;
     if (words.length === 0) return true;
     const hay = `${e.category} ${e.department ?? ""} ${e.notes ?? ""} ${e.companies?.name ?? ""} ${e.expense_date} ${e.amount} ${Number(e.amount).toFixed(2)}`.toUpperCase();
     return words.every((w) => hay.includes(w));
   });
+  const expenses = matching.filter((e) => !(from && e.expense_date < from) && !(to && e.expense_date > to));
+  // the charts: the months up to this month (or to the To date), and the category chart of the list as shown
+  const toEntry = (e: (typeof everyExpense)[number]) => ({ date: e.expense_date, amount: Number(e.amount), category: e.category });
+  const dayText = (iso: string) => formatMalaysiaDate(`${iso}T12:00:00+08:00`);
+  const periodLabel = from && to ? `${dayText(from)} to ${dayText(to)}` : from ? `From ${dayText(from)}` : to ? `Up to ${dayText(to)}` : "All time";
   const filtered = !!(q.trim() || category || department || from || to);
   const departments = Array.from(new Set(everyExpense.map((e) => (e.department ?? "").trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
   const categoryNames = Array.from(new Set(everyExpense.map((e) => e.category.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
@@ -79,6 +83,10 @@ export default async function CompanyExpensesPage({
         clearHref={clearHref}
         filtered={filtered}
       />
+
+      {matching.length > 0 && (
+        <CompanyExpenseOverview entries={expenses.map(toEntry)} monthEntries={matching.map(toEntry)} thisMonth={(to || todayInMalaysia()).slice(0, 7)} periodLabel={periodLabel} />
+      )}
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {expenses.length === 0 ? (
