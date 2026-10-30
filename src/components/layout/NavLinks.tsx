@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { MODULES } from "@/lib/constants";
@@ -109,6 +110,13 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M10 3v2M10 15v2M3 10h2M15 10h2M5.5 5.5l1.4 1.4M13.1 13.1l1.4 1.4M14.5 5.5l-1.4 1.4M6.9 13.1l-1.4 1.4" />
     </>
   ),
+  companies: (
+    <>
+      <path d="M4 17V4.5h8V17" />
+      <path d="M12 8.5h4V17" />
+      <path d="M2.5 17h15M7 7.5h2M7 10.5h2M7 13.5h2" />
+    </>
+  ),
   "ai-assistant": (
     <>
       <rect x="4" y="5" width="12" height="9" rx="2.5" />
@@ -126,6 +134,31 @@ function Icon({ name }: { name: string }) {
   );
 }
 
+/** The page you are on: a filled tan pill with dark text, the same in every company look. */
+export const ACTIVE_PILL = "bg-[#d2b185] font-bold text-[#2b2318] shadow-sm";
+
+/** A group of links that opens and closes (chevron on the right); the links inside hang from a thin line on the left. */
+export function NavGroup({ icon, label, children, defaultOpen = true, hasActive = false }: { icon: string; label: string; children: React.ReactNode; defaultOpen?: boolean; hasActive?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="flex flex-col">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-[13.5px] font-medium transition hover:bg-sidebar-field ${hasActive ? "bg-sidebar-field text-sidebar-text" : "text-sidebar-text/75"}`}
+      >
+        <Icon name={icon} />
+        <span className="flex-1">{label}</span>
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`shrink-0 transition-transform ${open ? "" : "rotate-180"}`} aria-hidden="true">
+          <path d="M5 12.5l5-5 5 5" />
+        </svg>
+      </button>
+      {open && <div className="ml-[22px] mt-0.5 flex flex-col gap-0.5 border-l border-sidebar-line pl-2.5">{children}</div>}
+    </div>
+  );
+}
+
 function NavItem({ href, icon, label, matchPrefixes, badge }: { href: string; icon: string; label: string; matchPrefixes?: string[]; badge?: number }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -136,16 +169,14 @@ function NavItem({ href, icon, label, matchPrefixes, badge }: { href: string; ic
   return (
     <Link
       href={fullHref}
-      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-[13.5px] transition ${
-        active
-          ? "border-l-[3px] border-accent bg-sidebar-active pl-[9px] font-semibold text-sidebar-active-text shadow-sm"
-          : "font-medium text-sidebar-text/75 hover:bg-sidebar-field hover:text-sidebar-text"
+      className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13.5px] transition ${
+        active ? ACTIVE_PILL : "font-medium text-sidebar-text/75 hover:bg-sidebar-field hover:text-sidebar-text"
       }`}
     >
       <Icon name={icon} />
       <span>{label}</span>
       {badge ? (
-        <span title="Waiting for your review" className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1.5 text-[11px] font-bold text-white">
+        <span title="Waiting for your review" className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full border border-current bg-danger px-1.5 text-[11px] font-bold text-white">
           {badge}
         </span>
       ) : null}

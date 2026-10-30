@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getSessionContext } from "@/lib/auth";
+import { getSessionContext, ROLE_LABEL } from "@/lib/auth";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import { AssistantWidget } from "@/components/assistant/AssistantWidget";
@@ -42,7 +42,7 @@ export default async function DashboardLayout({
         <CompanyTheme companies={companies ?? []} />
       </Suspense>
       <div className="flex h-screen overflow-hidden bg-bg print:block print:h-auto print:overflow-visible">
-        <Sidebar companies={companies ?? []} allowedModules={session.allowedModules} badges={{ catering: pendingCatering }} taskLinkLabel={taskLabel} showPayroll={showPayroll} scopedToOwnCompanies={!session.hasAllCompaniesAccess} />
+        <Sidebar companies={companies ?? []} allowedModules={session.allowedModules} badges={{ catering: pendingCatering }} taskLinkLabel={taskLabel} showPayroll={showPayroll} scopedToOwnCompanies={!session.hasAllCompaniesAccess} userName={session.fullName} roleLabel={ROLE_LABEL[session.role]} />
         <div className="flex min-w-0 flex-1 flex-col print:block">
           <Topbar session={session} companies={companies ?? []} priorityTitle={taskLabel} />
           <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-7 print:overflow-visible print:p-0">{children}</main>

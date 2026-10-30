@@ -4238,7 +4238,9 @@ const dictionary: Record<string, string> = {
   "people": "জন",
   "Email (optional)": "ইমেইল (ঐচ্ছিক)",
   "Set by the person (use Edit to set a new one)": "ব্যক্তি নিজে ঠিক করেছেন (নতুন দিতে Edit ব্যবহার করুন)",
-  "My Profile, Main Dashboard, Priority Centre, Bulletin Board, Company Spending and the AI Assistant are in the menu of everyone.": "আমার প্রোফাইল, প্রধান ড্যাশবোর্ড, অগ্রাধিকার কেন্দ্র, বুলেটিন বোর্ড, কোম্পানির খরচ ও এআই সহকারী সবার মেনুতে থাকে।"
+  "My Profile, Main Dashboard, Priority Centre, Bulletin Board, Company Spending and the AI Assistant are in the menu of everyone.": "আমার প্রোফাইল, প্রধান ড্যাশবোর্ড, অগ্রাধিকার কেন্দ্র, বুলেটিন বোর্ড, কোম্পানির খরচ ও এআই সহকারী সবার মেনুতে থাকে।",
+  "Centralized Catering, Kitchen, Finance & HR System": "ক্যাটারিং, রান্নাঘর, অর্থ ও এইচআর কেন্দ্রীয় ব্যবস্থা",
+  "Log Out": "লগ আউট"
 };
 
 export default dictionary;

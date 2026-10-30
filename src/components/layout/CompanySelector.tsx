@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ALL_COMPANIES_OPTION, COMPANY_STYLE } from "@/lib/constants";
+import { ACTIVE_PILL, NavGroup } from "./NavLinks";
 
 type Company = { id: string; name: string; legal_name: string };
 
@@ -99,18 +100,15 @@ export function CompanyQuickLinks({ companies }: { companies: Company[] }) {
   }
 
   return (
-    <div className="flex flex-col gap-0.5">
-      <div className="px-3 pb-1.5 pt-3 text-[11px] font-bold tracking-wide text-sidebar-text/55">
-        COMPANIES
-      </div>
+    <NavGroup icon="companies" label="Companies" hasActive={companies.some((c) => c.id === selectedId)}>
       {companies.map((c) => {
         const style = COMPANY_STYLE[c.legal_name];
         return (
           <button
             key={c.id}
             onClick={() => select(c.id)}
-            className={`flex items-center gap-3 rounded-lg px-3 py-1.5 pl-6 text-left text-[13px] transition ${
-              selectedId === c.id ? "bg-sidebar-active text-sidebar-active-text" : "text-sidebar-text/70 hover:text-sidebar-text"
+            className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left text-[13px] transition ${
+              selectedId === c.id ? ACTIVE_PILL : "font-medium text-sidebar-text/75 hover:bg-sidebar-field hover:text-sidebar-text"
             }`}
           >
             <span
@@ -121,6 +119,6 @@ export function CompanyQuickLinks({ companies }: { companies: Company[] }) {
           </button>
         );
       })}
-    </div>
+    </NavGroup>
   );
 }

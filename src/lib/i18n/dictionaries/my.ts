@@ -4232,7 +4232,9 @@ const dictionary: Record<string, string> = {
   "people": "ဦး",
   "Email (optional)": "အီးမေးလ် (မလိုအပ်ပါ)",
   "Set by the person (use Edit to set a new one)": "ကိုယ်တိုင် သတ်မှတ်ထားသည် (အသစ်သတ်မှတ်ရန် Edit ကို သုံးပါ)",
-  "My Profile, Main Dashboard, Priority Centre, Bulletin Board, Company Spending and the AI Assistant are in the menu of everyone.": "ကျွန်ုပ်၏ပရိုဖိုင်၊ ပင်မဒက်ရှ်ဘုတ်၊ ဦးစားပေးစင်တာ၊ ကြေညာဘုတ်၊ ကုမ္ပဏီအသုံးစရိတ်နှင့် AI လက်ထောက်တို့ကို လူတိုင်း၏ မီနူးတွင် တွေ့ရမည်။"
+  "My Profile, Main Dashboard, Priority Centre, Bulletin Board, Company Spending and the AI Assistant are in the menu of everyone.": "ကျွန်ုပ်၏ပရိုဖိုင်၊ ပင်မဒက်ရှ်ဘုတ်၊ ဦးစားပေးစင်တာ၊ ကြေညာဘုတ်၊ ကုမ္ပဏီအသုံးစရိတ်နှင့် AI လက်ထောက်တို့ကို လူတိုင်း၏ မီနူးတွင် တွေ့ရမည်။",
+  "Centralized Catering, Kitchen, Finance & HR System": "စားသောက်ဆက်သွယ်ရေး၊ မီးဖိုချောင်၊ ဘဏ္ဍာရေးနှင့် HR ဗဟိုစနစ်",
+  "Log Out": "ထွက်ရန်"
 };
 
 export default dictionary;
