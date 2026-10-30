@@ -9,6 +9,9 @@ import { createCompanyExpense } from "@/lib/finance/actions";
 import { DEPARTMENT_OPTIONS } from "@/lib/finance/constants";
 import { DescriptionInput } from "@/components/DescriptionInput";
 import { Select } from "@/components/ui/Select";
+import { MultiChoiceSelect } from "@/components/ui/MultiChoiceSelect";
+import { SplitAmountBox } from "@/components/shared/SplitAmountBox";
+import { splitAddsUp, splitCells } from "@/lib/categorySplit";
 
 type Company = { id: string; name: string };
 type CostCategory = { id: string; name: string };
@@ -46,9 +49,13 @@ export function CompanyExpenseUploadReview({
   const [companyId, setCompanyId] = useState(defaultCompanyId ?? companies[0]?.id ?? "");
   const [department, setDepartment] = useState("");
   const [accountId, setAccountId] = useState("");
-  const [form, setForm] = useState({ category: categories[0]?.name ?? "Other", description: "", amount: "", expenseDate: "" });
+  // one or more categories: with more than one, the amount is split between them and each part is saved as its own expense
+  const [form, setForm] = useState({ categories: [categories[0]?.name ?? "Other"], description: "", amount: "", expenseDate: "" });
+  const [shareText, setShareText] = useState<Record<string, string>>({});
+  const byCategory = form.categories.length > 1;
+  const cells = splitCells(form.amount, byCategory ? form.categories : [], [], shareText);
 
-  const isUtilities = /utilit/i.test(form.category);
+  const isUtilities = form.categories.some((c) => /utilit/i.test(c));
   const accountsOfCompany = utilityAccounts.filter((a) => a.companyId === companyId);
   const accountLabel = (a: UtilityAccount) => [a.provider, a.name, a.accountNo].filter(Boolean).join(" · ");
 
@@ -67,7 +74,7 @@ export function CompanyExpenseUploadReview({
     if (extracted) {
       const matchedCategory = categories.find((c) => c.name.toLowerCase() === (extracted.category ?? "").toLowerCase());
       setForm({
-        category: matchedCategory?.name ?? categories[0]?.name ?? "Other",
+        categories: [matchedCategory?.name ?? categories[0]?.name ?? "Other"],
         description: extracted.description ?? "",
         amount: extracted.amount?.toString() ?? "",
         expenseDate: extracted.expense_date ?? "",
@@ -80,11 +87,20 @@ export function CompanyExpenseUploadReview({
       flow.setError("Amount and date are required.");
       return;
     }
+    if (form.categories.length === 0) {
+      flow.setError("Choose the category.");
+      return;
+    }
+    if (byCategory && (!splitAddsUp(form.amount, cells) || cells.some((c) => c.amount <= 0))) {
+      flow.setError("The amounts of the categories must add up to the total amount, each more than 0.");
+      return;
+    }
     try {
       await flow.confirm(async () => {
         await createCompanyExpense({
           companyId,
-          category: form.category,
+          category: form.categories[0],
+          categoryShares: byCategory ? cells.map((c) => ({ category: c.category, amount: c.amount })) : undefined,
           department: department || undefined,
           amount: Number(form.amount),
           expenseDate: form.expenseDate,
@@ -148,10 +164,10 @@ export function CompanyExpenseUploadReview({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={labelClass}>Category *</label>
-                <Select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} className={inputClass}>
-                  {categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
-                </Select>
+                <label className={labelClass}>Category * (choose one or more)</label>
+                <div className="mt-1.5">
+                  <MultiChoiceSelect options={categories.map((c) => c.name)} value={form.categories} onChange={(list) => { setForm((f) => ({ ...f, categories: list })); setShareText({}); }} placeholder="Select category" searchPlaceholder="Search category" />
+                </div>
               </div>
               <div>
                 <label className={labelClass}>Expense Date *</label>
@@ -175,9 +191,13 @@ export function CompanyExpenseUploadReview({
             </div>
 
             <div>
-              <label className={labelClass}>Amount (RM) *</label>
-              <input type="number" step="0.01" min="0" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} className={inputClass} />
+              <label className={labelClass}>{byCategory ? "Total amount (RM) *" : "Amount (RM) *"}</label>
+              <input type="number" step="0.01" min="0" value={form.amount} onChange={(e) => { setForm((f) => ({ ...f, amount: e.target.value })); setShareText({}); }} className={inputClass} />
             </div>
+
+            {byCategory && (
+              <SplitAmountBox title="Split the amount by category (RM) *" total={form.amount} cells={cells} onType={(key, text) => setShareText((p) => ({ ...p, [key]: text }))} onEqual={() => setShareText({})} />
+            )}
 
             <ConfirmActions onCancel={() => router.push(redirectTo)} onConfirm={handleConfirm} saving={flow.saving} />
           </div>

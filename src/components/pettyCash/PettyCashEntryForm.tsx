@@ -16,6 +16,8 @@ import { Select } from "@/components/ui/Select";
 import { CompanyChips } from "@/components/pettyCash/CompanyChips";
 import { MultiChoiceSelect } from "@/components/ui/MultiChoiceSelect";
 import { splitCompanies } from "@/lib/pettyCash/companies";
+import { chosenCategories, splitAddsUp, splitCells } from "@/lib/categorySplit";
+import { SplitAmountBox } from "@/components/shared/SplitAmountBox";
 
 type Company = { id: string; name: string };
 type EntryKind = "expense" | "top_up" | "claim" | "claim_payment";
@@ -36,7 +38,7 @@ function UsageGuide({ canPay, hasClaim }: { canPay: boolean; hasClaim: boolean }
           <strong className="text-text">Received</strong>: money given to the petty cash, for example the float from Ms. Penny. Choose the company (or both companies), the date, the amount and whether it was received by cash or online transfer.
         </li>
         <li>
-          <strong className="text-text">Spent</strong>: money spent from the petty cash. Choose the category (one or more), whether it was paid by cash or online transfer, write what it was spent on and attach the receipt.
+          <strong className="text-text">Spent</strong>: money spent from the petty cash. Choose the category (one or more: the amount is then split by category, each part is its own record), whether it was paid by cash or online transfer, write what it was spent on and attach the receipt.
         </li>
         {hasClaim && (
           <li>
@@ -52,7 +54,7 @@ function UsageGuide({ canPay, hasClaim }: { canPay: boolean; hasClaim: boolean }
           </li>
         )}
         <li>
-          <strong className="text-text">More than one company</strong>: tick all the companies the money is for. Received and Spent are keyed once with one amount. A Claimant is split: you write how much belongs to each company.
+          <strong className="text-text">More than one company</strong>: tick all the companies the money is for. Received and Spent are keyed once with one amount. A Claimant is split: you write how much belongs to each company (and each category).
         </li>
       </ul>
     </details>
@@ -114,7 +116,7 @@ export function PettyCashEntryForm({
   const [category, setCategory] = useState(editing?.category ?? "");
   const [description, setDescription] = useState(editing?.description ?? "");
   const [personName, setPersonName] = useState(editing?.person_name ?? holderName);
-  // a claim for more than one company is split: how much belongs to each company (kept as typed; empty = shared equally)
+  // the amount split between the categories (and the companies of a claim): what was typed for each part; empty = shared equally
   const [shareText, setShareText] = useState<Record<string, string>>({});
   const [claimant, setClaimant] = useState("");
   const [department, setDepartment] = useState("");
@@ -125,18 +127,15 @@ export function PettyCashEntryForm({
   const chosenCompanies = companies.filter((c) => companyIds.includes(c.id));
   const { companyId: firstCompanyId, alsoCompanyIds } = splitCompanies(chosenCompanies.map((c) => c.id), editing?.company_id);
   const isClaim = kind === "claim";
-  const splitClaim = isClaim && !editing && chosenCompanies.length > 1;
-  // the amount shared equally (the cents that are left go to the first companies), unless a company's share was typed
-  const equalShares = (() => {
-    const cents = Math.round(Number(amount) * 100);
-    if (!Number.isFinite(cents) || cents <= 0 || chosenCompanies.length === 0) return chosenCompanies.map(() => 0);
-    const base = Math.floor(cents / chosenCompanies.length);
-    const extra = cents - base * chosenCompanies.length;
-    return chosenCompanies.map((_, i) => (base + (i < extra ? 1 : 0)) / 100);
-  })();
-  const sharesList = chosenCompanies.map((c, i) => ({ companyId: c.id, text: shareText[c.id] ?? (equalShares[i] ? equalShares[i].toFixed(2) : "") }));
-  const sharesTotalCents = sharesList.reduce((t, s) => t + Math.round(Number(s.text || 0) * 100), 0);
   const isReceived = kind === "top_up";
+  // more than one category: the amount is split between them, each part saved as its own record (money received has no category)
+  const categoryList = isReceived ? [] : chosenCategories(splitCategories(category));
+  const byCategory = categoryList.length > 1;
+  // a new claim is split between its companies (the money of each company is kept apart) and its categories
+  const splitClaim = isClaim && !editing && (chosenCompanies.length > 1 || byCategory);
+  const splitByCompany = splitClaim && chosenCompanies.length > 1;
+  const showSplit = splitClaim || (!isClaim && byCategory);
+  const cells = splitCells(amount, byCategory ? categoryList : [], splitClaim ? chosenCompanies.map((c) => c.id) : [], shareText);
   const isPayment = kind === "claim_payment";
   const paidClaim = pendingClaims.find((c) => c.id === payClaimId);
   const isPayer = (name: string) => claimPayers.some((p) => p.name === name);
@@ -199,10 +198,15 @@ export function PettyCashEntryForm({
       setError("Enter who is claiming this petty cash.");
       return;
     }
-    if (splitClaim && sharesTotalCents !== Math.round(Number(amount) * 100)) {
-      setError("The shares of the companies must add up to the total amount of the claim.");
+    if (showSplit && !splitAddsUp(amount, cells)) {
+      setError(byCategory ? "The amounts of the categories must add up to the total amount." : "The shares of the companies must add up to the total amount of the claim.");
       return;
     }
+    if (showSplit && cells.some((c) => c.amount <= 0)) {
+      setError("Enter an amount more than 0 for each part.");
+      return;
+    }
+    const categoryShares = byCategory && !isClaim ? cells.map((c) => ({ category: c.category, amount: c.amount })) : undefined;
     if (!paymentMethod) {
       setError(isReceived ? "Choose how the money was received: cash or online transfer." : "Choose how it was paid: cash or online transfer.");
       return;
@@ -225,7 +229,7 @@ export function PettyCashEntryForm({
             documentId,
             personName: personName.trim(),
             paymentMethod,
-            shares: sharesList.map((s) => ({ companyId: s.companyId, amount: Math.round(Number(s.text) * 100) / 100 })),
+            shares: cells.map((c) => ({ companyId: c.companyId, amount: c.amount, ...(byCategory ? { category: c.category } : {}) })),
           })
         : isClaim
         ? await createPettyCashTransaction({
@@ -243,8 +247,8 @@ export function PettyCashEntryForm({
             paymentMethod,
           })
         : editing
-          ? await updatePettyCashEntry(editing.id, { companyId: firstCompanyId, alsoCompanyIds, paymentMethod, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, amount: Number(amount), documentId, personName: personName || undefined })
-          : await createPettyCashEntry({ companyId: firstCompanyId, alsoCompanyIds, paymentMethod, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, amount: Number(amount), documentId, personName: personName || undefined });
+          ? await updatePettyCashEntry(editing.id, { companyId: firstCompanyId, alsoCompanyIds, paymentMethod, categoryShares, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, amount: Number(amount), documentId, personName: personName || undefined })
+          : await createPettyCashEntry({ companyId: firstCompanyId, alsoCompanyIds, paymentMethod, categoryShares, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, amount: Number(amount), documentId, personName: personName || undefined });
       if (!result.ok) {
         setError(result.error);
         return;
@@ -405,7 +409,7 @@ export function PettyCashEntryForm({
           <input type="date" required max={todayInMalaysia()} value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} />
         </div>
         <div>
-          <label className={labelClass}>{splitClaim ? "Total amount of the claim (RM) *" : "Amount (RM) *"}</label>
+          <label className={labelClass}>{showSplit ? "Total amount (RM) *" : "Amount (RM) *"}</label>
           <input type="number" min="0.01" step="0.01" required value={amount} onChange={(e) => { setAmount(e.target.value); setShareText({}); }} className={inputClass} />
         </div>
         {methodField}
@@ -428,28 +432,6 @@ export function PettyCashEntryForm({
           )}
         </div>
       </div>
-
-      {splitClaim && (
-        <div className="rounded-lg border border-border bg-surface-alt p-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className={labelClass}>Split the amount between the companies (RM) *</div>
-            <button type="button" onClick={() => setShareText({})} className="text-[12px] font-semibold text-primary">
-              Share equally
-            </button>
-          </div>
-          <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {chosenCompanies.map((c, i) => (
-              <div key={c.id}>
-                <label className={labelClass}>{c.name}</label>
-                <input type="number" min="0.01" step="0.01" value={sharesList[i].text} onChange={(e) => setShareText((p) => ({ ...p, [c.id]: e.target.value }))} className={inputClass} />
-              </div>
-            ))}
-          </div>
-          <div className={`mt-2 text-[12px] font-semibold ${sharesTotalCents === Math.round(Number(amount || 0) * 100) ? "text-success" : "text-danger"}`}>
-            {`Total of the shares: RM ${(sharesTotalCents / 100).toFixed(2)} of RM ${Number(amount || 0).toFixed(2)}`}
-          </div>
-        </div>
-      )}
 
       {isClaim && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -487,6 +469,17 @@ export function PettyCashEntryForm({
           <DescriptionInput value={description} onChange={setDescription} companyId={firstCompanyId} className={inputClass} placeholder={isReceived ? "e.g. Float from Ms. Penny" : "e.g. Petrol for event delivery"} />
         </div>
       </div>
+
+      {showSplit && (
+        <SplitAmountBox
+          title={byCategory && splitByCompany ? "Split the amount by category and company (RM) *" : byCategory ? "Split the amount by category (RM) *" : "Split the amount between the companies (RM) *"}
+          total={amount}
+          cells={cells}
+          companies={splitByCompany ? chosenCompanies : []}
+          onType={(key, text) => setShareText((p) => ({ ...p, [key]: text }))}
+          onEqual={() => setShareText({})}
+        />
+      )}
 
       <div>
         <label className={labelClass}>Receipt / photo {isReceived ? "(optional)" : "(keep it with the record)"}</label>

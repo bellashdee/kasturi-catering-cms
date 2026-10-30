@@ -9,6 +9,7 @@ import { claimPayers } from "@/lib/pettyCash/access";
 import { todayInMalaysia } from "@/lib/format";
 import type { PettyCashTransactionRow } from "@/lib/finance/actions";
 import { isPaymentMethod } from "@/lib/operationPettyCash/constants";
+import { checkCategoryShares, type CategoryShare } from "@/lib/categorySplit";
 
 /**
  * My Claims: any staff member claims back what they bought with their own money, from Ms. Penny or Ms. Nabilah. The staff have no
@@ -27,7 +28,13 @@ export type MyClaimInput = {
   category?: string;
   description?: string;
   documentId?: string;
+  /** bought for more than one category: how much is for each (each part is saved as its own claim, same receipt) */
+  categoryShares?: CategoryShare[];
 };
+
+/** The claims to save: one for each category the amount is split between, otherwise the one claim as it is. */
+const claimParts = (input: MyClaimInput): CategoryShare[] =>
+  checkCategoryShares(input.amount, input.categoryShares) ?? [{ category: input.category?.trim() ?? "", amount: input.amount }];
 
 const norm = (s: string) => s.trim().replace(/\s+/g, " ").toUpperCase();
 
@@ -68,27 +75,30 @@ export async function submitMyClaim(input: MyClaimInput): Promise<ActionResult> 
     const { record, payer } = await checked(input, records);
     const { data: created, error } = await admin
       .from("petty_cash_transactions")
-      .insert({
-        company_id: input.companyId,
-        type: "expense",
-        claimant_name: record.full_name,
-        claimant_department: record.department,
-        payment_status: "pending_payment",
-        category: input.category?.trim() || null,
-        description: input.description?.trim() || null,
-        amount: input.amount,
-        transaction_date: input.date,
-        document_id: input.documentId || null,
-        person_name: payer.name,
-        person_position: null,
-        shared_company_ids: [],
-        payment_method: input.paymentMethod,
-        created_by: userId,
-      })
-      .select("id")
-      .single();
+      .insert(
+        claimParts(input).map((part) => ({
+          company_id: input.companyId,
+          type: "expense",
+          claimant_name: record.full_name,
+          claimant_department: record.department,
+          payment_status: "pending_payment",
+          category: part.category || null,
+          description: input.description?.trim() || null,
+          amount: part.amount,
+          transaction_date: input.date,
+          document_id: input.documentId || null,
+          person_name: payer.name,
+          person_position: null,
+          shared_company_ids: [],
+          payment_method: input.paymentMethod,
+          created_by: userId,
+        })),
+      )
+      .select("id, amount");
     if (error) throw error;
-    await recordAudit({ companyId: input.companyId, relatedTable: "petty_cash_transactions", relatedId: created.id, action: "claim_submitted", newValue: `RM ${input.amount.toFixed(2)} · ${record.full_name} · claimed from ${payer.name}` });
+    for (const row of created ?? []) {
+      await recordAudit({ companyId: input.companyId, relatedTable: "petty_cash_transactions", relatedId: row.id, action: "claim_submitted", newValue: `RM ${Number(row.amount).toFixed(2)} · ${record.full_name} · claimed from ${payer.name}` });
+    }
     revalidate();
     return {};
   }, "Could not send the claim. Please try again.");
@@ -106,15 +116,17 @@ export async function updateMyClaim(id: string, input: MyClaimInput): Promise<Ac
     const { admin, userId, records } = await whoAmI();
     const before = await ownPending(admin, userId, id);
     const { record, payer } = await checked(input, records);
+    // split between more categories: this claim keeps the first category, the others are added as their own claims
+    const [first, ...rest] = claimParts(input);
     const { error } = await admin
       .from("petty_cash_transactions")
       .update({
         company_id: input.companyId,
         claimant_name: record.full_name,
         claimant_department: record.department,
-        category: input.category?.trim() || null,
+        category: first.category || null,
         description: input.description?.trim() || null,
-        amount: input.amount,
+        amount: first.amount,
         transaction_date: input.date,
         person_name: payer.name,
         person_position: null,
@@ -125,7 +137,35 @@ export async function updateMyClaim(id: string, input: MyClaimInput): Promise<Ac
       .eq("created_by", userId)
       .neq("payment_status", "paid");
     if (error) throw error;
-    await recordAudit({ companyId: before.company_id, relatedTable: "petty_cash_transactions", relatedId: id, action: "edited", previousValue: `RM ${before.amount} · ${before.transaction_date}`, newValue: `RM ${input.amount} · ${input.date}` });
+    await recordAudit({ companyId: before.company_id, relatedTable: "petty_cash_transactions", relatedId: id, action: "edited", previousValue: `RM ${before.amount} · ${before.transaction_date}`, newValue: `RM ${first.amount} · ${input.date}` });
+    if (rest.length > 0) {
+      const { data: added, error: addError } = await admin
+        .from("petty_cash_transactions")
+        .insert(
+          rest.map((part) => ({
+            company_id: input.companyId,
+            type: "expense",
+            claimant_name: record.full_name,
+            claimant_department: record.department,
+            payment_status: "pending_payment",
+            category: part.category,
+            description: input.description?.trim() || null,
+            amount: part.amount,
+            transaction_date: input.date,
+            document_id: input.documentId || before.document_id,
+            person_name: payer.name,
+            person_position: null,
+            shared_company_ids: [],
+            payment_method: input.paymentMethod,
+            created_by: userId,
+          })),
+        )
+        .select("id, amount");
+      if (addError) throw addError;
+      for (const row of added ?? []) {
+        await recordAudit({ companyId: input.companyId, relatedTable: "petty_cash_transactions", relatedId: row.id, action: "claim_submitted", newValue: `RM ${Number(row.amount).toFixed(2)} (split by category) · ${record.full_name} · claimed from ${payer.name}` });
+      }
+    }
     revalidate();
     return {};
   }, "Could not save. Please try again.");

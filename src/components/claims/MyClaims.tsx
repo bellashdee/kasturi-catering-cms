@@ -11,6 +11,8 @@ import { PAYMENT_METHOD_LABEL, PETTY_CASH_CATEGORIES, joinCategories, splitCateg
 import { DescriptionInput } from "@/components/DescriptionInput";
 import { Select } from "@/components/ui/Select";
 import { MultiChoiceSelect } from "@/components/ui/MultiChoiceSelect";
+import { SplitAmountBox } from "@/components/shared/SplitAmountBox";
+import { chosenCategories, splitAddsUp, splitCells } from "@/lib/categorySplit";
 import { RecordActions } from "@/components/shared/RecordActions";
 import { BTN_GHOST, Dialog } from "@/components/priority/ui";
 
@@ -50,6 +52,11 @@ function ClaimFields({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = (patch: Partial<ClaimValues>) => setV((p) => ({ ...p, ...patch }));
+  // bought for more than one category: the amount is split between them (each part is its own claim); empty = shared equally
+  const [shareText, setShareText] = useState<Record<string, string>>({});
+  const categoryList = chosenCategories(splitCategories(v.category));
+  const byCategory = categoryList.length > 1;
+  const cells = splitCells(v.amount, byCategory ? categoryList : [], [], shareText);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -62,6 +69,10 @@ function ClaimFields({
       setError("Choose how you paid: cash or online transfer.");
       return;
     }
+    if (byCategory && (!splitAddsUp(v.amount, cells) || cells.some((c) => c.amount <= 0))) {
+      setError("The amounts of the categories must add up to the amount you paid, each more than 0.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -70,14 +81,17 @@ function ClaimFields({
         const doc = await uploadDocument({ companyId: v.companyId, module: "finance", fileType: fileTypeFromMime(receipt), file: receipt, skipMarkdown: true });
         documentId = doc.id;
       }
-      const result = await onSubmit({ companyId: v.companyId, date: v.date, amount: Number(v.amount), payer: v.payer, paymentMethod: v.paymentMethod, category: v.category || undefined, description: v.description || undefined, documentId });
+      const result = await onSubmit({ companyId: v.companyId, date: v.date, amount: Number(v.amount), payer: v.payer, paymentMethod: v.paymentMethod, category: v.category || undefined, description: v.description || undefined, documentId, categoryShares: byCategory ? cells.map((c) => ({ category: c.category, amount: c.amount })) : undefined });
       if (!result.ok) {
         setError(result.error);
         return;
       }
       setReceipt(null);
       form.reset();
-      if (clearAfter) setV(initial);
+      if (clearAfter) {
+        setV(initial);
+        setShareText({});
+      }
       onSaved();
       router.refresh();
     } catch (err) {
@@ -113,7 +127,7 @@ function ClaimFields({
         </div>
         <div>
           <label className={labelClass}>Amount you paid (RM) *</label>
-          <input type="number" min="0.01" step="0.01" required value={v.amount} onChange={(e) => set({ amount: e.target.value })} className={inputClass} />
+          <input type="number" min="0.01" step="0.01" required value={v.amount} onChange={(e) => { set({ amount: e.target.value }); setShareText({}); }} className={inputClass} />
         </div>
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -144,6 +158,9 @@ function ClaimFields({
         <label className={labelClass}>What did you buy?</label>
         <DescriptionInput value={v.description} onChange={(text) => set({ description: text })} companyId={v.companyId} className={inputClass} placeholder="e.g. Cooking gas for the Ahmad wedding" />
       </div>
+      {byCategory && (
+        <SplitAmountBox title="Split the amount by category (RM) *" total={v.amount} cells={cells} onType={(key, text) => setShareText((p) => ({ ...p, [key]: text }))} onEqual={() => setShareText({})} />
+      )}
       <div>
         <label className={labelClass}>Receipt / photo of the receipt</label>
         <input type="file" accept={ANY_UPLOAD_ACCEPT} onChange={(e) => setReceipt(e.target.files?.[0] ?? null)} className="mt-1 block w-full text-[13px]" />

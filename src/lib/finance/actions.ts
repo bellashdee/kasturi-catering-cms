@@ -9,6 +9,7 @@ import { runAction, type ActionResult } from "@/lib/actionResult";
 import { assertOwnPerson, claimPayers, pettyCashAccess } from "@/lib/pettyCash/access";
 import { confirmedPaymentDate, todayInMalaysia } from "@/lib/format";
 import { isPaymentMethod } from "@/lib/operationPettyCash/constants";
+import { checkCategoryShares, type CategoryShare } from "@/lib/categorySplit";
 import { DUPLICATE_INVOICE_MESSAGE } from "@/lib/finance/constants";
 import type { Database } from "@/lib/supabase/types";
 
@@ -26,6 +27,8 @@ async function requireUser() {
 export type CompanyExpenseInput = {
   companyId: string;
   category: string;
+  /** an expense for more than one category: how much is for each (each part is saved as its own expense, same receipt) */
+  categoryShares?: CategoryShare[];
   department?: string;
   amount: number;
   expenseDate: string;
@@ -35,16 +38,19 @@ export type CompanyExpenseInput = {
 
 export async function createCompanyExpense(input: CompanyExpenseInput) {
   const { supabase, userId } = await requireUser();
-  const { error } = await supabase.from("expenses").insert({
-    company_id: input.companyId,
-    category: input.category,
-    department: input.department || null,
-    amount: input.amount,
-    expense_date: input.expenseDate,
-    notes: input.notes || null,
-    document_id: input.documentId || null,
-    created_by: userId,
-  });
+  const split = checkCategoryShares(input.amount, input.categoryShares) ?? [{ category: input.category, amount: input.amount }];
+  const { error } = await supabase.from("expenses").insert(
+    split.map((part) => ({
+      company_id: input.companyId,
+      category: part.category,
+      department: input.department || null,
+      amount: part.amount,
+      expense_date: input.expenseDate,
+      notes: input.notes || null,
+      document_id: input.documentId || null,
+      created_by: userId,
+    })),
+  );
   if (error) throw error;
 
   if (input.documentId) {
@@ -316,13 +322,16 @@ export type SplitClaimInput = {
   documentId?: string;
   personName: string;
   personPosition?: string;
-  /** how much of the claim belongs to each company (the money of each company is kept apart); together they are the whole claim */
-  shares: { companyId: string; amount: number }[];
+  /**
+   * how much of the claim belongs to each company and each category (the money of each company is kept apart, and each category is
+   * its own record); together they are the whole claim. category is left out when only the companies are split.
+   */
+  shares: { companyId: string; amount: number; category?: string }[];
   /** cash or online transfer: how the staff member paid */
   paymentMethod?: string;
 };
 
-/** A staff claim for more than one company: one claim for each company with its own share of the amount, all saved together or not at all. */
+/** A staff claim split between companies and/or categories: one claim for each part with its own amount, all saved together or not at all. */
 export async function createSplitPettyCashClaims(input: SplitClaimInput): Promise<ActionResult> {
   return runAction(async () => {
     const { supabase, userId } = await requireUser();
@@ -331,8 +340,10 @@ export async function createSplitPettyCashClaims(input: SplitClaimInput): Promis
     if (!isPaymentMethod(input.paymentMethod)) throw new Error("Choose how it was paid: cash or online transfer.");
     const paymentMethod = input.paymentMethod;
     const shares = input.shares ?? [];
-    if (shares.length < 2 || new Set(shares.map((s) => s.companyId)).size !== shares.length) throw new Error("Choose at least two different companies to split the claim.");
-    if (shares.some((s) => !Number.isFinite(s.amount) || s.amount <= 0)) throw new Error("Enter an amount more than 0 for each company.");
+    const partKey = (s: { companyId: string; category?: string }) => `${s.companyId}|${(s.category ?? "").trim().toUpperCase()}`;
+    if (shares.length < 2 || new Set(shares.map(partKey)).size !== shares.length) throw new Error("Choose at least two different companies or categories to split the claim.");
+    if (shares.some((s) => !s.companyId)) throw new Error("Choose the company of each part of the claim.");
+    if (shares.some((s) => !Number.isFinite(s.amount) || s.amount <= 0)) throw new Error("Enter an amount more than 0 for each part.");
     await assertOwnPerson(supabase, userId, input.personName);
     const same = (a: string, b: string) => a.trim().replace(/\s+/g, " ").toUpperCase() === b.trim().replace(/\s+/g, " ").toUpperCase();
     if (!(await claimPayers()).some((p) => same(p.name, input.personName))) {
@@ -347,7 +358,7 @@ export async function createSplitPettyCashClaims(input: SplitClaimInput): Promis
           claimant_name: input.claimantName.trim(),
           claimant_department: input.claimantDepartment?.trim() || null,
           payment_status: "pending_payment" as const,
-          category: input.category || null,
+          category: s.category?.trim() || input.category || null,
           description: input.description || null,
           amount: s.amount,
           transaction_date: input.transactionDate || todayInMalaysia(),

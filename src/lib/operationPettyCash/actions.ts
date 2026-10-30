@@ -7,6 +7,7 @@ import { runAction, type ActionResult } from "@/lib/actionResult";
 import { todayInMalaysia } from "@/lib/format";
 import { assertOwnPerson } from "@/lib/pettyCash/access";
 import type { EntryType, OperationPettyCashRow } from "./constants";
+import { checkCategoryShares, type CategoryShare } from "@/lib/categorySplit";
 
 async function requireHolder() {
   const supabase = await createClient();
@@ -40,7 +41,15 @@ export type PettyCashEntryInput = {
   alsoCompanyIds?: string[];
   /** cash or online transfer: how the money was received (a top-up) or paid (spent); required for both */
   paymentMethod?: string;
+  /** money spent on more than one category: how much of the amount is for each (each part is saved as its own entry) */
+  categoryShares?: CategoryShare[];
 };
+
+/** The entries to save: one for each category the amount is split between, otherwise the one entry as it is. */
+function parts(input: PettyCashEntryInput): CategoryShare[] {
+  const shares = input.entryType === "expense" ? checkCategoryShares(input.amount, input.categoryShares) : null;
+  return shares ?? [{ category: input.category?.trim() ?? "", amount: input.amount }];
+}
 
 function validate(input: PettyCashEntryInput) {
   if (!input.personName?.trim()) throw new Error("Choose whose petty cash this is: the name.");
@@ -62,29 +71,34 @@ export async function createPettyCashEntry(input: PettyCashEntryInput): Promise<
   return runAction(async () => {
     const { supabase, userId } = await requireHolder();
     validate(input);
+    const split = parts(input);
     await assertOwnPerson(supabase, userId, input.personName);
+    // money spent on more than one category: one entry for each category, with its own part of the amount (same receipt and details)
     const { data, error } = await supabase
       .from("operation_petty_cash")
-      .insert({
-        company_id: input.companyId,
-        entry_type: input.entryType,
-        entry_date: input.entryDate,
-        category: input.category?.trim() || null,
-        description: input.description?.trim() || null,
-        amount: input.amount,
-        document_id: input.documentId || null,
-        person_name: input.personName?.trim().slice(0, 200) || null,
-        person_position: input.personPosition?.trim().slice(0, 200) || null,
-        shared_company_ids: (input.alsoCompanyIds ?? []).filter((id) => id !== input.companyId),
-        payment_method: input.paymentMethod,
-        created_by: userId,
-      })
-      .select("id")
-      .single();
+      .insert(
+        split.map((part) => ({
+          company_id: input.companyId,
+          entry_type: input.entryType,
+          entry_date: input.entryDate,
+          category: part.category || null,
+          description: input.description?.trim() || null,
+          amount: part.amount,
+          document_id: input.documentId || null,
+          person_name: input.personName?.trim().slice(0, 200) || null,
+          person_position: input.personPosition?.trim().slice(0, 200) || null,
+          shared_company_ids: (input.alsoCompanyIds ?? []).filter((id) => id !== input.companyId),
+          payment_method: input.paymentMethod,
+          created_by: userId,
+        })),
+      )
+      .select("id, amount");
     if (error) throw error;
-    await recordAudit({ companyId: input.companyId, relatedTable: "operation_petty_cash", relatedId: data.id, action: "petty_cash_added", newValue: label({ entry_type: input.entryType, amount: input.amount, entry_date: input.entryDate, description: input.description ?? null }) });
+    for (const row of data ?? []) {
+      await recordAudit({ companyId: input.companyId, relatedTable: "operation_petty_cash", relatedId: row.id, action: "petty_cash_added", newValue: label({ entry_type: input.entryType, amount: row.amount, entry_date: input.entryDate, description: input.description ?? null }) });
+    }
     refresh();
-    return { id: data.id };
+    return { id: data?.[0]?.id ?? "" };
   }, "Could not save the entry. Please try again.");
 }
 
@@ -92,6 +106,7 @@ export async function updatePettyCashEntry(id: string, input: PettyCashEntryInpu
   return runAction(async () => {
     const { supabase, userId } = await requireHolder();
     validate(input);
+    const [first, ...rest] = parts(input);
     const { data: before } = await supabase.from("operation_petty_cash").select("*").eq("id", id).maybeSingle();
     if (!before) throw new Error("This entry was not found (it may have been deleted).");
     await assertOwnPerson(supabase, userId, before.person_name);
@@ -102,9 +117,9 @@ export async function updatePettyCashEntry(id: string, input: PettyCashEntryInpu
         company_id: input.companyId,
         entry_type: input.entryType,
         entry_date: input.entryDate,
-        category: input.category?.trim() || null,
+        category: first.category || null,
         description: input.description?.trim() || null,
-        amount: input.amount,
+        amount: first.amount,
         document_id: input.documentId ?? before.document_id,
         person_name: input.personName?.trim().slice(0, 200) || null,
         person_position: input.personPosition?.trim().slice(0, 200) || null,
@@ -117,7 +132,33 @@ export async function updatePettyCashEntry(id: string, input: PettyCashEntryInpu
       .select("id");
     if (error) throw error;
     if (!updated || updated.length !== 1) throw new Error("The change was not saved. You may not have permission.");
-    await recordAudit({ companyId: input.companyId, relatedTable: "operation_petty_cash", relatedId: id, action: "petty_cash_edited", previousValue: label(before), newValue: label({ entry_type: input.entryType, amount: input.amount, entry_date: input.entryDate, description: input.description ?? null }) });
+    await recordAudit({ companyId: input.companyId, relatedTable: "operation_petty_cash", relatedId: id, action: "petty_cash_edited", previousValue: label(before), newValue: label({ entry_type: input.entryType, amount: first.amount, entry_date: input.entryDate, description: input.description ?? null }) });
+    // split between more categories: this entry keeps the first category, the others are added as their own entries
+    if (rest.length > 0) {
+      const { data: added, error: addError } = await supabase
+        .from("operation_petty_cash")
+        .insert(
+          rest.map((part) => ({
+            company_id: input.companyId,
+            entry_type: input.entryType,
+            entry_date: input.entryDate,
+            category: part.category,
+            description: input.description?.trim() || null,
+            amount: part.amount,
+            document_id: input.documentId ?? before.document_id,
+            person_name: input.personName?.trim().slice(0, 200) || null,
+            person_position: input.personPosition?.trim().slice(0, 200) || null,
+            shared_company_ids: (input.alsoCompanyIds ?? before.shared_company_ids ?? []).filter((c) => c !== input.companyId),
+            payment_method: input.paymentMethod,
+            created_by: userId,
+          })),
+        )
+        .select("id, amount");
+      if (addError) throw addError;
+      for (const row of added ?? []) {
+        await recordAudit({ companyId: input.companyId, relatedTable: "operation_petty_cash", relatedId: row.id, action: "petty_cash_added", newValue: `${label({ entry_type: input.entryType, amount: row.amount, entry_date: input.entryDate, description: input.description ?? null })} (split by category)` });
+      }
+    }
     refresh();
     return {};
   }, "Could not save the change. Please try again.");
