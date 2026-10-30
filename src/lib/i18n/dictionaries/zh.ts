@@ -4265,7 +4265,7 @@ const dictionary: Record<string, string> = {
   "Tell the Administrator your full name and short name.": "把您的全名和简称告诉管理员。",
   "Receive your username and password.": "收到您的用户名和密码。",
   "Log in with your email or username, then your password.": "用电邮或用户名登录，然后输入密码。",
-  "Already have an account?": "已经有账号？"
+  "Already have an account?": "已经有账号？",
 };
 
 export default dictionary;

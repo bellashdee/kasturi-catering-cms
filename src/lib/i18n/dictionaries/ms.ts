@@ -4199,7 +4199,7 @@ const dictionary: Record<string, string> = {
   "Tell the Administrator your full name and short name.": "Beritahu Pentadbir nama penuh dan nama pendek anda.",
   "Receive your username and password.": "Terima username dan kata laluan anda.",
   "Log in with your email or username, then your password.": "Log masuk dengan e-mel atau username, kemudian kata laluan anda.",
-  "Already have an account?": "Sudah ada akaun?"
+  "Already have an account?": "Sudah ada akaun?",
 };
 
 export default dictionary;

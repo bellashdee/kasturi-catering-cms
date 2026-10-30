@@ -4,10 +4,17 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { resolveLoginIdentifier } from "@/lib/users/login";
 import { PasswordInput } from "@/components/shared/PasswordInput";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { KEEP_SIGNED_IN_KEY } from "@/components/auth/SessionGuard";
+
+/** The email of the account for what was typed in the first box (an email stays as it is, a username is looked up on the server). */
+async function resolveLoginIdentifier(identifier: string): Promise<string> {
+  const res = await fetch("/api/resolve-login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ identifier }) });
+  if (!res.ok) throw new Error("Could not reach the server. Please try again.");
+  const data = (await res.json()) as { email?: string };
+  return data.email || identifier.trim();
+}
 
 /** A round, pale box with its small picture on the left (as in the sign-in of a phone app). */
 const PILL =
@@ -54,7 +61,14 @@ export default function LoginPage() {
     setMagicLinkLoading(true);
     setMagicLinkError(null);
 
-    const resolvedEmail = await resolveLoginIdentifier(magicLinkEmail);
+    let resolvedEmail: string;
+    try {
+      resolvedEmail = await resolveLoginIdentifier(magicLinkEmail);
+    } catch (err) {
+      setMagicLinkLoading(false);
+      setMagicLinkError(err instanceof Error ? err.message : "Could not reach the server. Please try again.");
+      return;
+    }
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOtp({
       email: resolvedEmail,

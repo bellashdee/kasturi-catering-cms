@@ -5,8 +5,9 @@ import { canAccessPath, mergeAllowedModules, moduleForPath } from "@/lib/modules
 const PUBLIC_PATHS = ["/login", "/signup", "/auth"];
 // open to anyone, signed in or not (sales agents send customer details here without an account)
 // /api/convert_to_markdown is the Python MarkItDown function: it checks the signed-in user itself (Supabase token) and only fetches files from this project's storage
+// /api/resolve-login turns a username into the email of the account for the sign-in page (before anybody is signed in)
 // /supabase is the forwarder to Supabase for the browser (Supabase checks the session itself)
-const OPEN_PATHS = ["/customer-form", "/quotation-form", "/payment-proof-form", "/event-clock", "/api/convert_to_markdown", "/supabase"];
+const OPEN_PATHS = ["/customer-form", "/quotation-form", "/payment-proof-form", "/event-clock", "/api/convert_to_markdown", "/api/resolve-login", "/supabase"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });

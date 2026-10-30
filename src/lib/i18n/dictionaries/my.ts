@@ -4252,7 +4252,7 @@ const dictionary: Record<string, string> = {
   "Tell the Administrator your full name and short name.": "သင့်အမည်အပြည့်အစုံနှင့် အမည်တိုကို စီမံခန့်ခွဲသူအား ပြောပါ။",
   "Receive your username and password.": "သင့်အသုံးပြုသူအမည်နှင့် စကားဝှက်ကို ရယူပါ။",
   "Log in with your email or username, then your password.": "အီးမေးလ် သို့မဟုတ် အသုံးပြုသူအမည်ဖြင့် လော့ဂ်အင်ဝင်ပြီး စကားဝှက်ထည့်ပါ။",
-  "Already have an account?": "အကောင့် ရှိပြီးသားလား?"
+  "Already have an account?": "အကောင့် ရှိပြီးသားလား?",
 };
 
 export default dictionary;

@@ -4258,7 +4258,7 @@ const dictionary: Record<string, string> = {
   "Tell the Administrator your full name and short name.": "অ্যাডমিনিস্ট্রেটরকে আপনার পুরো নাম ও ছোট নাম বলুন।",
   "Receive your username and password.": "আপনার ইউজারনেম ও পাসওয়ার্ড নিন।",
   "Log in with your email or username, then your password.": "ইমেইল বা ইউজারনেম দিয়ে লগ ইন করুন, তারপর পাসওয়ার্ড দিন।",
-  "Already have an account?": "আগে থেকেই অ্যাকাউন্ট আছে?"
+  "Already have an account?": "আগে থেকেই অ্যাকাউন্ট আছে?",
 };
 
 export default dictionary;
