@@ -11,6 +11,12 @@ export type CostRow = {
   department: string | null;
   amount: number;
   companyId: string;
+  /** the record it comes from (unique with the source) */
+  id: string;
+  /** the day it counts on (YYYY-MM-DD) */
+  date: string;
+  /** what it was, as written on the record (notes, description, payee) */
+  details: string | null;
 };
 
 /**
@@ -22,6 +28,16 @@ export type CostRow = {
  */
 export async function getMonthlyCostBreakdown(supabase: DB, companyIds: string[], year: number, month: number, range?: DateRange): Promise<CostRow[]> {
   const { start, end } = resolvePeriod(year, month, range);
+  return listSpending(supabase, companyIds, start, end);
+}
+
+/**
+ * Every cost of the companies between two days (or all of them when no days are given): the one list that Monthly Costing, the
+ * reports and Company Expenses all add up, so they always tally. The petty cash book is read as the signed-in person may see it.
+ */
+export async function listSpending(supabase: DB, companyIds: string[], from?: string, to?: string): Promise<CostRow[]> {
+  const start = from || "0001-01-01";
+  const end = to || "9999-12-31";
   const startTs = `${start}T00:00:00+08:00`;
   const endTs = `${end}T23:59:59.999+08:00`;
 
@@ -34,24 +50,25 @@ export async function getMonthlyCostBreakdown(supabase: DB, companyIds: string[]
     payrollRecords,
     companyExpenses,
     pettyCash,
+    pettyCashBook,
     financePayments,
   ] = await Promise.all([
     supabase
       .from("stock_movements")
-      .select("company_id, quantity, movement_type, ingredients(unit_cost)")
+      .select("id, company_id, quantity, movement_type, created_at, ingredients(unit_cost)")
       .in("company_id", companyIds)
       .in("movement_type", ["out", "wastage"])
       .gte("created_at", startTs)
       .lte("created_at", endTs),
     supabase
       .from("event_costing")
-      .select("company_id, food_cost, ingredient_cost, staff_cost, transport_cost, equipment_cost, other_cost, catering_events!inner(event_date)")
+      .select("id, company_id, food_cost, ingredient_cost, staff_cost, transport_cost, equipment_cost, other_cost, catering_events!inner(event_date, event_name)")
       .in("company_id", companyIds)
       .gte("catering_events.event_date", start)
       .lte("catering_events.event_date", end),
     supabase
       .from("supplier_payments")
-      .select("company_id, amount, supplier_invoices(department)")
+      .select("id, company_id, amount, payment_date, supplier_invoices(department)")
       .in("company_id", companyIds)
       .eq("status", "paid")
       .not("supplier_invoice_id", "is", null) // Finance supplier payments are counted from finance_payments
@@ -59,47 +76,55 @@ export async function getMonthlyCostBreakdown(supabase: DB, companyIds: string[]
       .lte("payment_date", end),
     supabase
       .from("driver_expenses")
-      .select("company_id, amount, category")
+      .select("id, company_id, amount, category, expense_date")
       .in("company_id", companyIds)
       .gte("expense_date", start)
       .lte("expense_date", end),
     supabase
       .from("marketing_expenses")
-      .select("company_id, amount, category")
+      .select("id, company_id, amount, category, expense_date")
       .in("company_id", companyIds)
       .gte("expense_date", start)
       .lte("expense_date", end),
     supabase
       .from("payroll_records")
-      .select("company_id, gross_pay, employees(department)")
+      .select("id, company_id, gross_pay, pay_period_end, employees(department, full_name)")
       .in("company_id", companyIds)
       .eq("status", "paid")
       .gte("pay_period_end", start)
       .lte("pay_period_end", end),
     supabase
       .from("expenses")
-      .select("company_id, amount, category, department")
+      .select("id, company_id, amount, category, department, expense_date, notes")
       .in("company_id", companyIds)
       .gte("expense_date", start)
       .lte("expense_date", end),
     supabase
       .from("petty_cash_transactions")
-      .select("company_id, amount, category, type")
+      .select("id, company_id, amount, category, type, transaction_date, description, claimant_name")
       .in("company_id", companyIds)
       .eq("type", "expense")
       .gte("transaction_date", start)
       .lte("transaction_date", end),
+    // the money spent from the petty cash book (an entry for more than one company is counted once, under its main company)
+    supabase
+      .from("operation_petty_cash")
+      .select("id, company_id, amount, category, entry_date, description")
+      .in("company_id", companyIds)
+      .eq("entry_type", "expense")
+      .gte("entry_date", start)
+      .lte("entry_date", end),
     // Read-through only: paid Finance payments are never copied into another table, so nothing is counted twice.
     supabase
       .from("finance_payments")
-      .select("company_id, amount, category, utility_provider")
+      .select("id, company_id, amount, category, utility_provider, paid_date, period_month, payee_name")
       .in("company_id", companyIds)
       .eq("status", "paid")
       // Supplier payments settle purchases that are already counted in the costing (daily purchase costs), so only
       // rental and utilities flow in here; adding supplier payments too would count the same cost twice.
       .neq("category", "supplier")
       // Paid with a payment date in the month; a payment ticked as paid without a date yet counts in its payment month.
-      .or(`and(paid_date.gte.${start},paid_date.lte.${end}),and(paid_date.is.null,period_month.eq.${start})`),
+      .or(`and(paid_date.gte.${start},paid_date.lte.${end}),and(paid_date.is.null,period_month.gte.${start},period_month.lte.${end})`),
   ]);
 
   const rows: CostRow[] = [];
@@ -113,6 +138,9 @@ export async function getMonthlyCostBreakdown(supabase: DB, companyIds: string[]
         department: null,
         amount: cost,
         companyId: m.company_id,
+        id: m.id,
+        date: m.created_at.slice(0, 10),
+        details: null,
       });
     }
   }
@@ -127,7 +155,7 @@ export async function getMonthlyCostBreakdown(supabase: DB, companyIds: string[]
       ["Other Cost", Number(c.other_cost)],
     ];
     for (const [category, amount] of parts) {
-      if (amount > 0) rows.push({ source: "Catering", category, department: null, amount, companyId: c.company_id });
+      if (amount > 0) rows.push({ source: "Catering", category, department: null, amount, companyId: c.company_id, id: `${c.id}-${category}`, date: c.catering_events?.event_date ?? "", details: c.catering_events?.event_name ?? null });
     }
   }
 
@@ -138,15 +166,18 @@ export async function getMonthlyCostBreakdown(supabase: DB, companyIds: string[]
       department: p.supplier_invoices?.department ?? null,
       amount: Number(p.amount),
       companyId: p.company_id,
+      id: p.id,
+      date: p.payment_date ?? "",
+      details: null,
     });
   }
 
   for (const d of driverExpenses.data ?? []) {
-    rows.push({ source: "Driver", category: d.category, department: null, amount: Number(d.amount), companyId: d.company_id });
+    rows.push({ source: "Driver", category: d.category, department: null, amount: Number(d.amount), companyId: d.company_id, id: d.id, date: d.expense_date, details: null });
   }
 
   for (const mk of marketingExpenses.data ?? []) {
-    rows.push({ source: "Marketing", category: mk.category, department: null, amount: Number(mk.amount), companyId: mk.company_id });
+    rows.push({ source: "Marketing", category: mk.category, department: null, amount: Number(mk.amount), companyId: mk.company_id, id: mk.id, date: mk.expense_date, details: null });
   }
 
   for (const pr of payrollRecords.data ?? []) {
@@ -156,6 +187,9 @@ export async function getMonthlyCostBreakdown(supabase: DB, companyIds: string[]
       department: pr.employees?.department ?? null,
       amount: Number(pr.gross_pay),
       companyId: pr.company_id,
+      id: pr.id,
+      date: pr.pay_period_end,
+      details: pr.employees?.full_name ?? null,
     });
   }
 
@@ -166,6 +200,9 @@ export async function getMonthlyCostBreakdown(supabase: DB, companyIds: string[]
       department: e.department ?? null,
       amount: Number(e.amount),
       companyId: e.company_id,
+      id: e.id,
+      date: e.expense_date,
+      details: e.notes ?? null,
     });
   }
 
@@ -176,6 +213,22 @@ export async function getMonthlyCostBreakdown(supabase: DB, companyIds: string[]
       department: null,
       amount: Number(pc.amount),
       companyId: pc.company_id,
+      id: pc.id,
+      date: pc.transaction_date,
+      details: [pc.description, pc.claimant_name ? `Staff claim: ${pc.claimant_name}` : null].filter(Boolean).join(" · ") || null,
+    });
+  }
+
+  for (const pb of pettyCashBook.data ?? []) {
+    rows.push({
+      source: "Petty Cash",
+      category: pb.category ?? "Other",
+      department: null,
+      amount: Number(pb.amount),
+      companyId: pb.company_id,
+      id: pb.id,
+      date: pb.entry_date,
+      details: pb.description ?? null,
     });
   }
 
@@ -186,6 +239,9 @@ export async function getMonthlyCostBreakdown(supabase: DB, companyIds: string[]
       department: null,
       amount: Number(fp.amount),
       companyId: fp.company_id,
+      id: fp.id,
+      date: fp.paid_date ?? fp.period_month,
+      details: fp.payee_name ?? null,
     });
   }
 

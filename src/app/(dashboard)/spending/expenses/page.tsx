@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
-import { listCompanyExpenses, listCostCategories, uniqueCategories } from "@/lib/finance/queries";
+import { listCostCategories, listSpending, uniqueCategories, type CostRow } from "@/lib/finance/queries";
 import { formatCurrency, formatMalaysiaDate, todayInMalaysia } from "@/lib/format";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SpendingSubNav } from "@/components/spending/SpendingSubNav";
@@ -31,7 +31,13 @@ export default async function CompanyExpensesPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const [everyExpense, categories] = await Promise.all([listCompanyExpenses(supabase, targetCompanyIds), listCostCategories(supabase, targetCompanyIds)]);
+  // every cost of the companies, from the same list Monthly Costing adds up (expenses keyed in here, petty cash, rental and utilities
+  // paid in Finance ...), so the two pages always tally; only the expenses keyed in here can be edited here
+  const [spending, categories] = await Promise.all([listSpending(supabase, targetCompanyIds), listCostCategories(supabase, targetCompanyIds)]);
+  const companyName = new Map(companies.map((c) => [c.id, c.name]));
+  const everyExpense = spending
+    .map((r: CostRow) => ({ id: r.id, source: r.source, category: r.category, department: r.department, amount: r.amount, expense_date: r.date, notes: r.details, companies: { name: companyName.get(r.companyId) ?? "" } }))
+    .sort((a, b) => b.expense_date.localeCompare(a.expense_date) || a.source.localeCompare(b.source));
 
   // search and filters: words in the category, notes, department, company or amount; the category and department; a date range
   const words = q.trim().toUpperCase().split(/\s+/).filter(Boolean);
@@ -40,7 +46,7 @@ export default async function CompanyExpensesPage({
     if (category && !same(e.category, category)) return false;
     if (department && !same(e.department, department)) return false;
     if (words.length === 0) return true;
-    const hay = `${e.category} ${e.department ?? ""} ${e.notes ?? ""} ${e.companies?.name ?? ""} ${e.expense_date} ${e.amount} ${Number(e.amount).toFixed(2)}`.toUpperCase();
+    const hay = `${e.source} ${e.category} ${e.department ?? ""} ${e.notes ?? ""} ${e.companies?.name ?? ""} ${e.expense_date} ${e.amount} ${Number(e.amount).toFixed(2)}`.toUpperCase();
     return words.every((w) => hay.includes(w));
   });
   const expenses = matching.filter((e) => !(from && e.expense_date < from) && !(to && e.expense_date > to));
@@ -96,6 +102,7 @@ export default async function CompanyExpensesPage({
             categories={uniqueCategories(categories).map((c) => c.name)}
             rows={shown.map((e) => ({
               id: e.id,
+              source: e.source,
               companyName: e.companies?.name ?? "",
               category: e.category,
               department: e.department,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/lib/format";
 import { deleteCompanyExpense, restoreCompanyExpense, updateCompanyExpense, type CompanyExpenseRow } from "@/lib/finance/actions";
@@ -10,6 +11,8 @@ import { Select } from "@/components/ui/Select";
 
 export type ExpenseListRow = {
   id: string;
+  /** where it was keyed in: only "Company Expenses" can be edited here, the others are changed on their own page */
+  source: string;
   companyName: string;
   category: string;
   department: string | null;
@@ -20,7 +23,16 @@ export type ExpenseListRow = {
 
 type Draft = { id: string; category: string; department: string; amount: string; expenseDate: string; notes: string };
 
-/** The company expenses with Edit and Delete on every row; a deleted expense can be put back with Undo. */
+/** Where a cost that is not keyed in on this page is changed. */
+const SOURCE_PAGE: Record<string, { href: string; label: string }> = {
+  "Petty Cash": { href: "/spending/petty-cash", label: "Open Petty Cash" },
+  "Finance Payments": { href: "/finance/payments", label: "Open Payments" },
+};
+
+/**
+ * Every cost of the companies, the same ones Monthly Costing adds up. The expenses keyed in here have Edit and Delete (a deleted one can
+ * be put back with Undo); the others (petty cash, rental and utilities ...) show where they come from and open their own page.
+ */
 export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow[]; categories: string[] }) {
   const router = useRouter();
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -106,8 +118,9 @@ export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow
         </div>
       )}
 
-      <div className="grid grid-cols-[0.9fr_1fr_0.9fr_0.9fr_1.4fr_auto] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
+      <div className="grid grid-cols-[0.9fr_0.9fr_1fr_0.9fr_0.9fr_1.4fr_auto] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
         <div>Date</div>
+        <div>From</div>
         <div>Category</div>
         <div>Amount</div>
         <div>Department</div>
@@ -115,8 +128,11 @@ export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow
         <div>Action</div>
       </div>
       {rows.map((e) => (
-        <div key={e.id} className="grid grid-cols-[0.9fr_1fr_0.9fr_0.9fr_1.4fr_auto] items-center border-b border-border px-5 py-3 text-[13.5px] last:border-b-0">
+        <div key={`${e.source}-${e.id}`} className="grid grid-cols-[0.9fr_0.9fr_1fr_0.9fr_0.9fr_1.4fr_auto] items-center border-b border-border px-5 py-3 text-[13.5px] last:border-b-0">
           <div className="text-text-secondary">{e.expenseDate}</div>
+          <div>
+            <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${e.source === "Company Expenses" ? "bg-surface-alt text-text-secondary" : "bg-info-bg text-primary"}`}>{e.source}</span>
+          </div>
           <div className="font-semibold text-text">{e.category}</div>
           <div className="text-text-secondary">{formatCurrency(e.amount)}</div>
           <div className="text-text-secondary">{e.department ?? "—"}</div>
@@ -124,14 +140,22 @@ export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow
             {e.companyName}
             {e.notes ? ` · ${e.notes}` : ""}
           </div>
-          <div className="flex gap-1.5">
-            <button type="button" className={BTN_SM_GHOST} onClick={() => edit(e)}>
-              Edit
-            </button>
-            <button type="button" className={BTN_SM_GHOST} disabled={pending} onClick={() => remove(e)}>
-              Delete
-            </button>
-          </div>
+          {e.source === "Company Expenses" ? (
+            <div className="flex gap-1.5">
+              <button type="button" className={BTN_SM_GHOST} onClick={() => edit(e)}>
+                Edit
+              </button>
+              <button type="button" className={BTN_SM_GHOST} disabled={pending} onClick={() => remove(e)}>
+                Delete
+              </button>
+            </div>
+          ) : SOURCE_PAGE[e.source] ? (
+            <Link href={SOURCE_PAGE[e.source].href} className={BTN_SM_GHOST}>
+              {SOURCE_PAGE[e.source].label}
+            </Link>
+          ) : (
+            <span className="text-[12px] text-text-muted">—</span>
+          )}
         </div>
       ))}
 
