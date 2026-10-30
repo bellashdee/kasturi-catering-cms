@@ -47,7 +47,7 @@ export default async function DashboardLayout({
           <Topbar session={session} companies={companies ?? []} priorityTitle={taskLabel} />
           <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-7 print:overflow-visible print:p-0">{children}</main>
         </div>
-        {canAccessModule(session.allowedModules, "ai-assistant") && <AssistantWidget />}
+        <AssistantWidget />
       </div>
     </MobileNavProvider>
   );

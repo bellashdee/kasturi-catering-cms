@@ -4224,7 +4224,13 @@ const dictionary: Record<string, string> = {
   "Download summary (PDF)": "အကျဉ်းချုပ်ကို ဒေါင်းလုဒ်လုပ်ရန် (PDF)",
   "Print PDF": "PDF ပရင့်ထုတ်ရန်",
   "Use Export Excel to download the list, or Print to print it.": "စာရင်းကို ဒေါင်းလုဒ်လုပ်ဖို့ Export Excel ကို သုံးပါ၊ ပရင့်ထုတ်ဖို့ Print ကို သုံးပါ။",
-  "Use Export Excel to download the report, or Print to print it.": "အစီရင်ခံစာကို ဒေါင်းလုဒ်လုပ်ဖို့ Export Excel ကို သုံးပါ၊ ပရင့်ထုတ်ဖို့ Print ကို သုံးပါ။"
+  "Use Export Excel to download the report, or Print to print it.": "အစီရင်ခံစာကို ဒေါင်းလုဒ်လုပ်ဖို့ Export Excel ကို သုံးပါ၊ ပရင့်ထုတ်ဖို့ Print ကို သုံးပါ။",
+  "Not signed in yet": "မဝင်ရသေးပါ",
+  "person": "ဦး",
+  "people": "ဦး",
+  "Email (optional)": "အီးမေးလ် (မလိုအပ်ပါ)",
+  "Set by the person (use Edit to set a new one)": "ကိုယ်တိုင် သတ်မှတ်ထားသည် (အသစ်သတ်မှတ်ရန် Edit ကို သုံးပါ)",
+  "My Profile, Main Dashboard, Priority Centre, Bulletin Board, Company Spending and the AI Assistant are in the menu of everyone.": "ကျွန်ုပ်၏ပရိုဖိုင်၊ ပင်မဒက်ရှ်ဘုတ်၊ ဦးစားပေးစင်တာ၊ ကြေညာဘုတ်၊ ကုမ္ပဏီအသုံးစရိတ်နှင့် AI လက်ထောက်တို့ကို လူတိုင်း၏ မီနူးတွင် တွေ့ရမည်။"
 };
 
 export default dictionary;

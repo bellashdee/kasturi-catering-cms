@@ -13,16 +13,17 @@ export type ModuleKey =
   | "overtime"
   | "settings";
 
+/** The modules in the order of the side menu (Marketing has no menu item: it is not offered when choosing a member's modules). */
 export const MODULES: { key: ModuleKey; label: string; href: string; matchPrefixes?: string[] }[] = [
-  { key: "hr", label: "HR", href: "/hr", matchPrefixes: ["/hr", "/payroll-centre"] },
-  { key: "marketing", label: "Marketing", href: "/marketing" },
   { key: "catering", label: "Catering", href: "/catering" },
-  { key: "driver-logistics", label: "Operation Management", href: "/driver-logistics", matchPrefixes: ["/driver-logistics"] },
   { key: "kitchen", label: "Kitchen", href: "/kitchen" },
   { key: "supplier-procurement", label: "Supplier & Procurement", href: "/supplier-procurement" },
+  { key: "driver-logistics", label: "Operation Management", href: "/driver-logistics", matchPrefixes: ["/driver-logistics"] },
   { key: "finance-admin", label: "Admin & Finance", href: "/admin", matchPrefixes: ["/admin", "/finance"] },
+  { key: "hr", label: "HR", href: "/hr", matchPrefixes: ["/hr", "/payroll-centre"] },
   { key: "reports", label: "Reports", href: "/reports" },
   { key: "ai-assistant", label: "AI Assistant", href: "/ai-assistant" },
+  { key: "marketing", label: "Marketing", href: "/marketing" },
 ];
 
 export type CompanyColorKey = "all" | "signature" | "kasturi" | "o2life";

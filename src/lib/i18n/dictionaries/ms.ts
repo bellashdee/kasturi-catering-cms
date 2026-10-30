@@ -4171,7 +4171,13 @@ const dictionary: Record<string, string> = {
   "Download summary (PDF)": "Muat turun ringkasan (PDF)",
   "Print PDF": "Cetak PDF",
   "Use Export Excel to download the list, or Print to print it.": "Gunakan Export Excel untuk memuat turun senarai, atau Print untuk mencetaknya.",
-  "Use Export Excel to download the report, or Print to print it.": "Gunakan Export Excel untuk memuat turun laporan, atau Print untuk mencetaknya."
+  "Use Export Excel to download the report, or Print to print it.": "Gunakan Export Excel untuk memuat turun laporan, atau Print untuk mencetaknya.",
+  "Not signed in yet": "Belum log masuk",
+  "person": "orang",
+  "people": "orang",
+  "Email (optional)": "E-mel (pilihan)",
+  "Set by the person (use Edit to set a new one)": "Ditetapkan oleh orang itu (guna Edit untuk tetapkan yang baharu)",
+  "My Profile, Main Dashboard, Priority Centre, Bulletin Board, Company Spending and the AI Assistant are in the menu of everyone.": "Profil Saya, Papan Pemuka Utama, Pusat Keutamaan, Papan Buletin, Perbelanjaan Syarikat dan Pembantu AI ada dalam menu semua orang."
 };
 
 export default dictionary;

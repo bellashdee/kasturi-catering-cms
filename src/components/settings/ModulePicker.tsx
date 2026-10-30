@@ -31,6 +31,7 @@ export function ModulePicker({ value, onChange }: { value: string[] | null; onCh
         </div>
       )}
       {restricted && <p className="mt-2 text-[11.5px] text-text-muted">Other modules are hidden from the menu, blocked if opened by link, and their data is protected in the database.</p>}
+      <p className="mt-1 text-[11.5px] text-text-muted">My Profile, Main Dashboard, Priority Centre, Bulletin Board, Company Spending and the AI Assistant are in the menu of everyone.</p>
     </div>
   );
 }

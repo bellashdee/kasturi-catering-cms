@@ -4237,7 +4237,13 @@ const dictionary: Record<string, string> = {
   "Download summary (PDF)": "下载摘要（PDF）",
   "Print PDF": "打印 PDF",
   "Use Export Excel to download the list, or Print to print it.": "使用 Export Excel 下载这份列表，或用 Print 打印。",
-  "Use Export Excel to download the report, or Print to print it.": "使用 Export Excel 下载报告，或用 Print 打印。"
+  "Use Export Excel to download the report, or Print to print it.": "使用 Export Excel 下载报告，或用 Print 打印。",
+  "Not signed in yet": "尚未登录",
+  "person": "人",
+  "people": "人",
+  "Email (optional)": "电邮（可选）",
+  "Set by the person (use Edit to set a new one)": "由本人设置（用 Edit 设置新的密码）",
+  "My Profile, Main Dashboard, Priority Centre, Bulletin Board, Company Spending and the AI Assistant are in the menu of everyone.": "我的资料、主面板、优先中心、公告板、公司开支和 AI 助手会出现在每个人的菜单里。"
 };
 
 export default dictionary;

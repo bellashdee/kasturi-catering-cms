@@ -196,7 +196,7 @@ export function ModuleLinks({ allowedModules, badges = {}, showPayroll = false }
       {!show("hr") && showPayroll && <NavItem href="/payroll-centre" icon="payroll" label="Payroll Centre" />}
       {!show("hr") && show("overtime") && <NavItem href="/hr/overtime" icon="hr" label="Overtime (OT)" />}
       {show("reports") && <NavItem href="/reports" icon="reports" label="Reports" />}
-      {show("ai-assistant") && <NavItem href="/ai-assistant" icon="ai-assistant" label="🤖 AI Assistant" />}
+      <NavItem href="/ai-assistant" icon="ai-assistant" label="🤖 AI Assistant" />
     </>
   );
 }

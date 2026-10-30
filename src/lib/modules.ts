@@ -14,7 +14,6 @@ const PATH_MODULE: [string, ModuleKey][] = [
   ["/spending/expenses", "finance-admin"],
   ["/spending/budgets", "finance-admin"],
   ["/reports", "reports"],
-  ["/ai-assistant", "ai-assistant"],
 ];
 
 export function moduleForPath(pathname: string): ModuleKey | null {
@@ -49,7 +48,7 @@ export function mergeAllowedModules(grants: (string[] | null)[]): string[] | nul
 
 /** The modules that can be switched on or off for a member (Settings is always Super Admin only). */
 export const ASSIGNABLE_MODULES: { key: string; label: string }[] = [
-  ...MODULES.map((m) => ({ key: m.key as string, label: m.label })),
+  ...MODULES.filter((m) => m.key !== "marketing" && m.key !== "ai-assistant").map((m) => ({ key: m.key as string, label: m.label })),
   { key: "overtime", label: "HR – Overtime approvals only" },
 ];
 

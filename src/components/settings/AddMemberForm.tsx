@@ -77,7 +77,7 @@ export function AddMemberForm({ companies }: { companies: Company[] }) {
         <p className="mt-1 text-[12.5px] text-text-secondary">Share these credentials with them securely — this is the only time the password is shown.</p>
         <div className="mt-3 flex flex-col gap-1.5 rounded-lg bg-surface p-3 text-[13px]">
           <div><span className="font-semibold text-text-secondary">Username:</span> {created.username}</div>
-          <div><span className="font-semibold text-text-secondary">Email:</span> {created.email}</div>
+          {created.email && <div><span className="font-semibold text-text-secondary">Email:</span> {created.email}</div>}
           <div><span className="font-semibold text-text-secondary">Password:</span> {created.password}</div>
         </div>
         <button onClick={() => setCreated(null)} className="mt-3 rounded-lg bg-primary px-4 py-2 text-[13px] font-semibold text-white">
@@ -112,8 +112,8 @@ export function AddMemberForm({ companies }: { companies: Company[] }) {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className={labelClass}>Email *</label>
-          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
+          <label className={labelClass}>Email (optional)</label>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
         </div>
         <div>
           <label className={labelClass}>Password *</label>

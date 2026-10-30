@@ -4230,7 +4230,13 @@ const dictionary: Record<string, string> = {
   "Download summary (PDF)": "সারসংক্ষেপ ডাউনলোড (PDF)",
   "Print PDF": "PDF প্রিন্ট করুন",
   "Use Export Excel to download the list, or Print to print it.": "তালিকাটি ডাউনলোড করতে Export Excel ব্যবহার করুন, অথবা প্রিন্ট করতে Print ব্যবহার করুন।",
-  "Use Export Excel to download the report, or Print to print it.": "রিপোর্ট ডাউনলোড করতে Export Excel ব্যবহার করুন, অথবা প্রিন্ট করতে Print ব্যবহার করুন।"
+  "Use Export Excel to download the report, or Print to print it.": "রিপোর্ট ডাউনলোড করতে Export Excel ব্যবহার করুন, অথবা প্রিন্ট করতে Print ব্যবহার করুন।",
+  "Not signed in yet": "এখনো সাইন ইন করেননি",
+  "person": "জন",
+  "people": "জন",
+  "Email (optional)": "ইমেইল (ঐচ্ছিক)",
+  "Set by the person (use Edit to set a new one)": "ব্যক্তি নিজে ঠিক করেছেন (নতুন দিতে Edit ব্যবহার করুন)",
+  "My Profile, Main Dashboard, Priority Centre, Bulletin Board, Company Spending and the AI Assistant are in the menu of everyone.": "আমার প্রোফাইল, প্রধান ড্যাশবোর্ড, অগ্রাধিকার কেন্দ্র, বুলেটিন বোর্ড, কোম্পানির খরচ ও এআই সহকারী সবার মেনুতে থাকে।"
 };
 
 export default dictionary;

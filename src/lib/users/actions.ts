@@ -44,8 +44,10 @@ export async function createMember(input: CreateMemberInput) {
   const { data: existingUsername } = await admin.from("profiles").select("id").eq("username", input.username).maybeSingle();
   if (existingUsername) throw new Error("That username is already taken.");
 
+  // no email is needed: the person signs in with the username (a placeholder address that cannot receive mail is kept)
+  const email = input.email.trim() || `${input.username.trim().toLowerCase().replace(/[^a-z0-9]+/g, "")}@no-email.invalid`;
   const { data: created, error: createError } = await admin.auth.admin.createUser({
-    email: input.email,
+    email,
     password: input.password,
     email_confirm: true,
     user_metadata: { full_name: input.fullName },
