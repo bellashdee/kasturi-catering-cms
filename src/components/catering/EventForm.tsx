@@ -114,6 +114,11 @@ export function EventForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const noMeal = days.findIndex((d) => d.mealTypes.length === 0);
+    if (noMeal >= 0) {
+      setError(`Day ${noMeal + 1}: select at least one meal type.`);
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -262,7 +267,8 @@ export function EventForm({
             <p className="mt-1 text-xs text-text-muted">Fills the menu and the price per pax of the day — review and edit before saving. This does not automatically create a production order or purchase request.</p>
           </div>
         )}
-        <EventDaysEditor days={days} onChange={setDays} secondChoice />
+        {/* the same day block as the Quotation Request Form; the second service type only shows for an older event that has one */}
+        <EventDaysEditor days={days} onChange={setDays} secondService={days.some((d) => !!d.secondServiceType)} secondChoice mealRequired />
       </div>
 
       {!eventId && (
