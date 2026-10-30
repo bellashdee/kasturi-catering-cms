@@ -83,28 +83,28 @@ export default async function AdminPage({
 
       <FinanceAdminSubNav />
 
-      <form method="get" className="flex flex-wrap items-end gap-3">
+      <form method="get" className="flex flex-wrap items-center gap-x-6 gap-y-3">
         {requestedId && <input type="hidden" name="company" value={requestedId} />}
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Year</label>
-          <input type="number" name="year" defaultValue={year} className="mt-1 h-9 w-24 rounded-lg border border-border-strong px-2 text-[13px]" />
+        <div className="flex items-center gap-2.5">
+          <label className="whitespace-nowrap text-[12px] font-semibold text-text-secondary">Year</label>
+          <input type="number" name="year" defaultValue={year} className="h-9 w-24 rounded-lg border border-border-strong px-2 text-[13px]" />
         </div>
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Month</label>
-          <Select name="month" defaultValue={month} className="mt-1 h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
+        <div className="flex items-center gap-2.5">
+          <label className="whitespace-nowrap text-[12px] font-semibold text-text-secondary">Month</label>
+          <Select name="month" defaultValue={month} className="h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
             {MONTH_LABEL.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
           </Select>
         </div>
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Department</label>
-          <Select name="department" defaultValue={departmentParam ?? ""} className="mt-1 h-9 w-44 rounded-lg border border-border-strong px-2 text-[13px]">
+        <div className="flex items-center gap-2.5">
+          <label className="whitespace-nowrap text-[12px] font-semibold text-text-secondary">Department</label>
+          <Select name="department" defaultValue={departmentParam ?? ""} className="h-9 w-44 rounded-lg border border-border-strong px-2 text-[13px]">
             <option value="">All Departments</option>
             {departments.map((d) => <option key={d} value={d}>{d}</option>)}
           </Select>
         </div>
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Category</label>
-          <Select name="category" defaultValue={categoryParam ?? ""} className="mt-1 h-9 w-52 rounded-lg border border-border-strong px-2 text-[13px]">
+        <div className="flex items-center gap-2.5">
+          <label className="whitespace-nowrap text-[12px] font-semibold text-text-secondary">Category</label>
+          <Select name="category" defaultValue={categoryParam ?? ""} className="h-9 w-52 rounded-lg border border-border-strong px-2 text-[13px]">
             <option value="">All Categories</option>
             {uniqueCategories(categories).map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
           </Select>

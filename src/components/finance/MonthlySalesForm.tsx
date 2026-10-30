@@ -40,9 +40,9 @@ export function MonthlySalesForm({
   }
 
   return (
-    <form onSubmit={handleSave} className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-surface p-4 shadow-sm">
-      <div>
-        <label className="text-[12px] font-semibold text-text-secondary">Total sales for {monthLabel} {year} (RM)</label>
+    <form onSubmit={handleSave} className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl border border-border bg-surface p-4 shadow-sm">
+      <div className="flex items-center gap-2.5">
+        <label className="whitespace-nowrap text-[12px] font-semibold text-text-secondary">Total sales for {monthLabel} {year} (RM)</label>
         <input
           type="number"
           step="0.01"
@@ -50,7 +50,7 @@ export function MonthlySalesForm({
           required
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          className="mt-1 h-9 w-48 rounded-lg border border-border-strong px-2 text-[13px]"
+          className="h-9 w-48 rounded-lg border border-border-strong px-2 text-[13px]"
         />
       </div>
       <button type="submit" disabled={saving} className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white disabled:opacity-50">

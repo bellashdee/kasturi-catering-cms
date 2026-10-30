@@ -46,20 +46,20 @@ export function SplitSalesForm({
     }
   }
 
-  const input = "mt-1 h-9 w-48 rounded-lg border border-border-strong px-2 text-[13px]";
+  const input = "h-9 w-48 rounded-lg border border-border-strong px-2 text-[13px]";
 
   return (
     <form onSubmit={handleSave} className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 shadow-sm">
-      <div className="flex flex-wrap items-end gap-3">
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Signature Solution Catering</label>
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+        <div className="flex items-center gap-2.5">
+          <label className="whitespace-nowrap text-[12px] font-semibold text-text-secondary">Signature Solution Catering</label>
           <input type="number" step="0.01" min="0" required value={catering} onChange={(e) => setCatering(e.target.value)} className={input} />
         </div>
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Signature Solution Sdn Bhd</label>
+        <div className="flex items-center gap-2.5">
+          <label className="whitespace-nowrap text-[12px] font-semibold text-text-secondary">Signature Solution Sdn Bhd</label>
           <input type="number" step="0.01" min="0" required value={daily} onChange={(e) => setDaily(e.target.value)} className={input} />
         </div>
-        <div className="pb-1.5 text-[13px] text-text-secondary">
+        <div className="text-[13px] text-text-secondary">
           Total <span className="font-extrabold text-text">{formatCurrency(total)}</span>
         </div>
         <button type="submit" disabled={saving} className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white disabled:opacity-50">
