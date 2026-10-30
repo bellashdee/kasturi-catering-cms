@@ -2,13 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createEvent, updateEvent, type EventInput } from "@/lib/catering/actions";
-import { SALES_AGENTS, SERVICE_TYPE_LABEL, eventTypeOptions } from "@/lib/catering/constants";
-import { MealTypeSelect } from "@/components/catering/MealTypeSelect";
-import type { EventDay } from "@/lib/catering/days";
+import { createEvent, createQuotation, updateEvent, type EventInput } from "@/lib/catering/actions";
+import { SALES_AGENTS, eventTypeOptions } from "@/lib/catering/constants";
+import { dayAmount, dayPax, quotationSeedRows, type EventDay } from "@/lib/catering/days";
+import { additionalServiceLines, noAdditionalServices, withSecondMenusInRemarks, type AdditionalServices } from "@/lib/catering/quotationRequest";
 import { hasPackagePrice } from "@/lib/kitchen/packages/format";
 import { EventDaysEditor, emptyDay } from "@/components/catering/EventDaysEditor";
+import { AdditionalServicesEditor, ExtraItemsEditor, type ExtraRow } from "@/components/catering/QuotationRequestExtras";
+import { ChoiceSelect } from "@/components/ui/ChoiceSelect";
 import { Select } from "@/components/ui/Select";
+import { formatPrice } from "@/lib/format";
 
 type Company = { id: string; name: string };
 type Customer = { id: string; name: string; company_id: string };
@@ -17,13 +20,31 @@ type PackageMenu = { id: string; name: string; price_per_pax: number; minimum_pa
 
 const inputClass =
   "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
+const areaClass =
+  "mt-1.5 h-20 w-full resize-none rounded-lg border border-border-strong px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
 const labelClass = "text-[12.5px] font-semibold text-text-secondary";
 
-function packageItemsToText(pkg: PackageMenu): string {
-  return [...pkg.package_menu_items]
-    .sort((a, b) => a.sort_order - b.sort_order)
-    .map((i) => `- ${i.item_name}`)
-    .join("\n");
+const AGENT_OPTIONS = [{ value: "", label: "None" }, ...SALES_AGENTS.map((a) => ({ value: a, label: a }))];
+
+/** The menu a package gives a day: the package name, then one menu item on each line. */
+function packageMenuText(pkg: PackageMenu): string {
+  return [pkg.name, ...[...pkg.package_menu_items].sort((a, b) => a.sort_order - b.sort_order).map((i) => i.item_name)].join("\n");
+}
+
+/** A single-day event is shown as one day block, the same as on the Quotation Request Form. */
+function dayFromEvent(initial: Partial<EventInput> | undefined): EventDay {
+  return {
+    dayDate: initial?.eventDate ?? "",
+    setupTime: initial?.setupTime,
+    eventTime: initial?.eventTime,
+    mealTypes: initial?.mealTypes ?? [],
+    serviceType: initial?.serviceType ?? "",
+    servicePax: initial?.servicePax,
+    secondServiceType: initial?.secondServiceType || undefined,
+    secondServicePax: initial?.secondServicePax,
+    menuDetails: initial?.menuDescription,
+    pricePerPax: initial?.pricePerPax,
+  };
 }
 
 export function EventForm({
@@ -46,92 +67,99 @@ export function EventForm({
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [multiDay, setMultiDay] = useState(initialDays.length > 0);
-  const [days, setDays] = useState<EventDay[]>(initialDays);
+  const [days, setDays] = useState<EventDay[]>(initialDays.length > 0 ? initialDays : eventId ? [dayFromEvent(initial)] : [emptyDay()]);
+  const [extras, setExtras] = useState<ExtraRow[]>([]);
+  const [additional, setAdditional] = useState<AdditionalServices>(noAdditionalServices());
   const [form, setForm] = useState<EventInput>({
     companyId: initial?.companyId ?? defaultCompanyId ?? companies[0]?.id ?? "",
     customerId: initial?.customerId,
     eventName: initial?.eventName ?? "",
     eventDate: initial?.eventDate ?? "",
-    eventTime: initial?.eventTime ?? "",
     location: initial?.location ?? "",
-    paxCount: initial?.paxCount,
     eventType: initial?.eventType ?? "corporate_event",
     packageMenuId: initial?.packageMenuId,
-    menuDescription: initial?.menuDescription ?? "",
     specialRequirements: initial?.specialRequirements ?? "",
-    mealTypes: initial?.mealTypes ?? [],
-    serviceType: initial?.serviceType ?? "",
-    servicePax: initial?.servicePax,
-    secondServiceType: initial?.secondServiceType ?? "",
-    secondServicePax: initial?.secondServicePax,
     eventDetails: initial?.eventDetails ?? "",
     remarks: initial?.remarks ?? "",
-    setupTime: initial?.setupTime ?? "",
     picName: initial?.picName ?? "",
     picPhone: initial?.picPhone ?? "",
     salesAgent: initial?.salesAgent ?? "",
     kitchenSetup: initial?.kitchenSetup ?? "",
     cateringSetup: initial?.cateringSetup ?? "",
-    pricePerPax: initial?.pricePerPax,
     status: initial?.status ?? "enquiry",
   });
 
   const customersForCompany = customers.filter((c) => c.company_id === form.companyId);
   const packagesForCompany = packageMenus.filter((p) => p.company_id === form.companyId);
-
-  function onPackageChange(packageId: string) {
-    set("packageMenuId", packageId || undefined);
-    const pkg = packagesForCompany.find((p) => p.id === packageId);
-    if (pkg) {
-      if (hasPackagePrice(pkg.price_per_pax)) set("pricePerPax", pkg.price_per_pax);
-      set("menuDescription", `${pkg.name} (${hasPackagePrice(pkg.price_per_pax) ? `RM${pkg.price_per_pax}/pax, ` : ""}min ${pkg.minimum_pax} pax):\n${packageItemsToText(pkg)}`);
-    }
-  }
+  const singleDay = days.length === 1;
 
   function set<K extends keyof EventInput>(key: K, value: EventInput[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
-  const servicePaxTotal = (form.servicePax ?? 0) + (form.secondServiceType ? form.secondServicePax ?? 0 : 0);
-
-  function toggleMeal(key: string) {
-    const current = form.mealTypes ?? [];
-    set("mealTypes", current.includes(key) ? current.filter((m) => m !== key) : [...current, key]);
-  }
-
-  function switchMultiDay(on: boolean) {
-    if (on && days.length === 0) {
-      // day 1 starts from what is already typed for the single-day event
-      setDays([
-        {
-          ...emptyDay(form.eventDate),
-          setupTime: form.setupTime,
-          eventTime: form.eventTime,
-          mealTypes: form.mealTypes ?? [],
-          serviceType: form.serviceType ?? "",
-          servicePax: form.servicePax,
-          secondServiceType: form.secondServiceType,
-          secondServicePax: form.secondServicePax,
-          menuDetails: form.menuDescription,
-          pricePerPax: form.pricePerPax,
-        },
-      ]);
+  function onPackageChange(packageId: string) {
+    set("packageMenuId", packageId || undefined);
+    const pkg = packagesForCompany.find((p) => p.id === packageId);
+    if (pkg) {
+      setDays((d) => [{ ...d[0], menuDetails: packageMenuText(pkg), ...(hasPackagePrice(pkg.price_per_pax) ? { pricePerPax: pkg.price_per_pax } : {}) }]);
     }
-    setMultiDay(on);
   }
+
+  const extraLines = extras
+    .map((r) => ({ itemName: r.itemName.trim(), quantity: Number(r.quantity) || 0, unitPrice: Number(r.unitPrice) || 0 }))
+    .filter((r) => r.itemName && r.quantity > 0);
+  const additionalLines = eventId ? [] : additionalServiceLines(additional);
+  const estimatedTotal =
+    days.reduce((t, d) => t + dayAmount(d), 0) + [...additionalLines, ...extraLines].reduce((t, i) => t + i.quantity * i.unitPrice, 0);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     setError(null);
     try {
-      const payload: EventInput = multiDay ? { ...form, days, packageMenuId: undefined, menuDescription: "" } : { ...form, days: [] };
+      const only = singleDay ? days[0] : null;
+      const payload: EventInput = only
+        ? {
+            ...form,
+            eventDate: only.dayDate,
+            eventTime: only.eventTime,
+            setupTime: only.setupTime,
+            paxCount: dayPax(only),
+            mealTypes: only.mealTypes,
+            serviceType: only.serviceType,
+            servicePax: only.servicePax,
+            secondServiceType: only.secondServiceType,
+            secondServicePax: only.secondServicePax,
+            pricePerPax: only.pricePerPax,
+            menuDescription: only.menuDetails,
+            remarks: [withSecondMenusInRemarks(only).remarks, form.remarks].filter(Boolean).join("\n\n"),
+            days: [],
+          }
+        : { ...form, eventDate: days[0].dayDate, packageMenuId: undefined, menuDescription: "", days: days.map(withSecondMenusInRemarks) };
+
       if (eventId) {
         await updateEvent(eventId, payload);
         router.push(`/catering/${eventId}`);
       } else {
         const created = await createEvent(payload);
+        // the priced days, the additional requirement and the extra items become a draft quotation, as when a quotation request is approved
+        const lines = [
+          ...quotationSeedRows(singleDay ? [] : days, {
+            eventName: form.eventName,
+            pax: only ? dayPax(only) : null,
+            pricePerPax: only?.pricePerPax ?? null,
+          }),
+          ...additionalLines,
+          ...extraLines,
+        ];
+        if (lines.some((l) => l.unitPrice > 0)) {
+          await createQuotation({
+            companyId: form.companyId,
+            eventId: created.id,
+            quotationNumber: `Q-${Date.now().toString().slice(-6)}`,
+            items: lines.map((l) => ({ ...l, discountPercent: 0 })),
+          });
+        }
         router.push(`/catering/${created.id}`);
       }
       router.refresh();
@@ -154,6 +182,7 @@ export function EventForm({
             onChange={(e) => {
               set("companyId", e.target.value);
               set("customerId", undefined);
+              set("packageMenuId", undefined);
             }}
             className={inputClass}
           >
@@ -161,7 +190,7 @@ export function EventForm({
           </Select>
         </div>
         <div>
-          <label className={labelClass}>Customer</label>
+          <label className={labelClass}>Customer / company name</label>
           <Select value={form.customerId ?? ""} onChange={(e) => set("customerId", e.target.value || undefined)} className={inputClass}>
             <option value="">Not linked yet</option>
             {customersForCompany.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -169,211 +198,125 @@ export function EventForm({
         </div>
       </div>
 
-      <div>
-        <label className={labelClass}>Event Name *</label>
-        <input required value={form.eventName} onChange={(e) => set("eventName", e.target.value)} className={inputClass} placeholder="e.g. Menara Corp Annual Dinner" />
+      <div className={`grid gap-4 ${eventId ? "grid-cols-1" : "grid-cols-2"}`}>
+        <div>
+          <label className={labelClass}>Sales agent</label>
+          <ChoiceSelect value={form.salesAgent ?? ""} onChange={(v) => set("salesAgent", v)} options={AGENT_OPTIONS} placeholder="Search and choose the sales agent" className={inputClass} />
+        </div>
+        {!eventId && (
+          <div>
+            <label className={labelClass}>Status</label>
+            <Select value={form.status} onChange={(e) => set("status", e.target.value)} className={inputClass}>
+              <option value="enquiry">Enquiry</option>
+              <option value="quoted">Quoted</option>
+              <option value="confirmed">Confirmed</option>
+            </Select>
+          </div>
+        )}
       </div>
 
-      <label className={`flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 ${multiDay ? "border-primary bg-info-bg" : "border-border-strong"}`}>
-        <input type="checkbox" checked={multiDay} onChange={(e) => switchMultiDay(e.target.checked)} className="mt-0.5 accent-[var(--color-primary)]" />
-        <span>
-          <span className="block text-[13px] font-bold text-text">Multi-day event (2 or more days)</span>
-          <span className="block text-xs text-text-muted">One event and one quotation, with a block for each day: date, set-up and event time, meal and service type, menu, price and pax.</span>
-        </span>
-      </label>
-
-      {!multiDay && (
-        <div className="grid grid-cols-4 gap-4">
-          <div>
-            <label className={labelClass}>Event date *</label>
-            <input type="date" required value={form.eventDate} onChange={(e) => set("eventDate", e.target.value)} className={inputClass} />
-          </div>
-          <div>
-            <label className={labelClass}>Set-up time (kitchen side) *</label>
-            <input type="time" required value={form.setupTime} onChange={(e) => set("setupTime", e.target.value)} className={inputClass} />
-          </div>
-          <div>
-            <label className={labelClass}>Event time *</label>
-            <input type="time" required value={form.eventTime} onChange={(e) => set("eventTime", e.target.value)} className={inputClass} />
-          </div>
-          <div>
-            <label className={labelClass}>Total pax</label>
-            <input type="number" min="0" value={form.paxCount ?? ""} onChange={(e) => set("paxCount", e.target.value ? Number(e.target.value) : undefined)} className={inputClass} />
-          </div>
+      <div className="grid grid-cols-[2fr_1fr] gap-4">
+        <div>
+          <label className={labelClass}>Event name *</label>
+          <input required value={form.eventName} onChange={(e) => set("eventName", e.target.value)} className={inputClass} placeholder="e.g. Annual Conference 2026" />
         </div>
-      )}
+        <div>
+          <label className={labelClass}>Event type *</label>
+          <ChoiceSelect
+            required
+            value={form.eventType}
+            onChange={(v) => set("eventType", v)}
+            options={eventTypeOptions(form.eventType).map(([value, label]) => ({ value, label }))}
+            placeholder="Search and choose the event type"
+            className={inputClass}
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className={labelClass}>Event location</label>
+        <input value={form.location} onChange={(e) => set("location", e.target.value)} className={inputClass} placeholder="Venue / address" />
+      </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className={labelClass}>Location</label>
-          <input value={form.location} onChange={(e) => set("location", e.target.value)} className={inputClass} placeholder="Venue / address" />
-        </div>
-        <div>
-          <label className={labelClass}>Event Type</label>
-          <Select value={form.eventType} onChange={(e) => set("eventType", e.target.value)} className={inputClass}>
-            {eventTypeOptions(form.eventType).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </Select>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-4">
         <div>
           <label className={labelClass}>PIC</label>
           <input value={form.picName} onChange={(e) => set("picName", e.target.value)} className={inputClass} placeholder="Person in charge" />
         </div>
         <div>
           <label className={labelClass}>PIC contact no.</label>
-          <input value={form.picPhone} onChange={(e) => set("picPhone", e.target.value)} className={inputClass} placeholder="e.g. 012-3456789" />
-        </div>
-        <div>
-          <label className={labelClass}>Sales agent</label>
-          <Select value={form.salesAgent ?? ""} onChange={(e) => set("salesAgent", e.target.value)} className={inputClass}>
-            <option value="">Select sales agent</option>
-            {SALES_AGENTS.map((a) => <option key={a} value={a}>{a}</option>)}
-          </Select>
+          <input type="tel" inputMode="tel" value={form.picPhone} onChange={(e) => set("picPhone", e.target.value)} className={inputClass} placeholder="e.g. 012-3456789" />
         </div>
       </div>
 
-      {multiDay && <EventDaysEditor days={days} onChange={setDays} />}
-
-      {!multiDay && (
-      <>
       <div>
-        <label className={labelClass}>Meal type</label>
-        <MealTypeSelect value={form.mealTypes ?? []} onToggle={toggleMeal} />
-        <p className="mt-1 text-xs text-text-muted">Select every meal this event serves.</p>
+        <div className="text-[14px] font-extrabold text-text">Event days</div>
+        <p className="mb-2 text-xs text-text-muted">One block for each day of the event (1 day, or 3-5 days for a conference). Use &quot;Add next day&quot; to copy the previous day.</p>
+        {singleDay && packagesForCompany.length > 0 && (
+          <div className="mb-3">
+            <label className={labelClass}>Select Package (optional)</label>
+            <Select value={form.packageMenuId ?? ""} onChange={(e) => onPackageChange(e.target.value)} className={inputClass}>
+              <option value="">No package — type menu manually</option>
+              {packagesForCompany.map((p) => <option key={p.id} value={p.id}>{p.name}{hasPackagePrice(p.price_per_pax) ? ` (RM${p.price_per_pax}/pax)` : ""}</option>)}
+            </Select>
+            <p className="mt-1 text-xs text-text-muted">Fills the menu and the price per pax of the day — review and edit before saving. This does not automatically create a production order or purchase request.</p>
+          </div>
+        )}
+        <EventDaysEditor days={days} onChange={setDays} secondChoice />
       </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className={labelClass}>Service type *</label>
-          <Select
-            required
-            value={form.serviceType ?? ""}
-            onChange={(e) => {
-              set("serviceType", e.target.value);
-              if (!e.target.value) set("servicePax", undefined);
-              if (e.target.value && e.target.value === form.secondServiceType) {
-                set("secondServiceType", "");
-                set("secondServicePax", undefined);
-              }
-            }}
-            className={inputClass}
-          >
-            <option value="">Select service type</option>
-            {Object.entries(SERVICE_TYPE_LABEL).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </Select>
-          <label className={`${labelClass} mt-3 block`}>Pax for this service *</label>
-          <input
-            type="number"
-            min="1"
-            required={!!form.serviceType}
-            disabled={!form.serviceType}
-            value={form.servicePax ?? ""}
-            onChange={(e) => set("servicePax", e.target.value ? Number(e.target.value) : undefined)}
-            className={inputClass}
-            placeholder="e.g. 60"
-          />
-        </div>
-        <div>
-          <label className={labelClass}>Second service type (optional)</label>
-          <Select
-            value={form.secondServiceType ?? ""}
-            onChange={(e) => {
-              set("secondServiceType", e.target.value);
-              if (!e.target.value) set("secondServicePax", undefined);
-            }}
-            disabled={!form.serviceType}
-            className={inputClass}
-          >
-            <option value="">None</option>
-            {Object.entries(SERVICE_TYPE_LABEL).filter(([key]) => key !== form.serviceType).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </Select>
-          <label className={`${labelClass} mt-3 block`}>Pax for this service{form.secondServiceType ? " *" : ""}</label>
-          <input
-            type="number"
-            min="1"
-            required={!!form.secondServiceType}
-            disabled={!form.secondServiceType}
-            value={form.secondServicePax ?? ""}
-            onChange={(e) => set("secondServicePax", e.target.value ? Number(e.target.value) : undefined)}
-            className={inputClass}
-            placeholder="e.g. 20"
-          />
-        </div>
-      </div>
-      {servicePaxTotal > 0 && (
-        <p className={`-mt-2 text-xs ${form.paxCount && form.paxCount !== servicePaxTotal ? "font-semibold text-warning" : "text-text-muted"}`}>
-          Service pax total: {servicePaxTotal}
-          {form.paxCount && form.paxCount !== servicePaxTotal ? ` — differs from the event Pax (${form.paxCount}). Check the numbers.` : form.paxCount ? " — matches the event Pax." : ""}
-        </p>
-      )}
-      </>
-      )}
 
       {!eventId && (
-        <div>
-          <label className={labelClass}>Status</label>
-          <Select value={form.status} onChange={(e) => set("status", e.target.value)} className={inputClass}>
-            <option value="enquiry">Enquiry</option>
-            <option value="quoted">Quoted</option>
-            <option value="confirmed">Confirmed</option>
-          </Select>
-        </div>
+        <>
+          <div>
+            <div className="text-[14px] font-extrabold text-text">Additional requirement</div>
+            <p className="mb-2 text-xs text-text-muted">Search and choose for each one: Yes (add the price if you know it), No, or Included in the food price. Each Yes is added to the draft quotation; Included means it is already in the price of the food.</p>
+            <AdditionalServicesEditor value={additional} onChange={setAdditional} />
+          </div>
+
+          <div>
+            <div className="text-[14px] font-extrabold text-text">Other extra items (optional)</div>
+            <p className="mb-2 text-xs text-text-muted">Anything else to quote, e.g. equipment hire, service charge.</p>
+            <ExtraItemsEditor rows={extras} onChange={setExtras} />
+          </div>
+        </>
       )}
-
-      {!multiDay && packagesForCompany.length > 0 && (
-        <div>
-          <label className={labelClass}>Select Package (optional)</label>
-          <Select value={form.packageMenuId ?? ""} onChange={(e) => onPackageChange(e.target.value)} className={inputClass}>
-            <option value="">No package — type menu manually</option>
-            {packagesForCompany.map((p) => <option key={p.id} value={p.id}>{p.name}{hasPackagePrice(p.price_per_pax) ? ` (RM${p.price_per_pax}/pax)` : ""}</option>)}
-          </Select>
-        </div>
-      )}
-
-      {!multiDay && (
-      <div className="grid grid-cols-[1fr_3fr] gap-4">
-        <div>
-          <label className={labelClass}>Price per pax (RM)</label>
-          <input type="number" min="0" step="0.01" value={form.pricePerPax ?? ""} onChange={(e) => set("pricePerPax", e.target.value ? Number(e.target.value) : undefined)} className={inputClass} placeholder="e.g. 35.00" />
-          <p className="mt-1 text-xs text-text-muted">Used to fill the quotation.</p>
-        </div>
-        <div>
-        <label className={labelClass}>Menu details</label>
-        <textarea value={form.menuDescription} onChange={(e) => set("menuDescription", e.target.value)} className="mt-1.5 h-20 w-full resize-none rounded-lg border border-border-strong px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" placeholder="Menu items or package name" />
-        <p className="mt-1 text-xs text-text-muted">
-          Selecting a package above fills this in — review and edit before saving. This does not automatically create a production order or purchase request.
-        </p>
-        </div>
-      </div>
-      )}
-
-      <div>
-        <label className={labelClass}>Event details</label>
-        <textarea value={form.eventDetails} onChange={(e) => set("eventDetails", e.target.value)} className="mt-1.5 h-20 w-full resize-none rounded-lg border border-border-strong px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" placeholder="Programme, timing, setup, contact person on the day, etc." />
-      </div>
-
-      <div>
-        <label className={labelClass}>Special Requirements</label>
-        <textarea value={form.specialRequirements} onChange={(e) => set("specialRequirements", e.target.value)} className="mt-1.5 h-20 w-full resize-none rounded-lg border border-border-strong px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" placeholder="Dietary restrictions, setup needs, etc." />
-      </div>
-
-      <div>
-        <label className={labelClass}>Remarks</label>
-        <textarea value={form.remarks} onChange={(e) => set("remarks", e.target.value)} className="mt-1.5 h-20 w-full resize-none rounded-lg border border-border-strong px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" placeholder="Any other note" />
-      </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Kitchen set-up</label>
-          <textarea value={form.kitchenSetup} onChange={(e) => set("kitchenSetup", e.target.value)} className="mt-1.5 h-20 w-full resize-none rounded-lg border border-border-strong px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" placeholder="What the kitchen must prepare / set up" />
+          <textarea value={form.kitchenSetup} onChange={(e) => set("kitchenSetup", e.target.value)} className={areaClass} placeholder="What the kitchen must prepare / set up" />
         </div>
         <div>
           <label className={labelClass}>Catering set-up</label>
-          <textarea value={form.cateringSetup} onChange={(e) => set("cateringSetup", e.target.value)} className="mt-1.5 h-20 w-full resize-none rounded-lg border border-border-strong px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" placeholder="Tables, buffet line, equipment, staff on site" />
+          <textarea value={form.cateringSetup} onChange={(e) => set("cateringSetup", e.target.value)} className={areaClass} placeholder="Tables, buffet line, equipment, staff on site" />
         </div>
       </div>
+
+      <div>
+        <label className={labelClass}>Remarks</label>
+        <textarea value={form.remarks} onChange={(e) => set("remarks", e.target.value)} className={areaClass} placeholder="Any other note" />
+      </div>
+
+      {/* these two are not on the Quotation Request Form: shown only when an event being edited already has them */}
+      {eventId && initial?.eventDetails && (
+        <div>
+          <label className={labelClass}>Event details</label>
+          <textarea value={form.eventDetails} onChange={(e) => set("eventDetails", e.target.value)} className={areaClass} placeholder="Programme, timing, setup, contact person on the day, etc." />
+        </div>
+      )}
+      {eventId && initial?.specialRequirements && (
+        <div>
+          <label className={labelClass}>Special Requirements</label>
+          <textarea value={form.specialRequirements} onChange={(e) => set("specialRequirements", e.target.value)} className={areaClass} placeholder="Dietary restrictions, setup needs, etc." />
+        </div>
+      )}
+
+      {!eventId && (
+        <div className="rounded-lg border border-border bg-surface-alt px-4 py-3 text-[13px] text-text-secondary">
+          Estimated total: <span className="text-[15px] font-extrabold text-text">{formatPrice(estimatedTotal)}</span>
+          <span className="ml-2 text-xs text-text-muted">(all days + additional requirement + extra items; a draft quotation is made from the priced lines)</span>
+        </div>
+      )}
 
       <div className="mt-2 flex justify-end gap-2.5">
         <button type="button" onClick={() => router.back()} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13.5px] font-semibold text-text">

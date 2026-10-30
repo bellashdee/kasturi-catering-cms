@@ -1,4 +1,5 @@
-import type { EventDay, SecondChoice } from "@/lib/catering/days";
+import { MEAL_TYPE_LABEL, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
+import { secondMenusOf, type EventDay, type SecondChoice } from "@/lib/catering/days";
 
 export type { SecondChoice };
 
@@ -96,6 +97,18 @@ export function additionalServiceLines(a: AdditionalServices | undefined): Extra
   add(a.transportation, a.transportationIncluded, "Transportation", a.transportationPrice);
   add(a.domeSet, a.domeSetIncluded, "Dome set", a.domeSetPrice);
   return lines;
+}
+
+/** A day with its second menus written into its remarks (a saved day has no place of its own for them); they are not part of the quotation. */
+export function withSecondMenusInRemarks(d: EventDay): EventDay {
+  const menus = secondMenusOf(d);
+  return {
+    ...d,
+    remarks:
+      [d.remarks, ...menus.map((m, n) => describeSecondChoice(m, { meal: MEAL_TYPE_LABEL, service: SERVICE_TYPE_LABEL }, menus.length > 1 ? n + 1 : undefined))]
+        .filter(Boolean)
+        .join("\n\n") || undefined,
+  };
 }
 
 /** Plain-text version of one second menu of a day, written into the event when the request is approved. */

@@ -6,7 +6,7 @@ import { EVENT_TYPE_OPTIONS, SALES_AGENTS } from "@/lib/catering/constants";
 import { dayAmount, type EventDay } from "@/lib/catering/days";
 import { additionalServiceLines, unansweredAdditionalServices, type AdditionalServices, type ExtraItem, type QuotationRequestInput } from "@/lib/catering/quotationRequest";
 import { EventDaysEditor, emptyDay } from "@/components/catering/EventDaysEditor";
-import { AdditionalServicesEditor } from "@/components/catering/QuotationRequestExtras";
+import { AdditionalServicesEditor, ExtraItemsEditor, type ExtraRow } from "@/components/catering/QuotationRequestExtras";
 import { ChoiceSelect } from "@/components/ui/ChoiceSelect";
 
 const AGENT_OPTIONS = SALES_AGENTS.map((a) => ({ value: a, label: a }));
@@ -20,7 +20,6 @@ const areaClass =
 const labelClass = "text-[12.5px] font-semibold text-text-secondary";
 
 type Header = Omit<QuotationRequestInput, "days" | "extraItems" | "additional">;
-type ExtraRow = { itemName: string; quantity: string; unitPrice: string };
 
 const emptyHeader: Header = {
   salesAgent: "",
@@ -47,10 +46,6 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
 
   function set<K extends keyof Header>(key: K, value: Header[K]) {
     setForm((f) => ({ ...f, [key]: value }));
-  }
-
-  function setExtra(i: number, field: keyof ExtraRow, value: string) {
-    setExtras((rows) => rows.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)));
   }
 
   const extrasTotal = useMemo(() => extras.reduce((t, r) => t + (Number(r.quantity) || 0) * (Number(r.unitPrice) || 0), 0), [extras]);
@@ -148,17 +143,7 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
       <div>
         <div className="text-[14px] font-extrabold text-text">Other extra items (optional)</div>
         <p className="mb-2 text-xs text-text-muted">Anything else to quote, e.g. equipment hire, service charge.</p>
-        {extras.map((row, i) => (
-          <div key={i} className="mb-2 grid grid-cols-[2fr_0.7fr_1fr_auto] items-center gap-2">
-            <input maxLength={200} value={row.itemName} onChange={(e) => setExtra(i, "itemName", e.target.value)} className="h-9 rounded border border-border-strong px-2 text-[13px] outline-none" placeholder="Item" />
-            <input type="number" min="0" step="0.5" value={row.quantity} onChange={(e) => setExtra(i, "quantity", e.target.value)} className="h-9 rounded border border-border-strong px-2 text-[13px] outline-none" placeholder="Qty" />
-            <input type="number" min="0" step="0.01" value={row.unitPrice} onChange={(e) => setExtra(i, "unitPrice", e.target.value)} className="h-9 rounded border border-border-strong px-2 text-[13px] outline-none" placeholder="Price (RM)" />
-            <button type="button" onClick={() => setExtras((rows) => rows.filter((_, idx) => idx !== i))} className="text-xs font-semibold text-danger">✕</button>
-          </div>
-        ))}
-        <button type="button" onClick={() => setExtras((rows) => [...rows, { itemName: "", quantity: "1", unitPrice: "" }])} className="text-[12.5px] font-semibold text-primary">
-          + Add extra item
-        </button>
+        <ExtraItemsEditor rows={extras} onChange={setExtras} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">

@@ -51,6 +51,29 @@ export function SecondChoiceEditor({ value, onChange }: { value: SecondChoice; o
   );
 }
 
+/** One "Other extra item" as it is typed (quantity and price are text until the form is sent). */
+export type ExtraRow = { itemName: string; quantity: string; unitPrice: string };
+
+/** "Other extra items (optional)": anything else to quote, e.g. equipment hire, service charge. */
+export function ExtraItemsEditor({ rows, onChange }: { rows: ExtraRow[]; onChange: (rows: ExtraRow[]) => void }) {
+  const patch = (i: number, field: keyof ExtraRow, value: string) => onChange(rows.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)));
+  return (
+    <>
+      {rows.map((row, i) => (
+        <div key={i} className="mb-2 grid grid-cols-[2fr_0.7fr_1fr_auto] items-center gap-2">
+          <input maxLength={200} value={row.itemName} onChange={(e) => patch(i, "itemName", e.target.value)} className="h-9 rounded border border-border-strong px-2 text-[13px] outline-none" placeholder="Item" />
+          <input type="number" min="0" step="0.5" value={row.quantity} onChange={(e) => patch(i, "quantity", e.target.value)} className="h-9 rounded border border-border-strong px-2 text-[13px] outline-none" placeholder="Qty" />
+          <input type="number" min="0" step="0.01" value={row.unitPrice} onChange={(e) => patch(i, "unitPrice", e.target.value)} className="h-9 rounded border border-border-strong px-2 text-[13px] outline-none" placeholder="Price (RM)" />
+          <button type="button" onClick={() => onChange(rows.filter((_, idx) => idx !== i))} className="text-xs font-semibold text-danger">✕</button>
+        </div>
+      ))}
+      <button type="button" onClick={() => onChange([...rows, { itemName: "", quantity: "1", unitPrice: "" }])} className="text-[12.5px] font-semibold text-primary">
+        + Add extra item
+      </button>
+    </>
+  );
+}
+
 const ANSWERS = [
   { value: "yes", label: "Yes" },
   { value: "no", label: "No" },

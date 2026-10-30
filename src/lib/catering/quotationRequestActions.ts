@@ -10,7 +10,7 @@ import { INTAKE_COMPANIES, INTAKE_HOURLY_LIMIT } from "@/lib/catering/intake";
 import {
   MAX_EXTRA_ITEMS,
   additionalServiceLines,
-  describeSecondChoice,
+  withSecondMenusInRemarks,
   type AdditionalServices,
   type ExtraItem,
   type QuotationRequestInput,
@@ -283,16 +283,7 @@ async function approveRequest(requestId: string): Promise<Result> {
 
   const days = (r.days as unknown as EventDay[]).map((d) => ({ ...d, mealTypes: d.mealTypes ?? [] }));
   // a day's second menus (alternative menus) are kept in that day's remarks; they are not part of the quotation
-  const withSecondChoice = (d: EventDay): EventDay => {
-    const menus = secondMenusOf(d);
-    return {
-      ...d,
-      remarks:
-        [d.remarks, ...menus.map((m, n) => describeSecondChoice(m, { meal: MEAL_TYPE_LABEL, service: SERVICE_TYPE_LABEL }, menus.length > 1 ? n + 1 : undefined))]
-          .filter(Boolean)
-          .join("\n\n") || undefined,
-    };
-  };
+  const withSecondChoice = withSecondMenusInRemarks;
   const extras = r.extra_items as unknown as ExtraItem[];
   const submittedOn = r.created_at.slice(0, 10);
 
