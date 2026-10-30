@@ -43,7 +43,7 @@ export type PettyCashEntryInput = {
 };
 
 function validate(input: PettyCashEntryInput) {
-  if (!input.personName?.trim() || !input.personPosition?.trim()) throw new Error("Choose whose petty cash this is: the name and the position.");
+  if (!input.personName?.trim()) throw new Error("Choose whose petty cash this is: the name.");
   if (input.entryType !== "top_up" && input.entryType !== "expense") throw new Error("Choose whether the money was received or spent.");
   if (input.paymentMethod !== "cash" && input.paymentMethod !== "online_transfer") throw new Error(input.entryType === "top_up" ? "Choose how the money was received: cash or online transfer." : "Choose how the money was paid: cash or online transfer.");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.entryDate)) throw new Error("Select the date.");

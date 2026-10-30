@@ -53,7 +53,7 @@ type Row = {
 
 /**
  * Petty Cash: one place for the money received, the money spent (with the receipts) and the staff claims, for ONE person's petty cash:
- * the name and the position are chosen at the top and nothing of anyone else's is mixed in. The cash book is private to the people who
+ * the name is chosen at the top and nothing of anyone else's is mixed in. The cash book is private to the people who
  * hold a petty cash (and the Director of Finance); the claims follow Admin & Finance access.
  */
 export default async function PettyCashPage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string; edit?: string; holder?: string; position?: string; status?: string; all?: string }> }) {
@@ -181,7 +181,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
     ? { id: editing.id, company_id: editing.company_id, entry_type: editing.entry_type as EntryType, entry_date: editing.entry_date, category: editing.category, description: editing.description, amount: Number(editing.amount), document_id: editing.document_id, created_by: editing.created_by, person_name: editing.person_name, person_position: editing.person_position, payment_method: editing.payment_method, shared_company_ids: editing.shared_company_ids ?? [] }
     : undefined;
 
-  const keep = new URLSearchParams({ ...(sp.company ? { company: sp.company } : {}), holder: who.name, position: who.position, month, ...(everyone ? { all: "1" } : {}) });
+  const keep = new URLSearchParams({ ...(sp.company ? { company: sp.company } : {}), holder: who.name, month, ...(everyone ? { all: "1" } : {}) });
   const listHref = `/spending/petty-cash?${keep.toString()}`;
   const editHref = (id: string) => `${listHref}${statusParam ? `&status=${statusParam}` : ""}&edit=${id}`;
   const statusHref = (status?: string) => `${listHref}${status ? `&status=${status}` : ""}`;
@@ -220,7 +220,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
         </div>
       )}
 
-      <PettyCashHolderBar holders={holders} holder={who.name} position={who.position} month={month} months={months} hidden={{ company: sp.company ?? "", status: statusParam ?? "" }} lockName={!seeAll} canSeeAll={seeAll} everyone={everyone}>
+      <PettyCashHolderBar holders={holders} holder={who.name} month={month} months={months} hidden={{ company: sp.company ?? "", status: statusParam ?? "" }} lockName={!seeAll} canSeeAll={seeAll} everyone={everyone}>
         {shownScope && (
           <span>
             {everyone ? "Everyone's balance" : <>Balance of {who.name}</>}: <strong className={totalBalance < 0 ? "text-danger" : "text-text"}>{formatPrice(totalBalance)}</strong>
@@ -229,7 +229,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
         )}
       </PettyCashHolderBar>
 
-      {!shownScope && <EmptyRow text="Choose your name and position above to see your own petty cash." />}
+      {!shownScope && <EmptyRow text="Choose your name above to see your own petty cash." />}
 
       {shownScope && <PettyCashOverview overview={overview} periodLabel={month === "all" ? "All time" : month} />}
 
@@ -255,9 +255,8 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
           listHref={listHref}
           people={people}
           holders={holders}
-          claimPayers={payers.map((p) => ({ name: p.name, position: holders.find((h) => h.name === p.name)?.position ?? p.position }))}
+          claimPayers={payers}
           holderName={who.name}
-          holderPosition={who.position}
           allowBook={isHolder}
           allowClaim={canClaims && !editing}
           allowPayClaims={canClaims && seeAll}

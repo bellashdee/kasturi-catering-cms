@@ -13,8 +13,16 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export function exportTableToExcel(filenameBase: string, headers: string[], rows: (string | number)[][]) {
+export function exportTableToExcel(filenameBase: string, headers: string[], rows: (string | number)[][], moneyColumns: string[] = []) {
   const sheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  // RM columns keep their numbers but always show 2 decimal places (3000.00)
+  headers.forEach((h, c) => {
+    if (!moneyColumns.includes(h)) return;
+    for (let r = 1; r <= rows.length; r++) {
+      const cell = sheet[XLSX.utils.encode_cell({ r, c })];
+      if (cell && cell.t === "n") cell.z = "#,##0.00";
+    }
+  });
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, sheet, "Report");
   XLSX.writeFile(workbook, `${filenameBase}.xlsx`);

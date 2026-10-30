@@ -80,7 +80,7 @@ export async function submitMyClaim(input: MyClaimInput): Promise<ActionResult> 
         transaction_date: input.date,
         document_id: input.documentId || null,
         person_name: payer.name,
-        person_position: payer.position || null,
+        person_position: null,
         shared_company_ids: [],
         payment_method: input.paymentMethod,
         created_by: userId,
@@ -117,7 +117,7 @@ export async function updateMyClaim(id: string, input: MyClaimInput): Promise<Ac
         amount: input.amount,
         transaction_date: input.date,
         person_name: payer.name,
-        person_position: payer.position || null,
+        person_position: null,
         payment_method: input.paymentMethod,
         ...(input.documentId ? { document_id: input.documentId } : {}),
       })

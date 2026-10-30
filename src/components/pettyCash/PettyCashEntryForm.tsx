@@ -11,7 +11,7 @@ import { createPettyCashTransaction, createSplitPettyCashClaims, markPettyCashPa
 import { PAYMENT_METHOD_LABEL, PETTY_CASH_CATEGORIES, joinCategories, splitCategories, type OperationPettyCashRow } from "@/lib/operationPettyCash/constants";
 import { DescriptionInput } from "@/components/DescriptionInput";
 import { SearchSelect } from "@/components/ui/SearchSelect";
-import { positionOptions, type PersonOption } from "@/lib/pettyCash/people";
+import type { PersonOption } from "@/lib/pettyCash/people";
 import { Select } from "@/components/ui/Select";
 import { CompanyChips } from "@/components/pettyCash/CompanyChips";
 import { MultiChoiceSelect } from "@/components/ui/MultiChoiceSelect";
@@ -61,7 +61,7 @@ function UsageGuide({ canPay, hasClaim }: { canPay: boolean; hasClaim: boolean }
 
 /**
  * One form for the petty cash: money received, money spent (with the receipt) or a staff claim that still has to be paid. It always
- * belongs to one person's petty cash (the name and the position chosen at the top). Also used to edit a cash book entry.
+ * belongs to one person's petty cash (the name chosen at the top). Also used to edit a cash book entry.
  */
 export function PettyCashEntryForm({
   companies,
@@ -72,7 +72,6 @@ export function PettyCashEntryForm({
   holders,
   claimPayers = [],
   holderName,
-  holderPosition,
   allowBook,
   allowClaim,
   allowPayClaims = false,
@@ -89,7 +88,6 @@ export function PettyCashEntryForm({
   /** the people a staff claim is claimed from (Ms. Penny and Ms. Nabilah) */
   claimPayers?: { name: string; position: string }[];
   holderName: string;
-  holderPosition: string;
   /** may record money received / spent (the cash book) */
   allowBook: boolean;
   /** may record a staff claim */
@@ -116,7 +114,6 @@ export function PettyCashEntryForm({
   const [category, setCategory] = useState(editing?.category ?? "");
   const [description, setDescription] = useState(editing?.description ?? "");
   const [personName, setPersonName] = useState(editing?.person_name ?? holderName);
-  const [personPosition, setPersonPosition] = useState(editing?.person_position ?? holderPosition);
   // a claim for more than one company is split: how much belongs to each company (kept as typed; empty = shared equally)
   const [shareText, setShareText] = useState<Record<string, string>>({});
   const [claimant, setClaimant] = useState("");
@@ -142,10 +139,6 @@ export function PettyCashEntryForm({
   const isReceived = kind === "top_up";
   const isPayment = kind === "claim_payment";
   const paidClaim = pendingClaims.find((c) => c.id === payClaimId);
-  const fillPosition = (name: string) => {
-    const found = holders.find((p) => p.name === name);
-    if (found?.position) setPersonPosition(found.position);
-  };
   const isPayer = (name: string) => claimPayers.some((p) => p.name === name);
   // a staff claim is claimed from Ms. Penny or Ms. Nabilah; leaving the claim, the person of the page comes back
   const changeKind = (next: EntryKind) => {
@@ -156,17 +149,12 @@ export function PettyCashEntryForm({
       if (!isPayer(personName)) {
         const only = claimPayers.length === 1 ? claimPayers[0] : undefined;
         setPersonName(only?.name ?? "");
-        setPersonPosition(only?.position ?? "");
       }
     } else if (was === "claim") {
       setPersonName(holderName);
-      setPersonPosition(holderPosition);
     }
   };
-  const pickPayer = (name: string) => {
-    setPersonName(name);
-    setPersonPosition(claimPayers.find((p) => p.name === name)?.position ?? "");
-  };
+  const pickPayer = (name: string) => setPersonName(name);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -203,8 +191,8 @@ export function PettyCashEntryForm({
       setError("Choose who the claim is claimed from: Penny Chan or Nabilah.");
       return;
     }
-    if (!personName.trim() || !personPosition.trim()) {
-      setError("Choose whose petty cash this is: the name and the position.");
+    if (!personName.trim()) {
+      setError("Choose whose petty cash this is: the name.");
       return;
     }
     if (isClaim && !claimant.trim()) {
@@ -236,7 +224,6 @@ export function PettyCashEntryForm({
             transactionDate: date,
             documentId,
             personName: personName.trim(),
-            personPosition: personPosition.trim(),
             paymentMethod,
             shares: sharesList.map((s) => ({ companyId: s.companyId, amount: Math.round(Number(s.text) * 100) / 100 })),
           })
@@ -253,12 +240,11 @@ export function PettyCashEntryForm({
             transactionDate: date,
             documentId,
             personName: personName.trim(),
-            personPosition: personPosition.trim(),
             paymentMethod,
           })
         : editing
-          ? await updatePettyCashEntry(editing.id, { companyId: firstCompanyId, alsoCompanyIds, paymentMethod, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, amount: Number(amount), documentId, personName: personName || undefined, personPosition: personPosition || undefined })
-          : await createPettyCashEntry({ companyId: firstCompanyId, alsoCompanyIds, paymentMethod, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, amount: Number(amount), documentId, personName: personName || undefined, personPosition: personPosition || undefined });
+          ? await updatePettyCashEntry(editing.id, { companyId: firstCompanyId, alsoCompanyIds, paymentMethod, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, amount: Number(amount), documentId, personName: personName || undefined })
+          : await createPettyCashEntry({ companyId: firstCompanyId, alsoCompanyIds, paymentMethod, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, amount: Number(amount), documentId, personName: personName || undefined });
       if (!result.ok) {
         setError(result.error);
         return;
@@ -274,7 +260,6 @@ export function PettyCashEntryForm({
         setShareText({});
         setDepartment("");
         setPersonName(holderName);
-        setPersonPosition(holderPosition);
         setReceipt(null);
         (e.target as HTMLFormElement).reset();
       }
@@ -439,15 +424,7 @@ export function PettyCashEntryForm({
               ))}
             </Select>
           ) : (
-            <SearchSelect value={personName} onChange={setPersonName} options={holders.map((p) => p.name)} onPick={fillPosition} className={inputClass} placeholder="Search or type a name" />
-          )}
-        </div>
-        <div>
-          <label className={labelClass}>{isClaim ? "Position of the person who pays the claim *" : "Position that holds the petty cash *"}</label>
-          {isClaim && !lockName ? (
-            <input value={personPosition} readOnly className={`${inputClass} cursor-not-allowed bg-surface-alt`} />
-          ) : (
-            <SearchSelect value={personPosition} onChange={setPersonPosition} options={positionOptions(holders)} className={inputClass} placeholder="Search or type a position" />
+            <SearchSelect value={personName} onChange={setPersonName} options={holders.map((p) => p.name)} className={inputClass} placeholder="Search or type a name" />
           )}
         </div>
       </div>

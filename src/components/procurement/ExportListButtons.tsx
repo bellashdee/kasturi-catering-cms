@@ -4,12 +4,12 @@ import { exportTableToExcel } from "@/lib/reports/export";
 import { printTablePdf } from "@/lib/export/tableExport";
 
 /** Excel download or a printable PDF of a list that is shown on the page in another layout (plain data only crosses from the server). */
-export function ExportListButtons({ filenameBase, headers, rows, moneyColumns = [] }: { filenameBase: string; headers: string[]; rows: (string | number)[][]; /** headers of the RM columns: printed with 2 decimal places (3000.00) */ moneyColumns?: string[] }) {
+export function ExportListButtons({ filenameBase, headers, rows, moneyColumns = [] }: { filenameBase: string; headers: string[]; rows: (string | number)[][]; /** headers of the RM columns: shown with 2 decimal places (3000.00) in Excel and in the print */ moneyColumns?: string[] }) {
   const btn = "rounded-lg border border-border-strong bg-surface px-3.5 py-2 text-[12.5px] font-semibold text-text disabled:opacity-50";
   const title = filenameBase.replace(/[-_]+/g, " ").replace(/^./, (c) => c.toUpperCase());
   return (
     <div className="flex gap-2 print:hidden">
-      <button type="button" disabled={rows.length === 0} onClick={() => exportTableToExcel(filenameBase, headers, rows)} className={btn}>
+      <button type="button" disabled={rows.length === 0} onClick={() => exportTableToExcel(filenameBase, headers, rows, moneyColumns)} className={btn}>
         Export Excel
       </button>
       <button

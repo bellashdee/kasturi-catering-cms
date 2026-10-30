@@ -2,20 +2,19 @@
 
 import { useState } from "react";
 import { SearchSelect } from "@/components/ui/SearchSelect";
-import { positionOptions, type PersonOption } from "@/lib/pettyCash/people";
+import type { PersonOption } from "@/lib/pettyCash/people";
 import { Select } from "@/components/ui/Select";
 
 const inputClass = "mt-1 h-9 w-full rounded-lg border border-border-strong bg-surface px-2.5 text-[13.5px] font-semibold outline-none focus:border-primary";
 const labelClass = "text-[11.5px] font-bold uppercase tracking-wide text-text-muted";
 
 /**
- * Whose petty cash is shown: the name and the position are chosen here (the signed-in person's own at first). The overview, the records
+ * Whose petty cash is shown: the name is chosen here (the signed-in person's own at first). The overview, the records
  * and the form are only about that person's petty cash; nothing of anyone else's is mixed in.
  */
 export function PettyCashHolderBar({
   holders,
   holder,
-  position,
   month,
   months,
   hidden,
@@ -26,7 +25,6 @@ export function PettyCashHolderBar({
 }: {
   holders: PersonOption[];
   holder: string;
-  position: string;
   month: string;
   months: string[];
   /** other parts of the address to keep (company, status) */
@@ -39,7 +37,6 @@ export function PettyCashHolderBar({
   children?: React.ReactNode;
 }) {
   const [name, setName] = useState(holder);
-  const [pos, setPos] = useState(position);
   return (
     <form method="get" className="flex flex-wrap items-end gap-3 rounded-2xl border border-border bg-surface px-5 py-3.5">
       {Object.entries(hidden).map(([k, v]) => (v ? <input key={k} type="hidden" name={k} value={v} /> : null))}
@@ -58,19 +55,10 @@ export function PettyCashHolderBar({
             value={name}
             onChange={setName}
             options={holders.map((h) => h.name)}
-            onPick={(picked) => {
-              // the position of the person is filled in
-              const found = holders.find((h) => h.name === picked);
-              if (found?.position) setPos(found.position);
-            }}
             className={inputClass}
             placeholder="Search or choose a name"
           />
         )}
-      </div>
-      <div className="min-w-[12rem] flex-1">
-        <label className={labelClass} htmlFor="pc-position">Position</label>
-        <SearchSelect id="pc-position" name="position" required value={pos} onChange={setPos} options={positionOptions(holders)} className={inputClass} placeholder="Search or choose the position" />
       </div>
       <div>
         <label className={labelClass} htmlFor="pc-month">Month</label>

@@ -249,7 +249,7 @@ export type PettyCashInput = {
   amount: number;
   transactionDate: string;
   documentId?: string;
-  /** who received the money (a top-up) and the position that holds the petty cash */
+  /** who received the money (a top-up) or pays the claim; the position is no longer asked (older records may have one) */
   personName?: string;
   personPosition?: string;
   /** the other companies the claim is also for (keyed in once, counted once) */
@@ -264,7 +264,7 @@ export async function createPettyCashTransaction(input: PettyCashInput): Promise
   if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("Enter an amount more than 0.");
   if (input.type === "expense" && !input.claimantName?.trim()) throw new Error("Enter who is claiming this petty cash.");
   if (!isPaymentMethod(input.paymentMethod)) throw new Error("Choose how it was paid: cash or online transfer.");
-  if (!input.personName?.trim() || !input.personPosition?.trim()) throw new Error("Choose whose petty cash this is: the name and the position.");
+  if (!input.personName?.trim()) throw new Error("Choose whose petty cash this is: the name.");
   await assertOwnPerson(supabase, userId, input.personName);
   if (input.type === "expense") {
     // a staff claim is claimed from Ms. Penny or Ms. Nabilah (the staff paid with their own money first)
@@ -315,7 +315,7 @@ export type SplitClaimInput = {
   transactionDate: string;
   documentId?: string;
   personName: string;
-  personPosition: string;
+  personPosition?: string;
   /** how much of the claim belongs to each company (the money of each company is kept apart); together they are the whole claim */
   shares: { companyId: string; amount: number }[];
   /** cash or online transfer: how the staff member paid */
@@ -327,7 +327,7 @@ export async function createSplitPettyCashClaims(input: SplitClaimInput): Promis
   return runAction(async () => {
     const { supabase, userId } = await requireUser();
     if (!input.claimantName?.trim()) throw new Error("Enter who is claiming this petty cash.");
-    if (!input.personName?.trim() || !input.personPosition?.trim()) throw new Error("Choose whose petty cash this is: the name and the position.");
+    if (!input.personName?.trim()) throw new Error("Choose whose petty cash this is: the name.");
     if (!isPaymentMethod(input.paymentMethod)) throw new Error("Choose how it was paid: cash or online transfer.");
     const paymentMethod = input.paymentMethod;
     const shares = input.shares ?? [];
@@ -353,7 +353,7 @@ export async function createSplitPettyCashClaims(input: SplitClaimInput): Promis
           transaction_date: input.transactionDate || todayInMalaysia(),
           document_id: input.documentId || null,
           person_name: input.personName.trim().slice(0, 200),
-          person_position: input.personPosition.trim().slice(0, 200),
+          person_position: input.personPosition?.trim().slice(0, 200) || null,
           shared_company_ids: [],
           payment_method: paymentMethod,
           created_by: userId,
