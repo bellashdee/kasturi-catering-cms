@@ -60,7 +60,7 @@ export default async function DeliveryDetailPage({
           <div className="text-[13px] text-text-secondary">
             {delivery.companies?.name}
             {delivery.scheduled_time && ` · ${formatMalaysiaDateTime(delivery.scheduled_time)}`}
-            {delivery.location && ` · ${delivery.location}`}
+            {(delivery.catering_events?.location ?? delivery.location) && ` · ${delivery.catering_events?.location ?? delivery.location}`}
           </div>
         </div>
         <div className="flex items-center gap-2">

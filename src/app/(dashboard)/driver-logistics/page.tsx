@@ -77,7 +77,12 @@ export default async function DriverLogisticsPage({
                 className="grid grid-cols-[1.2fr_1.4fr_1fr_1fr_1fr_1fr] px-5 py-3.5 text-[13.5px] hover:bg-surface-alt"
               >
                 <div className="text-text-secondary">{formatMalaysiaDateTime(d.scheduled_time)}</div>
-                <div className="font-semibold text-text">{d.catering_events?.event_name ?? d.location ?? "—"}</div>
+                <div>
+                  <div className="font-semibold text-text">{d.catering_events?.event_name ?? d.location ?? "—"}</div>
+                  {(d.catering_events?.location ?? (d.catering_events ? d.location : null)) && (
+                    <div className="text-[12px] text-text-muted">{d.catering_events?.location ?? d.location}</div>
+                  )}
+                </div>
                 <div className="text-text-secondary">{d.employees?.full_name ?? (d.delivery_vendors ? `${d.delivery_vendors.name} (external)` : "—")}</div>
                 <div className="text-text-secondary">{d.vehicles?.plate_number ?? "—"}</div>
                 <div className="text-text-secondary">{d.companies?.name}</div>
@@ -89,7 +94,7 @@ export default async function DriverLogisticsPage({
                 <OperationRowActions
                   kind="delivery"
                   id={d.id}
-                  initial={{ scheduledTime: toMalaysiaInputValue(d.scheduled_time), location: d.location ?? "", itemsDescription: d.items_description ?? "", notes: d.notes ?? "" }}
+                  initial={{ scheduledTime: toMalaysiaInputValue(d.scheduled_time), location: d.catering_events?.location ?? d.location ?? "", itemsDescription: d.items_description ?? "", notes: d.notes ?? "" }}
                   fullEditHref={`/driver-logistics/${d.id}${query}`}
                 />
               </div>

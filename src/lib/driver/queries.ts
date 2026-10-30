@@ -7,7 +7,7 @@ type DB = SupabaseClient<Database>;
 export async function listDeliveries(supabase: DB, companyIds: string[]) {
   const { data, error } = await supabase
     .from("deliveries")
-    .select("*, catering_events(event_name), vehicles(plate_number), employees(full_name), delivery_vendors(name), companies(name)")
+    .select("*, catering_events(event_name, location), vehicles(plate_number), employees(full_name), delivery_vendors(name), companies(name)")
     .in("company_id", companyIds)
     .order("scheduled_time", { ascending: false });
   if (error) throw error;
@@ -17,7 +17,7 @@ export async function listDeliveries(supabase: DB, companyIds: string[]) {
 export async function getDelivery(supabase: DB, id: string) {
   const { data, error } = await supabase
     .from("deliveries")
-    .select("*, catering_events(id, event_name, event_date), catering_event_days(day_date), vehicles(id, plate_number), employees(id, full_name), delivery_vendors(name), companies(name)")
+    .select("*, catering_events(id, event_name, event_date, location), catering_event_days(day_date), vehicles(id, plate_number), employees(id, full_name), delivery_vendors(name), companies(name)")
     .eq("id", id)
     .single();
   if (error) throw error;
@@ -47,7 +47,7 @@ export async function getDriver(supabase: DB, id: string) {
 export async function listDeliveriesForDriver(supabase: DB, employeeId: string) {
   const { data, error } = await supabase
     .from("deliveries")
-    .select("*, catering_events(event_name), vehicles(plate_number)")
+    .select("*, catering_events(event_name, location), vehicles(plate_number)")
     .eq("driver_id", employeeId)
     .order("scheduled_time", { ascending: false })
     .limit(20);

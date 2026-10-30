@@ -59,7 +59,7 @@ export default async function DriverReportPage({
     rows,
     [
       { key: "date", label: "Scheduled", exportValue: (r) => formatMalaysiaDateTime(r.scheduled_time) },
-      { key: "event", label: "Event / Location", exportValue: (r) => r.catering_events?.event_name ?? r.location ?? "—" },
+      { key: "event", label: "Event / Location", exportValue: (r) => [r.catering_events?.event_name, r.catering_events?.location ?? r.location].filter(Boolean).join(" — ") || "—" },
       { key: "driver", label: "Driver", exportValue: (r) => r.employees?.full_name ?? "—" },
       { key: "vehicle", label: "Vehicle", exportValue: (r) => r.vehicles?.plate_number ?? "—" },
       { key: "company", label: "Company", exportValue: (r) => r.companies?.name ?? "—" },
