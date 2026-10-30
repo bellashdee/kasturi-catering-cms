@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
-import { getMonthlyCostBreakdown, getMonthlySales, listCostCategories, uniqueCategories } from "@/lib/finance/queries";
+import { getMonthlyCostBreakdown, getMonthlySales, listCostCategories, sameLabel, uniqueCategories } from "@/lib/finance/queries";
 import { MONTH_LABEL } from "@/lib/finance/constants";
 import { formatCurrency, malaysiaYearMonth } from "@/lib/format";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
@@ -49,8 +49,8 @@ export default async function AdminPage({
 
   const departments = Array.from(new Set(allRows.map((r) => r.department).filter((d): d is string => !!d))).sort();
   const rows = allRows.filter((r) => {
-    if (departmentParam && r.department !== departmentParam) return false;
-    if (categoryParam && r.category !== categoryParam) return false;
+    if (departmentParam && !sameLabel(r.department, departmentParam)) return false;
+    if (categoryParam && !sameLabel(r.category, categoryParam)) return false;
     return true;
   });
 

@@ -20,6 +20,15 @@ export type CostRow = {
 };
 
 /**
+ * Whether a cost's category or department is the one chosen in a filter: the same words, whatever the capitals and spaces ("Ayam" is
+ * "AYAM"). Monthly Costing, its report and Company Expenses all filter this way, so they keep the same total.
+ */
+export function sameLabel(value: string | null | undefined, chosen: string): boolean {
+  const norm = (s: string) => s.toUpperCase().replace(/\s+/g, " ").trim();
+  return norm(value ?? "") === norm(chosen);
+}
+
+/**
  * Pulls one month's costs from every module's own tables — nothing is copied
  * into a Finance-owned "transactions" table. Each row keeps its source,
  * category and (where the owning module tracks one) department, so the

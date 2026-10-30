@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
-import { getMonthlyCostBreakdown, listCostCategories, uniqueCategories } from "@/lib/finance/queries";
+import { getMonthlyCostBreakdown, listCostCategories, sameLabel, uniqueCategories } from "@/lib/finance/queries";
 import { formatCurrency, malaysiaYearMonth } from "@/lib/format";
 import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { ReportTable } from "@/components/reports/ReportTable";
@@ -48,8 +48,8 @@ export default async function MonthlyCostingReportPage({
 
   const departments = Array.from(new Set(allRows.map((r) => r.department).filter((d): d is string => !!d))).sort();
   const filteredRows = allRows.filter((r) => {
-    if (departmentParam && r.department !== departmentParam) return false;
-    if (categoryParam && r.category !== categoryParam) return false;
+    if (departmentParam && !sameLabel(r.department, departmentParam)) return false;
+    if (categoryParam && !sameLabel(r.category, categoryParam)) return false;
     return true;
   });
   const total = filteredRows.reduce((t, r) => t + r.amount, 0);

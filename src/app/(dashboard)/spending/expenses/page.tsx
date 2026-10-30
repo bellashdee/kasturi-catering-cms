@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
-import { listCostCategories, listSpending, uniqueCategories, type CostRow } from "@/lib/finance/queries";
+import { listCostCategories, listSpending, sameLabel, uniqueCategories, type CostRow } from "@/lib/finance/queries";
 import { formatCurrency, formatMalaysiaDate, todayInMalaysia } from "@/lib/format";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SpendingSubNav } from "@/components/spending/SpendingSubNav";
@@ -41,10 +41,9 @@ export default async function CompanyExpensesPage({
 
   // search and filters: words in the category, notes, department, company or amount; the category and department; a date range
   const words = q.trim().toUpperCase().split(/\s+/).filter(Boolean);
-  const same = (a: string | null | undefined, b: string) => (a ?? "").trim().toUpperCase() === b.trim().toUpperCase();
   const matching = everyExpense.filter((e) => {
-    if (category && !same(e.category, category)) return false;
-    if (department && !same(e.department, department)) return false;
+    if (category && !sameLabel(e.category, category)) return false;
+    if (department && !sameLabel(e.department, department)) return false;
     if (words.length === 0) return true;
     const hay = `${e.source} ${e.category} ${e.department ?? ""} ${e.notes ?? ""} ${e.companies?.name ?? ""} ${e.expense_date} ${e.amount} ${Number(e.amount).toFixed(2)}`.toUpperCase();
     return words.every((w) => hay.includes(w));
