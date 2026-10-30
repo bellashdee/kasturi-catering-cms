@@ -4,7 +4,7 @@ import { GuestLanguageBar } from "@/components/i18n/GuestLanguageBar";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { resolveLoginIdentifier } from "@/lib/users/actions";
+import { resolveLoginIdentifier } from "@/lib/users/login";
 import { PasswordInput } from "@/components/shared/PasswordInput";
 
 /** Blush pink and sage green with a little gold on cream: the colours of the sign-in page (blush rose for the button, sage green for the links and the focus). */
