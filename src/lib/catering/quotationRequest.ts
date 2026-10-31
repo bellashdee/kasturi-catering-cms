@@ -41,7 +41,9 @@ export type AdditionalServices = {
   /** RM for the whole event. */
   transportationPrice?: number;
   domeSet: boolean | null;
-  /** Optional: the office can price it later. */
+  /** How many dome sets (requests sent before it was asked count as 1 set). */
+  domeSetQuantity?: number;
+  /** Optional: RM for one set; the office can price it later. */
   domeSetPrice?: number;
   /** "Included in the food price": the service is given (the answer is Yes) but nothing is added to the quotation. */
   equipmentHandlingIncluded?: boolean;
@@ -68,7 +70,7 @@ export function additionalRows(a: AdditionalServices | null | undefined, extras:
       { label: "Equipment handling", yes: !!a.equipmentHandling, detail: detail(a.equipmentHandling, a.equipmentHandlingIncluded, a.equipmentHandlingPrice) },
       { label: "Staff serving", yes: !!a.staffServing, detail: detail(a.staffServing, a.staffServingIncluded, a.staffServingPrice) },
       { label: "Transportation", yes: !!a.transportation, detail: detail(a.transportation, a.transportationIncluded, a.transportationPrice) },
-      { label: "Dome set", yes: !!a.domeSet, detail: detail(a.domeSet, a.domeSetIncluded, a.domeSetPrice) },
+      { label: "Dome set", yes: !!a.domeSet, detail: a.domeSet ? domeSetDetail(a.domeSetQuantity ?? 1, a.domeSetIncluded ? null : a.domeSetPrice) : "" },
     ];
   }
   const line = (name: string) => extras.find((i) => i.itemName === name);
@@ -81,7 +83,18 @@ export function additionalRows(a: AdditionalServices | null | undefined, extras:
   ];
   return rows
     .filter((r) => r.item || r.label !== "Dome set")
-    .map((r) => ({ label: r.label, yes: !!r.item, detail: r.item ? price(r.item.unitPrice, r.perPax) : "" }));
+    .map((r) => ({
+      label: r.label,
+      yes: !!r.item,
+      detail: !r.item ? "" : r.label === "Dome set" ? domeSetDetail(r.item.quantity, r.item.unitPrice) : price(r.item.unitPrice, r.perPax),
+    }));
+}
+
+/** "3 sets × RM 50.00 per set = RM 150.00", or "3 sets · Included in the food price" (price null). */
+function domeSetDetail(sets: number, pricePerSet: number | null | undefined): string {
+  const count = `${sets} set${sets === 1 ? "" : "s"}`;
+  if (pricePerSet === null) return `${count} · Included in the food price`;
+  return pricePerSet && pricePerSet > 0 ? `${count} × RM ${pricePerSet.toFixed(2)} per set = RM ${(sets * pricePerSet).toFixed(2)}` : count;
 }
 
 /** The quotation lines for the ticked additional services. */
@@ -89,13 +102,14 @@ export function additionalServiceLines(a: AdditionalServices | undefined): Extra
   if (!a) return [];
   const lines: ExtraItem[] = [];
   // a service that is included in the food price is written on the quotation at RM 0.00, so the customer sees that it is given
-  const add = (yes: boolean | null, included: boolean | undefined, name: string, price: number | undefined) => {
-    if (yes) lines.push({ itemName: included ? `${name} (included in the food price)` : name, quantity: 1, unitPrice: included ? 0 : (price ?? 0) });
+  const add = (yes: boolean | null, included: boolean | undefined, name: string, price: number | undefined, quantity = 1) => {
+    if (yes) lines.push({ itemName: included ? `${name} (included in the food price)` : name, quantity, unitPrice: included ? 0 : (price ?? 0) });
   };
   add(a.equipmentHandling, a.equipmentHandlingIncluded, "Equipment handling", a.equipmentHandlingPrice);
   add(a.staffServing, a.staffServingIncluded, "Staff serving", a.staffServingPrice);
   add(a.transportation, a.transportationIncluded, "Transportation", a.transportationPrice);
-  add(a.domeSet, a.domeSetIncluded, "Dome set", a.domeSetPrice);
+  // dome sets: quantity = number of sets, unit price = price per set
+  add(a.domeSet, a.domeSetIncluded, "Dome set", a.domeSetPrice, a.domeSetQuantity ?? 1);
   return lines;
 }
 

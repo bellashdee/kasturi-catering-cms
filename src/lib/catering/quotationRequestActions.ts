@@ -111,6 +111,8 @@ function sanitizeAdditional(a: AdditionalServices | undefined): AdditionalServic
   const s = one(a.staffServing, a.staffServingIncluded, a.staffServingPrice, "Staff serving");
   const t = one(a.transportation, a.transportationIncluded, a.transportationPrice, "Transportation");
   const d = one(a.domeSet, a.domeSetIncluded, a.domeSetPrice, "Dome set");
+  const sets = a.domeSetQuantity;
+  if (d.yes && !(sets !== undefined && Number.isInteger(sets) && sets >= 1 && sets <= 1000)) throw new Error("Dome set: enter how many sets.");
   return {
     equipmentHandling: e.yes,
     equipmentHandlingIncluded: e.included,
@@ -123,6 +125,7 @@ function sanitizeAdditional(a: AdditionalServices | undefined): AdditionalServic
     transportationPrice: t.price,
     domeSet: d.yes,
     domeSetIncluded: d.included,
+    domeSetQuantity: d.yes ? sets : undefined,
     domeSetPrice: d.price,
   };
 }

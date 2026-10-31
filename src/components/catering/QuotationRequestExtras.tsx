@@ -5,6 +5,7 @@ import { MealTypeSelect } from "@/components/catering/MealTypeSelect";
 import type { SecondChoice } from "@/lib/catering/days";
 import type { AdditionalServices } from "@/lib/catering/quotationRequest";
 import { ChoiceSelect } from "@/components/ui/ChoiceSelect";
+import { formatPrice } from "@/lib/format";
 
 const SERVICE_OPTIONS = Object.entries(SERVICE_TYPE_LABEL).map(([value, label]) => ({ value, label }));
 
@@ -112,12 +113,53 @@ export function AdditionalServicesEditor({
   };
   const answer = (v: string) => ({ yes: v === "" ? null : v !== "no", included: v === "included" });
 
+  /** Dome set: when it is given, how many sets, and (when charged) the price of one set. */
+  const domeRow = () => {
+    const a = answerOf(value.domeSet, value.domeSetIncluded);
+    const sets = value.domeSetQuantity;
+    const subtotal = a === "yes" && sets && value.domeSetPrice ? sets * value.domeSetPrice : 0;
+    return (
+      <div className={row}>
+        <span className={labelCls}>Dome set</span>
+        <div className="w-60">
+          <ChoiceSelect
+            required
+            value={a}
+            onChange={(v) =>
+              patch({
+                domeSet: answer(v).yes,
+                domeSetIncluded: answer(v).included,
+                ...(v === "yes" ? {} : { domeSetPrice: undefined }),
+                ...(v === "yes" || v === "included" ? { domeSetQuantity: value.domeSetQuantity ?? 1 } : { domeSetQuantity: undefined }),
+              })
+            }
+            options={ANSWERS}
+            placeholder="Search or choose"
+            className={box}
+          />
+        </div>
+        {(a === "yes" || a === "included") && (
+          <>
+            <label className="flex items-center gap-1.5 text-[12.5px] font-semibold text-text-secondary">
+              How many sets *
+              <input type="number" min="1" step="1" required value={sets ?? ""} onChange={(e) => patch({ domeSetQuantity: num(e.target.value) })} className="h-9 w-20 rounded border border-border-strong px-2 text-[13px] outline-none" />
+            </label>
+            {a === "yes" && (
+              <input type="number" min="0" step="0.01" value={value.domeSetPrice ?? ""} onChange={(e) => patch({ domeSetPrice: num(e.target.value) })} className={small} placeholder="RM / set (optional)" />
+            )}
+            {subtotal > 0 && <span className="text-[12.5px] text-text-muted">= {formatPrice(subtotal)}</span>}
+          </>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col gap-2">
       {line("Equipment handling", value.equipmentHandling, value.equipmentHandlingIncluded, value.equipmentHandlingPrice, (v) => ({ equipmentHandling: answer(v).yes, equipmentHandlingIncluded: answer(v).included, ...(v === "yes" ? {} : { equipmentHandlingPrice: undefined }) }), (n) => ({ equipmentHandlingPrice: n }))}
       {line("Staff serving (RM / event)", value.staffServing, value.staffServingIncluded, value.staffServingPrice, (v) => ({ staffServing: answer(v).yes, staffServingIncluded: answer(v).included, ...(v === "yes" ? {} : { staffServingPrice: undefined }) }), (n) => ({ staffServingPrice: n }))}
       {line("Transportation (RM)", value.transportation, value.transportationIncluded, value.transportationPrice, (v) => ({ transportation: answer(v).yes, transportationIncluded: answer(v).included, ...(v === "yes" ? {} : { transportationPrice: undefined }) }), (n) => ({ transportationPrice: n }))}
-      {line("Dome set", value.domeSet, value.domeSetIncluded, value.domeSetPrice, (v) => ({ domeSet: answer(v).yes, domeSetIncluded: answer(v).included, ...(v === "yes" ? {} : { domeSetPrice: undefined }) }), (n) => ({ domeSetPrice: n }))}
+      {domeRow()}
     </div>
   );
 }
