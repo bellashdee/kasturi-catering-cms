@@ -292,19 +292,20 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
           {shown.length === 0 ? (
             <EmptyRow text="No petty cash records for this month yet." />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] border-collapse text-left">
-                <thead className="bg-surface-alt">
-                  <tr className="text-[11px] font-bold uppercase tracking-wide text-text-muted">
-                    <th className="px-4 py-2.5">Date</th>
-                    <th className="px-4 py-2.5">Company</th>
-                    <th className="px-4 py-2.5">Details</th>
-                    <th className="px-4 py-2.5 text-right">Received</th>
-                    <th className="px-4 py-2.5 text-right">Spent</th>
-                    <th className="px-4 py-2.5 text-right">Balance</th>
-                    <th className="px-4 py-2.5">Claim status</th>
-                    <th className="px-4 py-2.5">Receipt</th>
-                    <th className="px-4 py-2.5">Action</th>
+            // the list scrolls inside its own box (sideways and down) with the headings kept in view, instead of squeezing the columns or running down the page
+            <div className="max-h-[75vh] overflow-auto">
+              <table className="w-full min-w-[1150px] border-collapse text-left">
+                <thead className="sticky top-0 z-10 bg-surface-alt">
+                  <tr className="whitespace-nowrap text-[11px] font-bold uppercase tracking-wide text-text-muted">
+                    <th className="px-3 py-2.5">Date</th>
+                    <th className="px-3 py-2.5">Company</th>
+                    <th className="px-3 py-2.5">Details</th>
+                    <th className="px-3 py-2.5 text-right">Received</th>
+                    <th className="px-3 py-2.5 text-right">Spent</th>
+                    <th className="px-3 py-2.5 text-right">Balance</th>
+                    <th className="px-3 py-2.5">Claim status</th>
+                    <th className="px-3 py-2.5">Receipt</th>
+                    <th className="px-3 py-2.5">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -312,10 +313,10 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
                     const overdue = r.claim ? isPettyCashOverdue(r.date, r.claim.status) : false;
                     const days = r.claim?.status === "pending_payment" ? pettyCashDaysPending(r.date) : null;
                     return (
-                      <tr key={r.key} className="border-t border-border align-top text-[13px]">
-                        <td className="px-4 py-2.5 text-text-secondary">{dayLabel(r.date)}</td>
-                        <td className="px-4 py-2.5 text-text-secondary">{r.companyName}</td>
-                        <td className="px-4 py-2.5">
+                      <tr key={r.key} className="border-t border-border align-top text-[13px] even:bg-surface-alt/40 hover:bg-info-bg/40">
+                        <td className="whitespace-nowrap px-3 py-2.5 text-text-secondary">{dayLabel(r.date)}</td>
+                        <td className="min-w-[9rem] px-3 py-2.5 text-text-secondary">{r.companyName}</td>
+                        <td className="min-w-[18rem] px-3 py-2.5">
                           <div className="font-semibold text-text">{r.title}</div>
                           {r.category && <div className="text-[11.5px] text-text-muted">{r.category}</div>}
                           {r.method && (
@@ -326,10 +327,10 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
                           {r.claim && <div className="text-[11.5px] text-text-secondary">{`Claimed by: ${r.claim.claimant || "—"}`}</div>}
                           {r.person && <div className="text-[11.5px] text-text-secondary">{`${r.kind === "in" ? "Received by" : r.claim ? "Paid from the petty cash of" : "Spent by"}: ${r.person}`}</div>}
                         </td>
-                        <td className="px-4 py-2.5 text-right font-semibold text-success">{r.kind === "in" ? formatPrice(r.amount) : ""}</td>
-                        <td className="px-4 py-2.5 text-right font-semibold text-text">{r.kind === "out" ? formatPrice(r.amount) : ""}</td>
-                        <td className={`px-4 py-2.5 text-right ${r.balance < 0 ? "font-semibold text-danger" : "text-text-secondary"}`}>{formatPrice(r.balance)}</td>
-                        <td className="px-4 py-2.5">
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right font-semibold tabular-nums text-success">{r.kind === "in" ? formatPrice(r.amount) : ""}</td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right font-semibold tabular-nums text-text">{r.kind === "out" ? formatPrice(r.amount) : ""}</td>
+                        <td className={`whitespace-nowrap px-3 py-2.5 text-right tabular-nums ${r.balance < 0 ? "font-semibold text-danger" : "text-text-secondary"}`}>{formatPrice(r.balance)}</td>
+                        <td className="min-w-[8rem] px-3 py-2.5">
                           {r.claim ? (
                             <>
                               <StatusBadge tone={r.claim.status === "paid" ? "success" : overdue ? "danger" : "warning"}>
@@ -344,8 +345,8 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
                             <span className="text-text-muted">—</span>
                           )}
                         </td>
-                        <td className="px-4 py-2.5">{r.documentId ? <DocumentViewLink documentId={r.documentId} /> : <span className="text-text-muted">—</span>}</td>
-                        <td className="px-4 py-2.5">
+                        <td className="whitespace-nowrap px-3 py-2.5">{r.documentId ? <DocumentViewLink documentId={r.documentId} /> : <span className="text-text-muted">—</span>}</td>
+                        <td className="min-w-[11rem] px-3 py-2.5">
                           {r.bookId ? (
                             <OperationPettyCashRowActions id={r.bookId} editHref={editHref(r.bookId)} />
                           ) : (
