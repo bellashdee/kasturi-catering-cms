@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
+import { resolveCompanyScope } from "@/lib/companyScope";
 import { adminCompanyIds } from "@/lib/finance/paymentQueries";
 import { formatCurrency } from "@/lib/format";
 import { MONTH_LABEL } from "@/lib/finance/constants";
@@ -16,6 +17,8 @@ import { SoftPage } from "@/components/ui/Soft";
 
 const YEAR = 2026;
 const MONTHS = [6, 7, 8, 9];
+/** Which of the sheet's companies belong to each company of the system: K is Kasturi Indah; SSC (JDT game match) and SS are Signature Solution. */
+const ENTITIES_OF: Record<string, EventCompany[]> = { "Kasturi Indah": ["K"], "Signature Solution": ["SSC", "SS"] };
 const COMPANY_LABEL: Record<EventCompany, string> = { K: "Kasturi Indah Sdn Bhd", SSC: "Signature Solution Catering", SS: "Signature Solution Sdn Bhd" };
 const SERVING_LABEL: Record<string, string> = {
   B: "Buffet",
@@ -73,14 +76,16 @@ function Bars({ items }: { items: { label: string; value: number; note?: string 
 export default async function EventSummaryReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; company?: string; status?: string }>;
+  searchParams: Promise<{ month?: string; company?: string; entity?: string; status?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
-  const back = <Link href="/reports" className="text-[12.5px] font-semibold text-text-secondary">← Back to Reports</Link>;
+  const { month: monthParam, company: requestedId, entity: entityParam, status: statusParam } = await searchParams;
+  const query = requestedId ? `?company=${requestedId}` : "";
+  const back = <Link href={`/reports${query}`} className="text-[12.5px] font-semibold text-text-secondary">← Back to Reports</Link>;
   const supabase = await createClient();
-  const { data: companies } = await supabase.from("companies").select("id");
+  const { data: companies } = await supabase.from("companies").select("id, name");
   const admins = await adminCompanyIds(supabase, (companies ?? []).map((c) => c.id));
   if (admins.length === 0) {
     return (
@@ -91,20 +96,35 @@ export default async function EventSummaryReportPage({
     );
   }
 
-  const { month: monthParam, company: companyParam, status: statusParam } = await searchParams;
+  // the events of the company chosen at the top: Signature Solution has SSC and SS, Kasturi Indah has K, O2 Life none; all companies shows every one
+  const { targetCompanyIds } = resolveCompanyScope(session, companies ?? [], requestedId);
+  const nameOf = new Map((companies ?? []).map((c) => [c.id, c.name]));
+  const allowed = new Set<EventCompany>(targetCompanyIds.flatMap((id) => ENTITIES_OF[nameOf.get(id) ?? ""] ?? []));
+  const allEntities = (Object.keys(COMPANY_LABEL) as EventCompany[]).every((e) => allowed.has(e));
+  const scopedRows = EVENT_ROWS.filter((r) => allowed.has(r[4]));
+  if (allowed.size === 0) {
+    return (
+      <SoftPage>
+        {back}
+        <EmptyRow text="There are no events in the Summary Payment sheets for this company. Choose Kasturi Indah or Signature Solution at the top." />
+      </SoftPage>
+    );
+  }
+
   const month = MONTHS.includes(Number(monthParam)) ? Number(monthParam) : MONTHS[MONTHS.length - 1];
-  const company = companyParam && companyParam in COMPANY_LABEL ? (companyParam as EventCompany) : "";
+  const company = entityParam && entityParam in COMPANY_LABEL && allowed.has(entityParam as EventCompany) ? (entityParam as EventCompany) : "";
   const status = statusParam && statusParam in STATUS_LABEL ? (statusParam as EventStatus) : "";
 
-  const monthRows = EVENT_ROWS.filter((r) => r[0] === month);
+  const monthRows = scopedRows.filter((r) => r[0] === month);
   const rows = monthRows.filter((r) => (!company || r[4] === company) && (!status || r[7] === status));
   const monthRevenue = revenueOf(monthRows);
-  const previous = month === 6 ? EVENT_MAY_REVENUE : revenueOf(EVENT_ROWS.filter((r) => r[0] === month - 1));
+  // the May figure on the June sheet is for all the companies together, so it is only compared when all of them are shown
+  const previous = month === 6 ? (allEntities ? EVENT_MAY_REVENUE : 0) : revenueOf(scopedRows.filter((r) => r[0] === month - 1));
   const change = pct(monthRevenue, previous);
   const unpaid = monthRows.reduce((t, r) => t + outstandingOf(r), 0);
   const periodLabel = `${MONTH_LABEL[month - 1]} ${YEAR}`;
 
-  const byCompany = (Object.keys(COMPANY_LABEL) as EventCompany[]).map((c) => {
+  const byCompany = (Object.keys(COMPANY_LABEL) as EventCompany[]).filter((c) => allowed.has(c)).map((c) => {
     const list = monthRows.filter((r) => r[4] === c);
     return { label: COMPANY_LABEL[c], value: revenueOf(list), note: `${list.length} event${list.length === 1 ? "" : "s"}` };
   });
@@ -148,6 +168,7 @@ export default async function EventSummaryReportPage({
 
       <div className="flex flex-wrap items-end justify-between gap-3 print:hidden">
         <form method="get" className="flex flex-wrap items-end gap-3">
+          {requestedId && <input type="hidden" name="company" value={requestedId} />}
           <div>
             <label className="text-[12px] font-semibold text-text-secondary">Month</label>
             <Select name="month" defaultValue={month} className="mt-1 h-9 w-40 rounded-lg border border-border-strong px-2 text-[13px]">
@@ -156,9 +177,9 @@ export default async function EventSummaryReportPage({
           </div>
           <div>
             <label className="text-[12px] font-semibold text-text-secondary">Company</label>
-            <Select name="company" defaultValue={company} className="mt-1 h-9 w-56 rounded-lg border border-border-strong px-2 text-[13px]">
+            <Select name="entity" defaultValue={company} className="mt-1 h-9 w-56 rounded-lg border border-border-strong px-2 text-[13px]">
               <option value="">All Companies</option>
-              {(Object.keys(COMPANY_LABEL) as EventCompany[]).map((c) => <option key={c} value={c}>{c} · {COMPANY_LABEL[c]}</option>)}
+              {(Object.keys(COMPANY_LABEL) as EventCompany[]).filter((c) => allowed.has(c)).map((c) => <option key={c} value={c}>{c} · {COMPANY_LABEL[c]}</option>)}
             </Select>
           </div>
           <div>
@@ -190,7 +211,7 @@ export default async function EventSummaryReportPage({
       </div>
 
       <SectionCard title="Month by Month">
-        <Bars items={MONTHS.map((m) => ({ label: `${MONTH_LABEL[m - 1]} ${YEAR}`, value: revenueOf(EVENT_ROWS.filter((r) => r[0] === m)) }))} />
+        <Bars items={MONTHS.map((m) => ({ label: `${MONTH_LABEL[m - 1]} ${YEAR}`, value: revenueOf(scopedRows.filter((r) => r[0] === m)) }))} />
       </SectionCard>
 
       <ReportTable filenameBase={`event-summary-${YEAR}-${month}`} headers={headers} rows={tableRows} emptyText="No events for this filter." />
