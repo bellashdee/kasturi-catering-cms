@@ -10,6 +10,7 @@ import { EVENT_STATUS_LABEL, EVENT_TYPE_LABEL } from "@/lib/catering/constants";
 import { formatCurrency, malaysiaYearMonth } from "@/lib/format";
 import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { ReportTable } from "@/components/reports/ReportTable";
+import { TopCustomersChart, type TopCustomer } from "@/components/reports/TopCustomersChart";
 import { buildReportRows } from "@/lib/reports/buildRows";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
@@ -49,6 +50,24 @@ export default async function CateringReportPage({
     if (statusParam && e.status !== statusParam) return false;
     return true;
   });
+  // repeat customers: the events of the whole year (one month rarely shows who comes back), without cancelled events unless that status is chosen
+  const { data: yearEvents } = await supabase
+    .from("catering_events")
+    .select("customer_id, total_amount, status, customers(name)")
+    .in("company_id", targetCompanyIds)
+    .gte("event_date", `${year}-01-01`)
+    .lte("event_date", `${year}-12-31`)
+    .not("customer_id", "is", null);
+  const byCustomer = new Map<string, TopCustomer>();
+  for (const e of yearEvents ?? []) {
+    if (statusParam ? e.status !== statusParam : e.status === "cancelled") continue;
+    const name = e.customers?.name ?? "—";
+    const c = byCustomer.get(e.customer_id as string) ?? { name, events: 0, revenue: 0 };
+    c.events += 1;
+    c.revenue += Number(e.total_amount ?? 0);
+    byCustomer.set(e.customer_id as string, c);
+  }
+  const topCustomers = Array.from(byCustomer.values()).sort((a, b) => b.events - a.events || b.revenue - a.revenue).slice(0, 10);
   const totalRevenue = rows.reduce((t, e) => t + e.revenue, 0);
   const totalCost = rows.reduce((t, e) => t + e.cost, 0);
 
@@ -103,6 +122,8 @@ export default async function CateringReportPage({
         <PieChart title="Revenue by event type" slices={sumBy(rows, (r) => EVENT_TYPE_LABEL[r.event_type] ?? r.event_type, (r) => r.revenue)} />
         <PieChart title="Cost by event type" slices={sumBy(rows, (r) => EVENT_TYPE_LABEL[r.event_type] ?? r.event_type, (r) => r.cost)} />
       </div>
+
+      <TopCustomersChart title={`Top Repeat Customers — ${year} (number of events)`} customers={topCustomers} />
 
       <ReportTable
         filenameBase={`catering-${year}-${month}`}
