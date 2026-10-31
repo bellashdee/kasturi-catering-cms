@@ -2,6 +2,7 @@ import { paidSoFar } from "@/lib/finance/paymentQueries";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { getMonthlyCostBreakdown } from "@/lib/finance/queries";
+import { NOT_OWED_STATUSES, invoiceBalance, supplierInvoiceBalance } from "@/lib/finance/outstanding";
 import { isPettyCashOverdue, pettyCashDaysPending } from "@/lib/finance/constants";
 import { LATE_GRACE_MINUTES } from "@/lib/driver/constants";
 import { DUE_SOON_DAYS, formatRM, paymentUrgency } from "@/lib/finance/payments";
@@ -122,7 +123,7 @@ export async function getSupplierPayments(supabase: DB, companyIds: string[]) {
   const [{ data: openInvoices }, { data: paidThisMonthRows }, financePaid] = await Promise.all([
     supabase
       .from("supplier_invoices")
-      .select("amount, due_date, status")
+      .select("amount, due_date, status, supplier_payments(amount, status)")
       .in("company_id", companyIds)
       .neq("status", "paid"),
     supabase
@@ -134,8 +135,9 @@ export async function getSupplierPayments(supabase: DB, companyIds: string[]) {
     financePaidThisMonth(supabase, companyIds, "supplier"),
   ]);
 
-  const rows = openInvoices ?? [];
-  const outstanding = sum(rows);
+  // the balance still owed: the invoice amount less the supplier payments made on it (the same as the Supplier Outstanding Report)
+  const rows = (openInvoices ?? []).filter((r) => supplierInvoiceBalance(r) > 0);
+  const outstanding = rows.reduce((t, r) => t + supplierInvoiceBalance(r), 0);
   const overdueCount = rows.filter((r) => r.due_date < today).length;
   const dueTodayCount = rows.filter((r) => r.due_date === today).length;
   const dueThisWeekCount = rows.filter((r) => r.due_date > today && r.due_date <= weekAhead).length;
@@ -151,12 +153,13 @@ export async function getCustomerOutstanding(supabase: DB, companyIds: string[])
 
   const { data: openInvoices } = await supabase
     .from("customer_invoices")
-    .select("amount, due_date, status")
+    .select("amount, tax_amount, due_date, status, customer_payments(amount)")
     .in("company_id", companyIds)
-    .neq("status", "paid");
+    .not("status", "in", `(${NOT_OWED_STATUSES.join(",")})`);
 
-  const rows = openInvoices ?? [];
-  const outstanding = sum(rows);
+  // the balance still owed: invoice total with tax, less the payments received (the same as the Customer Outstanding Report)
+  const rows = (openInvoices ?? []).filter((r) => invoiceBalance(r) > 0);
+  const outstanding = rows.reduce((t, r) => t + invoiceBalance(r), 0);
   const overdueCount = rows.filter((r) => r.due_date < today).length;
 
   return { outstanding, overdueCount, openCount: rows.length };

@@ -19,3 +19,12 @@ export const invoiceBalance = (i: InvoiceMoney) => Math.max(0, Math.round((invoi
 export function daysOverdue(dueDate: string, today: string): number {
   return Math.floor((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${dueDate}T00:00:00Z`)) / 86_400_000);
 }
+
+type SupplierInvoiceMoney = { amount: number | string; supplier_payments?: { amount: number | string; status: string }[] | null };
+
+/** What is still owed to a supplier on an invoice: its amount as printed, less the supplier payments that were made (paid) on it. */
+export function supplierInvoiceBalance(i: SupplierInvoiceMoney): number {
+  const paid = (i.supplier_payments ?? []).filter((p) => p.status === "paid").reduce((t, p) => t + Number(p.amount), 0);
+  return Math.max(0, Math.round((Number(i.amount) - paid) * 100) / 100);
+}
+export const supplierInvoicePaid = (i: SupplierInvoiceMoney) => Math.round((Number(i.amount) - supplierInvoiceBalance(i)) * 100) / 100;

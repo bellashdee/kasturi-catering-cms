@@ -6,6 +6,7 @@ import { resolveCompanyScope } from "@/lib/companyScope";
 import { listSupplierInvoices } from "@/lib/procurement/queries";
 import { INVOICE_STATUS_LABEL, isOverdue } from "@/lib/procurement/constants";
 import { formatCurrency } from "@/lib/format";
+import { supplierInvoiceBalance, supplierInvoicePaid } from "@/lib/finance/outstanding";
 import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { ReportTable } from "@/components/reports/ReportTable";
 import { buildReportRows } from "@/lib/reports/buildRows";
@@ -33,14 +34,14 @@ export default async function SupplierOutstandingReportPage({
   }
 
   const allInvoices = await listSupplierInvoices(supabase, targetCompanyIds);
-  const outstanding = allInvoices.filter((i) => i.status !== "paid");
+  const outstanding = allInvoices.filter((i) => i.status !== "paid" && supplierInvoiceBalance(i) > 0);
   const departments = Array.from(new Set(outstanding.map((i) => i.department).filter((d): d is string => !!d))).sort();
   const rows = outstanding.filter((i) => {
     if (departmentParam && i.department !== departmentParam) return false;
     if (statusParam && i.status !== statusParam) return false;
     return true;
   });
-  const total = rows.reduce((t, i) => t + Number(i.amount), 0);
+  const total = rows.reduce((t, i) => t + supplierInvoiceBalance(i), 0);
 
   const { headers, tableRows } = buildReportRows(
     rows,
@@ -50,7 +51,9 @@ export default async function SupplierOutstandingReportPage({
       { key: "due", label: "Due Date", exportValue: (r) => r.due_date },
       { key: "department", label: "Department", exportValue: (r) => r.department ?? "—" },
       { key: "company", label: "Company", exportValue: (r) => r.companies?.name ?? "—" },
-      { key: "amount", label: "Amount", exportValue: (r) => Number(r.amount), display: (r) => formatCurrency(Number(r.amount)) },
+      { key: "amount", label: "Invoice Amount", exportValue: (r) => Number(r.amount), display: (r) => formatCurrency(Number(r.amount)) },
+      { key: "paid", label: "Paid", exportValue: (r) => supplierInvoicePaid(r), display: (r) => formatCurrency(supplierInvoicePaid(r)) },
+      { key: "balance", label: "Balance Owed", exportValue: (r) => supplierInvoiceBalance(r), display: (r) => <span className="font-semibold text-text">{formatCurrency(supplierInvoiceBalance(r))}</span> },
       {
         key: "status",
         label: "Status",

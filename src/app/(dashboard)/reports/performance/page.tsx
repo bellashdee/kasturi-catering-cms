@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listCustomerInvoices, listSpending } from "@/lib/finance/queries";
-import { daysOverdue, invoiceBalance, invoiceTotal, isOpenInvoice } from "@/lib/finance/outstanding";
+import { daysOverdue, invoiceBalance, invoiceTotal, isOpenInvoice, supplierInvoiceBalance } from "@/lib/finance/outstanding";
+import { listSupplierInvoices } from "@/lib/procurement/queries";
 import { SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
 import { formatCurrency, malaysiaYearMonth, todayInMalaysia } from "@/lib/format";
 import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
@@ -62,13 +63,14 @@ export default async function PerformanceDashboardPage({ searchParams }: { searc
   // the months that have come: a month still to come is left out of the lines instead of dropping to 0
   const lastMonth = year < now.year ? 12 : year > now.year ? 0 : now.month;
 
-  const [invoices, payments, events, spending, monthlyPurchases, monthlySales] = await Promise.all([
+  const [invoices, payments, events, spending, monthlyPurchases, monthlySales, supplierInvoices] = await Promise.all([
     listCustomerInvoices(supabase, targetCompanyIds),
     supabase.from("customer_payments").select("amount, payment_date").in("company_id", targetCompanyIds).gte("payment_date", start).lte("payment_date", end),
     supabase.from("catering_events").select("service_type, total_amount, status").in("company_id", targetCompanyIds).gte("event_date", start).lte("event_date", end),
     listSpending(supabase, targetCompanyIds, start, end),
     supabase.from("monthly_purchases").select("month, purchase_amount").in("company_id", targetCompanyIds).eq("year", year),
     supabase.from("monthly_sales").select("company_id, month, sales_amount").in("company_id", targetCompanyIds).eq("year", year),
+    listSupplierInvoices(supabase, targetCompanyIds),
   ]);
 
   // sales = the invoices issued in the year (drafts and quotation requests waiting for review are not issued), tax included
@@ -161,6 +163,27 @@ export default async function PerformanceDashboardPage({ searchParams }: { searc
     { label: "Over 90 days late", value: aging[4], color: RED },
   ];
 
+  // what we still owe the suppliers: the balance of every supplier invoice that is not paid, all years, as it stands today (the Supplier Outstanding Report)
+  const openSupplier = supplierInvoices.filter((i) => i.status !== "paid").map((i) => ({ i, balance: supplierInvoiceBalance(i) })).filter((x) => x.balance > 0);
+  const weOweAll = sum(openSupplier.map((x) => x.balance));
+  const weOweBy = new Map<string, { value: number; count: number; late: number }>();
+  const weOweAging = [0, 0, 0, 0, 0];
+  for (const { i, balance } of openSupplier) {
+    const days = daysOverdue(i.due_date, today);
+    weOweAging[days <= 0 ? 0 : days <= 30 ? 1 : days <= 60 ? 2 : days <= 90 ? 3 : 4] += balance;
+    const name = i.suppliers?.name ?? "—";
+    const c = weOweBy.get(name) ?? { value: 0, count: 0, late: 0 };
+    c.value += balance;
+    c.count += 1;
+    c.late = Math.max(c.late, days);
+    weOweBy.set(name, c);
+  }
+  const weOwe: RankItem[] = Array.from(weOweBy.entries())
+    .sort((a, b) => b[1].value - a[1].value)
+    .slice(0, TOP)
+    .map(([label, c]) => ({ label, value: c.value, note: `${c.count} invoice${c.count === 1 ? "" : "s"}`, flag: c.late > 0 ? `${c.late} days late` : undefined }));
+  const weOweSegments: Slice[] = agingSegments.map((seg, k) => ({ ...seg, value: weOweAging[k] }));
+
   // revenue by type of serving (the year's events, cancelled left out)
   const productBy = new Map<string, { value: number; count: number }>();
   for (const e of events.data ?? []) {
@@ -202,12 +225,13 @@ export default async function PerformanceDashboardPage({ searchParams }: { searc
         <PrintButton />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <Stat label="Sales" value={formatCurrency(invoiced)} sub={recordedOnly.size > 0 ? `${yearInvoices.length} invoices + recorded monthly sales` : `${yearInvoices.length} invoices issued`} />
         <Stat label="Money received" value={formatCurrency(received)} sub="payments in the year" />
         <Stat label="Total expenses" value={formatCurrency(totalExpenses)} sub={`${cats.length} categories`} />
         <Stat label="Received less expenses" value={formatCurrency(net)} bad={net < 0} sub={received > 0 ? `${((net / received) * 100).toFixed(1)}% of money received` : undefined} />
         <Stat label="Still owed to us" value={formatCurrency(owedAll)} bad={owedAll > 0} sub={`${owedBy.size} customer${owedBy.size === 1 ? "" : "s"}, all years, today`} />
+        <Stat label="We still owe suppliers" value={formatCurrency(weOweAll)} bad={weOweAll > 0} sub={`${weOweBy.size} supplier${weOweBy.size === 1 ? "" : "s"}, ${openSupplier.length} invoices`} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -267,6 +291,25 @@ export default async function PerformanceDashboardPage({ searchParams }: { searc
           </div>
         )}
         <More to={`/reports/customer-outstanding${query}`}>Customer Outstanding Report</More>
+      </SectionCard>
+
+      <SectionCard title="Who We Still Owe">
+        <Note>The balance still unpaid on every supplier invoice, all years, as it stands today: {formatCurrency(weOweAll)} in all (the AutoCount outstanding payables).</Note>
+        {openSupplier.length === 0 ? (
+          <EmptyRow text="No supplier invoice is waiting to be paid." />
+        ) : (
+          <div className="flex flex-col gap-6">
+            <div>
+              <div className="mb-2 text-[12px] font-bold uppercase tracking-wider text-text-secondary">How late is it</div>
+              <StackedBar segments={weOweSegments} />
+            </div>
+            <div>
+              <div className="mb-2 text-[12px] font-bold uppercase tracking-wider text-text-secondary">Suppliers, biggest balance first (top {TOP})</div>
+              <RankBars items={weOwe} total={weOweAll} color="#b8794a" empty="Nothing is owed." />
+            </div>
+          </div>
+        )}
+        <More to={`/reports/supplier-outstanding${query}`}>Supplier Outstanding Report</More>
       </SectionCard>
     </SoftPage>
   );

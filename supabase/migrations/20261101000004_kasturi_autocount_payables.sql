@@ -1,0 +1,12 @@
+-- Kasturi Indah: the unpaid supplier invoices were loaded from the AutoCount "Outstanding AP Invoice" report of 1 Nov 2026 (data change run on the
+-- database on 1 Nov 2026), so the Supplier Outstanding Report, the Company Summary and the dashboards show what is really owed.
+--
+--  * 720 supplier invoices of 23 creditors, as printed on the report (invoice number, date, due date, amount): RM 255,917.82;
+--  * the creditor 400-N002 NG MING HUAT (JB) SDN. BHD. was not in the supplier list and was added;
+--  * 9 invoices are part paid or adjusted (status partially_paid): the part already paid, RM 418.40, is a supplier payment without a payment date
+--    (the report does not give it), so it is not counted in any month's costs;
+--  * what is still owed is RM 255,499.42, the same as the total of the AutoCount report.
+--
+-- The purchase invoices themselves (Mar - Oct 2026 listings with detail) were checked against the Monthly Purchase Analysis: the analysis is lower
+-- by the purchase returns of each month, so the monthly purchases kept in monthly_purchases are the analysis figures (net of returns).
+select 1;
