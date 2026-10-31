@@ -10,7 +10,7 @@ import { MEAL_TYPE_LABEL, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
 import { secondMenusOf } from "@/lib/catering/days";
 import { dayAmount, dayPax, type EventDay } from "@/lib/catering/days";
 import type { ExtraItem } from "@/lib/catering/quotationRequest";
-import { formatCurrency, formatPrice } from "@/lib/format";
+import { formatCurrency, formatPrice, formatTime12 } from "@/lib/format";
 import { QuotationRequestActions } from "@/components/catering/QuotationRequestActions";
 
 export default async function QuotationRequestsPage({ searchParams }: { searchParams: Promise<{ company?: string }> }) {
@@ -69,7 +69,7 @@ export default async function QuotationRequestsPage({ searchParams }: { searchPa
                       {days.map((d, i) => (
                         <div key={d.dayDate} className="text-text-secondary">
                           <span className="font-semibold text-text">Day {i + 1} · {d.dayDate}</span>
-                          {(d.setupTime || d.eventTime) && <span className="text-text-muted">{` (${[d.setupTime ? `Set-up (kitchen) ${d.setupTime}` : "", d.eventTime ? `Event ${d.eventTime}` : ""].filter(Boolean).join(" · ")})`}</span>}
+                          {(d.setupTime || d.eventTime) && <span className="text-text-muted">{` (${[d.setupTime ? `Set-up (kitchen) ${formatTime12(d.setupTime)}` : "", d.eventTime ? `Event ${formatTime12(d.eventTime)}` : ""].filter(Boolean).join(" · ")})`}</span>}
                           {" — "}
                           {d.mealTypes.map((m) => MEAL_TYPE_LABEL[m] ?? m).join(", ") || "no meal type"}
                           {" · "}

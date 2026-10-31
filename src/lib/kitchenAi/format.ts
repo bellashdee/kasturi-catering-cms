@@ -2,6 +2,7 @@ import { findByPhrase } from "./match";
 import type { Change } from "./ops";
 import type { CalcDish, CalcResult, ConsolRow, KState, Lang } from "./types";
 import { display, formatQty, type UnitMode } from "./units";
+import { formatTime12 } from "@/lib/format";
 
 const EN = {
   identified: "I've identified the following menu items:",
@@ -185,7 +186,7 @@ function headerBlock(state: KState, calc: CalcResult, lang: Lang): string {
   const paxLine = calc.sessions.length === 1 ? `${calc.sessions[0].pax ?? "—"}` : calc.sessions.map((s) => `${s.name}: ${s.pax ?? "—"}`).join(" · ");
   lines.push(`Pax: ${paxLine}`);
   lines.push(`${L.menuBasis}: ${state.event && state.documentIds.length === 0 ? L.basedOrder : state.documentIds.length > 0 ? L.basedImage : L.basedTyped}`);
-  if (state.event?.eventTime || state.event?.setupTime) lines.push(fill(L.deadline, state.event.setupTime ?? "—", state.event.eventTime ?? "—"));
+  if (state.event?.eventTime || state.event?.setupTime) lines.push(fill(L.deadline, state.event.setupTime ? formatTime12(state.event.setupTime) : "—", state.event.eventTime ? formatTime12(state.event.eventTime) : "—"));
   return lines.join("\n");
 }
 

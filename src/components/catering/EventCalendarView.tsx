@@ -2,6 +2,7 @@ import Link from "next/link";
 import { EVENT_STATUS_LABEL, MEAL_TYPE_LABEL } from "@/lib/catering/constants";
 import { addDays, dateLabel, monthGrid, startOfWeek, type CalendarEntry, type CalendarView, type EventPhase } from "@/lib/catering/calendar";
 import { CalendarEntryActions } from "@/components/catering/CalendarEntryActions";
+import { formatTime12 } from "@/lib/format";
 
 const PHASE_STYLE: Record<EventPhase, string> = {
   request: "border-l-[3px] border-dotted border-info bg-info-bg/60 text-text",
@@ -48,7 +49,7 @@ const mealsText = (e: CalendarEntry) => (e.mealTypes.length > 0 ? `${e.mealTypes
 function Chip({ e, eventHref, plain = false }: { e: CalendarEntry; eventHref: Props["eventHref"]; plain?: boolean }) {
   const title = `${e.customerName ? `${e.customerName} · ` : ""}${e.eventName} · ${e.kind === "request" ? "Quotation request" : EVENT_STATUS_LABEL[e.status] ?? e.status} · ${e.pax} pax${e.venue ? ` · ${e.venue}` : ""}`;
   const className = `block rounded px-1.5 py-1 text-[11.5px] font-semibold leading-tight ${plain ? "" : "hover:opacity-80"} ${PHASE_STYLE[e.phase]}`;
-  const detail = [e.pax > 0 ? `${e.pax} pax` : "", mealsText(e), e.eventTime].filter(Boolean).join(" · ");
+  const detail = [e.pax > 0 ? `${e.pax} pax` : "", mealsText(e), formatTime12(e.eventTime)].filter(Boolean).join(" · ");
   const body = (
     <>
       <span className="block truncate">
@@ -83,8 +84,8 @@ function EntryCard({ e, eventHref, canDelete, query }: { e: CalendarEntry; event
         <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1 text-[12.5px] text-text-secondary sm:grid-cols-4">
           <span>{`Customer: ${e.customerName || "—"}`}</span>
           <span>{`Pax: ${e.pax > 0 ? e.pax : "—"}`}</span>
-          <span>{`Food ready: ${e.eventTime || "—"}`}</span>
-          <span>{`Set-up (kitchen): ${e.setupTime || "—"}`}</span>
+          <span>{`Food ready: ${e.eventTime ? formatTime12(e.eventTime) : "—"}`}</span>
+          <span>{`Set-up (kitchen): ${e.setupTime ? formatTime12(e.setupTime) : "—"}`}</span>
           <span>{`Kitchen PIC: ${e.pic || "—"}`}</span>
         </div>
         {e.venue && <div className="mt-1 text-[12.5px] text-text-secondary">{`Venue: ${e.venue}`}</div>}

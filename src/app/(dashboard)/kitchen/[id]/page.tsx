@@ -7,6 +7,7 @@ import { getMenuPlanDishWithIngredients } from "@/lib/menuPlan/queries";import {
 import { SectionCard } from "@/components/dashboard/SectionCard";
 import { ProductionOrderStatusSelect } from "@/components/kitchen/ProductionOrderStatusSelect";
 import { RecipePaxCalculator } from "@/components/kitchen/RecipePaxCalculator";
+import { formatTime12 } from "@/lib/format";
 import { MenuPlanDishRequirements } from "@/components/kitchen/MenuPlanDishRequirements";
 
 export default async function ProductionOrderDetailPage({
@@ -61,11 +62,11 @@ export default async function ProductionOrderDetailPage({
         <div className="grid grid-cols-2 gap-4">
           <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
             <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Set-up time (kitchen side)</div>
-            <div className="mt-1 text-xl font-extrabold text-text">{setupTime ?? "—"}</div>
+            <div className="mt-1 text-xl font-extrabold text-text">{setupTime ? formatTime12(setupTime) : "—"}</div>
           </div>
           <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
             <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Event time</div>
-            <div className="mt-1 text-xl font-extrabold text-text">{eventTime ?? "—"}</div>
+            <div className="mt-1 text-xl font-extrabold text-text">{eventTime ? formatTime12(eventTime) : "—"}</div>
           </div>
         </div>
       )}
