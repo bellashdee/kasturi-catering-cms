@@ -308,3 +308,15 @@ a, button, select, input, textarea, summary { transition: background-color 0.15s
 /* Tables: never let a long name or amount push the page wider than the screen */
 main table { max-width: 100%; }
 main td, main th { overflow-wrap: anywhere; }
+
+/*
+ * A field's name sits above its box with a little room, on every page: a label in a plain block (not a flex / grid row, where the label and the
+ * box are meant to sit side by side) takes its own line and a small gap. A tick box or radio button keeps its label beside it.
+ * In the base layer so any class on a label (flex, inline, its own margin) still wins.
+ */
+@layer base {
+  :where(div, form, fieldset, section):not(.flex, .inline-flex, .grid, .inline-grid) > label:not(:has(input[type="checkbox"], input[type="radio"])) {
+    display: block;
+    margin-bottom: 0.25rem;
+  }
+}
