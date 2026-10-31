@@ -8,6 +8,7 @@ import { SoftHeader, SoftPage } from "@/components/ui/Soft";
 // What a business owner looks at: how the business is doing, the money coming in and going out, and who still owes or is owed.
 // (The Expense, Supplier Payment, Kitchen, Driver and HR reports are no longer listed here; their pages still open by address.)
 const REPORTS = [
+  { href: "/reports/performance", title: "Performance Dashboard", description: "The year at a glance: top-selling products, key customers, who still owes us and where the money was spent." },
   { href: "/reports/company-summary", title: "Company Summary", description: "The whole business in one page for a month: sales, costs, profit and what is still owed." },
   { href: "/reports/revenue", title: "Revenue Report", description: "Money received by month, and the invoices issued by Kasturi Indah, Signature Solution Catering and Signature Solution." },
   { href: "/reports/monthly-costing", title: "Monthly Costing Report", description: "Every cost of the month grouped by category, against sales." },
