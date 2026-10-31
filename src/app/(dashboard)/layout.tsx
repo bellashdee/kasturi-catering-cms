@@ -11,6 +11,7 @@ import { countPendingSubmissions } from "@/lib/catering/pending";
 import { LanguageBootstrap } from "@/components/i18n/LanguageBootstrap";
 import { SessionGuard } from "@/components/auth/SessionGuard";
 import { CompanyTheme, CompanyThemeScript } from "@/components/layout/CompanyTheme";
+import { PageTools } from "@/components/layout/PageTools";
 import { Suspense } from "react";
 
 export default async function DashboardLayout({
@@ -47,7 +48,12 @@ export default async function DashboardLayout({
         <Sidebar companies={companies ?? []} allowedModules={session.allowedModules} badges={{ catering: pendingCatering }} taskLinkLabel={taskLabel} showPayroll={showPayroll} scopedToOwnCompanies={!session.hasAllCompaniesAccess} userName={session.fullName} roleLabel={ROLE_LABEL[session.role]} />
         <div className="flex min-w-0 flex-1 flex-col print:block">
           <Topbar session={session} companies={companies ?? []} priorityTitle={taskLabel} />
-          <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-7 print:overflow-visible print:p-0">{children}</main>
+          <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-7 print:overflow-visible print:p-0">
+            <Suspense fallback={null}>
+              <PageTools />
+            </Suspense>
+            {children}
+          </main>
         </div>
         <AssistantWidget />
       </div>
