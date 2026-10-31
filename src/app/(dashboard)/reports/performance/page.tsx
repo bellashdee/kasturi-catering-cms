@@ -15,6 +15,8 @@ import { SoftPage } from "@/components/ui/Soft";
 
 const sum = (v: number[]) => v.reduce((t, x) => t + x, 0);
 const TOP = 10;
+/** The sales agent of Signature Solution Catering (the JDT game match invoices). */
+const SSC_AGENT = "Mr. Ismaizal";
 
 function Stat({ label, value, sub, bad }: { label: string; value: string; sub?: string; bad?: boolean }) {
   return (
@@ -56,7 +58,7 @@ export default async function PerformanceDashboardPage({ searchParams }: { searc
   const [invoices, payments, events, spending] = await Promise.all([
     listCustomerInvoices(supabase, targetCompanyIds),
     supabase.from("customer_payments").select("amount").in("company_id", targetCompanyIds).gte("payment_date", start).lte("payment_date", end),
-    supabase.from("catering_events").select("service_type, total_amount, status").in("company_id", targetCompanyIds).gte("event_date", start).lte("event_date", end),
+    supabase.from("catering_events").select("service_type, total_amount, status, sales_agent").in("company_id", targetCompanyIds).gte("event_date", start).lte("event_date", end),
     listSpending(supabase, targetCompanyIds, start, end),
   ]);
 
@@ -114,6 +116,35 @@ export default async function PerformanceDashboardPage({ searchParams }: { searc
     .sort((a, b) => b[1].value - a[1].value)
     .map(([label, c]) => ({ label, value: c.value, note: `${c.count} event${c.count === 1 ? "" : "s"}` }));
 
+  // top sales agents: the agent named on each event (cancelled left out); the Signature Solution Catering invoices (JDT game matches) are Mr. Ismaizal's
+  const agentBy = new Map<string, { value: number; count: number; unit: string }>();
+  let noAgent = { value: 0, count: 0 };
+  for (const e of events.data ?? []) {
+    if (e.status === "cancelled") continue;
+    const name = e.sales_agent?.trim();
+    if (!name) {
+      noAgent = { value: noAgent.value + Number(e.total_amount ?? 0), count: noAgent.count + 1 };
+      continue;
+    }
+    const c = agentBy.get(name) ?? { value: 0, count: 0, unit: "event" };
+    c.value += Number(e.total_amount ?? 0);
+    c.count += 1;
+    agentBy.set(name, c);
+  }
+  const sscInvoices = yearInvoices.filter((i) => (i.description ?? "").includes("Signature Solution Catering"));
+  if (sscInvoices.length > 0) {
+    const c = agentBy.get(SSC_AGENT) ?? { value: 0, count: 0, unit: "invoice" };
+    c.value += sum(sscInvoices.map((i) => Number(i.amount) + Number(i.tax_amount ?? 0)));
+    c.count += sscInvoices.length;
+    c.unit = c.unit === "event" ? "event / invoice" : "invoice";
+    agentBy.set(SSC_AGENT, c);
+  }
+  const agents: RankItem[] = Array.from(agentBy.entries())
+    .filter(([, c]) => c.value > 0)
+    .sort((a, b) => b[1].value - a[1].value)
+    .map(([label, c]) => ({ label, value: c.value, note: `${c.count} ${c.unit}${c.count === 1 ? "" : "s"}` }));
+  const agentsTotal = sum(agents.map((a) => a.value)) + noAgent.value;
+
   // breakdown of expenses by category (the same names written in other capitals count as one), the smallest grouped as Other
   const catBy = new Map<string, { label: string; value: number }>();
   for (const c of spending) {
@@ -160,6 +191,17 @@ export default async function PerformanceDashboardPage({ searchParams }: { searc
           <p className="mb-3 text-[12px] text-text-secondary">Invoices issued in the year, tax included (drafts left out). Top {TOP}.</p>
           <RankBars items={keyCustomers} total={invoiced} empty="No invoices issued this year." />
           <More to={`/reports/revenue?view=invoiced${requestedId ? `&company=${requestedId}` : ""}`}>Revenue Report · Invoices issued</More>
+        </SectionCard>
+
+        <SectionCard title={`Top Sales Agents — ${year}`}>
+          <p className="mb-3 text-[12px] text-text-secondary">Who brought in the most sales: the agent named on each event, and the Signature Solution Catering invoices for {SSC_AGENT}. Biggest first.</p>
+          <RankBars items={agents} total={agentsTotal} color="#2f7fc1" empty="No sales agent is named on this year's events." />
+          {noAgent.count > 0 && (
+            <p className="mt-3 text-[12px] text-text-secondary">
+              No agent named: {formatCurrency(noAgent.value)} from {noAgent.count} event{noAgent.count === 1 ? "" : "s"} (they are in the share above, not in the ranking). Name the sales agent on the event to count it here.
+            </p>
+          )}
+          <More to={`/reports/catering${query}`}>Catering Report</More>
         </SectionCard>
 
         <SectionCard title="Customers with an Outstanding Balance">
