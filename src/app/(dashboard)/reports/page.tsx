@@ -18,6 +18,7 @@ const REPORTS = [
   { href: "/reports/driver", title: "Driver Report", description: "Deliveries and vehicle running costs." },
   { href: "/reports/hr", title: "HR Report", description: "Payroll by employee and department." },
   { href: "/reports/event-summary", title: "Event Summary Report", description: "Each event with its company, type of serving, revenue and payment status, by month (Finance / Admin only)." },
+  { href: "/reports/monthly-breakdown", title: "Monthly Breakdown", description: "Restoran Bara (O2 Life): total sales, raw item cost, labour, utilities, contribution and net profit for every month, in RM and % of sales against each limit (Finance / Admin only)." },
   { href: "/reports/company-summary", title: "Company Summary", description: "One printable rollup of every module for a company and month." },
 ];
 
