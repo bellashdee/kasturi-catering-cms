@@ -13,28 +13,45 @@ export const ENTRY_TYPE_LABEL: Record<EntryType, string> = {
   expense: "Spent",
 };
 
-/** What the float is spent on, for a catering business: alphabetical, "Other" last. */
+/**
+ * What the money is spent on, for a catering business and its daily food supply, in capitals: the food first (the same names as the
+ * Company Expenses, so the reports put them together), then the kitchen and the events, transport, staff and the office; OTHER last.
+ */
 export const PETTY_CASH_CATEGORIES = [
-  "Bakery & bread",
-  "Cleaning supplies",
-  "Decoration & event setup",
-  "Disposables & packaging",
-  "Dry goods & groceries",
-  "Equipment rental",
-  "Fresh ingredients (market)",
-  "Fuel",
-  "Gas (LPG)",
-  "Ice & beverages",
-  "Lalamove",
-  "Meals",
-  "Parking",
-  "Part-time worker wages",
-  "Repairs & tools",
-  "Stationery & printing",
-  "Toll",
-  "Transport & lorry hire",
-  "Uniforms & safety gear",
-  "Other",
+  // food and ingredients
+  "AYAM",
+  "DAGING",
+  "IKAN",
+  "SEAFOOD",
+  "EGG",
+  "SAYUR",
+  "BUAH",
+  "FRESH MARKET",
+  "BERAS",
+  "GROCERIES",
+  "FROZEN",
+  "PASTE",
+  "BAKERY",
+  "KUIH",
+  "ICE & BEVERAGES",
+  // kitchen and events
+  "GAS",
+  "EQUIPMENT / PACKAGING",
+  "CLEANING SUPPLIES",
+  "DECORATION & EVENT SETUP",
+  "EQUIPMENT RENTAL",
+  "REPAIRS & MAINTENANCE",
+  "UNIFORMS & SAFETY GEAR",
+  // transport
+  "LALAMOVE",
+  "TRANSPORTATION / DELIVERY",
+  "FUEL",
+  "TOLL & PARKING",
+  // staff and office
+  "PART-TIME WORKER WAGES",
+  "STAFF MEALS",
+  "STATIONERY & PRINTING",
+  "OTHER",
 ];
 
 /** An entry can have more than one category: they are saved in one text, separated by a comma ("Dry goods & groceries, Gas (LPG)"). */
