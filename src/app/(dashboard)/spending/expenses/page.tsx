@@ -3,13 +3,14 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
-import { listCostCategories, listSpending, sameLabel, uniqueCategories, type CostRow } from "@/lib/finance/queries";
+import { listSpending, sameLabel, type CostRow } from "@/lib/finance/queries";
 import { formatCurrency, formatMalaysiaDate, todayInMalaysia } from "@/lib/format";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SpendingSubNav } from "@/components/spending/SpendingSubNav";
 import { CompanyExpenseTable } from "@/components/finance/CompanyExpenseTable";
 import { ExpenseFilterBar } from "@/components/finance/ExpenseFilterBar";
 import { CompanyExpenseOverview } from "@/components/finance/CompanyExpenseOverview";
+import { SPENDING_CATEGORIES } from "@/lib/finance/spendingCategories";
 
 export default async function CompanyExpensesPage({
   searchParams,
@@ -33,7 +34,7 @@ export default async function CompanyExpensesPage({
 
   // every cost of the companies, from the same list Monthly Costing adds up (expenses keyed in here, petty cash, rental and utilities
   // paid in Finance ...), so the two pages always tally; only the expenses keyed in here can be edited here
-  const [spending, categories] = await Promise.all([listSpending(supabase, targetCompanyIds), listCostCategories(supabase, targetCompanyIds)]);
+  const spending = await listSpending(supabase, targetCompanyIds);
   const companyName = new Map(companies.map((c) => [c.id, c.name]));
   const everyExpense = spending
     .map((r: CostRow) => ({ id: r.id, source: r.source, category: r.category, department: r.department, amount: r.amount, expense_date: r.date, notes: r.details, companies: { name: companyName.get(r.companyId) ?? "" } }))
@@ -81,7 +82,7 @@ export default async function CompanyExpensesPage({
       <SpendingSubNav />
 
       <ExpenseFilterBar
-        categories={Array.from(new Set([...uniqueCategories(categories).map((c) => c.name), ...categoryNames])).sort((a, b) => a.localeCompare(b))}
+        categories={Array.from(new Set([...SPENDING_CATEGORIES, ...categoryNames])).sort((a, b) => a.localeCompare(b))}
         departments={departments}
         initial={{ q, category, department, from, to }}
         hidden={{ company: requestedId ?? "" }}
@@ -98,7 +99,7 @@ export default async function CompanyExpensesPage({
           <EmptyRow text={filtered ? "No expense matches the search. Change the words or the filters." : "No company expenses recorded yet."} />
         ) : (
           <CompanyExpenseTable
-            categories={uniqueCategories(categories).map((c) => c.name)}
+            categories={SPENDING_CATEGORIES}
             rows={shown.map((e) => ({
               id: e.id,
               source: e.source,

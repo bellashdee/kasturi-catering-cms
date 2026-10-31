@@ -244,13 +244,13 @@ export async function listSpending(supabase: DB, companyIds: string[], from?: st
   for (const fp of financePayments.data ?? []) {
     rows.push({
       source: "Finance Payments",
-      category: fp.category === "supplier" ? "Supplier Payment" : fp.category === "rental" ? "Rental" : `Utilities – ${fp.utility_provider ?? "Other"}`,
+      category: fp.category === "supplier" ? "Supplier Payment" : fp.category === "rental" ? "RENTAL" : "UTILITIES",
       department: null,
       amount: Number(fp.amount),
       companyId: fp.company_id,
       id: fp.id,
       date: fp.paid_date ?? fp.period_month,
-      details: fp.payee_name ?? null,
+      details: [fp.payee_name, fp.category !== "rental" && fp.utility_provider ? fp.utility_provider : null].filter(Boolean).join(" · ") || null,
     });
   }
 

@@ -1,3 +1,5 @@
+import { SPENDING_CATEGORIES, joinCategories, splitCategories } from "@/lib/finance/spendingCategories";
+
 export type EntryType = "top_up" | "expense";
 
 /** How the money was received or paid: asked for every petty cash record (received, spent, staff claim and its payment) */
@@ -13,50 +15,11 @@ export const ENTRY_TYPE_LABEL: Record<EntryType, string> = {
   expense: "Spent",
 };
 
-/**
- * What the money is spent on, for a catering business and its daily food supply, in capitals: the food first (the same names as the
- * Company Expenses, so the reports put them together), then the kitchen and the events, transport, staff and the office; OTHER last.
- */
-export const PETTY_CASH_CATEGORIES = [
-  // food and ingredients
-  "AYAM",
-  "DAGING",
-  "IKAN",
-  "SEAFOOD",
-  "EGG",
-  "SAYUR",
-  "BUAH",
-  "FRESH MARKET",
-  "BERAS",
-  "GROCERIES",
-  "FROZEN",
-  "PASTE",
-  "BAKERY",
-  "KUIH",
-  "ICE & BEVERAGES",
-  // kitchen and events
-  "GAS",
-  "EQUIPMENT / PACKAGING",
-  "CLEANING SUPPLIES",
-  "DECORATION & EVENT SETUP",
-  "EQUIPMENT RENTAL",
-  "REPAIRS & MAINTENANCE",
-  "UNIFORMS & SAFETY GEAR",
-  // transport
-  "LALAMOVE",
-  "TRANSPORTATION / DELIVERY",
-  "FUEL",
-  "TOLL & PARKING",
-  // staff and office
-  "PART-TIME WORKER WAGES",
-  "STAFF MEALS",
-  "STATIONERY & PRINTING",
-  "OTHER",
-];
+/** What the money is spent on: the one list of the companies (see spendingCategories), in capitals and alphabetical order. */
+export const PETTY_CASH_CATEGORIES = SPENDING_CATEGORIES;
 
-/** An entry can have more than one category: they are saved in one text, separated by a comma ("Dry goods & groceries, Gas (LPG)"). */
-export const splitCategories = (text: string | null | undefined): string[] => (text ?? "").split(",").map((c) => c.trim()).filter(Boolean);
-export const joinCategories = (list: string[]): string => list.join(", ");
+/** An entry can have more than one category: they are saved in one text, kept apart with " | " (older entries: a comma). */
+export { joinCategories, splitCategories };
 
 export type OperationPettyCashRow = {
   id: string;

@@ -2,9 +2,9 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
-import { listCostCategories, uniqueCategories } from "@/lib/finance/queries";
 import { listPaymentAccounts } from "@/lib/finance/paymentQueries";
 import { CompanyExpenseUploadReview } from "@/components/finance/CompanyExpenseUploadReview";
+import { SPENDING_CATEGORIES } from "@/lib/finance/spendingCategories";
 
 export default async function NewCompanyExpensePage({
   searchParams,
@@ -24,7 +24,6 @@ export default async function NewCompanyExpensePage({
   const defaultCompanyId = requestedId && accessibleIds.includes(requestedId) ? requestedId : selectable[0]?.id;
   const query = requestedId ? `?company=${requestedId}` : "";
 
-  const categories = uniqueCategories(await listCostCategories(supabase, accessibleIds));
   // the utility accounts (water, electricity ...) of each branch, to attach an account number to a utilities expense
   const utilityAccounts = (await listPaymentAccounts(supabase, accessibleIds, "utility").catch(() => [])).map((a) => ({
     id: a.id,
@@ -42,7 +41,7 @@ export default async function NewCompanyExpensePage({
         <CompanyExpenseUploadReview
           companies={selectable}
           defaultCompanyId={defaultCompanyId}
-          categories={categories}
+          categories={SPENDING_CATEGORIES.map((name) => ({ id: name, name }))}
           utilityAccounts={utilityAccounts}
           redirectTo={`/spending/expenses${query}`}
         />

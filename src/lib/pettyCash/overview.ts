@@ -1,3 +1,5 @@
+import { splitCategories } from "@/lib/finance/spendingCategories";
+
 /** The cash flow of a petty cash: what came in (income), what went out (expenses) and what is left, for a month or for all time. */
 
 export type CashEntry = { date: string; kind: "in" | "out"; amount: number; category: string | null };
@@ -36,7 +38,7 @@ export function buildOverview(entries: CashEntry[], month: string, todayMonth: s
 
   const cats = new Map<string, number>();
   // an expense with more than one category is its own line ("Dry goods & groceries + Gas (LPG)"): its amount is not split between them
-  const labelOf = (e: CashEntry) => (e.category ?? "").split(",").map((c) => c.trim()).filter(Boolean).join(" + ") || "Other";
+  const labelOf = (e: CashEntry) => splitCategories(e.category).join(" + ") || "MISCELLANEOUS";
   for (const e of current) if (e.kind === "out") cats.set(labelOf(e), round2((cats.get(labelOf(e)) ?? 0) + e.amount));
 
   // the last months, ending with the chosen month (or this month for "all")
