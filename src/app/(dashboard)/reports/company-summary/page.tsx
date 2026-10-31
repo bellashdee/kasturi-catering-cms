@@ -11,6 +11,7 @@ import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { PrintButton } from "@/components/reports/PrintButton";
 import { SectionCard, EmptyRow, StatRow } from "@/components/dashboard/SectionCard";
 import { SummaryInfographic } from "@/components/reports/SummaryInfographic";
+import { SalesByMonthComparison } from "@/components/reports/SalesByMonthComparison";
 import { SoftPage } from "@/components/ui/Soft";
 
 function currentYearMonth() {
@@ -45,7 +46,11 @@ export default async function CompanySummaryReportPage({
   const selectedCompany = companies.find((c) => targetCompanyIds.length === 1 && c.id === targetCompanyIds[0]);
   const viewLabel = selectedCompany ? selectedCompany.name : "All Companies";
 
-  const [summary, series] = await Promise.all([getCompanySummary(supabase, targetCompanyIds, year, month, range), getYearMonthlySeries(supabase, targetCompanyIds, year)]);
+  const [summary, series, prevSeries] = await Promise.all([
+    getCompanySummary(supabase, targetCompanyIds, year, month, range),
+    getYearMonthlySeries(supabase, targetCompanyIds, year),
+    getYearMonthlySeries(supabase, targetCompanyIds, year - 1),
+  ]);
   const periodLabel = range ? `${range.start} – ${range.end}` : `${MONTH_LABEL[month - 1]} ${year}`;
 
   return (
@@ -80,6 +85,8 @@ export default async function CompanySummaryReportPage({
         supplierOutstanding={summary.supplierOutstanding}
         customerOutstanding={summary.customerOutstanding}
       />
+
+      <SalesByMonthComparison year={year} current={series.revenue} previous={prevSeries.revenue} />
 
       <PieChart title="Cost by module" slices={summary.bySource.map((x) => ({ label: x.source, value: x.amount }))} />
 
