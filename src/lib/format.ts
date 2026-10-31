@@ -40,6 +40,14 @@ export function formatMalaysiaTime(iso: string | null | undefined): string {
   return `${p.hour}:${p.minute} ${p.dayPeriod?.toUpperCase()}`;
 }
 
+/** A time of day as saved ("16:30" or "16:30:00") on the 12-hour clock: "4:30 PM". Anything else is shown as it is. */
+export function formatTime12(time: string | null | undefined): string {
+  const m = /^(\d{1,2}):(\d{2})/.exec(time ?? "");
+  if (!m) return time ?? "";
+  const h = Number(m[1]);
+  return `${h % 12 || 12}:${m[2]} ${h < 12 ? "AM" : "PM"}`;
+}
+
 /** e.g. "06/10/2026, 10:35 PM" */
 export function formatMalaysiaDateTime(iso: string | null | undefined): string {
   if (!iso) return "—";

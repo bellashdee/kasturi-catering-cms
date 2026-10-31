@@ -21,7 +21,7 @@ import {
   PAYMENT_STATUS_LABEL,
   STAFF_ROLE_LABEL,
 } from "@/lib/catering/constants";
-import { formatCurrency, formatPrice } from "@/lib/format";
+import { formatCurrency, formatPrice, formatTime12 } from "@/lib/format";
 import { dayAmount, dayPax, menuRows } from "@/lib/catering/days";
 import { additionalRows, type AdditionalServices, type ExtraItem } from "@/lib/catering/quotationRequest";
 import { toEventDays } from "@/lib/catering/queries";
@@ -115,7 +115,7 @@ export default async function EventDetailPage({
           <div className="mt-2 text-[20px] font-extrabold text-text">{event.event_name}</div>
           <div className="text-[13px] text-text-secondary">
             {event.customers?.name ?? "No customer linked"} · {event.companies?.name} · {event.event_date}
-            {event.end_date ? ` → ${event.end_date} (${eventDays.length || "multi"} days)` : event.event_time ? ` ${event.event_time.slice(0, 5)}` : ""}
+            {event.end_date ? ` → ${event.end_date} (${eventDays.length || "multi"} days)` : event.event_time ? ` ${formatTime12(event.event_time)}` : ""}
             {event.location && ` · ${event.location}`}
           </div>
         </div>
@@ -168,13 +168,13 @@ export default async function EventDetailPage({
           {event.setup_time && (
             <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
               <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Set-up time (kitchen side)</div>
-              <div className="mt-1 text-[14px] font-bold text-text">{event.setup_time.slice(0, 5)}</div>
+              <div className="mt-1 text-[14px] font-bold text-text">{formatTime12(event.setup_time)}</div>
             </div>
           )}
           {event.event_time && (
             <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
               <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Event time</div>
-              <div className="mt-1 text-[14px] font-bold text-text">{event.event_time.slice(0, 5)}</div>
+              <div className="mt-1 text-[14px] font-bold text-text">{formatTime12(event.event_time)}</div>
             </div>
           )}
           {event.price_per_pax !== null && (
@@ -194,7 +194,7 @@ export default async function EventDetailPage({
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-bold text-text">Day {i + 1} · {d.dayDate}</span>
                   <span className="text-text-muted">
-                    {d.setupTime ? `Set-up (kitchen) ${d.setupTime}` : ""}{d.setupTime && d.eventTime ? " · " : ""}{d.eventTime ? `Event ${d.eventTime}` : ""}
+                    {d.setupTime ? `Set-up (kitchen) ${formatTime12(d.setupTime)}` : ""}{d.setupTime && d.eventTime ? " · " : ""}{d.eventTime ? `Event ${formatTime12(d.eventTime)}` : ""}
                   </span>
                   {d.mealTypes.map((m) => <StatusBadge key={m} tone="info">{MEAL_TYPE_LABEL[m] ?? m}</StatusBadge>)}
                   <StatusBadge tone="success">{SERVICE_TYPE_LABEL[d.serviceType] ?? d.serviceType} · {d.servicePax} pax</StatusBadge>
