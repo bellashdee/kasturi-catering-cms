@@ -1,0 +1,11 @@
+-- Kasturi Indah: the customer payments and invoice statuses were brought in line with AutoCount (data change run on the database on 1 Nov 2026,
+-- from the AR Receive Payment listings Jan - Oct 2026, the Invoice Listing With Detail Jan - Oct 2026 and the Outstanding AR Invoice By Debtor of 1 Nov 2026).
+--
+--  * the 111 payments recorded before (made from the event sheets) were kept in customer_payments_backup_20261101 and replaced by 354 payments
+--    (RM 952,290.00): each AutoCount receipt applied to the debtor's oldest unpaid invoice first, on the receipt date of the listing;
+--  * 252 invoices are paid, 5 part paid, 35 issued; the three quotation requests stay pending review;
+--  * the duplicate invoice INV-KI2609/025 (Daiman, RM 1,443.00, not in AutoCount) was deleted;
+--  * what is still owed on the invoices in the system is RM 147,014.00, the same as the AutoCount outstanding report for those invoices
+--    (RM 160,474.00 in all: RM 10,846.00 on two November invoices and RM 2,614.00 on 2025 invoices are not in the system);
+--  * RM 99,344.50 of the receipts pay 2025 invoices or are deposits for November invoices, so they are not linked to an invoice.
+select 1;

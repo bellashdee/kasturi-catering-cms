@@ -344,7 +344,7 @@ export async function listCustomerInvoices(supabase: DB, companyIds: string[], d
   const { data, error } = await applyInvoiceDateFilter(
     supabase
       .from("customer_invoices")
-      .select("*, customers(name), companies(name), customer_payments(amount, payment_date)")
+      .select("*, customers(name, sales_agent), companies(name), customer_payments(amount, payment_date)")
       .in("company_id", companyIds),
     dateFilter,
   ).order("invoice_date", { ascending: false });

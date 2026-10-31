@@ -1059,6 +1059,7 @@ export type Database = {
           notes: string | null
           phone: string | null
           registration_no: string | null
+          sales_agent: string | null
           updated_at: string
         }
         Insert: {
@@ -1077,6 +1078,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           registration_no?: string | null
+          sales_agent?: string | null
           updated_at?: string
         }
         Update: {
@@ -1095,6 +1097,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           registration_no?: string | null
+          sales_agent?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -3317,6 +3320,54 @@ export type Database = {
           },
           {
             foreignKeyName: "breakdown_items_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      monthly_purchases: {
+        Row: {
+          company_id: string
+          id: string
+          month: number
+          notes: string | null
+          purchase_amount: number
+          updated_at: string
+          updated_by: string | null
+          year: number
+        }
+        Insert: {
+          company_id: string
+          id?: string
+          month: number
+          notes?: string | null
+          purchase_amount: number
+          updated_at?: string
+          updated_by?: string | null
+          year: number
+        }
+        Update: {
+          company_id?: string
+          id?: string
+          month?: number
+          notes?: string | null
+          purchase_amount?: number
+          updated_at?: string
+          updated_by?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_purchases_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monthly_purchases_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"

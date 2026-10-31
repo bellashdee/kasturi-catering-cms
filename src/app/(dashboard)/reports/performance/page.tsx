@@ -10,6 +10,7 @@ import { formatCurrency, malaysiaYearMonth } from "@/lib/format";
 import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { PrintButton } from "@/components/reports/PrintButton";
 import { RankBars, type RankItem } from "@/components/reports/RankBars";
+import { SalesPurchasesChart } from "@/components/reports/SalesPurchasesChart";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 import { SoftPage } from "@/components/ui/Soft";
 
@@ -55,12 +56,18 @@ export default async function PerformanceDashboardPage({ searchParams }: { searc
   const end = `${year}-12-31`;
   const selected = companies.find((c) => targetCompanyIds.length === 1 && c.id === targetCompanyIds[0]);
 
-  const [invoices, payments, events, spending] = await Promise.all([
+  const [invoices, payments, events, spending, monthlySales, monthlyPurchases] = await Promise.all([
     listCustomerInvoices(supabase, targetCompanyIds),
     supabase.from("customer_payments").select("amount").in("company_id", targetCompanyIds).gte("payment_date", start).lte("payment_date", end),
     supabase.from("catering_events").select("service_type, total_amount, status, sales_agent").in("company_id", targetCompanyIds).gte("event_date", start).lte("event_date", end),
     listSpending(supabase, targetCompanyIds, start, end),
+    supabase.from("monthly_sales").select("month, sales_amount").in("company_id", targetCompanyIds).eq("year", year),
+    supabase.from("monthly_purchases").select("month, purchase_amount").in("company_id", targetCompanyIds).eq("year", year),
   ]);
+  const salesByMonth = Array<number>(12).fill(0);
+  const purchasesByMonth = Array<number>(12).fill(0);
+  for (const s of monthlySales.data ?? []) salesByMonth[s.month - 1] += Number(s.sales_amount);
+  for (const p of monthlyPurchases.data ?? []) purchasesByMonth[p.month - 1] += Number(p.purchase_amount);
 
   // sales volume = the invoices issued in the year (drafts left out), tax included; received = payments with a payment date in the year
   const yearInvoices = invoices.filter((i) => i.status !== "draft" && i.invoice_date >= start && i.invoice_date <= end);
@@ -116,33 +123,28 @@ export default async function PerformanceDashboardPage({ searchParams }: { searc
     .sort((a, b) => b[1].value - a[1].value)
     .map(([label, c]) => ({ label, value: c.value, note: `${c.count} event${c.count === 1 ? "" : "s"}` }));
 
-  // top sales agents: the agent named on each event (cancelled left out); the Signature Solution Catering invoices (JDT game matches) are Mr. Ismaizal's
-  const agentBy = new Map<string, { value: number; count: number; unit: string }>();
-  let noAgent = { value: 0, count: 0 };
-  for (const e of events.data ?? []) {
-    if (e.status === "cancelled") continue;
-    const name = e.sales_agent?.trim();
-    if (!name) {
-      noAgent = { value: noAgent.value + Number(e.total_amount ?? 0), count: noAgent.count + 1 };
+  // top sales agents: the invoices issued in the year, credited to the sales agent kept on the customer's details; the Signature Solution
+  // Catering invoices (JDT game matches) are Mr. Ismaizal's; a customer with no agent goes to its own line
+  const agentBy = new Map<string, { value: number; count: number; customers: Set<string> }>();
+  const noAgent = { value: 0, count: 0 };
+  for (const i of yearInvoices) {
+    const total = Number(i.amount) + Number(i.tax_amount ?? 0);
+    const agent = i.customers?.sales_agent?.trim() || ((i.description ?? "").includes("Signature Solution Catering") ? SSC_AGENT : "");
+    if (!agent) {
+      noAgent.value += total;
+      noAgent.count += 1;
       continue;
     }
-    const c = agentBy.get(name) ?? { value: 0, count: 0, unit: "event" };
-    c.value += Number(e.total_amount ?? 0);
+    const c = agentBy.get(agent) ?? { value: 0, count: 0, customers: new Set<string>() };
+    c.value += total;
     c.count += 1;
-    agentBy.set(name, c);
-  }
-  const sscInvoices = yearInvoices.filter((i) => (i.description ?? "").includes("Signature Solution Catering"));
-  if (sscInvoices.length > 0) {
-    const c = agentBy.get(SSC_AGENT) ?? { value: 0, count: 0, unit: "invoice" };
-    c.value += sum(sscInvoices.map((i) => Number(i.amount) + Number(i.tax_amount ?? 0)));
-    c.count += sscInvoices.length;
-    c.unit = c.unit === "event" ? "event / invoice" : "invoice";
-    agentBy.set(SSC_AGENT, c);
+    c.customers.add(i.customers?.name ?? i.customer_id);
+    agentBy.set(agent, c);
   }
   const agents: RankItem[] = Array.from(agentBy.entries())
     .filter(([, c]) => c.value > 0)
     .sort((a, b) => b[1].value - a[1].value)
-    .map(([label, c]) => ({ label, value: c.value, note: `${c.count} ${c.unit}${c.count === 1 ? "" : "s"}` }));
+    .map(([label, c]) => ({ label, value: c.value, note: `${c.count} invoice${c.count === 1 ? "" : "s"} · ${c.customers.size} customer${c.customers.size === 1 ? "" : "s"}` }));
   const agentsTotal = sum(agents.map((a) => a.value)) + noAgent.value;
 
   // breakdown of expenses by category (the same names written in other capitals count as one), the smallest grouped as Other
@@ -180,6 +182,8 @@ export default async function PerformanceDashboardPage({ searchParams }: { searc
         <Stat label="Still owed to us" value={formatCurrency(owedAll)} bad={owedAll > 0} sub={`${owedBy.size} customer${owedBy.size === 1 ? "" : "s"}, all years, today`} />
       </div>
 
+      <SalesPurchasesChart year={year} sales={salesByMonth} purchases={purchasesByMonth} />
+
       <div className="grid gap-4 lg:grid-cols-2">
         <SectionCard title={`Top-Selling Products — ${year}`}>
           <p className="mb-3 text-[12px] text-text-secondary">By type of serving: revenue of the year&apos;s events (cancelled left out).</p>
@@ -194,14 +198,14 @@ export default async function PerformanceDashboardPage({ searchParams }: { searc
         </SectionCard>
 
         <SectionCard title={`Top Sales Agents — ${year}`}>
-          <p className="mb-3 text-[12px] text-text-secondary">Who brought in the most sales: the agent named on each event, and the Signature Solution Catering invoices for {SSC_AGENT}. Biggest first.</p>
-          <RankBars items={agents} total={agentsTotal} color="#2f7fc1" empty="No sales agent is named on this year's events." />
+          <p className="mb-3 text-[12px] text-text-secondary">Who brought in the most sales: the invoices issued in the year, credited to the sales agent on the customer&apos;s details (the Signature Solution Catering invoices to {SSC_AGENT}). Biggest first.</p>
+          <RankBars items={agents} total={agentsTotal} color="#2f7fc1" empty="No customer with a sales agent was invoiced this year." />
           {noAgent.count > 0 && (
             <p className="mt-3 text-[12px] text-text-secondary">
-              No agent named: {formatCurrency(noAgent.value)} from {noAgent.count} event{noAgent.count === 1 ? "" : "s"} (they are in the share above, not in the ranking). Name the sales agent on the event to count it here.
+              Customers with no sales agent on their details: {formatCurrency(noAgent.value)} from {noAgent.count} invoice{noAgent.count === 1 ? "" : "s"} (in the share above, not in the ranking). Fill in the sales agent on the customer to count it here.
             </p>
           )}
-          <More to={`/reports/catering${query}`}>Catering Report</More>
+          <More to={`/catering/customers${query}`}>Customers</More>
         </SectionCard>
 
         <SectionCard title="Customers with an Outstanding Balance">
