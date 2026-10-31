@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createEvent, createQuotation, updateEvent, type EventInput } from "@/lib/catering/actions";
 import { SALES_AGENTS, eventTypeOptions } from "@/lib/catering/constants";
-import { dayAmount, dayPax, quotationSeedRows, type EventDay } from "@/lib/catering/days";
+import { dayAmount, dayPax, normalizeMenu, quotationSeedRows, type EventDay } from "@/lib/catering/days";
 import { additionalServiceLines, noAdditionalServices, withSecondMenusInRemarks, type AdditionalServices } from "@/lib/catering/quotationRequest";
 import { hasPackagePrice } from "@/lib/kitchen/packages/format";
 import { EventDaysEditor, emptyDay } from "@/components/catering/EventDaysEditor";
@@ -136,7 +136,7 @@ export function EventForm({
             secondServiceType: only.secondServiceType,
             secondServicePax: only.secondServicePax,
             pricePerPax: only.pricePerPax,
-            menuDescription: only.menuDetails,
+            menuDescription: normalizeMenu(only.menuDetails),
             remarks: [withSecondMenusInRemarks(only).remarks, form.remarks].filter(Boolean).join("\n\n"),
             days: [],
           }

@@ -22,7 +22,7 @@ import {
   STAFF_ROLE_LABEL,
 } from "@/lib/catering/constants";
 import { formatCurrency, formatPrice } from "@/lib/format";
-import { dayAmount, dayPax } from "@/lib/catering/days";
+import { dayAmount, dayPax, menuRows } from "@/lib/catering/days";
 import { additionalRows, type AdditionalServices, type ExtraItem } from "@/lib/catering/quotationRequest";
 import { toEventDays } from "@/lib/catering/queries";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -37,6 +37,17 @@ import { DeliveryForm } from "@/components/catering/DeliveryForm";
 import { listDeliveryPersons } from "@/lib/driver/queries";
 import { DELIVERY_STATUS_LABEL } from "@/lib/driver/constants";
 import { RemoveAssignmentButton } from "@/components/catering/RemoveAssignmentButton";
+
+/** A menu as numbered points, one menu item on each line (a "-", "•" or "1." typed in front of an item is not repeated). */
+function MenuPoints({ text, className = "" }: { text: string; className?: string }) {
+  return (
+    <ol className={`list-decimal space-y-0.5 pl-5 ${className}`}>
+      {menuRows(text).map((item, i) => (
+        <li key={i}>{item.replace(/^(?:[-–•*]|\d+[.)])\s+/, "")}</li>
+      ))}
+    </ol>
+  );
+}
 
 function toDeliveryInitial(d: { scheduled_time: string | null; vehicle_id: string | null; driver_id: string | null; delivery_vendor_id: string | null; notes: string | null }) {
   return { scheduled_time: d.scheduled_time, vehicle_id: d.vehicle_id, driver_id: d.driver_id, delivery_vendor_id: d.delivery_vendor_id, notes: d.notes };
@@ -192,7 +203,7 @@ export default async function EventDetailPage({
                     {dayPax(d)} pax{d.pricePerPax ? ` × ${formatPrice(d.pricePerPax)} = ${formatPrice(dayAmount(d))}` : ""}
                   </span>
                 </div>
-                {d.menuDetails && <div className="mt-1 whitespace-pre-line text-text-secondary">{d.menuDetails}</div>}
+                {d.menuDetails && <MenuPoints text={d.menuDetails} className="mt-1 text-text-secondary" />}
                 {d.remarks && <div className="mt-1 whitespace-pre-line text-xs text-text-muted">Remarks: {d.remarks}</div>}
               </div>
             ))}
@@ -263,7 +274,7 @@ export default async function EventDetailPage({
           {event.menu_description && (
             <div className="rounded-xl border border-border bg-surface p-4 text-[13px] shadow-sm">
               <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-text-muted">Menu details</div>
-              {event.menu_description}
+              <MenuPoints text={event.menu_description} />
             </div>
           )}
           {event.special_requirements && (
