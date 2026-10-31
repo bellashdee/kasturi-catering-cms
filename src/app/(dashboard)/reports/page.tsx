@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionContext } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { resolveCompanyScope } from "@/lib/companyScope";
 import { canUsePayrollCentre } from "@/lib/hr/payrollAccess";
 import { SoftHeader, SoftPage } from "@/components/ui/Soft";
 
@@ -33,8 +34,14 @@ export default async function ReportsHubPage({
   const { company: requestedId } = await searchParams;
   const query = requestedId ? `?company=${requestedId}` : "";
   // the HR (payroll) report is only for the people who may open the Payroll Centre
-  const showHr = await canUsePayrollCentre(await createClient());
-  const reports = REPORTS.filter((r) => showHr || r.href !== "/reports/hr");
+  const supabase = await createClient();
+  const showHr = await canUsePayrollCentre(supabase);
+  // the Monthly Breakdown is for O2 Life only: listed only while O2 Life is the chosen company
+  const { data: companies } = await supabase.from("companies").select("id, name");
+  const { targetCompanyIds } = resolveCompanyScope(session, companies ?? [], requestedId);
+  const o2 = (companies ?? []).find((c) => c.name === "O2 Life");
+  const onlyO2 = !!o2 && targetCompanyIds.length === 1 && targetCompanyIds[0] === o2.id;
+  const reports = REPORTS.filter((r) => (showHr || r.href !== "/reports/hr") && (onlyO2 || r.href !== "/reports/monthly-breakdown"));
 
   return (
     <SoftPage>

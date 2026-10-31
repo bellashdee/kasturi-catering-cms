@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { adminCompanyIds } from "@/lib/finance/paymentQueries";
+import { resolveCompanyScope } from "@/lib/companyScope";
 import { listSpending, sameLabel } from "@/lib/finance/queries";
 import { formatCurrency, malaysiaYearMonth } from "@/lib/format";
 import { MONTH_LABEL } from "@/lib/finance/constants";
@@ -43,16 +44,29 @@ const Heading = ({ to, children, className = "" }: { to: string; children: React
  * salary, utilities, contribution — in RM and as a % of sales against each limit, then net profit. Every figure is saved in the database and
  * can be edited, saved, cancelled or deleted below; a heading leads to where its figures are saved. Finance / Admin only.
  */
-export default async function MonthlyBreakdownPage({ searchParams }: { searchParams: Promise<{ year?: string }> }) {
+export default async function MonthlyBreakdownPage({ searchParams }: { searchParams: Promise<{ year?: string; company?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
-  const back = <Link href="/reports" className="text-[12.5px] font-semibold text-text-secondary">← Back to Reports</Link>;
+  const { year: yearParam, company: requestedId } = await searchParams;
+  const back = <Link href={requestedId ? `/reports?company=${requestedId}` : "/reports"} className="text-[12.5px] font-semibold text-text-secondary">← Back to Reports</Link>;
   const supabase = await createClient();
   const { data: companies } = await supabase.from("companies").select("id, name");
   const o2 = (companies ?? []).find((c) => c.name === BARA_COMPANY);
-  const admins = o2 ? await adminCompanyIds(supabase, [o2.id]) : [];
-  if (!o2 || admins.length === 0) {
+
+  // this report is for O2 Life only: never shown for Kasturi Indah, Signature Solution or all companies together
+  const { targetCompanyIds } = resolveCompanyScope(session, companies ?? [], requestedId);
+  if (!o2 || targetCompanyIds.length !== 1 || targetCompanyIds[0] !== o2.id) {
+    return (
+      <SoftPage>
+        {back}
+        <EmptyRow text="The Monthly Breakdown is for O2 Life (Restoran Bara) only. Choose O2 Life in the company selector at the top to open it." />
+      </SoftPage>
+    );
+  }
+
+  const admins = await adminCompanyIds(supabase, [o2.id]);
+  if (admins.length === 0) {
     return (
       <SoftPage>
         {back}
@@ -61,7 +75,6 @@ export default async function MonthlyBreakdownPage({ searchParams }: { searchPar
     );
   }
 
-  const { year: yearParam } = await searchParams;
   const year = Number(yearParam) || malaysiaYearMonth().year;
 
   const [salesRes, itemsRes, spending] = await Promise.all([
@@ -122,6 +135,7 @@ export default async function MonthlyBreakdownPage({ searchParams }: { searchPar
 
       <div className="flex flex-wrap items-end justify-between gap-3 print:hidden">
         <form method="get" className="flex items-end gap-3">
+          {requestedId && <input type="hidden" name="company" value={requestedId} />}
           <div>
             <label className="text-[12px] font-semibold text-text-secondary">Year</label>
             <input type="number" name="year" defaultValue={year} className="mt-1 h-9 w-24 rounded-lg border border-border-strong px-2 text-[13px]" />
