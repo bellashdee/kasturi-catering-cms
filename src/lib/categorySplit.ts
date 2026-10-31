@@ -25,23 +25,23 @@ export function equalShares(total: number, n: number): number[] {
 export type SplitCell = { key: string; category: string; companyId: string; text: string; amount: number };
 
 /**
- * Every cell of a split (each category, and each company when there are several), with the amount typed for it, or its equal share
- * of the total when nothing was typed.
+ * Every cell of a split (each category, and each company when there are several), with the amount typed for it. The cells nothing was
+ * typed in share what is left of the total equally: total RM 100, RM 35 typed in the first, the second shows RM 65 by itself.
  */
 export function splitCells(total: string, categories: string[], companyIds: string[], typed: Record<string, string>): SplitCell[] {
   const cats = categories.length > 0 ? categories : [""];
   const cos = companyIds.length > 0 ? companyIds : [""];
-  const equal = equalShares(Number(total), cats.length * cos.length);
-  const cells: SplitCell[] = [];
-  cats.forEach((category, r) =>
-    cos.forEach((companyId, c) => {
-      const key = cellKey(category, companyId);
-      const share = equal[r * cos.length + c];
-      const text = typed[key] ?? (share ? share.toFixed(2) : "");
-      cells.push({ key, category, companyId, text, amount: Math.round(Number(text || 0) * 100) / 100 });
-    }),
-  );
-  return cells;
+  const keys = cats.flatMap((category) => cos.map((companyId) => ({ key: cellKey(category, companyId), category, companyId })));
+  const isTyped = (key: string) => typed[key] !== undefined && typed[key].trim() !== "";
+  const typedCents = keys.filter((k) => isTyped(k.key)).reduce((t, k) => t + Math.round(Number(typed[k.key] || 0) * 100), 0);
+  const leftCents = Math.round(Number(total || 0) * 100) - typedCents;
+  const open = keys.filter((k) => !isTyped(k.key));
+  const shares = equalShares(Math.max(leftCents, 0) / 100, open.length);
+  return keys.map((k) => {
+    const share = shares[open.indexOf(k)];
+    const text = isTyped(k.key) ? typed[k.key] : share ? share.toFixed(2) : "";
+    return { ...k, text, amount: Math.round(Number(text || 0) * 100) / 100 };
+  });
 }
 
 /** The cells add up to the total (to the sen). */
