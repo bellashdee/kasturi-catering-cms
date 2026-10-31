@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { resolvePeriod, type DateRange } from "@/lib/finance/constants";
-import { getMonthlyCostBreakdown, getMonthlyRevenue } from "@/lib/finance/queries";
+import { getMonthlyCostBreakdown, getMonthlyRevenue, listSpending } from "@/lib/finance/queries";
 
 type DB = SupabaseClient<Database>;
 
@@ -83,14 +83,21 @@ export async function getHRReportRows(supabase: DB, companyIds: string[], year: 
  */
 /** Revenue and total cost of every month of a year (index 0 = January), for the summary picture. Months with no figures are 0. */
 export async function getYearMonthlySeries(supabase: DB, companyIds: string[], year: number) {
-  const months = Array.from({ length: 12 }, (_, i) => i + 1);
-  const rows = await Promise.all(
-    months.map(async (m) => {
-      const [revenue, cost] = await Promise.all([getMonthlyRevenue(supabase, companyIds, year, m), getMonthlyCostBreakdown(supabase, companyIds, year, m)]);
-      return { revenue, cost: cost.reduce((t, r) => t + r.amount, 0) };
-    }),
-  );
-  return { revenue: rows.map((r) => r.revenue), cost: rows.map((r) => r.cost) };
+  // the whole year in one go (a few queries) instead of one set of queries for each of the twelve months
+  const start = `${year}-01-01`;
+  const end = `${year}-12-31`;
+  const [costs, payments] = await Promise.all([
+    listSpending(supabase, companyIds, start, end),
+    supabase.from("customer_payments").select("amount, payment_date").in("company_id", companyIds).gte("payment_date", start).lte("payment_date", end),
+  ]);
+  const revenue = Array<number>(12).fill(0);
+  const cost = Array<number>(12).fill(0);
+  for (const p of payments.data ?? []) revenue[Number(p.payment_date.slice(5, 7)) - 1] += Number(p.amount);
+  for (const c of costs) {
+    const m = Number(c.date.slice(5, 7)) - 1;
+    if (m >= 0 && m < 12) cost[m] += c.amount;
+  }
+  return { revenue, cost };
 }
 
 export async function getCompanySummary(supabase: DB, companyIds: string[], year: number, month: number, range?: DateRange) {

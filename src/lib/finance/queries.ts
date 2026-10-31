@@ -148,7 +148,8 @@ export async function listSpending(supabase: DB, companyIds: string[], from?: st
         amount: cost,
         companyId: m.company_id,
         id: m.id,
-        date: m.created_at.slice(0, 10),
+        // the Malaysian day (the month's filter above is in Malaysian time too), so grouping by date matches the month's own query
+        date: new Date(new Date(m.created_at).getTime() + 8 * 3600_000).toISOString().slice(0, 10),
         details: null,
       });
     }

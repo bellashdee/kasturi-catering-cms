@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
-import { listBudgets, getMonthlyCostBreakdown } from "@/lib/finance/queries";
+import { listBudgets, listSpending } from "@/lib/finance/queries";
 import { MONTH_LABEL } from "@/lib/finance/constants";
 import { formatCurrency } from "@/lib/format";
 import { BudgetRowActions } from "@/components/finance/BudgetRowActions";
@@ -37,8 +37,21 @@ export default async function BudgetsPage({
     const [year, month] = p.split("-").map(Number);
     return { year, month };
   });
-  const breakdowns = await Promise.all(periods.map((p) => getMonthlyCostBreakdown(supabase, targetCompanyIds, p.year, p.month)));
-  const breakdownByPeriod = new Map(periods.map((p, i) => [`${p.year}-${p.month}`, breakdowns[i]]));
+  // one read of every cost from the first to the last budget month, grouped by month, instead of a full read for each budget month
+  const first = periods.reduce((m, p) => Math.min(m, p.year * 12 + p.month), Infinity);
+  const last = periods.reduce((m, p) => Math.max(m, p.year * 12 + p.month), 0);
+  const monthStart = (n: number) => `${Math.floor((n - 1) / 12)}-${String(((n - 1) % 12) + 1).padStart(2, "0")}-01`;
+  const monthEnd = (n: number) => {
+    const y = Math.floor((n - 1) / 12);
+    const m = ((n - 1) % 12) + 1;
+    return `${y}-${String(m).padStart(2, "0")}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, "0")}`;
+  };
+  const spending = periods.length ? await listSpending(supabase, targetCompanyIds, monthStart(first), monthEnd(last)) : [];
+  const breakdownByPeriod = new Map<string, typeof spending>();
+  for (const r of spending) {
+    const key = `${Number(r.date.slice(0, 4))}-${Number(r.date.slice(5, 7))}`;
+    (breakdownByPeriod.get(key) ?? breakdownByPeriod.set(key, []).get(key)!).push(r);
+  }
 
   function actualFor(b: (typeof budgets)[number]) {
     const rows = breakdownByPeriod.get(`${b.year}-${b.month}`) ?? [];
