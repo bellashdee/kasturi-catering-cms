@@ -1,7 +1,5 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getSessionContext } from "@/lib/auth";
 import { adminCompanyIds } from "@/lib/finance/paymentQueries";
 import { formatCurrency } from "@/lib/format";
 import { MONTH_LABEL } from "@/lib/finance/constants";
@@ -68,18 +66,22 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
   );
 }
 
-/**
- * Invoice Listing Report: the AutoCount invoice listings of Kasturi Indah Sdn Bhd and Signature Solution Sdn Bhd, which has two parts —
- * Signature Solution Catering (food for the JDT game match events) and Signature Solution Sdn Bhd. Finance / Admin only.
- */
-export default async function InvoiceListingReportPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ entity?: string; month?: string }>;
-}) {
-  const session = await getSessionContext();
-  if (!session) redirect("/login");
+/** The two views of the Revenue Report: what was invoiced (the AutoCount invoice listings) and what was received (customer payments). */
+export function RevenueViewTabs({ active }: { active: "received" | "invoiced" }) {
+  const tab = (on: boolean) => `rounded-lg px-4 py-2 text-[13px] font-semibold transition ${on ? "bg-primary text-white" : "border border-border-strong bg-surface text-text hover:border-primary"}`;
+  return (
+    <div className="flex flex-wrap gap-2 print:hidden">
+      <Link href="/reports/revenue" className={tab(active === "received")}>Payments received</Link>
+      <Link href="/reports/revenue?view=invoiced" className={tab(active === "invoiced")}>Invoices issued</Link>
+    </div>
+  );
+}
 
+/**
+ * Invoices issued (the Invoice Listing view of the Revenue Report): the AutoCount invoice listings of Kasturi Indah Sdn Bhd and Signature Solution
+ * Sdn Bhd, which has two parts — Signature Solution Catering (food for the JDT game match events) and Signature Solution Sdn Bhd. Finance / Admin only.
+ */
+export async function InvoiceListingView({ entity: entityParam, month: monthParam }: { entity?: string; month?: string }) {
   const supabase = await createClient();
   const { data: companies } = await supabase.from("companies").select("id");
   const admins = await adminCompanyIds(supabase, (companies ?? []).map((c) => c.id));
@@ -91,12 +93,12 @@ export default async function InvoiceListingReportPage({
     return (
       <SoftPage>
         {back}
+        <RevenueViewTabs active="invoiced" />
         <EmptyRow text="The invoice listing holds every customer invoice and is only available to Finance / Admin users." />
       </SoftPage>
     );
   }
 
-  const { entity: entityParam, month: monthParam } = await searchParams;
   const entityKey: EntityKey = entityParam && entityParam in ENTITIES ? (entityParam as EntityKey) : "kasturi";
   const entity = ENTITIES[entityKey];
   const month = Math.min(Math.max(Number(monthParam) || 0, 0), 12); // 0 = the whole year so far
@@ -143,6 +145,8 @@ export default async function InvoiceListingReportPage({
         <p className="mt-0.5 text-[13px] text-text-secondary">{periodLabel} · {entity.note} · from the AutoCount listings printed {INVOICE_LISTING_ASOF}</p>
       </div>
 
+      <RevenueViewTabs active="invoiced" />
+
       {/* the two companies; Signature Solution is shown with its two parts */}
       <div className="grid gap-3 print:hidden lg:grid-cols-2">
         <div className="rounded-2xl border border-border bg-surface p-3 shadow-sm">
@@ -163,6 +167,7 @@ export default async function InvoiceListingReportPage({
 
       <div className="flex flex-wrap items-end justify-between gap-3 print:hidden">
         <form method="get" className="flex items-end gap-3">
+          <input type="hidden" name="view" value="invoiced" />
           <input type="hidden" name="entity" value={entityKey} />
           <div>
             <label className="text-[12px] font-semibold text-text-secondary">Month</label>
@@ -233,7 +238,7 @@ function EntityTab({ k, active, month, total }: { k: EntityKey; active: EntityKe
   const on = k === active;
   return (
     <Link
-      href={`/reports/invoice-listing?entity=${k}${month ? `&month=${month}` : ""}`}
+      href={`/reports/revenue?view=invoiced&entity=${k}${month ? `&month=${month}` : ""}`}
       className={`flex flex-col gap-0.5 rounded-xl border px-3 py-2.5 transition ${on ? "border-primary bg-info-bg" : "border-border hover:border-primary"}`}
     >
       <span className="text-[13.5px] font-bold text-text">{e.label}</span>

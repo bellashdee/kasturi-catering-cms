@@ -12,6 +12,7 @@ import { ReportTable } from "@/components/reports/ReportTable";
 import { buildReportRows } from "@/lib/reports/buildRows";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
+import { InvoiceListingView, RevenueViewTabs } from "@/components/reports/InvoiceListingView";
 
 function currentYearMonth() {
   return malaysiaYearMonth();
@@ -20,16 +21,20 @@ function currentYearMonth() {
 export default async function RevenueReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; year?: string; month?: string; from?: string; to?: string; status?: string }>;
+  searchParams: Promise<{ company?: string; year?: string; month?: string; from?: string; to?: string; status?: string; view?: string; entity?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
+
+  const params = await searchParams;
+  // "Invoices issued": the invoice listing view of this report (the month filter there is a plain month number)
+  if (params.view === "invoiced") return <InvoiceListingView entity={params.entity} month={params.month} />;
 
   const supabase = await createClient();
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, year: yearParam, month: monthParam, from: fromParam, to: toParam, status: statusParam } = await searchParams;
+  const { company: requestedId, year: yearParam, month: monthParam, from: fromParam, to: toParam, status: statusParam } = params;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -78,6 +83,8 @@ export default async function RevenueReportPage({
         <h1 className="mt-2 text-[22px] font-extrabold text-text">Revenue Report</h1>
         <p className="mt-0.5 text-[13px] text-text-secondary">{rows.length} payment{rows.length === 1 ? "" : "s"} · {formatCurrency(total)} total</p>
       </div>
+
+      <RevenueViewTabs active="received" />
 
       <ReportFilterBar
         requestedCompanyId={requestedId}

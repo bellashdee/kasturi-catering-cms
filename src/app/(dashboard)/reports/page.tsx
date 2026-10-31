@@ -7,7 +7,7 @@ import { SoftHeader, SoftPage } from "@/components/ui/Soft";
 
 const REPORTS = [
   { href: "/reports/monthly-costing", title: "Monthly Costing Report", description: "Every cost across Catering, Kitchen, Supplier, Driver, Marketing and HR, grouped by category." },
-  { href: "/reports/revenue", title: "Revenue Report", description: "Customer payments received, by month." },
+  { href: "/reports/revenue", title: "Revenue Report", description: "Customer payments received by month, and the invoices issued by Kasturi Indah, Signature Solution Catering and Signature Solution." },
   { href: "/reports/expenses", title: "Expense Report", description: "Every cost transaction, as a flat exportable list." },
   { href: "/reports/supplier-outstanding", title: "Supplier Outstanding Report", description: "Unpaid supplier invoices." },
   { href: "/reports/supplier-payments", title: "Supplier Payment Report", description: "Every supplier payment request and its status." },
@@ -17,7 +17,6 @@ const REPORTS = [
   { href: "/reports/kitchen", title: "Kitchen Report", description: "Production orders, ingredient cost and wastage." },
   { href: "/reports/driver", title: "Driver Report", description: "Deliveries and vehicle running costs." },
   { href: "/reports/hr", title: "HR Report", description: "Payroll by employee and department." },
-  { href: "/reports/invoice-listing", title: "Invoice Listing Report", description: "Invoices issued in 2026 for Kasturi Indah, Signature Solution Catering (JDT game matches) and Signature Solution (Finance / Admin only)." },
   { href: "/reports/event-summary", title: "Event Summary Report", description: "Each event with its company, type of serving, revenue and payment status, by month (Finance / Admin only)." },
   { href: "/reports/company-summary", title: "Company Summary", description: "One printable rollup of every module for a company and month." },
 ];
