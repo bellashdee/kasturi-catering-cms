@@ -118,6 +118,8 @@ export function PettyCashEntryForm({
   const [personName, setPersonName] = useState(editing?.person_name ?? holderName);
   // the amount split between the categories (and the companies of a claim): what was typed for each part; empty = shared equally
   const [shareText, setShareText] = useState<Record<string, string>>({});
+  // a claim for more than one company: split the amount between them (each company keeps its own part) or keep it as one claim for all
+  const [splitBetweenCompanies, setSplitBetweenCompanies] = useState(true);
   const [claimant, setClaimant] = useState("");
   const [department, setDepartment] = useState("");
   const [receipt, setReceipt] = useState<File | null>(null);
@@ -132,10 +134,11 @@ export function PettyCashEntryForm({
   const categoryList = isReceived ? [] : chosenCategories(splitCategories(category));
   const byCategory = categoryList.length > 1;
   // a new claim is split between its companies (the money of each company is kept apart) and its categories
-  const splitClaim = isClaim && !editing && (chosenCompanies.length > 1 || byCategory);
-  const splitByCompany = splitClaim && chosenCompanies.length > 1;
+  const canSplitCompanies = isClaim && !editing && chosenCompanies.length > 1;
+  const splitByCompany = canSplitCompanies && splitBetweenCompanies;
+  const splitClaim = isClaim && !editing && (splitByCompany || byCategory);
   const showSplit = splitClaim || (!isClaim && byCategory);
-  const cells = splitCells(amount, byCategory ? categoryList : [], splitClaim ? chosenCompanies.map((c) => c.id) : [], shareText);
+  const cells = splitCells(amount, byCategory ? categoryList : [], splitByCompany ? chosenCompanies.map((c) => c.id) : [], shareText);
   const isPayment = kind === "claim_payment";
   const paidClaim = pendingClaims.find((c) => c.id === payClaimId);
   const isPayer = (name: string) => claimPayers.some((p) => p.name === name);
@@ -229,7 +232,9 @@ export function PettyCashEntryForm({
             documentId,
             personName: personName.trim(),
             paymentMethod,
-            shares: cells.map((c) => ({ companyId: c.companyId, amount: c.amount, ...(byCategory ? { category: c.category } : {}) })),
+            shares: cells.map((c) => ({ companyId: c.companyId || firstCompanyId, amount: c.amount, ...(byCategory ? { category: c.category } : {}) })),
+            // not split between the companies: every part is for all the companies chosen (counted once)
+            alsoCompanyIds: splitByCompany ? undefined : alsoCompanyIds,
           })
         : isClaim
         ? await createPettyCashTransaction({
@@ -469,6 +474,18 @@ export function PettyCashEntryForm({
           <DescriptionInput value={description} onChange={setDescription} companyId={firstCompanyId} className={inputClass} placeholder={isReceived ? "e.g. Float from Ms. Penny" : "e.g. Petrol for event delivery"} />
         </div>
       </div>
+
+      {canSplitCompanies && (
+        <label className="flex items-start gap-2.5 rounded-lg border border-border bg-surface-alt px-3 py-2.5 text-[13px]">
+          <input type="checkbox" className="mt-0.5 h-4 w-4" checked={splitBetweenCompanies} onChange={(e) => { setSplitBetweenCompanies(e.target.checked); setShareText({}); }} />
+          <span>
+            <span className="font-semibold text-text">Split the amount between the companies</span>
+            <span className="block text-[12px] text-text-secondary">
+              {splitBetweenCompanies ? "Each company gets its own part of the amount." : "Not split: one claim with the whole amount, for all the companies chosen."}
+            </span>
+          </span>
+        </label>
+      )}
 
       {showSplit && (
         <SplitAmountBox

@@ -327,6 +327,8 @@ export type SplitClaimInput = {
    * its own record); together they are the whole claim. category is left out when only the companies are split.
    */
   shares: { companyId: string; amount: number; category?: string }[];
+  /** a claim not split between the companies: the other companies every part is also for (keyed in once, counted once) */
+  alsoCompanyIds?: string[];
   /** cash or online transfer: how the staff member paid */
   paymentMethod?: string;
 };
@@ -365,7 +367,7 @@ export async function createSplitPettyCashClaims(input: SplitClaimInput): Promis
           document_id: input.documentId || null,
           person_name: input.personName.trim().slice(0, 200),
           person_position: input.personPosition?.trim().slice(0, 200) || null,
-          shared_company_ids: [],
+          shared_company_ids: (input.alsoCompanyIds ?? []).filter((id) => id !== s.companyId),
           payment_method: paymentMethod,
           created_by: userId,
         })),
