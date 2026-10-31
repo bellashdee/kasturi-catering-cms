@@ -33,6 +33,49 @@ function date(value: string | null): string {
   return value ? formatMalaysiaDate(`${value}T12:00:00+08:00`) : "—";
 }
 
+type Totals = ReturnType<typeof summarizePayments>;
+
+/** Totals of a group of payments as a table: one row for each group, the money columns lined up, and a total row when there is more than one. */
+function TotalsTable({ firstColumn, rows }: { firstColumn: string; rows: { label: string; s: Totals }[] }) {
+  const sum = (pick: (s: Totals) => number) => rows.reduce((t, r) => t + pick(r.s), 0);
+  const money = "px-3 py-2 text-right tabular-nums whitespace-nowrap";
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse text-[13px]">
+        <thead>
+          <tr className="border-b border-border text-left text-[11.5px] font-bold uppercase tracking-wider text-text-secondary">
+            <th className="px-3 py-2">{firstColumn}</th>
+            <th className="px-3 py-2 text-right">Total</th>
+            <th className="px-3 py-2 text-right">Paid</th>
+            <th className="px-3 py-2 text-right">Pending</th>
+            <th className="px-3 py-2 text-right">Overdue</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(({ label, s }) => (
+            <tr key={label} className="border-b border-border">
+              <td className="px-3 py-2 font-semibold text-text">{label}</td>
+              <td className={`${money} font-semibold text-text`}>{formatRM(s.total)}</td>
+              <td className={`${money} text-success`}>{formatRM(s.paid)}</td>
+              <td className={`${money} text-text`}>{formatRM(s.pending)}</td>
+              <td className={`${money} ${s.overdue > 0 ? "font-semibold text-danger" : "text-text-secondary"}`}>{s.overdue > 0 ? formatRM(s.overdue) : "—"}</td>
+            </tr>
+          ))}
+          {rows.length > 1 && (
+            <tr className="bg-info-bg/40 font-bold">
+              <td className="px-3 py-2 text-text">Total</td>
+              <td className={`${money} text-text`}>{formatRM(sum((s) => s.total))}</td>
+              <td className={`${money} text-success`}>{formatRM(sum((s) => s.paid))}</td>
+              <td className={`${money} text-text`}>{formatRM(sum((s) => s.pending))}</td>
+              <td className={`${money} ${sum((s) => s.overdue) > 0 ? "text-danger" : "text-text-secondary"}`}>{sum((s) => s.overdue) > 0 ? formatRM(sum((s) => s.overdue)) : "—"}</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 /** Finance Payment Report: supplier, rental and utilities payments of a month, with totals per category and company. Finance / Admin only. */
 export default async function FinancePaymentsReportPage({
   searchParams,
@@ -139,27 +182,13 @@ export default async function FinancePaymentsReportPage({
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <SectionCard title="By Category">
-          <div className="-mx-5 -mb-5 divide-y divide-border">
-            {byCategory.map(({ c, s }) => (
-              <div key={c} className="flex items-center justify-between px-5 py-2.5 text-[13px]">
-                <span className="font-semibold text-text">{PAYMENT_CATEGORY_LABEL[c]}</span>
-                <span className="text-text-secondary">Total {formatRM(s.total)} · Paid {formatRM(s.paid)} · Pending {formatRM(s.pending)}{s.overdue > 0 ? ` · Overdue ${formatRM(s.overdue)}` : ""}</span>
-              </div>
-            ))}
-          </div>
+          <TotalsTable firstColumn="Category" rows={byCategory.map(({ c, s }) => ({ label: PAYMENT_CATEGORY_LABEL[c], s }))} />
         </SectionCard>
         <SectionCard title="By Company (Payment Of)">
           {byCompany.length === 0 ? (
             <EmptyRow text="No payments for this month and filter." />
           ) : (
-            <div className="-mx-5 -mb-5 divide-y divide-border">
-              {byCompany.map(({ name, s }) => (
-                <div key={name} className="flex items-center justify-between px-5 py-2.5 text-[13px]">
-                  <span className="font-semibold text-text">{name}</span>
-                  <span className="text-text-secondary">Total {formatRM(s.total)} · Paid {formatRM(s.paid)} · Pending {formatRM(s.pending)}{s.overdue > 0 ? ` · Overdue ${formatRM(s.overdue)}` : ""}</span>
-                </div>
-              ))}
-            </div>
+            <TotalsTable firstColumn="Company" rows={byCompany.map(({ name, s }) => ({ label: name, s }))} />
           )}
         </SectionCard>
       </div>
