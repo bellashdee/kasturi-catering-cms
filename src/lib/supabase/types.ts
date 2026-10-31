@@ -3267,6 +3267,63 @@ export type Database = {
           },
         ]
       }
+      breakdown_items: {
+        Row: {
+          amounts: (number | null)[]
+          budget: number | null
+          company_id: string
+          id: string
+          label: string
+          line: string
+          note: string | null
+          sort_order: number
+          updated_at: string
+          updated_by: string | null
+          year: number
+        }
+        Insert: {
+          amounts?: (number | null)[]
+          budget?: number | null
+          company_id: string
+          id?: string
+          label: string
+          line: string
+          note?: string | null
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+          year: number
+        }
+        Update: {
+          amounts?: (number | null)[]
+          budget?: number | null
+          company_id?: string
+          id?: string
+          label?: string
+          line?: string
+          note?: string | null
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "breakdown_items_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "breakdown_items_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       monthly_sales: {
         Row: {
           company_id: string
