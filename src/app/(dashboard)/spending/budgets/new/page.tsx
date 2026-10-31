@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { SPENDING_CATEGORIES } from "@/lib/finance/spendingCategories";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
@@ -28,7 +29,7 @@ export default async function NewBudgetPage({
     <div className="mx-auto max-w-2xl">
       <h1 className="text-[22px] font-extrabold text-text">New Budget</h1>
       <div className="mt-5 rounded-xl border border-border bg-surface p-6 shadow-sm">
-        <BudgetForm companies={selectable} defaultCompanyId={defaultCompanyId} categories={uniqueCategories(categories)} />
+        <BudgetForm companies={selectable} defaultCompanyId={defaultCompanyId} categories={SPENDING_CATEGORIES.map((name) => ({ id: name, name }))} />
       </div>
     </div>
   );

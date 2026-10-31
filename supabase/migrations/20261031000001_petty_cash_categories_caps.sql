@@ -62,14 +62,5 @@ update public.budgets set category = pg_temp.new_category(category) where catego
 update public.operation_petty_cash set category = pg_temp.new_categories(category) where category is not null and category is distinct from pg_temp.new_categories(category);
 update public.petty_cash_transactions set category = pg_temp.new_categories(category) where category is not null and category is distinct from pg_temp.new_categories(category);
 
--- the category choices (budgets, reports) become the one list
-delete from public.cost_categories;
-insert into public.cost_categories (company_id, name)
-select null, name from unnest(array[
-  'BAKERY & BREAD', 'BEEF & MEAT', 'BEVERAGES & BAR ITEMS', 'CHARCOAL & GAS', 'CHICKEN', 'CLEANING & SANITATION SUPPLIES',
-  'DAIRY & FROZEN PRODUCTS', 'DRY GOODS & GROCERIES', 'EGGS', 'EQUIPMENT, KITCHEN SUPPLIES & MAINTENANCE', 'FISH',
-  'FOOD PASTE, SAUCES & SEASONINGS', 'FRUITS', 'FUEL / PETROL', 'ICE', 'INTERNET & TELECOMMUNICATION',
-  'LICENSES, PERMITS & CERTIFICATIONS', 'MARKETING & ADVERTISING', 'MISCELLANEOUS', 'PACKAGING & DISPOSABLE ITEMS',
-  'PROFESSIONAL & CONSULTANCY FEES', 'RENTAL', 'REPAIRS & RENOVATION', 'RICE', 'SEAFOOD', 'SOFTWARE & SUBSCRIPTION',
-  'STAFF MEALS & REFRESHMENTS', 'STAFF SALARIES & WAGES', 'STAFF UNIFORMS & PPE', 'TRANSPORTATION & DELIVERY', 'UTILITIES', 'VEGETABLES'
-]) as name;
+
+-- the category choices of the forms, budgets and report filters come from that same list in the code (not cost_categories)

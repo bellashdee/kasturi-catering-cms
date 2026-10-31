@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { SPENDING_CATEGORIES } from "@/lib/finance/spendingCategories";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
@@ -106,7 +107,7 @@ export default async function AdminPage({
           <label className="whitespace-nowrap text-[12px] font-semibold text-text-secondary">Category</label>
           <Select name="category" defaultValue={categoryParam ?? ""} className="h-9 w-52 rounded-lg border border-border-strong px-2 text-[13px]">
             <option value="">All Categories</option>
-            {uniqueCategories(categories).map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+            {SPENDING_CATEGORIES.map((name) => <option key={name} value={name}>{name}</option>)}
           </Select>
         </div>
         <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply Filters</button>

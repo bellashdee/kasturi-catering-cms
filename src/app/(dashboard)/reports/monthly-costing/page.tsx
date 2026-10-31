@@ -1,4 +1,5 @@
 import { PieChart, sumBy } from "@/components/reports/PieChart";
+import { SPENDING_CATEGORIES } from "@/lib/finance/spendingCategories";
 import { monthDateRange, parseDateRange, resolvePeriod } from "@/lib/finance/constants";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -152,7 +153,7 @@ export default async function MonthlyCostingReportPage({
         department={departmentParam}
         departmentOptions={departments.map((d) => ({ value: d, label: d }))}
         category={categoryParam}
-        categoryOptions={uniqueCategories(categories).map((c) => ({ value: c.name, label: c.name }))}
+        categoryOptions={SPENDING_CATEGORIES.map((name) => ({ value: name, label: name }))}
       />
 
       <CostingCharts

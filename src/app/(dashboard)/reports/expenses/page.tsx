@@ -1,4 +1,5 @@
 import { PieChart, sumBy } from "@/components/reports/PieChart";
+import { SPENDING_CATEGORIES } from "@/lib/finance/spendingCategories";
 import { parseDateRange } from "@/lib/finance/constants";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -86,7 +87,7 @@ export default async function ExpenseReportPage({
         department={departmentParam}
         departmentOptions={departments.map((d) => ({ value: d, label: d }))}
         category={categoryParam}
-        categoryOptions={uniqueCategories(categories).map((c) => ({ value: c.name, label: c.name }))}
+        categoryOptions={SPENDING_CATEGORIES.map((name) => ({ value: name, label: name }))}
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
