@@ -17,6 +17,7 @@ const REPORTS = [
   { href: "/reports/kitchen", title: "Kitchen Report", description: "Production orders, ingredient cost and wastage." },
   { href: "/reports/driver", title: "Driver Report", description: "Deliveries and vehicle running costs." },
   { href: "/reports/hr", title: "HR Report", description: "Payroll by employee and department." },
+  { href: "/reports/invoice-listing", title: "Invoice Listing Report", description: "Invoices issued in 2026 for Kasturi Indah, Signature Solution Catering (JDT game matches) and Signature Solution (Finance / Admin only)." },
   { href: "/reports/company-summary", title: "Company Summary", description: "One printable rollup of every module for a company and month." },
 ];
 
