@@ -286,7 +286,7 @@ export async function createPettyCashTransaction(input: PettyCashInput): Promise
     claimant_name: input.type === "expense" ? input.claimantName || null : null,
     claimant_department: input.type === "expense" ? input.claimantDepartment || null : null,
     payment_status: input.type === "expense" ? "pending_payment" : "paid",
-    category: input.category || null,
+    category: input.type === "expense" ? input.category || null : null,
     description: input.description || null,
     amount: input.amount,
     // the claim date: today (Malaysia) unless a date is given; the payment date is recorded separately when it is paid
@@ -833,7 +833,8 @@ export async function updatePettyCashClaim(id: string, input: PettyCashClaimEdit
       .update({
         claimant_name: before.type === "expense" ? input.claimantName?.trim() || null : null,
         claimant_department: before.type === "expense" ? input.claimantDepartment?.trim() || null : null,
-        category: input.category?.trim() || null,
+        // money received (a top-up) has no category
+        category: before.type === "expense" ? input.category?.trim() || null : null,
         description: input.description?.trim() || null,
         amount: input.amount,
         transaction_date: input.transactionDate,

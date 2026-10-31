@@ -48,7 +48,8 @@ export type PettyCashEntryInput = {
 /** The entries to save: one for each category the amount is split between, otherwise the one entry as it is. */
 function parts(input: PettyCashEntryInput): CategoryShare[] {
   const shares = input.entryType === "expense" ? checkCategoryShares(input.amount, input.categoryShares) : null;
-  return shares ?? [{ category: input.category?.trim() ?? "", amount: input.amount }];
+  // money received has no category (one chosen before the Type was changed to Received is not kept)
+  return shares ?? [{ category: input.entryType === "expense" ? (input.category?.trim() ?? "") : "", amount: input.amount }];
 }
 
 function validate(input: PettyCashEntryInput) {

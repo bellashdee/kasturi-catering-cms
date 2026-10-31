@@ -249,10 +249,12 @@ export function PettyCashClaimActions({ claim, companies }: { claim: ClaimEditDa
               <label className={LABEL}>Amount (RM) *</label>
               <input required type="number" step="any" min="0" className={FIELD} value={f.amount} onChange={(e) => set({ amount: e.target.value })} />
             </div>
-            <div>
-              <label className={LABEL}>Category (choose one or more)</label>
-              <MultiChoiceSelect options={PETTY_CASH_CATEGORIES} value={splitCategories(f.category)} onChange={(list) => set({ category: joinCategories(list) })} placeholder="Select category" searchPlaceholder="Search category" />
-            </div>
+            {claim.type === "expense" && (
+              <div>
+                <label className={LABEL}>Category (choose one or more)</label>
+                <MultiChoiceSelect options={PETTY_CASH_CATEGORIES} value={splitCategories(f.category)} onChange={(list) => set({ category: joinCategories(list) })} placeholder="Select category" searchPlaceholder="Search category" />
+              </div>
+            )}
             <div>
               <label className={LABEL}>Description</label>
               <input className={FIELD} value={f.description} onChange={(e) => set({ description: e.target.value })} />
