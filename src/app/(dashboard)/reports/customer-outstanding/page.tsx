@@ -5,6 +5,7 @@ import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listCustomerInvoices } from "@/lib/finance/queries";
 import { INVOICE_STATUS_LABEL, isOverdue } from "@/lib/finance/constants";
+import { invoiceBalance, invoicePaid, invoiceTotal, isOpenInvoice } from "@/lib/finance/outstanding";
 import { formatCurrency } from "@/lib/format";
 import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { ReportTable } from "@/components/reports/ReportTable";
@@ -33,9 +34,10 @@ export default async function CustomerOutstandingReportPage({
   }
 
   const allInvoices = await listCustomerInvoices(supabase, targetCompanyIds);
-  const outstanding = allInvoices.filter((i) => i.status !== "paid");
+  // the same balance the Performance Dashboard and the Company Summary use: invoice total with tax, less the payments received
+  const outstanding = allInvoices.filter((i) => isOpenInvoice(i.status) && invoiceBalance(i) > 0);
   const rows = statusParam ? outstanding.filter((i) => i.status === statusParam) : outstanding;
-  const total = rows.reduce((t, i) => t + Number(i.amount), 0);
+  const total = rows.reduce((t, i) => t + invoiceBalance(i), 0);
 
   const { headers, tableRows } = buildReportRows(
     rows,
@@ -44,7 +46,9 @@ export default async function CustomerOutstandingReportPage({
       { key: "customer", label: "Customer", exportValue: (r) => r.customers?.name ?? "—" },
       { key: "due", label: "Due Date", exportValue: (r) => r.due_date },
       { key: "company", label: "Company", exportValue: (r) => r.companies?.name ?? "—" },
-      { key: "amount", label: "Amount", exportValue: (r) => Number(r.amount), display: (r) => formatCurrency(Number(r.amount)) },
+      { key: "amount", label: "Invoice Total", exportValue: (r) => invoiceTotal(r), display: (r) => formatCurrency(invoiceTotal(r)) },
+      { key: "paid", label: "Paid", exportValue: (r) => invoicePaid(r), display: (r) => formatCurrency(invoicePaid(r)) },
+      { key: "balance", label: "Balance Owed", exportValue: (r) => invoiceBalance(r), display: (r) => <span className="font-semibold text-text">{formatCurrency(invoiceBalance(r))}</span> },
       {
         key: "status",
         label: "Status",
@@ -68,7 +72,7 @@ export default async function CustomerOutstandingReportPage({
         showYear={false}
         showMonth={false}
         status={statusParam}
-        statusOptions={Object.entries(INVOICE_STATUS_LABEL).filter(([v]) => v !== "paid").map(([value, label]) => ({ value, label }))}
+        statusOptions={Object.entries(INVOICE_STATUS_LABEL).filter(([v]) => isOpenInvoice(v)).map(([value, label]) => ({ value, label }))}
       />
 
       <ReportTable

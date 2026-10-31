@@ -19,7 +19,7 @@ export function SalesPurchasesChart({ year, sales, purchases }: { year: number; 
   return (
     <SectionCard title={`Sales and Purchases by Month — ${year}`}>
       <div className="mb-2 flex flex-wrap items-center gap-4 text-[12px] font-semibold text-text-secondary [print-color-adjust:exact]">
-        <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded-sm" style={{ background: "var(--color-navy-700)" }} />Sales invoiced</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded-sm" style={{ background: "var(--color-navy-700)" }} />Sales</span>
         <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded-sm" style={{ background: "#e0a030" }} />Purchases</span>
         <span className="ml-auto text-text">Sales {formatCurrency(totalSales)} · Purchases {formatCurrency(totalPurchases)} · {totalSales > 0 ? `${((totalPurchases / totalSales) * 100).toFixed(1)}% of sales` : "—"}</span>
       </div>

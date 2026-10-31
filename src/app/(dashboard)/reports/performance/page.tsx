@@ -4,13 +4,14 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listCustomerInvoices, listSpending } from "@/lib/finance/queries";
-import { isOverdue } from "@/lib/finance/constants";
+import { daysOverdue, invoiceBalance, invoiceTotal, isOpenInvoice } from "@/lib/finance/outstanding";
 import { SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
-import { formatCurrency, malaysiaYearMonth } from "@/lib/format";
+import { formatCurrency, malaysiaYearMonth, todayInMalaysia } from "@/lib/format";
 import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { PrintButton } from "@/components/reports/PrintButton";
 import { RankBars, type RankItem } from "@/components/reports/RankBars";
 import { SalesPurchasesChart } from "@/components/reports/SalesPurchasesChart";
+import { CHART_COLORS, ColumnChart, DonutChart, RED, StackedBar, TrendLines, type Slice } from "@/components/reports/Charts";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 import { SoftPage } from "@/components/ui/Soft";
 
@@ -29,14 +30,15 @@ function Stat({ label, value, sub, bad }: { label: string; value: string; sub?: 
   );
 }
 
+const Note = ({ children }: { children: React.ReactNode }) => <p className="mb-3 text-[12px] text-text-secondary">{children}</p>;
 const More = ({ to, children }: { to: string; children: React.ReactNode }) => (
   <Link href={to} className="mt-3 inline-block text-[12.5px] font-semibold text-primary underline print:hidden">{children} →</Link>
 );
 
 /**
- * Performance Dashboard: the chosen year of the chosen company on one page — sales, expenses and what is still owed, then the top-selling
- * products (types of serving), the key customers by sales volume, the ranking of customers with an outstanding balance and the breakdown
- * of expenses. Each block links to the report that holds its detail.
+ * Performance Dashboard: the chosen year of the chosen company on one page. Every figure is worked out once and used by the cards, the charts
+ * and the lists, and the unpaid balance is worked out the way the Customer Outstanding Report and the Company Summary do, so they tally.
+ * Each block links to the report that holds its detail.
  */
 export default async function PerformanceDashboardPage({ searchParams }: { searchParams: Promise<{ company?: string; year?: string }> }) {
   const session = await getSessionContext();
@@ -51,36 +53,58 @@ export default async function PerformanceDashboardPage({ searchParams }: { searc
   const query = requestedId ? `?company=${requestedId}` : "";
   if (targetCompanyIds.length === 0) return <EmptyRow text="You don't have access to any company yet." />;
 
-  const year = Number(yearParam) || malaysiaYearMonth().year;
+  const now = malaysiaYearMonth();
+  const year = Number(yearParam) || now.year;
   const start = `${year}-01-01`;
   const end = `${year}-12-31`;
+  const today = todayInMalaysia();
   const selected = companies.find((c) => targetCompanyIds.length === 1 && c.id === targetCompanyIds[0]);
+  // the months that have come: a month still to come is left out of the lines instead of dropping to 0
+  const lastMonth = year < now.year ? 12 : year > now.year ? 0 : now.month;
 
-  const [invoices, payments, events, spending, monthlySales, monthlyPurchases] = await Promise.all([
+  const [invoices, payments, events, spending, monthlyPurchases, monthlySales] = await Promise.all([
     listCustomerInvoices(supabase, targetCompanyIds),
-    supabase.from("customer_payments").select("amount").in("company_id", targetCompanyIds).gte("payment_date", start).lte("payment_date", end),
-    supabase.from("catering_events").select("service_type, total_amount, status, sales_agent").in("company_id", targetCompanyIds).gte("event_date", start).lte("event_date", end),
+    supabase.from("customer_payments").select("amount, payment_date").in("company_id", targetCompanyIds).gte("payment_date", start).lte("payment_date", end),
+    supabase.from("catering_events").select("service_type, total_amount, status").in("company_id", targetCompanyIds).gte("event_date", start).lte("event_date", end),
     listSpending(supabase, targetCompanyIds, start, end),
-    supabase.from("monthly_sales").select("month, sales_amount").in("company_id", targetCompanyIds).eq("year", year),
     supabase.from("monthly_purchases").select("month, purchase_amount").in("company_id", targetCompanyIds).eq("year", year),
+    supabase.from("monthly_sales").select("company_id, month, sales_amount").in("company_id", targetCompanyIds).eq("year", year),
   ]);
-  const salesByMonth = Array<number>(12).fill(0);
-  const purchasesByMonth = Array<number>(12).fill(0);
-  for (const s of monthlySales.data ?? []) salesByMonth[s.month - 1] += Number(s.sales_amount);
-  for (const p of monthlyPurchases.data ?? []) purchasesByMonth[p.month - 1] += Number(p.purchase_amount);
 
-  // sales volume = the invoices issued in the year (drafts left out), tax included; received = payments with a payment date in the year
-  const yearInvoices = invoices.filter((i) => i.status !== "draft" && i.invoice_date >= start && i.invoice_date <= end);
-  const invoiced = sum(yearInvoices.map((i) => Number(i.amount) + Number(i.tax_amount ?? 0)));
-  const received = sum((payments.data ?? []).map((p) => Number(p.amount)));
-  const totalExpenses = sum(spending.map((c) => c.amount));
+  // sales = the invoices issued in the year (drafts and quotation requests waiting for review are not issued), tax included
+  const yearInvoices = invoices.filter((i) => isOpenInvoice(i.status) || i.status === "paid").filter((i) => i.invoice_date >= start && i.invoice_date <= end);
+  const salesByMonth = Array<number>(12).fill(0);
+  for (const i of yearInvoices) salesByMonth[Number(i.invoice_date.slice(5, 7)) - 1] += invoiceTotal(i);
+  // a company that keeps no invoices in the system (O2 Life) has its sales as the monthly total recorded for it (the figure Monthly Costing uses)
+  const invoicedCompanies = new Set(yearInvoices.map((i) => i.company_id));
+  const recordedOnly = new Set<string>();
+  for (const s of monthlySales.data ?? []) {
+    if (invoicedCompanies.has(s.company_id)) continue;
+    salesByMonth[s.month - 1] += Number(s.sales_amount);
+    recordedOnly.add(s.company_id);
+  }
+  const invoiced = sum(salesByMonth);
+
+  const receivedByMonth = Array<number>(12).fill(0);
+  for (const p of payments.data ?? []) receivedByMonth[Number(p.payment_date.slice(5, 7)) - 1] += Number(p.amount);
+  const received = sum(receivedByMonth);
+
+  const expenseByMonth = Array<number>(12).fill(0);
+  for (const c of spending) {
+    const m = Number(c.date.slice(5, 7)) - 1;
+    if (m >= 0 && m < 12) expenseByMonth[m] += c.amount;
+  }
+  const totalExpenses = sum(expenseByMonth);
+
+  const purchasesByMonth = Array<number>(12).fill(0);
+  for (const p of monthlyPurchases.data ?? []) purchasesByMonth[p.month - 1] += Number(p.purchase_amount);
 
   // key customers by sales volume
   const salesBy = new Map<string, { value: number; count: number }>();
   for (const i of yearInvoices) {
     const name = i.customers?.name ?? "—";
     const c = salesBy.get(name) ?? { value: 0, count: 0 };
-    c.value += Number(i.amount) + Number(i.tax_amount ?? 0);
+    c.value += invoiceTotal(i);
     c.count += 1;
     salesBy.set(name, c);
   }
@@ -89,26 +113,55 @@ export default async function PerformanceDashboardPage({ searchParams }: { searc
     .slice(0, TOP)
     .map(([label, c]) => ({ label, value: c.value, note: `${c.count} invoice${c.count === 1 ? "" : "s"}` }));
 
-  // customers with an outstanding balance: invoice total less what was paid on it, all years, as it stands today
-  const owedBy = new Map<string, { value: number; count: number; overdue: boolean }>();
-  for (const i of invoices) {
-    if (i.status === "paid" || i.status === "draft") continue;
-    const balance = Number(i.amount) + Number(i.tax_amount ?? 0) - sum((i.customer_payments ?? []).map((p) => Number(p.amount)));
-    if (balance <= 0.005) continue;
+  // top sales agents: the invoices of the year credited to the sales agent on the customer's details (Signature Solution Catering: Mr. Ismaizal)
+  const agentBy = new Map<string, { value: number; count: number; customers: Set<string> }>();
+  const noAgent = { value: 0, count: 0 };
+  for (const i of yearInvoices) {
+    const agent = i.customers?.sales_agent?.trim() || ((i.description ?? "").includes("Signature Solution Catering") ? SSC_AGENT : "");
+    if (!agent) {
+      noAgent.value += invoiceTotal(i);
+      noAgent.count += 1;
+      continue;
+    }
+    const c = agentBy.get(agent) ?? { value: 0, count: 0, customers: new Set<string>() };
+    c.value += invoiceTotal(i);
+    c.count += 1;
+    c.customers.add(i.customers?.name ?? i.customer_id);
+    agentBy.set(agent, c);
+  }
+  const agents = Array.from(agentBy.entries())
+    .filter(([, c]) => c.value > 0)
+    .sort((a, b) => b[1].value - a[1].value)
+    .map(([label, c]) => ({ label, value: c.value, note: `${c.count} inv · ${c.customers.size} cust` }));
+
+  // what is still owed: the balance of every issued invoice that is not settled, all years, as it stands today
+  const open = invoices.filter((i) => isOpenInvoice(i.status)).map((i) => ({ i, balance: invoiceBalance(i) })).filter((x) => x.balance > 0);
+  const owedAll = sum(open.map((x) => x.balance));
+  const owedBy = new Map<string, { value: number; count: number; late: number }>();
+  const aging = [0, 0, 0, 0, 0]; // not yet due, 1-30, 31-60, 61-90, over 90 days late
+  for (const { i, balance } of open) {
+    const days = daysOverdue(i.due_date, today);
+    aging[days <= 0 ? 0 : days <= 30 ? 1 : days <= 60 ? 2 : days <= 90 ? 3 : 4] += balance;
     const name = i.customers?.name ?? "—";
-    const c = owedBy.get(name) ?? { value: 0, count: 0, overdue: false };
+    const c = owedBy.get(name) ?? { value: 0, count: 0, late: 0 };
     c.value += balance;
     c.count += 1;
-    c.overdue = c.overdue || isOverdue(i.due_date, i.status);
+    c.late = Math.max(c.late, days);
     owedBy.set(name, c);
   }
-  const owedAll = Array.from(owedBy.values()).reduce((t, c) => t + c.value, 0);
   const outstanding: RankItem[] = Array.from(owedBy.entries())
     .sort((a, b) => b[1].value - a[1].value)
     .slice(0, TOP)
-    .map(([label, c]) => ({ label, value: c.value, note: `${c.count} invoice${c.count === 1 ? "" : "s"}`, flag: c.overdue ? "overdue" : undefined }));
+    .map(([label, c]) => ({ label, value: c.value, note: `${c.count} invoice${c.count === 1 ? "" : "s"}`, flag: c.late > 0 ? `${c.late} days late` : undefined }));
+  const agingSegments: Slice[] = [
+    { label: "Not yet due", value: aging[0], color: "#2e9e6b" },
+    { label: "1 – 30 days late", value: aging[1], color: "#e0a030" },
+    { label: "31 – 60 days late", value: aging[2], color: "#d9772b" },
+    { label: "61 – 90 days late", value: aging[3], color: "#c2410c" },
+    { label: "Over 90 days late", value: aging[4], color: RED },
+  ];
 
-  // top-selling products: the type of serving of the year's events (cancelled left out)
+  // revenue by type of serving (the year's events, cancelled left out)
   const productBy = new Map<string, { value: number; count: number }>();
   for (const e of events.data ?? []) {
     if (e.status === "cancelled") continue;
@@ -118,55 +171,30 @@ export default async function PerformanceDashboardPage({ searchParams }: { searc
     c.count += 1;
     productBy.set(label, c);
   }
-  const products: RankItem[] = Array.from(productBy.entries())
+  const products: Slice[] = Array.from(productBy.entries())
     .filter(([, c]) => c.value > 0)
     .sort((a, b) => b[1].value - a[1].value)
     .map(([label, c]) => ({ label, value: c.value, note: `${c.count} event${c.count === 1 ? "" : "s"}` }));
 
-  // top sales agents: the invoices issued in the year, credited to the sales agent kept on the customer's details; the Signature Solution
-  // Catering invoices (JDT game matches) are Mr. Ismaizal's; a customer with no agent goes to its own line
-  const agentBy = new Map<string, { value: number; count: number; customers: Set<string> }>();
-  const noAgent = { value: 0, count: 0 };
-  for (const i of yearInvoices) {
-    const total = Number(i.amount) + Number(i.tax_amount ?? 0);
-    const agent = i.customers?.sales_agent?.trim() || ((i.description ?? "").includes("Signature Solution Catering") ? SSC_AGENT : "");
-    if (!agent) {
-      noAgent.value += total;
-      noAgent.count += 1;
-      continue;
-    }
-    const c = agentBy.get(agent) ?? { value: 0, count: 0, customers: new Set<string>() };
-    c.value += total;
-    c.count += 1;
-    c.customers.add(i.customers?.name ?? i.customer_id);
-    agentBy.set(agent, c);
-  }
-  const agents: RankItem[] = Array.from(agentBy.entries())
-    .filter(([, c]) => c.value > 0)
-    .sort((a, b) => b[1].value - a[1].value)
-    .map(([label, c]) => ({ label, value: c.value, note: `${c.count} invoice${c.count === 1 ? "" : "s"} · ${c.customers.size} customer${c.customers.size === 1 ? "" : "s"}` }));
-  const agentsTotal = sum(agents.map((a) => a.value)) + noAgent.value;
-
-  // breakdown of expenses by category (the same names written in other capitals count as one), the smallest grouped as Other
-  const catBy = new Map<string, { label: string; value: number }>();
+  // expenses by category (the same names in other capitals count as one): the biggest six, the rest grouped as Other
+  const catBy = new Map<string, number>();
   for (const c of spending) {
     const key = c.category.toUpperCase().replace(/\s+/g, " ").trim();
-    const row = catBy.get(key) ?? { label: key, value: 0 };
-    row.value += c.amount;
-    catBy.set(key, row);
+    catBy.set(key, (catBy.get(key) ?? 0) + c.amount);
   }
-  const cats = Array.from(catBy.values()).filter((c) => c.value > 0).sort((a, b) => b.value - a.value);
-  const expenses: RankItem[] = cats.slice(0, TOP).map((c) => ({ label: c.label, value: c.value }));
-  if (cats.length > TOP) expenses.push({ label: `Other (${cats.length - TOP} categories)`, value: sum(cats.slice(TOP).map((c) => c.value)) });
+  const cats = Array.from(catBy.entries()).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  const expenses: Slice[] = cats.slice(0, 6).map(([label, value]) => ({ label, value }));
+  if (cats.length > 6) expenses.push({ label: `Other (${cats.length - 6} categories)`, value: sum(cats.slice(6).map(([, v]) => v)), color: CHART_COLORS[6] });
 
   const net = received - totalExpenses;
+  const upTo = (v: number[]): (number | null)[] => v.map((x, i) => (i < lastMonth ? x : null));
 
   return (
     <SoftPage>
       <div>
         <Link href={`/reports${query}`} className="text-[12.5px] font-semibold text-text-secondary">← Back to Reports</Link>
         <h1 className="mt-2 text-[22px] font-extrabold text-text">Performance Dashboard — {selected ? selected.name : "All Companies"}</h1>
-        <p className="mt-0.5 text-[13px] text-text-secondary">{year} · sales, expenses and what is still owed, from the recorded figures.</p>
+        <p className="mt-0.5 text-[13px] text-text-secondary">{year} · sales, expenses and what is still owed, from the recorded figures. Each block links to the report with its detail.</p>
       </div>
 
       <div className="flex flex-wrap items-end justify-between gap-3 print:hidden">
@@ -175,51 +203,71 @@ export default async function PerformanceDashboardPage({ searchParams }: { searc
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <Stat label="Sales invoiced" value={formatCurrency(invoiced)} sub={`${yearInvoices.length} invoices`} />
+        <Stat label="Sales" value={formatCurrency(invoiced)} sub={recordedOnly.size > 0 ? `${yearInvoices.length} invoices + recorded monthly sales` : `${yearInvoices.length} invoices issued`} />
         <Stat label="Money received" value={formatCurrency(received)} sub="payments in the year" />
         <Stat label="Total expenses" value={formatCurrency(totalExpenses)} sub={`${cats.length} categories`} />
         <Stat label="Received less expenses" value={formatCurrency(net)} bad={net < 0} sub={received > 0 ? `${((net / received) * 100).toFixed(1)}% of money received` : undefined} />
         <Stat label="Still owed to us" value={formatCurrency(owedAll)} bad={owedAll > 0} sub={`${owedBy.size} customer${owedBy.size === 1 ? "" : "s"}, all years, today`} />
       </div>
 
-      <SalesPurchasesChart year={year} sales={salesByMonth} purchases={purchasesByMonth} />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <SectionCard title={`Money Received and Expenses — ${year}`}>
+          <Note>Month by month: payments received against every cost recorded.</Note>
+          <TrendLines series={[{ label: "Money received", values: upTo(receivedByMonth), color: "#2e9e6b" }, { label: "Expenses", values: upTo(expenseByMonth), color: RED }]} />
+          <More to={`/reports/revenue${query}`}>Revenue Report</More>
+        </SectionCard>
+        <SalesPurchasesChart year={year} sales={salesByMonth} purchases={purchasesByMonth} />
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <SectionCard title={`Top-Selling Products — ${year}`}>
-          <p className="mb-3 text-[12px] text-text-secondary">By type of serving: revenue of the year&apos;s events (cancelled left out).</p>
-          <RankBars items={products} empty="No events with revenue this year." />
+        <SectionCard title={`Revenue by Type of Serving — ${year}`}>
+          <Note>Share of the year&apos;s event revenue (cancelled events left out).</Note>
+          <DonutChart slices={products} centerLabel="Event revenue" empty="No events with revenue this year." />
           <More to={`/reports/catering${query}`}>Catering Report</More>
         </SectionCard>
+        <SectionCard title={`Breakdown of Expenses — ${year}`}>
+          <Note>Every cost recorded in the year: the six biggest categories, the rest grouped as Other.</Note>
+          <DonutChart slices={expenses} centerLabel="Total expenses" empty="No expenses recorded this year." />
+          <More to={`/reports/monthly-costing${query}`}>Monthly Costing Report</More>
+        </SectionCard>
+      </div>
 
+      <div className="grid gap-4 lg:grid-cols-2">
         <SectionCard title={`Key Customers by Sales Volume — ${year}`}>
-          <p className="mb-3 text-[12px] text-text-secondary">Invoices issued in the year, tax included (drafts left out). Top {TOP}.</p>
+          <Note>Invoices issued in the year, tax included. Top {TOP}.</Note>
           <RankBars items={keyCustomers} total={invoiced} empty="No invoices issued this year." />
           <More to={`/reports/revenue?view=invoiced${requestedId ? `&company=${requestedId}` : ""}`}>Revenue Report · Invoices issued</More>
         </SectionCard>
-
         <SectionCard title={`Top Sales Agents — ${year}`}>
-          <p className="mb-3 text-[12px] text-text-secondary">Who brought in the most sales: the invoices issued in the year, credited to the sales agent on the customer&apos;s details (the Signature Solution Catering invoices to {SSC_AGENT}). Biggest first.</p>
-          <RankBars items={agents} total={agentsTotal} color="#2f7fc1" empty="No customer with a sales agent was invoiced this year." />
+          <Note>Invoices of the year credited to the sales agent on the customer&apos;s details (Signature Solution Catering: {SSC_AGENT}). Biggest first.</Note>
+          <ColumnChart items={agents} empty="No customer with a sales agent was invoiced this year." />
           {noAgent.count > 0 && (
             <p className="mt-3 text-[12px] text-text-secondary">
-              Customers with no sales agent on their details: {formatCurrency(noAgent.value)} from {noAgent.count} invoice{noAgent.count === 1 ? "" : "s"} (in the share above, not in the ranking). Fill in the sales agent on the customer to count it here.
+              No sales agent on the customer: {formatCurrency(noAgent.value)} from {noAgent.count} invoice{noAgent.count === 1 ? "" : "s"}, not in the chart. Fill in the sales agent on the customer to count it.
             </p>
           )}
           <More to={`/catering/customers${query}`}>Customers</More>
         </SectionCard>
-
-        <SectionCard title="Customers with an Outstanding Balance">
-          <p className="mb-3 text-[12px] text-text-secondary">What is still unpaid after the payments received, biggest first. Top {TOP}; all years, as it stands today.</p>
-          <RankBars items={outstanding} total={owedAll} color="var(--color-danger, #b42318)" empty="Nothing is owed. Every invoice is paid." />
-          <More to={`/reports/customer-outstanding${query}`}>Customer Outstanding Report</More>
-        </SectionCard>
-
-        <SectionCard title={`Breakdown of Expenses — ${year}`}>
-          <p className="mb-3 text-[12px] text-text-secondary">Every cost recorded in the year, by category. Top {TOP}, the rest grouped as Other.</p>
-          <RankBars items={expenses} total={totalExpenses} color="#e0a030" empty="No expenses recorded this year." />
-          <More to={`/reports/monthly-costing${query}`}>Monthly Costing Report</More>
-        </SectionCard>
       </div>
+
+      <SectionCard title="Who Still Owes Us">
+        <Note>The balance still unpaid on every issued invoice after the payments received, all years, as it stands today: {formatCurrency(owedAll)} in all.</Note>
+        {open.length === 0 ? (
+          <EmptyRow text="Nothing is owed. Every invoice is paid." />
+        ) : (
+          <div className="flex flex-col gap-6">
+            <div>
+              <div className="mb-2 text-[12px] font-bold uppercase tracking-wider text-text-secondary">How late is it</div>
+              <StackedBar segments={agingSegments} />
+            </div>
+            <div>
+              <div className="mb-2 text-[12px] font-bold uppercase tracking-wider text-text-secondary">Customers, biggest balance first (top {TOP})</div>
+              <RankBars items={outstanding} total={owedAll} color={RED} empty="Nothing is owed." />
+            </div>
+          </div>
+        )}
+        <More to={`/reports/customer-outstanding${query}`}>Customer Outstanding Report</More>
+      </SectionCard>
     </SoftPage>
   );
 }
