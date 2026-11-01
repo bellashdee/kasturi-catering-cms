@@ -50,7 +50,8 @@ export function CompanyExpenseUploadReview({
   const [department, setDepartment] = useState("");
   const [accountId, setAccountId] = useState("");
   // one or more categories: with more than one, the amount is split between them and each part is saved as its own expense
-  const [form, setForm] = useState({ categories: [categories[0]?.name ?? "Other"], description: "", amount: "", expenseDate: "" });
+  // the category is never filled in by itself (not even from a receipt read by the AI): the person chooses it
+  const [form, setForm] = useState<{ categories: string[]; description: string; amount: string; expenseDate: string }>({ categories: [], description: "", amount: "", expenseDate: "" });
   const [shareText, setShareText] = useState<Record<string, string>>({});
   const byCategory = form.categories.length > 1;
   const cells = splitCells(form.amount, byCategory ? form.categories : [], [], shareText);
@@ -72,9 +73,8 @@ export function CompanyExpenseUploadReview({
   async function handleUploadAndExtract() {
     const extracted = (await flow.uploadAndExtract({ companyId, module: "finance", extractionKind: "company_expense" })) as ExtractedExpense | null;
     if (extracted) {
-      const matchedCategory = categories.find((c) => c.name.toLowerCase() === (extracted.category ?? "").toLowerCase());
       setForm({
-        categories: [matchedCategory?.name ?? categories[0]?.name ?? "Other"],
+        categories: [],
         description: extracted.description ?? "",
         amount: extracted.amount?.toString() ?? "",
         expenseDate: extracted.expense_date ?? "",

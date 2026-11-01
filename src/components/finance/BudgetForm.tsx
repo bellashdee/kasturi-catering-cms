@@ -20,7 +20,8 @@ export function BudgetForm({ companies, defaultCompanyId, categories }: { compan
   const { year: nowYear, month: nowMonth } = currentYearMonth();
   const [companyId, setCompanyId] = useState(defaultCompanyId ?? companies[0]?.id ?? "");
   const [department, setDepartment] = useState("");
-  const [category, setCategory] = useState(categories[0]?.name ?? "Other");
+  // no category until the person chooses one
+  const [category, setCategory] = useState("");
   const [year, setYear] = useState(String(nowYear));
   const [month, setMonth] = useState(String(nowMonth));
   const [budgetedAmount, setBudgetedAmount] = useState("");
@@ -30,6 +31,10 @@ export function BudgetForm({ companies, defaultCompanyId, categories }: { compan
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!category) {
+      setError("Choose the category.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -73,7 +78,8 @@ export function BudgetForm({ companies, defaultCompanyId, categories }: { compan
       <div className="grid grid-cols-3 gap-4">
         <div>
           <label className="text-[12.5px] font-semibold text-text-secondary">Category *</label>
-          <Select value={category} onChange={(e) => setCategory(e.target.value)} className="mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none">
+          <Select value={category} onChange={(e) => setCategory(e.target.value)} required className="mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none">
+            <option value="">Select category</option>
             {categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
           </Select>
         </div>
