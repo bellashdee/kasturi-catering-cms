@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { adminCompanyIds } from "@/lib/finance/paymentQueries";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, malaysiaYearMonth } from "@/lib/format";
 import { MONTH_LABEL } from "@/lib/finance/constants";
 import { buildReportRows } from "@/lib/reports/buildRows";
-import { INVOICE_LISTING_ASOF, KASTURI_ROWS, SS_CATERING_ROWS, SS_ROWS, type InvoiceListingRow } from "@/lib/invoiceListing/data";
+import type { InvoiceListingRow } from "@/lib/invoiceListing/data";
 import { Select } from "@/components/ui/Select";
 import { PrintButton } from "@/components/reports/PrintButton";
 import { ReportTable } from "@/components/reports/ReportTable";
@@ -12,16 +12,44 @@ import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 import { SoftPage } from "@/components/ui/Soft";
 
 const ENTITIES = {
-  kasturi: { label: "Kasturi Indah Sdn Bhd", note: "Kasturi Indah Sdn Bhd", rows: KASTURI_ROWS, withTax: false },
-  "ss-catering": { label: "Signature Solution Catering", note: "Food supply for JDT game match events (Signature Solution Sdn Bhd)", rows: SS_CATERING_ROWS, withTax: false },
-  ss: { label: "Signature Solution Sdn Bhd", note: "Signature Solution Sdn Bhd (invoices with tax)", rows: SS_ROWS, withTax: true },
+  kasturi: { label: "Kasturi Indah Sdn Bhd", note: "Kasturi Indah Sdn Bhd", withTax: false },
+  "ss-catering": { label: "Signature Solution Catering", note: "Food supply for JDT game match events (Signature Solution Sdn Bhd)", withTax: false },
+  ss: { label: "Signature Solution Sdn Bhd", note: "Signature Solution Sdn Bhd (invoices with tax)", withTax: true },
 } as const;
 type EntityKey = keyof typeof ENTITIES;
 
-const YEAR = 2026;
+const YEAR = malaysiaYearMonth().year;
 const sum = (rows: InvoiceListingRow[], i: 4 | 5 | 6) => rows.reduce((t, r) => t + r[i], 0);
 const monthOf = (r: InvoiceListingRow) => Number(r[1].slice(5, 7));
 const dmy = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
+
+/**
+ * The invoices issued in the year, from the invoices in the system (so this view, the Performance Dashboard, the Monthly Costing sales and the
+ * AutoCount listings all give the same total): drafts and quotation requests waiting for review are not issued. Signature Solution has two parts:
+ * its Catering invoices (JDT game match, named so in the invoice description) and the rest.
+ */
+async function loadRows(supabase: Awaited<ReturnType<typeof createClient>>): Promise<Record<EntityKey, InvoiceListingRow[]>> {
+  const { data, error } = await supabase
+    .from("customer_invoices")
+    .select("invoice_number, invoice_date, amount, tax_amount, description, companies(name), customers(name, account_code)")
+    .not("status", "in", "(draft,pending_review)")
+    .gte("invoice_date", `${YEAR}-01-01`)
+    .lte("invoice_date", `${YEAR}-12-31`)
+    .order("invoice_date")
+    .order("invoice_number")
+    .range(0, 4999);
+  if (error) throw error;
+  const out: Record<EntityKey, InvoiceListingRow[]> = { kasturi: [], "ss-catering": [], ss: [] };
+  for (const i of data ?? []) {
+    const company = i.companies?.name;
+    const sub = Number(i.amount);
+    const tax = Number(i.tax_amount ?? 0);
+    const row: InvoiceListingRow = [i.invoice_number, i.invoice_date, (i.customers?.account_code ?? "—").replace(/\s*\(.*$/, ""), i.customers?.name ?? "—", sub, tax, sub + tax];
+    if (company === "Kasturi Indah") out.kasturi.push(row);
+    else if (company === "Signature Solution") (((i.description ?? "").includes("Signature Solution Catering")) ? out["ss-catering"] : out.ss).push(row);
+  }
+  return out;
+}
 
 /** Invoices of the year, month by month: the exact amount is the tooltip. Plain SVG, so it prints as it looks. */
 function MonthBars({ values }: { values: number[] }) {
@@ -99,14 +127,16 @@ export async function InvoiceListingView({ entity: entityParam, month: monthPara
     );
   }
 
+  const data = await loadRows(supabase);
   const entityKey: EntityKey = entityParam && entityParam in ENTITIES ? (entityParam as EntityKey) : "kasturi";
-  const entity = ENTITIES[entityKey];
+  const entity = { ...ENTITIES[entityKey], rows: data[entityKey] };
   const month = Math.min(Math.max(Number(monthParam) || 0, 0), 12); // 0 = the whole year so far
 
   const byMonth = Array.from({ length: 12 }, (_, i) => sum(entity.rows.filter((r) => monthOf(r) === i + 1), 6));
   const rows = month === 0 ? entity.rows : entity.rows.filter((r) => monthOf(r) === month);
   const total = sum(rows, 6);
-  const periodLabel = month === 0 ? `Jan – Oct ${YEAR}` : `${MONTH_LABEL[month - 1]} ${YEAR}`;
+  const lastMonthWithInvoices = Math.max(0, ...entity.rows.map(monthOf));
+  const periodLabel = month === 0 ? `Jan – ${MONTH_LABEL[Math.max(lastMonthWithInvoices, 1) - 1].slice(0, 3)} ${YEAR}` : `${MONTH_LABEL[month - 1]} ${YEAR}`;
 
   const debtors = new Map<string, { count: number; total: number }>();
   for (const r of rows) {
@@ -135,14 +165,14 @@ export async function InvoiceListingView({ entity: entityParam, month: monthPara
   const { headers, tableRows } = buildReportRows(rows, columns, (r) => r[0]);
 
   const grand = (list: InvoiceListingRow[]) => sum(list, 6);
-  const ssGroup = grand(SS_ROWS) + grand(SS_CATERING_ROWS);
+  const ssGroup = grand(data.ss) + grand(data["ss-catering"]);
 
   return (
     <SoftPage>
       <div>
         {back}
         <h1 className="mt-2 text-[22px] font-extrabold text-text">Invoice Listing — {entity.label}</h1>
-        <p className="mt-0.5 text-[13px] text-text-secondary">{periodLabel} · {entity.note} · from the AutoCount listings printed {INVOICE_LISTING_ASOF}</p>
+        <p className="mt-0.5 text-[13px] text-text-secondary">{periodLabel} · {entity.note} · from the invoices in the system (the same figures as the AutoCount invoice listings)</p>
       </div>
 
       <RevenueViewTabs active="invoiced" />
@@ -151,7 +181,7 @@ export async function InvoiceListingView({ entity: entityParam, month: monthPara
       <div className="grid gap-3 print:hidden lg:grid-cols-2">
         <div className="rounded-2xl border border-border bg-surface p-3 shadow-sm">
           <div className="px-1 pb-2 text-[12px] font-bold uppercase tracking-wider text-text-secondary">Kasturi Indah Sdn Bhd</div>
-          <EntityTab k="kasturi" active={entityKey} month={month} total={grand(KASTURI_ROWS)} />
+          <EntityTab k="kasturi" active={entityKey} month={month} total={grand(data.kasturi)} />
         </div>
         <div className="rounded-2xl border border-border bg-surface p-3 shadow-sm">
           <div className="flex items-baseline justify-between px-1 pb-2 text-[12px] font-bold uppercase tracking-wider text-text-secondary">
@@ -159,8 +189,8 @@ export async function InvoiceListingView({ entity: entityParam, month: monthPara
             <span className="tabular-nums">{formatCurrency(ssGroup)} both parts</span>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
-            <EntityTab k="ss-catering" active={entityKey} month={month} total={grand(SS_CATERING_ROWS)} />
-            <EntityTab k="ss" active={entityKey} month={month} total={grand(SS_ROWS)} />
+            <EntityTab k="ss-catering" active={entityKey} month={month} total={grand(data["ss-catering"])} />
+            <EntityTab k="ss" active={entityKey} month={month} total={grand(data.ss)} />
           </div>
         </div>
       </div>
@@ -242,7 +272,7 @@ function EntityTab({ k, active, month, total }: { k: EntityKey; active: EntityKe
       className={`flex flex-col gap-0.5 rounded-xl border px-3 py-2.5 transition ${on ? "border-primary bg-info-bg" : "border-border hover:border-primary"}`}
     >
       <span className="text-[13.5px] font-bold text-text">{e.label}</span>
-      <span className="text-[11.5px] text-text-secondary">{k === "ss-catering" ? "Food for JDT game match events" : "Jan – Oct 2026"}</span>
+      <span className="text-[11.5px] text-text-secondary">{k === "ss-catering" ? "Food for JDT game match events" : `${YEAR}`}</span>
       <span className="mt-1 text-[16px] font-extrabold tabular-nums text-text">{formatCurrency(total)}</span>
     </Link>
   );
