@@ -37,7 +37,7 @@ export function SplitAmountBox({
           Share equally
         </button>
       </div>
-      <div className="mt-0.5 text-[11.5px] text-text-muted">Type the amount of a part; the parts left as they are share what is left of the total.</div>
+      <div className="mt-0.5 text-[11.5px] text-text-muted">Type the amount of each part; the last part left empty fills in the balance by itself.</div>
       <div className="mt-2 flex flex-col gap-2">
         {categories.map((category) => (
           <div key={category || "-"} className="grid grid-cols-1 gap-3 sm:grid-cols-3">

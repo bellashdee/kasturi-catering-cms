@@ -32,11 +32,14 @@ export function splitCells(total: string, categories: string[], companyIds: stri
   const cats = categories.length > 0 ? categories : [""];
   const cos = companyIds.length > 0 ? companyIds : [""];
   const keys = cats.flatMap((category) => cos.map((companyId) => ({ key: cellKey(category, companyId), category, companyId })));
-  const isTyped = (key: string) => typed[key] !== undefined && typed[key].trim() !== "";
+  // a box once typed in stays as typed, even while it is emptied to type a new amount (it is not filled again by itself)
+  const isTyped = (key: string) => typed[key] !== undefined;
   const typedCents = keys.filter((k) => isTyped(k.key)).reduce((t, k) => t + Math.round(Number(typed[k.key] || 0) * 100), 0);
   const leftCents = Math.round(Number(total || 0) * 100) - typedCents;
   const open = keys.filter((k) => !isTyped(k.key));
-  const shares = equalShares(Math.max(leftCents, 0) / 100, open.length);
+  // nothing typed yet: the total shared equally; once a box is typed in, only the last box left empty fills in by itself (the balance)
+  const nothingTyped = open.length === keys.length;
+  const shares = nothingTyped || open.length === 1 ? equalShares(Math.max(leftCents, 0) / 100, open.length) : open.map(() => 0);
   return keys.map((k) => {
     const share = shares[open.indexOf(k)];
     const text = isTyped(k.key) ? typed[k.key] : share ? share.toFixed(2) : "";
