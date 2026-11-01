@@ -21,7 +21,7 @@ export function SalesPurchasesChart({ year, sales, purchases }: { year: number; 
       <div className="mb-2 flex flex-wrap items-center gap-4 text-[12px] font-semibold text-text-secondary [print-color-adjust:exact]">
         <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded-sm" style={{ background: "var(--color-navy-700)" }} />Sales</span>
         <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded-sm" style={{ background: "#e0a030" }} />Purchases</span>
-        <span className="ml-auto text-text">Sales {formatCurrency(totalSales)} · Purchases {formatCurrency(totalPurchases)} · {totalSales > 0 ? `${((totalPurchases / totalSales) * 100).toFixed(1)}% of sales` : "—"}</span>
+        <span className="ml-auto text-text">Sales {formatCurrency(totalSales)} · {totalPurchases > 0 ? `Purchases ${formatCurrency(totalPurchases)} · ${totalSales > 0 ? `${((totalPurchases / totalSales) * 100).toFixed(1)}% of sales` : "—"}` : "Purchases: none recorded"}</span>
       </div>
       <svg viewBox={`0 0 ${W} ${top + H + 22}`} role="img" aria-label={`Sales and purchases by month in ${year}`} className="w-full [print-color-adjust:exact]">
         {[0.25, 0.5, 0.75, 1].map((f) => (
