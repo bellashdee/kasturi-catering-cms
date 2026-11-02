@@ -210,7 +210,8 @@ export default async function DashboardPage({
           )}
         </SectionCard>}
 
-        {can("hr") && <SectionCard title="HR">
+        {/* staff numbers and licence expiries are for the Super Admins only (Madam Penny and Nabilah) */}
+        {can("hr") && session.role === "super_admin" && <SectionCard title="HR">
           <StatRow label="Active staff" value={data.hr.staffCount} />
           <StatRow label="Staff documents expired / expiring (30 days)" value={data.hr.expiringCertificates.length} />
           <StatRow label="Licences & agreements expired / expiring (30 days)" value={data.hr.expiringCompanyDocs.length} />
