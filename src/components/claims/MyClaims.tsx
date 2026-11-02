@@ -15,6 +15,7 @@ import { SplitAmountBox } from "@/components/shared/SplitAmountBox";
 import { chosenCategories, splitAddsUp, splitCells } from "@/lib/categorySplit";
 import { RecordActions } from "@/components/shared/RecordActions";
 import { BTN_GHOST, Dialog } from "@/components/priority/ui";
+import { CompanyChips } from "@/components/pettyCash/CompanyChips";
 
 type Company = { id: string; name: string };
 type Payer = { name: string; position: string };
@@ -29,6 +30,7 @@ function ClaimFields({
   payers,
   initial,
   hasReceipt = false,
+  multiCompany = false,
   submitLabel,
   onSubmit,
   onCancel,
@@ -39,6 +41,8 @@ function ClaimFields({
   payers: Payer[];
   initial: ClaimValues;
   hasReceipt?: boolean;
+  /** a new claim: one or more companies, the amount split between them (each part is its own claim) */
+  multiCompany?: boolean;
   submitLabel: string;
   onSubmit: (input: MyClaimInput) => Promise<ActionResult>;
   onCancel?: () => void;
@@ -52,15 +56,24 @@ function ClaimFields({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = (patch: Partial<ClaimValues>) => setV((p) => ({ ...p, ...patch }));
-  // bought for more than one category: the amount is split between them (each part is its own claim); empty = shared equally
+  // the companies the bill is for (a new claim can be for more than one)
+  const [companyIds, setCompanyIds] = useState<string[]>(initial.companyId ? [initial.companyId] : []);
+  const chosenCompanies = companies.filter((c) => companyIds.includes(c.id));
+  const companyId = multiCompany ? (chosenCompanies[0]?.id ?? "") : v.companyId;
+  // more than one company or category: the amount is split between them, each part is its own claim
   const [shareText, setShareText] = useState<Record<string, string>>({});
   const categoryList = chosenCategories(splitCategories(v.category));
   const byCategory = categoryList.length > 1;
-  const cells = splitCells(v.amount, byCategory ? categoryList : [], [], shareText);
+  const byCompany = multiCompany && chosenCompanies.length > 1;
+  const cells = splitCells(v.amount, byCategory ? categoryList : [], byCompany ? chosenCompanies.map((c) => c.id) : [], shareText);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
+    if (!companyId) {
+      setError("Choose the company the bill is for.");
+      return;
+    }
     if (!v.payer) {
       setError("Choose who you claim from: Penny Chan or Nabilah.");
       return;
@@ -69,8 +82,8 @@ function ClaimFields({
       setError("Choose how you paid: cash or online transfer.");
       return;
     }
-    if (byCategory && (!splitAddsUp(v.amount, cells) || cells.some((c) => c.amount <= 0))) {
-      setError("The amounts of the categories must add up to the amount you paid, each more than 0.");
+    if ((byCategory || byCompany) && (!splitAddsUp(v.amount, cells) || cells.some((c) => c.amount <= 0))) {
+      setError("The parts must add up to the amount you paid, each more than 0.");
       return;
     }
     setSaving(true);
@@ -78,10 +91,22 @@ function ClaimFields({
     try {
       let documentId: string | undefined;
       if (receipt) {
-        const doc = await uploadDocument({ companyId: v.companyId, module: "finance", fileType: fileTypeFromMime(receipt), file: receipt, skipMarkdown: true });
+        const doc = await uploadDocument({ companyId, module: "finance", fileType: fileTypeFromMime(receipt), file: receipt, skipMarkdown: true });
         documentId = doc.id;
       }
-      const result = await onSubmit({ companyId: v.companyId, date: v.date, amount: Number(v.amount), payer: v.payer, paymentMethod: v.paymentMethod, category: v.category || undefined, description: v.description || undefined, documentId, categoryShares: byCategory ? cells.map((c) => ({ category: c.category, amount: c.amount })) : undefined });
+      const result = await onSubmit({
+        companyId,
+        date: v.date,
+        amount: Number(v.amount),
+        payer: v.payer,
+        paymentMethod: v.paymentMethod,
+        category: v.category || undefined,
+        description: v.description || undefined,
+        documentId,
+        // split between companies (and categories): each part with its company; only categories: each part with its category
+        shares: byCompany ? cells.map((c) => ({ companyId: c.companyId, amount: c.amount, ...(byCategory ? { category: c.category } : {}) })) : undefined,
+        categoryShares: byCategory && !byCompany ? cells.map((c) => ({ category: c.category, amount: c.amount })) : undefined,
+      });
       if (!result.ok) {
         setError(result.error);
         return;
@@ -90,6 +115,7 @@ function ClaimFields({
       form.reset();
       if (clearAfter) {
         setV(initial);
+        setCompanyIds([]);
         setShareText({});
       }
       onSaved();
@@ -110,11 +136,12 @@ function ClaimFields({
       )}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
-          <label className={labelClass}>Company you work for *</label>
-          {companies.length === 1 ? (
-            <input value={companies[0].name} readOnly className={`${inputClass} cursor-not-allowed bg-surface-alt`} />
+          <label className={labelClass}>{multiCompany ? "Company the bill is for * (choose one or more)" : "Company the bill is for *"}</label>
+          {multiCompany ? (
+            <CompanyChips companies={companies} value={companyIds} onChange={(ids) => { setCompanyIds(ids); setShareText({}); }} />
           ) : (
             <Select value={v.companyId} onChange={(e) => set({ companyId: e.target.value })} required className={inputClass}>
+              <option value="">Select the company</option>
               {companies.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
@@ -158,8 +185,15 @@ function ClaimFields({
         <label className={labelClass}>What did you buy?</label>
         <DescriptionInput value={v.description} onChange={(text) => set({ description: text })} companyId={v.companyId} className={inputClass} placeholder="e.g. Cooking gas for the Ahmad wedding" />
       </div>
-      {byCategory && (
-        <SplitAmountBox title="Split the amount by category (RM) *" total={v.amount} cells={cells} onType={(key, text) => setShareText((p) => ({ ...p, [key]: text }))} onEqual={() => setShareText({})} />
+      {(byCategory || byCompany) && (
+        <SplitAmountBox
+          title={byCategory && byCompany ? "Split the amount by category and company (RM) *" : byCompany ? "Split the amount between the companies (RM) *" : "Split the amount by category (RM) *"}
+          total={v.amount}
+          cells={cells}
+          companies={byCompany ? chosenCompanies : []}
+          onType={(key, text) => setShareText((p) => ({ ...p, [key]: text }))}
+          onEqual={() => setShareText({})}
+        />
       )}
       <div>
         <label className={labelClass}>Receipt / photo of the receipt</label>
@@ -186,7 +220,8 @@ export function MyClaimForm({ companies, payers }: { companies: Company[]; payer
     <ClaimFields
       companies={companies}
       payers={payers}
-      initial={{ companyId: companies[0]?.id ?? "", date: todayInMalaysia(), amount: "", payer: payers.length === 1 ? payers[0].name : "", paymentMethod: "", category: "", description: "" }}
+      initial={{ companyId: "", date: todayInMalaysia(), amount: "", payer: payers.length === 1 ? payers[0].name : "", paymentMethod: "", category: "", description: "" }}
+      multiCompany
       submitLabel="Send claim"
       onSubmit={submitMyClaim}
       onSaved={() => undefined}

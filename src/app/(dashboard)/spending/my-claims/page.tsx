@@ -36,7 +36,8 @@ export default async function MyClaimsPage() {
   ]);
   const hasFinance = canAccessModule(session.allowedModules, "finance-admin");
   const ownCompanyIds = Array.from(new Set((records ?? []).map((r) => r.company_id)));
-  const companies = (companyRows ?? []).filter((c) => ownCompanyIds.includes(c.id));
+  // a claim can be for any of the companies (the bill is chosen under the company it belongs to), once the staff record is linked
+  const companies = ownCompanyIds.length > 0 ? (companyRows ?? []) : [];
   // the position shown for Penny Chan / Nabilah is the one on the list of petty cash holders
   const payerList = payers.map((p) => ({ name: p.name, position: people.find((x) => x.name === p.name)?.position ?? p.position }));
 

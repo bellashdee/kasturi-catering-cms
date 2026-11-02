@@ -30,11 +30,27 @@ export type MyClaimInput = {
   documentId?: string;
   /** bought for more than one category: how much is for each (each part is saved as its own claim, same receipt) */
   categoryShares?: CategoryShare[];
+  /** a bill for more than one company: how much is for each company (and category); each part is saved as its own claim */
+  shares?: { companyId: string; amount: number; category?: string }[];
 };
 
 /** The claims to save: one for each category the amount is split between, otherwise the one claim as it is. */
 const claimParts = (input: MyClaimInput): CategoryShare[] =>
   checkCategoryShares(input.amount, input.categoryShares) ?? [{ category: input.category?.trim() ?? "", amount: input.amount }];
+
+/** A new claim split between companies (and categories): each part checked, together the whole amount, every company real. */
+async function companyParts(input: MyClaimInput): Promise<{ companyId: string; category: string; amount: number }[] | null> {
+  const shares = input.shares ?? [];
+  if (shares.length < 2) return null;
+  const parts = shares.map((s) => ({ companyId: s.companyId, category: (s.category ?? input.category ?? "").trim(), amount: Math.round(Number(s.amount) * 100) / 100 }));
+  if (parts.some((p) => !Number.isFinite(p.amount) || p.amount <= 0)) throw new Error("Enter an amount more than 0 for each part.");
+  if (new Set(parts.map((p) => `${p.companyId}|${p.category.toUpperCase()}`)).size !== parts.length) throw new Error("Each company and category can only be chosen once.");
+  if (parts.reduce((t, p) => t + Math.round(p.amount * 100), 0) !== Math.round(input.amount * 100)) throw new Error("The parts must add up to the amount you paid.");
+  const ids = Array.from(new Set(parts.map((p) => p.companyId)));
+  const { data: found } = await createAdminClient().from("companies").select("id").in("id", ids);
+  if ((found ?? []).length !== ids.length) throw new Error("Choose the company the bill is for.");
+  return parts;
+}
 
 const norm = (s: string) => s.trim().replace(/\s+/g, " ").toUpperCase();
 
@@ -51,8 +67,10 @@ async function whoAmI() {
 }
 
 async function checked(input: MyClaimInput, records: { full_name: string; department: string | null; company_id: string }[]) {
-  const record = records.find((r) => r.company_id === input.companyId);
-  if (!record) throw new Error("Choose the company you work for.");
+  // the bill can be for any of the companies; the name and department come from the staff record (of that company when there is one)
+  const { data: company } = await createAdminClient().from("companies").select("id").eq("id", input.companyId).maybeSingle();
+  if (!company) throw new Error("Choose the company the bill is for.");
+  const record = records.find((r) => r.company_id === input.companyId) ?? records[0];
   if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("Enter an amount more than 0.");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) throw new Error("Choose the date you bought it.");
   if (input.date > todayInMalaysia()) throw new Error("The date cannot be in the future.");
@@ -73,11 +91,12 @@ export async function submitMyClaim(input: MyClaimInput): Promise<ActionResult> 
   return runAction(async () => {
     const { admin, userId, records } = await whoAmI();
     const { record, payer } = await checked(input, records);
+    const parts = (await companyParts(input)) ?? claimParts(input).map((part) => ({ ...part, companyId: input.companyId }));
     const { data: created, error } = await admin
       .from("petty_cash_transactions")
       .insert(
-        claimParts(input).map((part) => ({
-          company_id: input.companyId,
+        parts.map((part) => ({
+          company_id: part.companyId,
           type: "expense",
           claimant_name: record.full_name,
           claimant_department: record.department,
@@ -94,10 +113,10 @@ export async function submitMyClaim(input: MyClaimInput): Promise<ActionResult> 
           created_by: userId,
         })),
       )
-      .select("id, amount");
+      .select("id, amount, company_id");
     if (error) throw error;
     for (const row of created ?? []) {
-      await recordAudit({ companyId: input.companyId, relatedTable: "petty_cash_transactions", relatedId: row.id, action: "claim_submitted", newValue: `RM ${Number(row.amount).toFixed(2)} · ${record.full_name} · claimed from ${payer.name}` });
+      await recordAudit({ companyId: row.company_id, relatedTable: "petty_cash_transactions", relatedId: row.id, action: "claim_submitted", newValue: `RM ${Number(row.amount).toFixed(2)} · ${record.full_name} · claimed from ${payer.name}` });
     }
     revalidate();
     return {};
@@ -187,7 +206,7 @@ export async function deleteMyClaim(id: string): Promise<ActionResult<{ row: Pet
 export async function restoreMyClaim(row: PettyCashTransactionRow): Promise<ActionResult> {
   return runAction(async () => {
     const { admin, userId, records } = await whoAmI();
-    if (!row?.id || row.created_by !== userId || row.type !== "expense" || !records.some((r) => r.company_id === row.company_id)) throw new Error("There is nothing to put back.");
+    if (!row?.id || row.created_by !== userId || row.type !== "expense" || records.length === 0) throw new Error("There is nothing to put back.");
     const { error } = await admin.from("petty_cash_transactions").insert({
       id: row.id,
       company_id: row.company_id,
