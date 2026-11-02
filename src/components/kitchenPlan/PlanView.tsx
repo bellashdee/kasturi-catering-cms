@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/components/i18n/I18nProvider";
-import { deleteCookingPlan, setPlanTaskStatus, updatePlanTask } from "@/lib/kitchenPlan/actions";
+import { addPlanTask, deleteCookingPlan, deletePlanTask, setPlanTaskStatus, updatePlanTask } from "@/lib/kitchenPlan/actions";
 import { clockText, dayText, lengthText } from "@/lib/kitchenPlan/schedule";
 import { kitchenPlanText } from "@/lib/kitchenPlan/text";
 import type { HelpTask } from "@/lib/kitchenPlan/help";
@@ -132,6 +132,18 @@ export function PlanView({
     );
   }
 
+  const adminBar = (x: ViewTask) => (
+    <TaskAdminBar
+      key={`${x.id}:${x.dish}:${x.minutes}:${x.startAt}:${x.assignedTo}`}
+      task={x}
+      busy={busy === `edit-${x.id}`}
+      onSave={(dishName, minutes, cook, start) => run(`edit-${x.id}`, () => updatePlanTask({ taskId: x.id, dishName, minutes, assignedTo: cook, startHhmm: start }))}
+      onDelete={() => {
+        if (window.confirm(tr(t.delAsk))) void run(`edit-${x.id}`, () => deletePlanTask(x.id));
+      }}
+    />
+  );
+
   const headline = (x: ViewTask) => (
     <div className="text-[13.5px] text-text-secondary">
       {t.start}: <b className="text-text">{clockText(x.startAt)}</b> · {t.estimatedDone}: <b className="text-text">{clockText(x.endAt)}</b> ({lengthText(x.minutes)}) · {t.assigned}: <b className="text-text">{x.assignedTo}</b>{" "}
@@ -165,6 +177,7 @@ export function PlanView({
           <div className="mt-1">{headline(current)}</div>
           <div className="mt-4">{details(current)}</div>
           <div className="mt-5">{actions(current)}</div>
+          {canManage && <div className="mt-4 border-t border-border pt-3">{adminBar(current)}</div>}
         </section>
       ) : (
         <div className="rounded-2xl bg-success-bg px-5 py-5 text-[16px] font-bold text-success">{t.allDone}</div>
@@ -197,6 +210,7 @@ export function PlanView({
               {headline(x)}
               {details(x)}
               {actions(x)}
+              {canManage && <div className="border-t border-border pt-3">{adminBar(x)}</div>}
             </div>
           </details>
         ))}
@@ -209,9 +223,7 @@ export function PlanView({
         <details className="rounded-xl border border-border bg-surface">
           <summary className="cursor-pointer select-none px-4 py-3.5 text-[14px] font-bold text-text-secondary">⚙ {t.manage}</summary>
           <div className="flex flex-col gap-4 border-t border-border px-4 py-4">
-            {tasks.map((x) => (
-              <TaskEditor key={`${x.id}:${x.minutes}:${x.startAt}:${x.assignedTo}`} task={x} busy={busy === `edit-${x.id}`} onSave={(minutes, cook, start) => run(`edit-${x.id}`, () => updatePlanTask({ taskId: x.id, minutes, assignedTo: cook, startHhmm: start }))} />
-            ))}
+            <AddDish busy={busy === "add"} onAdd={(name) => run("add", () => addPlanTask({ eventId, dayId, dishName: name }))} />
             <button
               type="button"
               disabled={!!busy}
@@ -229,17 +241,59 @@ export function PlanView({
   );
 }
 
-function TaskEditor({ task, busy, onSave }: { task: ViewTask; busy: boolean; onSave: (minutes: number, cook: string, start: string) => void }) {
+function AddDish({ busy, onAdd }: { busy: boolean; onAdd: (name: string) => void }) {
   const { lang } = useI18n();
   const t = kitchenPlanText(lang === "ms" ? "ms" : "en");
+  const [name, setName] = useState("");
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (name.trim()) {
+          onAdd(name);
+          setName("");
+        }
+      }}
+      className="flex gap-2"
+    >
+      <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t.addToPlan} className="h-12 min-w-0 flex-1 rounded-lg border border-border-strong bg-white px-3 text-[15px] outline-none focus:border-primary" />
+      <button type="submit" disabled={busy} className="h-12 shrink-0 rounded-lg bg-primary px-4 text-[14px] font-bold text-white disabled:opacity-60">
+        + {t.addDish}
+      </button>
+    </form>
+  );
+}
+
+/** Edit / Delete of one dish (Kitchen PIC and admin). Edit opens the fields with Save and Cancel. */
+function TaskAdminBar({ task, busy, onSave, onDelete }: { task: ViewTask; busy: boolean; onSave: (dishName: string, minutes: number, cook: string, start: string) => void; onDelete: () => void }) {
+  const { lang } = useI18n();
+  const t = kitchenPlanText(lang === "ms" ? "ms" : "en");
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(task.dish);
   const [minutes, setMinutes] = useState(String(task.minutes));
   const [cook, setCook] = useState(task.assignedTo);
   const [start, setStart] = useState(hhmmKl(task.startAt));
   const input = "mt-1 h-11 w-full rounded-lg border border-border-strong bg-white px-3 text-[14px] outline-none focus:border-primary";
+  const small = "h-11 rounded-lg border border-border-strong bg-white px-4 text-[14px] font-bold text-text hover:border-primary hover:text-primary disabled:opacity-60";
+
+  if (!editing)
+    return (
+      <div className="flex gap-2">
+        <button type="button" disabled={busy} onClick={() => setEditing(true)} className={small}>
+          {t.edit}
+        </button>
+        <button type="button" disabled={busy} onClick={onDelete} className="h-11 rounded-lg border border-danger px-4 text-[14px] font-bold text-danger hover:bg-danger-bg disabled:opacity-60">
+          {t.del}
+        </button>
+      </div>
+    );
   return (
     <div className="rounded-lg border border-border p-3">
-      <div className="mb-2 text-[14px] font-bold text-text">{task.dish}</div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <label className="col-span-2 text-[12px] font-semibold text-text-secondary sm:col-span-4">
+          {t.dishName}
+          <input value={name} onChange={(e) => setName(e.target.value)} className={input} />
+        </label>
         <label className="text-[12px] font-semibold text-text-secondary">
           {t.minutes}
           <input type="number" min={5} max={1440} value={minutes} onChange={(e) => setMinutes(e.target.value)} className={input} />
@@ -253,9 +307,25 @@ function TaskEditor({ task, busy, onSave }: { task: ViewTask; busy: boolean; onS
           <input value={cook} onChange={(e) => setCook(e.target.value)} className={input} />
         </label>
       </div>
-      <button type="button" disabled={busy} onClick={() => onSave(Number(minutes), cook, start)} className="mt-3 h-11 rounded-lg bg-primary px-5 text-[14px] font-bold text-white disabled:opacity-60">
-        {busy ? t.saving : t.save}
-      </button>
+      <div className="mt-3 flex gap-2">
+        <button type="button" disabled={busy} onClick={() => onSave(name, Number(minutes), cook, start)} className="h-11 rounded-lg bg-primary px-5 text-[14px] font-bold text-white disabled:opacity-60">
+          {busy ? t.saving : t.save}
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            setEditing(false);
+            setName(task.dish);
+            setMinutes(String(task.minutes));
+            setCook(task.assignedTo);
+            setStart(hhmmKl(task.startAt));
+          }}
+          className={small}
+        >
+          {t.cancel}
+        </button>
+      </div>
     </div>
   );
 }

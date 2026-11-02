@@ -51,7 +51,6 @@ export async function generateCookingPlan(input: GenerateInput): Promise<ActionR
       }
     }
     if (names.length === 0) throw new Error("Add at least one dish first.");
-    if (names.length > 40) throw new Error("A plan can have up to 40 dishes.");
     if (!event.pax || event.pax < 1) throw new Error("This event has no number of pax. Ask the office to fill in the Event Order.");
     const cooks = Math.round(input.cooks);
     if (!(cooks >= 1 && cooks <= 20)) throw new Error("Enter how many cooks will work (1 to 20).");
@@ -110,7 +109,7 @@ export async function setPlanTaskStatus(taskId: string, status: "not_started" | 
   });
 }
 
-export type TaskEdit = { taskId: string; minutes: number; assignedTo: string; startHhmm?: string };
+export type TaskEdit = { taskId: string; dishName: string; minutes: number; assignedTo: string; startHhmm?: string };
 
 /** Kitchen PIC / admin: change how long a dish takes (confirming the estimate), who cooks it, and when it starts. The end follows the length. */
 export async function updatePlanTask(input: TaskEdit): Promise<ActionResult> {
@@ -119,8 +118,12 @@ export async function updatePlanTask(input: TaskEdit): Promise<ActionResult> {
     if (!canManage(session.role)) throw new Error("Only the Kitchen PIC or an admin can change the plan.");
     const minutes = Math.round(input.minutes);
     if (!(minutes >= 5 && minutes <= 1440)) throw new Error("The time a dish takes must be between 5 and 1440 minutes.");
-    const { data: task, error: readError } = await supabase.from("kitchen_plan_tasks").select("id, catering_event_id, start_at").eq("id", input.taskId).single();
+    const dishName = input.dishName.replace(/\s+/g, " ").trim().slice(0, 120);
+    if (!dishName) throw new Error("Enter the dish name.");
+    const { data: task, error: readError } = await supabase.from("kitchen_plan_tasks").select("id, company_id, catering_event_id, start_at, dish_name, recipe_id").eq("id", input.taskId).single();
     if (readError) throw readError;
+    // a renamed dish is matched to a recipe again; an unchanged name keeps the recipe it has
+    const recipeId = dishName === task.dish_name ? task.recipe_id : autoMatch(dishName, await loadRecipeRefs(supabase, task.company_id))?.recipeId ?? null;
     let startMs = new Date(task.start_at).getTime();
     if (input.startHhmm) {
       if (!/^\d{2}:\d{2}$/.test(input.startHhmm)) throw new Error("Enter the start time as hours and minutes.");
@@ -129,7 +132,7 @@ export async function updatePlanTask(input: TaskEdit): Promise<ActionResult> {
     }
     const { error } = await supabase
       .from("kitchen_plan_tasks")
-      .update({ duration_minutes: minutes, duration_is_estimate: false, assigned_to: input.assignedTo.trim().slice(0, 40) || null, start_at: new Date(startMs).toISOString(), end_at: new Date(startMs + minutes * 60_000).toISOString() })
+      .update({ dish_name: dishName, recipe_id: recipeId, duration_minutes: minutes, duration_is_estimate: false, assigned_to: input.assignedTo.trim().slice(0, 40) || null, start_at: new Date(startMs).toISOString(), end_at: new Date(startMs + minutes * 60_000).toISOString() })
       .eq("id", input.taskId);
     if (error) throw error;
     revalidate(task.catering_event_id);
@@ -147,6 +150,55 @@ export async function deleteCookingPlan(eventId: string, dayId: string | null): 
     const { error } = await del;
     if (error) throw error;
     revalidate(eventId);
+    return {};
+  });
+}
+
+/** Kitchen PIC / admin: remove one dish from the plan. */
+export async function deletePlanTask(taskId: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const { session, supabase } = await requireUser();
+    if (!canManage(session.role)) throw new Error("Only the Kitchen PIC or an admin can change the plan.");
+    const { data, error } = await supabase.from("kitchen_plan_tasks").delete().eq("id", taskId).select("catering_event_id");
+    if (error) throw error;
+    if (!data?.length) throw new Error("You cannot remove this dish.");
+    revalidate(data[0].catering_event_id);
+    return {};
+  });
+}
+
+/** Kitchen PIC / admin: add one more dish to a plan that already exists. It ends when the last dish of the plan ends. */
+export async function addPlanTask(input: { eventId: string; dayId: string | null; dishName: string; minutes?: number; assignedTo?: string }): Promise<ActionResult> {
+  return runAction(async () => {
+    const { session, supabase } = await requireUser();
+    if (!canManage(session.role)) throw new Error("Only the Kitchen PIC or an admin can change the plan.");
+    const event = await getPlanEvent(supabase, input.eventId, input.dayId);
+    if (!event) throw new Error("This event was not found, or you do not have access to it.");
+    const name = input.dishName.replace(/\s+/g, " ").trim().slice(0, 120);
+    if (!name) throw new Error("Enter the dish name.");
+    const tasks = await listPlanTasks(supabase, event.eventId, event.dayId);
+    if (tasks.some((t) => t.dish_name.toUpperCase() === name.toUpperCase())) throw new Error("This dish is already in the plan.");
+    const minutes = input.minutes ? Math.round(input.minutes) : estimateMinutes(name);
+    if (!(minutes >= 5 && minutes <= 1440)) throw new Error("The time a dish takes must be between 5 and 1440 minutes.");
+    const endMs = tasks.reduce((m, t) => Math.max(m, new Date(t.end_at).getTime()), 0) || (event.readyTime ? myMoment(event.date, event.readyTime) : Date.now());
+    const recipes = await loadRecipeRefs(supabase, event.companyId);
+    const { error } = await supabase.from("kitchen_plan_tasks").insert({
+      company_id: event.companyId,
+      catering_event_id: event.eventId,
+      catering_event_day_id: event.dayId,
+      sort_order: tasks.length,
+      dish_name: name,
+      recipe_id: autoMatch(name, recipes)?.recipeId ?? null,
+      pax: event.pax,
+      duration_minutes: minutes,
+      duration_is_estimate: !input.minutes,
+      start_at: new Date(endMs - minutes * 60_000).toISOString(),
+      end_at: new Date(endMs).toISOString(),
+      assigned_to: input.assignedTo?.trim().slice(0, 40) || "Chef 1",
+      created_by: session.userId,
+    });
+    if (error) throw error;
+    revalidate(event.eventId);
     return {};
   });
 }
