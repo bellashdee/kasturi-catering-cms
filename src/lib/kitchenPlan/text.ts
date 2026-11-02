@@ -68,6 +68,7 @@ const EN = {
   mine: "Your tasks are marked",
   yours: "YOURS",
   failed: "Something went wrong. Please try again.",
+  waitPlan: "The cooking plan for this event is not made yet. Ask a chef or the Kitchen PIC to make it. When it is ready, your tasks appear here.",
 };
 
 const MS: typeof EN = {
@@ -137,6 +138,7 @@ const MS: typeof EN = {
   mine: "Tugas anda ditandakan",
   yours: "TUGAS ANDA",
   failed: "Ada masalah. Sila cuba lagi.",
+  waitPlan: "Pelan memasak untuk acara ini belum dibuat. Minta chef atau Kitchen PIC membuatnya. Apabila siap, tugas anda akan muncul di sini.",
 };
 
 export const kitchenPlanText = (lang: HelpLang) => (lang === "ms" ? MS : EN);

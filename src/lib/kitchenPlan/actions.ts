@@ -7,6 +7,7 @@ import { runAction, type ActionResult } from "@/lib/actionResult";
 import { recordAudit } from "@/lib/audit";
 import { autoMatch } from "@/lib/kitchenAi/match";
 import { loadRecipeRefs } from "@/lib/kitchenAi/data";
+import { kitchenPlanAccess } from "./access";
 import { buildSchedule, estimateMinutes, myMoment } from "./schedule";
 import { getPlanEvent, listPlanTasks } from "./queries";
 
@@ -57,6 +58,7 @@ export async function generateCookingPlan(input: GenerateInput): Promise<ActionR
     const ready = event.readyTime ?? input.readyTime ?? null;
     if (!ready || !/^\d{2}:\d{2}$/.test(ready)) throw new Error("Enter the time the food must be ready.");
 
+    if (!(await kitchenPlanAccess(session)).canPlan) throw new Error("Only a chef or the Kitchen PIC can make the cooking plan. Ask them to make it.");
     const existing = await listPlanTasks(supabase, event.eventId, event.dayId);
     if (existing.length > 0 && !canManage(session.role)) throw new Error("A plan already exists for this event. Ask the Kitchen PIC to change it.");
 

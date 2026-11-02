@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { getServerLanguage } from "@/lib/i18n/server";
+import { kitchenPlanAccess } from "@/lib/kitchenPlan/access";
 import { loadRecipeRefs } from "@/lib/kitchenAi/data";
 import { getPlanEvent, ingredientsForPax, listPlanTasks, loadDishGuides } from "@/lib/kitchenPlan/queries";
 import { clockText, dayText, myMoment } from "@/lib/kitchenPlan/schedule";
@@ -32,11 +33,14 @@ export default async function CookingPlanEventPage({
 
   const event = await getPlanEvent(supabase, eventId, dayId);
   if (!event) notFound();
+  const access = await kitchenPlanAccess(session);
   const tasks = await listPlanTasks(supabase, eventId, dayId);
   const backHref = `/kitchen/plan${company ? `?company=${company}` : ""}`;
 
   let body: React.ReactNode;
-  if (tasks.length === 0) {
+  if (tasks.length === 0 && !access.canPlan) {
+    body = <p className="rounded-xl bg-surface-alt px-5 py-5 text-[15px] text-text-secondary">{t.waitPlan}</p>;
+  } else if (tasks.length === 0) {
     const recipes = await loadRecipeRefs(supabase, event.companyId);
     body = <PlanBuilder eventId={eventId} dayId={dayId} initialDishes={event.dishes} recipeNames={recipes.map((r) => r.name)} readyTime={event.readyTime} />;
   } else {
@@ -59,7 +63,7 @@ export default async function CookingPlanEventPage({
     });
     const lastEnd = tasks.reduce((m, x) => Math.max(m, new Date(x.end_at).getTime()), 0);
     const readyAt = event.readyTime ? new Date(myMoment(event.date, event.readyTime)).toISOString() : new Date(lastEnd).toISOString();
-    body = <PlanView eventId={eventId} dayId={dayId} eventName={event.eventName} pax={event.pax} readyAt={readyAt} tasks={view} canManage={session.role !== "staff"} me={session.fullName.split(/\s+/)[0] ?? ""} />;
+    body = <PlanView eventId={eventId} dayId={dayId} eventName={event.eventName} pax={event.pax} readyAt={readyAt} tasks={view} canManage={access.canManage} me={session.fullName.split(/\s+/)[0] ?? ""} />;
   }
 
   return (
