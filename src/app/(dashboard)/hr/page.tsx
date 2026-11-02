@@ -8,6 +8,7 @@ import { EMPLOYMENT_TYPE_LABEL, EMPLOYEE_STATUS_LABEL } from "@/lib/hr/constants
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SearchBox } from "@/components/SearchBox";
+import { ExportButtons } from "@/components/shared/ExportButtons";
 import { getHrAccess } from "@/lib/hr/access";
 import { canUsePayrollCentre } from "@/lib/hr/payrollAccess";
 
@@ -55,9 +56,54 @@ export default async function HRPage({
   const employees = Array.from(byName.values());
   const joined = (values: (string | null | undefined)[]) => Array.from(new Set(values.filter((v): v is string => !!v))).join(" / ") || "—";
 
+  const companyLabel = requestedId ? (companies.find((c) => c.id === requestedId)?.name ?? "") : "All companies";
+  const subtitle = `${companyLabel} - ${employees.length} employee${employees.length === 1 ? "" : "s"}${q ? ` matching "${q}"` : ""}`;
+  const address = (e: (typeof records)[number]) =>
+    [e.address_line, [e.address_postcode, e.address_city].filter(Boolean).join(" "), e.address_state].filter(Boolean).join(", ");
+  // the Excel file carries every detail of the list; the printed page only the main ones so that it stays readable
+  const exportTable = {
+    title: "Employee Database",
+    subtitle,
+    landscape: true,
+    columns: ["Employee No.", "Name", "Company", "I/C or Passport No.", "Date of Birth", "Gender", "Nationality", "Race", "Religion", "Marital Status", "Mobile No.", "Email", "Branch", "Department", "Position", "Employment Type", "Date Joined", "Status", "Address"],
+    rows: employees.map((group) => {
+      const f = group[0];
+      return [
+        joined(group.map((g) => g.employee_no)),
+        f.full_name,
+        joined(group.map((g) => g.companies?.name)),
+        f.ic_passport_no ?? "",
+        f.date_of_birth ?? "",
+        f.gender ?? "",
+        f.nationality ?? "",
+        f.race ?? "",
+        f.religion ?? "",
+        f.marital_status ?? "",
+        f.phone ?? "",
+        f.email ?? "",
+        joined(group.map((g) => g.branch)),
+        joined(group.map((g) => g.department)),
+        joined(group.map((g) => g.position)),
+        joined(group.map((g) => EMPLOYMENT_TYPE_LABEL[g.employment_type] ?? g.employment_type)),
+        joined(group.map((g) => g.join_date)),
+        Array.from(new Set(group.map((g) => EMPLOYEE_STATUS_LABEL[g.status] ?? g.status))).join(" / "),
+        address(f),
+      ].map((v) => (v === "—" ? "" : v));
+    }),
+  };
+  const printTable = {
+    title: exportTable.title,
+    subtitle,
+    landscape: true,
+    columns: ["No.", "Name", "Company", "I/C or Passport No.", "Mobile No.", "Department", "Position", "Date Joined", "Status"],
+    rows: exportTable.rows.map((r, i) => [String(i + 1), r[1], r[2], r[3], r[10], r[13], r[14], r[16], r[17]]),
+  };
+
+  const linkClass = "flex h-9 items-center gap-2 whitespace-nowrap rounded-lg border border-border-strong bg-surface px-3.5 text-[13px] font-semibold text-text hover:bg-surface-alt";
+
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-[22px] font-extrabold text-text">Employee Database</h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">
@@ -65,56 +111,39 @@ export default async function HRPage({
             {records.length !== employees.length ? ` (${records.length} company records)` : ""}
           </p>
         </div>
-        <div className="flex gap-2.5">
-          <Link
-            href={`/birthdays${query}`}
-            className="flex items-center gap-2 rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text"
-          >
-            🎂 Birthday Calendar
-          </Link>
-          {showPayroll && (
-            <Link
-              href={`/payroll-centre${query}`}
-              className="flex items-center gap-2 rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text"
-            >
-              Payroll Centre
+        {access.adminAnywhere && (
+          <div className="flex flex-wrap items-center gap-2">
+            <ExportButtons table={exportTable} printTable={printTable} />
+            <Link href={`/hr/import${query}`} className={linkClass}>
+              Import Excel / CSV
             </Link>
-          )}
-          <Link
-            href={`/hr/leave${query}`}
-            className="flex items-center gap-2 rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text"
-          >
-            Leave Requests
+            <Link href={`/hr/new${query}`} className="flex h-9 items-center gap-2 whitespace-nowrap rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">
+              + Add Employee
+            </Link>
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Link href={`/birthdays${query}`} className={linkClass}>
+          🎂 Birthday Calendar
+        </Link>
+        {showPayroll && (
+          <Link href={`/payroll-centre${query}`} className={linkClass}>
+            Payroll Centre
           </Link>
-          <Link
-            href={`/hr/overtime${query}`}
-            className="flex items-center gap-2 rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text"
-          >
-            Overtime &amp; OT Form
-          </Link>
-          {access.adminAnywhere && (
-            <>
-          <Link
-            href={`/hr/documents${query}`}
-            className="flex items-center gap-2 rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text"
-          >
+        )}
+        <Link href={`/hr/leave${query}`} className={linkClass}>
+          Leave Requests
+        </Link>
+        <Link href={`/hr/overtime${query}`} className={linkClass}>
+          Overtime &amp; OT Form
+        </Link>
+        {access.adminAnywhere && (
+          <Link href={`/hr/documents${query}`} className={linkClass}>
             Licences &amp; Documents
           </Link>
-          <Link
-            href={`/hr/import${query}`}
-            className="flex items-center gap-2 rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text"
-          >
-            Import Excel / CSV
-          </Link>
-          <Link
-            href={`/hr/new${query}`}
-            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white"
-          >
-            + Add Employee
-          </Link>
-            </>
-          )}
-        </div>
+        )}
       </div>
 
       {!access.adminAnywhere && (
@@ -154,9 +183,9 @@ export default async function HRPage({
           <div>
             <div className="grid grid-cols-[2fr_1.2fr_1.2fr_1fr_1fr_1fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
               <div>Name</div>
+              <div>I/C / Passport</div>
               <div>Department</div>
               <div>Position</div>
-              <div>Type</div>
               <div>Join Date</div>
               <div>Status</div>
             </div>
@@ -182,9 +211,9 @@ export default async function HRPage({
                       </span>
                     )}
                   </div>
+                  <div className="break-words text-text-secondary">{first.ic_passport_no || "—"}</div>
                   <div className="text-text-secondary">{joined(group.map((g) => g.department))}</div>
                   <div className="text-text-secondary">{joined(group.map((g) => g.position))}</div>
-                  <div className="text-text-secondary">{joined(group.map((g) => EMPLOYMENT_TYPE_LABEL[g.employment_type] ?? g.employment_type))}</div>
                   <div className="text-text-secondary">{joined(group.map((g) => g.join_date))}</div>
                   <div className="flex flex-wrap gap-1">
                     {statuses.map((st) => (

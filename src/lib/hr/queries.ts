@@ -6,7 +6,7 @@ type DB = SupabaseClient<Database>;
 export async function listEmployees(supabase: DB, companyIds: string[], search?: string) {
   let query = supabase
     .from("employees")
-    .select("id, full_name, department, position, employment_type, status, join_date, company_id, companies(name)")
+    .select("id, full_name, department, position, employment_type, status, join_date, company_id, employee_no, ic_passport_no, date_of_birth, gender, nationality, race, religion, marital_status, phone, email, branch, address_line, address_city, address_state, address_postcode, companies(name)")
     .in("company_id", companyIds)
     .order("full_name", { ascending: true });
 
