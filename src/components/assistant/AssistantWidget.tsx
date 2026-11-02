@@ -118,8 +118,10 @@ export function AssistantWidget() {
   const above = pos.y + SIZE / 2 > h / 2;
   const panelTop = above ? Math.max(MARGIN, pos.y - panelH - 8) : Math.min(h - panelH - MARGIN, pos.y + SIZE + 8);
 
+  // the page is enlarged with CSS zoom when a bigger font size is chosen in Settings; the button and the chat are placed in real screen
+  // pixels, so the zoom is cancelled here (otherwise the button lands beyond the right edge and cannot be seen)
   return (
-    <>
+    <div style={{ zoom: "calc(1 / var(--ui-zoom, 1))" }}>
       {open && (
         <div style={{ left: panelLeft, top: panelTop, width: panelW, height: panelH }} className="fixed z-50 flex flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-2xl print:hidden">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -153,6 +155,6 @@ export function AssistantWidget() {
       >
         🤖
       </button>
-    </>
+    </div>
   );
 }
