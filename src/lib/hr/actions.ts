@@ -8,6 +8,7 @@ import { dobFromIc } from "@/lib/hr/ic";
 import { requirePayrollAccess } from "@/lib/hr/payrollAccess";
 import { runAction, type ActionResult } from "@/lib/actionResult";
 import { recordAudit } from "@/lib/audit";
+import { syncModulesFromPosition } from "@/lib/positionAccessSync";
 import type { Database } from "@/lib/supabase/types";
 
 async function requireUser() {
@@ -296,6 +297,12 @@ export async function updateEmployee(employeeId: string, input: Partial<Employee
   if (hasPrivateInput(input)) {
     const { data: emp } = await supabase.from("employees").select("company_id").eq("id", employeeId).single();
     if (emp) await savePrivateDetails(supabase, employeeId, emp.company_id, input);
+  }
+
+  // the side-bar modules follow the position: a changed position (or a newly linked login) updates what the person can open
+  if (input.position !== undefined || input.userId !== undefined || input.status !== undefined) {
+    const { data: linked } = await supabase.from("employees").select("user_id").eq("id", employeeId).maybeSingle();
+    await syncModulesFromPosition(linked?.user_id);
   }
 
   // the edit history: who changed which detail, from what to what
