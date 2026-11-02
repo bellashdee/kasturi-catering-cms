@@ -53,7 +53,7 @@ export async function generateCookingPlan(input: GenerateInput): Promise<ActionR
     if (names.length === 0) throw new Error("Add at least one dish first.");
     if (!event.pax || event.pax < 1) throw new Error("This event has no number of pax. Ask the office to fill in the Event Order.");
     const cooks = Math.round(input.cooks);
-    if (!(cooks >= 1 && cooks <= 20)) throw new Error("Enter how many cooks will work (1 to 20).");
+    if (!(cooks >= 1 && cooks <= 100)) throw new Error("Enter how many cooks will work (1 to 100).");
     const ready = event.readyTime ?? input.readyTime ?? null;
     if (!ready || !/^\d{2}:\d{2}$/.test(ready)) throw new Error("Enter the time the food must be ready.");
 

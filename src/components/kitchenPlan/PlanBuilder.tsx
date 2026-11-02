@@ -27,7 +27,7 @@ export function PlanBuilder({
   const t = kitchenPlanText(lang === "ms" ? "ms" : "en");
   const [dishes, setDishes] = useState<string[]>(initialDishes);
   const [draft, setDraft] = useState("");
-  const [cooks, setCooks] = useState(2);
+  const [cooks, setCooks] = useState("2");
   const [ready, setReady] = useState(readyTime ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +43,7 @@ export function PlanBuilder({
     setBusy(true);
     setError(null);
     try {
-      const r = await generateCookingPlan({ eventId, dayId, dishes, cooks, readyTime: readyTime ? undefined : ready });
+      const r = await generateCookingPlan({ eventId, dayId, dishes, cooks: Number(cooks), readyTime: readyTime ? undefined : ready });
       if (!r.ok) setError(r.error);
       else router.refresh();
     } catch {
@@ -104,11 +104,11 @@ export function PlanBuilder({
             </label>
             <p className="mb-1.5 text-[12.5px] text-text-muted">{t.cooksHint}</p>
             <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setCooks((c) => Math.max(1, c - 1))} aria-label="-" className="h-12 w-12 rounded-lg border border-border-strong bg-white text-[20px] font-bold">
+              <button type="button" onClick={() => setCooks((c) => String(Math.max(1, (Number(c) || 1) - 1)))} aria-label="-" className="h-12 w-12 rounded-lg border border-border-strong bg-white text-[20px] font-bold">
                 −
               </button>
-              <input id="plan-cooks" type="number" min={1} max={20} value={cooks} onChange={(e) => setCooks(Number(e.target.value) || 1)} className={`${field} w-20 text-center`} />
-              <button type="button" onClick={() => setCooks((c) => Math.min(20, c + 1))} aria-label="+" className="h-12 w-12 rounded-lg border border-border-strong bg-white text-[20px] font-bold">
+              <input id="plan-cooks" type="text" inputMode="numeric" value={cooks} onChange={(e) => setCooks(e.target.value.replace(/\D/g, "").slice(0, 3))} onFocus={(e) => e.target.select()} className={`${field} w-24 text-center`} />
+              <button type="button" onClick={() => setCooks((c) => String(Math.min(100, (Number(c) || 0) + 1)))} aria-label="+" className="h-12 w-12 rounded-lg border border-border-strong bg-white text-[20px] font-bold">
                 +
               </button>
             </div>
@@ -123,7 +123,7 @@ export function PlanBuilder({
           )}
         </div>
 
-        <button type="button" onClick={generate} disabled={busy || dishes.length === 0} className="h-14 w-full rounded-xl bg-primary text-[16px] font-extrabold text-white shadow-sm hover:bg-primary-hover disabled:opacity-60">
+        <button type="button" onClick={generate} disabled={busy || dishes.length === 0 || !(Number(cooks) >= 1)} className="h-14 w-full rounded-xl bg-primary text-[16px] font-extrabold text-white shadow-sm hover:bg-primary-hover disabled:opacity-60">
           {busy ? t.generating : t.generate}
         </button>
         {error && (
