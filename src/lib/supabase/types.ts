@@ -2845,6 +2845,98 @@ export type Database = {
           },
         ]
       }
+      kitchen_plan_tasks: {
+        Row: {
+          assigned_to: string | null
+          catering_event_day_id: string | null
+          catering_event_id: string
+          company_id: string
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          dish_name: string
+          duration_is_estimate: boolean
+          duration_minutes: number
+          end_at: string
+          id: string
+          pax: number
+          recipe_id: string | null
+          sort_order: number
+          start_at: string
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          catering_event_day_id?: string | null
+          catering_event_id: string
+          company_id: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          dish_name: string
+          duration_is_estimate?: boolean
+          duration_minutes: number
+          end_at: string
+          id?: string
+          pax: number
+          recipe_id?: string | null
+          sort_order?: number
+          start_at: string
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          catering_event_day_id?: string | null
+          catering_event_id?: string
+          company_id?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          dish_name?: string
+          duration_is_estimate?: boolean
+          duration_minutes?: number
+          end_at?: string
+          id?: string
+          pax?: number
+          recipe_id?: string | null
+          sort_order?: number
+          start_at?: string
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kitchen_plan_tasks_catering_event_day_id_fkey"
+            columns: ["catering_event_day_id"]
+            isOneToOne: false
+            referencedRelation: "catering_event_days"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kitchen_plan_tasks_catering_event_id_fkey"
+            columns: ["catering_event_id"]
+            isOneToOne: false
+            referencedRelation: "catering_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kitchen_plan_tasks_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kitchen_plan_tasks_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           campaign_id: string | null
