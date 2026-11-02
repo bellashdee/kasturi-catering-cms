@@ -59,19 +59,23 @@ function toPlanEvents(ev: EventRow): PlanEvent[] {
   }));
 }
 
-/** Confirmed events from yesterday onward, a row for every day, soonest first. */
+/** Confirmed events from yesterday onward, plus any event that already has a plan (so an older plan can still be opened), a row for every day, soonest first. */
 export async function listPlanEvents(supabase: DB, companyIds: string[]): Promise<PlanEvent[]> {
   const from = new Date(Date.now() + 8 * 3600_000 - 86_400_000).toISOString().slice(0, 10);
-  const { data, error } = await supabase
-    .from("catering_events")
-    .select(EVENT_SELECT)
-    .in("company_id", companyIds)
-    .in("status", ["confirmed", "in_production"])
-    .gte("event_date", from)
-    .order("event_date")
-    .limit(100);
-  if (error) throw error;
-  return ((data ?? []) as unknown as EventRow[])
+  const [upcoming, planned] = await Promise.all([
+    supabase.from("catering_events").select(EVENT_SELECT).in("company_id", companyIds).in("status", ["confirmed", "in_production"]).gte("event_date", from).order("event_date").limit(100),
+    supabase.from("kitchen_plan_tasks").select("catering_event_id").in("company_id", companyIds).limit(1000),
+  ]);
+  if (upcoming.error) throw upcoming.error;
+  const have = new Set((upcoming.data ?? []).map((e) => e.id));
+  const extraIds = Array.from(new Set((planned.data ?? []).map((t) => t.catering_event_id))).filter((id) => !have.has(id));
+  let extra: unknown[] = [];
+  if (extraIds.length > 0) {
+    const { data, error } = await supabase.from("catering_events").select(EVENT_SELECT).in("id", extraIds);
+    if (error) throw error;
+    extra = data ?? [];
+  }
+  return ([...(upcoming.data ?? []), ...extra] as unknown as EventRow[])
     .flatMap(toPlanEvents)
     .sort((a, b) => a.date.localeCompare(b.date) || (a.readyTime ?? "").localeCompare(b.readyTime ?? ""));
 }
