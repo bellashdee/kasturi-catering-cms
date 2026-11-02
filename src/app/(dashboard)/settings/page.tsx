@@ -61,6 +61,8 @@ export default async function SettingsPage() {
 
   // The password given when the account was made is shown only until the person signs in for the first time (and only if nobody has changed it since).
   const initialPasswords = await loadInitialPasswords(members);
+  const withEmail = members.filter((m) => !!m.email && !m.email.endsWith(NO_EMAIL_DOMAIN)).length;
+  const withoutEmail = members.length - withEmail;
 
   return (
     <div className="flex flex-col gap-5">
@@ -79,6 +81,9 @@ export default async function SettingsPage() {
       </SectionCard>
 
       <SectionCard title={`Team Members (${members.length})`}>
+        <p className="-mt-1 mb-3 text-[12.5px] text-text-secondary">
+          <b className="text-success">{withEmail} with email</b> · <b className={withoutEmail ? "text-warning" : "text-text-secondary"}>{withoutEmail} without email</b>. A person can sign in with the username or the email. Use Edit to add or change an email.
+        </p>
         {members.length === 0 ? (
           <EmptyRow text="No one has access yet." />
         ) : (
@@ -90,7 +95,7 @@ export default async function SettingsPage() {
                   <span className="text-[12px] text-text-muted">{g.members.length} {g.members.length === 1 ? "person" : "people"}</span>
                 </div>
                 <div className="grid grid-cols-5 gap-4 border-b border-border px-5 py-2 text-[11px] font-bold uppercase tracking-wide text-text-muted">
-                  <div>Name</div>
+                  <div>Name / Email</div>
                   <div>Username</div>
                   <div>Password</div>
                   <div>Role / Company</div>
@@ -110,7 +115,11 @@ export default async function SettingsPage() {
                           {m.full_name}
                           {!m.is_active && <span className="ml-2 text-xs text-text-muted">(inactive)</span>}
                         </div>
-                        {hasEmail && <div className="mt-0.5 break-all text-[12px] text-text-muted">{m.email}</div>}
+                        {hasEmail ? (
+                          <div className="mt-0.5 break-all text-[12px] text-text-muted">{m.email}</div>
+                        ) : (
+                          <span className="mt-1 inline-block rounded-full bg-warning-bg px-2 py-0.5 text-[11px] font-bold text-warning">No email yet</span>
+                        )}
                       </div>
                       <div className="font-semibold text-text-secondary">{m.username ?? "—"}</div>
                       <div className="text-text-secondary">
@@ -135,6 +144,7 @@ export default async function SettingsPage() {
                         initial={{
                           fullName: m.full_name,
                           username: m.username ?? "",
+                          email: hasEmail ? m.email : "",
                           role: access?.role ?? "staff",
                           allCompanies: hasAll,
                           companyIds: rows.map((r) => r.company_id).filter((id): id is string => id !== null),

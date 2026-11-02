@@ -23,12 +23,13 @@ export function MemberActions({
 }: {
   userId: string;
   companies: Company[];
-  initial: { fullName: string; username: string; role: UserRole; allCompanies: boolean; companyIds: string[]; allowedModules: string[] | null };
+  initial: { fullName: string; username: string; email: string; role: UserRole; allCompanies: boolean; companyIds: string[]; allowedModules: string[] | null };
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [fullName, setFullName] = useState(initial.fullName);
   const [username, setUsername] = useState(initial.username);
+  const [email, setEmail] = useState(initial.email);
   const [role, setRole] = useState<UserRole>(initial.role);
   const [allCompanies, setAllCompanies] = useState(initial.allCompanies);
   const [companyIds, setCompanyIds] = useState<string[]>(initial.companyIds);
@@ -47,15 +48,20 @@ export function MemberActions({
     setSaving(true);
     setError(null);
     try {
-      await updateMember(userId, {
+      const result = await updateMember(userId, {
         fullName,
         username,
+        email: email.trim() !== initial.email ? email.trim() : undefined,
         role,
         allCompanies,
         companyIds,
         allowedModules: modules,
         newPassword: newPassword || undefined,
       });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
       setEditing(false);
       setNewPassword("");
       router.refresh();
@@ -106,7 +112,7 @@ export function MemberActions({
   return (
     <div className="col-span-5 mt-2 rounded-lg border border-border-strong bg-surface-alt p-3">
       {error && <div className="mb-2 rounded-lg border border-danger/30 bg-danger-bg px-2 py-1.5 text-xs text-danger">{error}</div>}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div>
           <label className={labelClass}>Full Name</label>
           <input value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputClass} />
@@ -114,6 +120,10 @@ export function MemberActions({
         <div>
           <label className={labelClass}>Username</label>
           <input value={username} onChange={(e) => setUsername(e.target.value)} className={inputClass} />
+        </div>
+        <div>
+          <label className={labelClass}>Email (for sign-in)</label>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" autoCapitalize="none" className={inputClass} />
         </div>
         <div>
           <label className={labelClass}>Role</label>

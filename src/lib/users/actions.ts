@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionContext } from "@/lib/auth";
+import { runAction, type ActionResult } from "@/lib/actionResult";
 import type { Database } from "@/lib/supabase/types";
 
 type UserRole = Database["public"]["Enums"]["user_role"];
@@ -75,6 +76,8 @@ export async function createMember(input: CreateMemberInput) {
 export type UpdateMemberInput = {
   fullName?: string;
   username?: string;
+  /** A new sign-in email. Left out (or blank) = the email stays as it is. */
+  email?: string;
   role?: UserRole;
   allCompanies?: boolean;
   companyIds?: string[];
@@ -83,7 +86,15 @@ export type UpdateMemberInput = {
   newPassword?: string;
 };
 
-export async function updateMember(userId: string, input: UpdateMemberInput) {
+/** Returns the problem as a result (a thrown message is hidden in production), so "email already used" reaches the screen. */
+export async function updateMember(userId: string, input: UpdateMemberInput): Promise<ActionResult> {
+  return runAction(async () => {
+    await applyMemberUpdate(userId, input);
+    return {};
+  });
+}
+
+async function applyMemberUpdate(userId: string, input: UpdateMemberInput) {
   const session = await requireSuperAdmin();
   const admin = createAdminClient();
 
@@ -100,6 +111,17 @@ export async function updateMember(userId: string, input: UpdateMemberInput) {
       .neq("id", userId)
       .maybeSingle();
     if (existingUsername) throw new Error("That username is already taken.");
+  }
+
+  const newEmail = input.email?.trim().toLowerCase();
+  if (newEmail) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) throw new Error("Enter a valid email address.");
+    const { data: taken } = await admin.from("profiles").select("id").eq("email", newEmail).neq("id", userId).maybeSingle();
+    if (taken) throw new Error("That email is already used by someone else.");
+    const { error: authError } = await admin.auth.admin.updateUserById(userId, { email: newEmail, email_confirm: true });
+    if (authError) throw authError;
+    const { error: emailError } = await admin.from("profiles").update({ email: newEmail }).eq("id", userId);
+    if (emailError) throw emailError;
   }
 
   if (input.fullName !== undefined || input.username !== undefined) {
