@@ -70,9 +70,6 @@ export async function EmployeeProfileView({
   ]);
 
   const restricted = "Restricted (Admin only)";
-  const bankValue = !canSeePrivate
-    ? restricted
-    : [privateDetails?.bank_name, privateDetails?.bank_account_no].filter(Boolean).join(" · ") || "—";
   // the date of birth written on the staff record; for a Malaysian IC number it is also known from the number itself
   const dobText = employee.date_of_birth || dobFromIc(employee.ic_passport_no) || "—";
   const kwspValue = !canSeePrivate ? restricted : privateDetails?.epf_no || "—";
@@ -124,25 +121,86 @@ export async function EmployeeProfileView({
       </div>
 
       <div className="grid grid-cols-2 gap-5">
-        <SectionCard title="Staff Information">
+        <SectionCard title="General">
+          <StatRow label="Employee No." value={employee.employee_no || "—"} />
           <StatRow label="Name" value={employee.full_name} />
-          <StatRow label="IC Number / Passport No." value={employee.ic_passport_no || "—"} />
-          <StatRow label="Date of Birth (from IC number)" value={dobText} />
+          <StatRow label="Address" value={employee.address_line || "—"} />
+          <StatRow label="City" value={employee.address_city || "—"} />
+          <StatRow label="State" value={employee.address_state || "—"} />
+          <StatRow label="Postcode" value={employee.address_postcode || "—"} />
+          <StatRow label="I/C No." value={employee.ic_passport_no || "—"} />
+          <StatRow label="Old I/C No." value={employee.old_ic_no || "—"} />
+          <StatRow label="Passport No." value={employee.passport_no || "—"} />
+          <StatRow label="Date of Birth" value={dobText} />
           <StatRow label="Nationality" value={employee.nationality || "—"} />
           <StatRow label="Gender" value={employee.gender || "—"} />
           <StatRow label="Race" value={employee.race || "—"} />
           <StatRow label="Religion" value={employee.religion || "—"} />
           <StatRow label="Marital Status" value={employee.marital_status || "—"} />
-          <StatRow label="Branch" value={employee.branch || "—"} />
-          <StatRow label="Short Name" value={shortNameOf(employee.full_name, employee.short_name)} />
+          <StatRow label="Phone No." value={employee.home_phone || "—"} />
           <StatRow label="Mobile No." value={employee.phone || "—"} />
           <StatRow label="Email" value={employee.email || "—"} />
-          <StatRow label="Start Date" value={employee.join_date || "—"} />
-          <StatRow label="Position" value={employee.position || "—"} />
-          <StatRow label="Bank Name & A/C No." value={bankValue} />
-          <StatRow label="KWSP No." value={kwspValue} />
+          <StatRow label="Short Name" value={shortNameOf(employee.full_name, employee.short_name)} />
+        </SectionCard>
+
+        <div className="flex flex-col gap-5">
+          <SectionCard title="Permanent Address">
+            <StatRow label="Address" value={employee.perm_address_line || "—"} />
+            <StatRow label="City" value={employee.perm_city || "—"} />
+            <StatRow label="State" value={employee.perm_state || "—"} />
+            <StatRow label="Postcode" value={employee.perm_postcode || "—"} />
+          </SectionCard>
+          <SectionCard title="Spouse">
+            <StatRow label="Name" value={employee.spouse_name || "—"} />
+            <StatRow label="I/C No." value={employee.spouse_ic_no || "—"} />
+            <StatRow label="Working?" value={employee.spouse_working === null || employee.spouse_working === undefined ? "—" : employee.spouse_working ? "Yes" : "No"} />
+            <StatRow label="No. of Children" value={employee.children_count ?? "—"} />
+            <StatRow label="Child Relief" value={employee.child_relief != null ? Number(employee.child_relief).toFixed(2) : "—"} />
+          </SectionCard>
+          <SectionCard title="Emergency Contact">
+            <StatRow label="Name" value={employee.emergency_name || "—"} />
+            <StatRow label="Phone No." value={employee.emergency_phone || "—"} />
+            <StatRow label="Relationship" value={employee.emergency_relationship || "—"} />
+          </SectionCard>
+        </div>
+
+        <SectionCard title="Payroll Information">
+          <StatRow label="Branch" value={employee.branch || "—"} />
           <StatRow label="Department" value={employee.department || "—"} />
+          <StatRow label="Job Title" value={employee.position || "—"} />
+          <StatRow label="Job Level" value={employee.job_level || "—"} />
+          <StatRow label="Date Joined" value={employee.join_date || "—"} />
+          <StatRow label="Date Confirmed" value={employee.date_confirmed || "—"} />
+          <StatRow label="Date Promoted" value={employee.date_promoted || "—"} />
+          <StatRow label="Date Resigned" value={employee.resign_date || "—"} />
           <StatRow label="Employment Type" value={EMPLOYMENT_TYPE_LABEL[employee.employment_type] ?? employee.employment_type} />
+          <StatRow label="Status" value={EMPLOYEE_STATUS_LABEL[employee.status] ?? employee.status} />
+          <StatRow label="Basic Rate" value={!canSeePrivate ? restricted : privateDetails?.basic_rate != null ? formatCurrency(Number(privateDetails.basic_rate)) : "—"} />
+          <StatRow label="Pay Basis" value={!canSeePrivate ? restricted : privateDetails?.pay_basis || "—"} />
+          <StatRow label="Payment Mode" value={!canSeePrivate ? restricted : privateDetails?.payment_mode || "—"} />
+        </SectionCard>
+
+        <div className="flex flex-col gap-5">
+          <SectionCard title="Accounts Related">
+            <StatRow label="EPF (KWSP) No." value={kwspValue} />
+            <StatRow label="SOCSO No." value={!canSeePrivate ? restricted : privateDetails?.socso_no || "—"} />
+            <StatRow label="Tax No." value={!canSeePrivate ? restricted : privateDetails?.tax_no || "—"} />
+            <StatRow label="Tax Branch" value={!canSeePrivate ? restricted : privateDetails?.tax_branch || "—"} />
+          </SectionCard>
+          <SectionCard title="Bank">
+            <StatRow label="Bank Name" value={!canSeePrivate ? restricted : privateDetails?.bank_name || "—"} />
+            <StatRow label="A/C No." value={!canSeePrivate ? restricted : privateDetails?.bank_account_no || "—"} />
+            <StatRow label="Bank ID" value={!canSeePrivate ? restricted : privateDetails?.bank_id || "—"} />
+            <StatRow label="Branch Code" value={!canSeePrivate ? restricted : privateDetails?.bank_branch_code || "—"} />
+          </SectionCard>
+        </div>
+
+        <SectionCard title="Education Background">
+          {employee.education_background ? <p className="whitespace-pre-line text-[13.5px] text-text">{employee.education_background}</p> : <EmptyRow text="Not filled in yet." />}
+        </SectionCard>
+
+        <SectionCard title="Working Experience">
+          {employee.working_experience ? <p className="whitespace-pre-line text-[13.5px] text-text">{employee.working_experience}</p> : <EmptyRow text="Not filled in yet." />}
         </SectionCard>
 
         <SectionCard

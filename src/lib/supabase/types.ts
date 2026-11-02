@@ -1721,6 +1721,14 @@ export type Database = {
           company_id: string
           employee_id: string
           epf_no: string | null
+          socso_no: string | null
+          tax_no: string | null
+          tax_branch: string | null
+          bank_id: string | null
+          bank_branch_code: string | null
+          pay_basis: string | null
+          payment_mode: string | null
+          basic_rate: number | null
           updated_at: string
         }
         Insert: {
@@ -1729,6 +1737,14 @@ export type Database = {
           company_id: string
           employee_id: string
           epf_no?: string | null
+          socso_no?: string | null
+          tax_no?: string | null
+          tax_branch?: string | null
+          bank_id?: string | null
+          bank_branch_code?: string | null
+          pay_basis?: string | null
+          payment_mode?: string | null
+          basic_rate?: number | null
           updated_at?: string
         }
         Update: {
@@ -1737,6 +1753,14 @@ export type Database = {
           company_id?: string
           employee_id?: string
           epf_no?: string | null
+          socso_no?: string | null
+          tax_no?: string | null
+          tax_branch?: string | null
+          bank_id?: string | null
+          bank_branch_code?: string | null
+          pay_basis?: string | null
+          payment_mode?: string | null
+          basic_rate?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -1780,6 +1804,31 @@ export type Database = {
           race: string | null
           religion: string | null
           short_name: string | null
+          employee_no: string | null
+          old_ic_no: string | null
+          passport_no: string | null
+          home_phone: string | null
+          address_line: string | null
+          address_city: string | null
+          address_state: string | null
+          address_postcode: string | null
+          perm_address_line: string | null
+          perm_city: string | null
+          perm_state: string | null
+          perm_postcode: string | null
+          spouse_name: string | null
+          spouse_ic_no: string | null
+          emergency_name: string | null
+          emergency_phone: string | null
+          emergency_relationship: string | null
+          job_level: string | null
+          education_background: string | null
+          working_experience: string | null
+          spouse_working: boolean | null
+          children_count: number | null
+          child_relief: number | null
+          date_confirmed: string | null
+          date_promoted: string | null
         }
         Insert: {
           company_id: string
@@ -1804,6 +1853,31 @@ export type Database = {
           race?: string | null
           religion?: string | null
           short_name?: string | null
+          employee_no?: string | null
+          old_ic_no?: string | null
+          passport_no?: string | null
+          home_phone?: string | null
+          address_line?: string | null
+          address_city?: string | null
+          address_state?: string | null
+          address_postcode?: string | null
+          perm_address_line?: string | null
+          perm_city?: string | null
+          perm_state?: string | null
+          perm_postcode?: string | null
+          spouse_name?: string | null
+          spouse_ic_no?: string | null
+          emergency_name?: string | null
+          emergency_phone?: string | null
+          emergency_relationship?: string | null
+          job_level?: string | null
+          education_background?: string | null
+          working_experience?: string | null
+          spouse_working?: boolean | null
+          children_count?: number | null
+          child_relief?: number | null
+          date_confirmed?: string | null
+          date_promoted?: string | null
         }
         Update: {
           company_id?: string
@@ -1828,6 +1902,31 @@ export type Database = {
           race?: string | null
           religion?: string | null
           short_name?: string | null
+          employee_no?: string | null
+          old_ic_no?: string | null
+          passport_no?: string | null
+          home_phone?: string | null
+          address_line?: string | null
+          address_city?: string | null
+          address_state?: string | null
+          address_postcode?: string | null
+          perm_address_line?: string | null
+          perm_city?: string | null
+          perm_state?: string | null
+          perm_postcode?: string | null
+          spouse_name?: string | null
+          spouse_ic_no?: string | null
+          emergency_name?: string | null
+          emergency_phone?: string | null
+          emergency_relationship?: string | null
+          job_level?: string | null
+          education_background?: string | null
+          working_experience?: string | null
+          spouse_working?: boolean | null
+          children_count?: number | null
+          child_relief?: number | null
+          date_confirmed?: string | null
+          date_promoted?: string | null
         }
         Relationships: [
           {

@@ -25,7 +25,7 @@ export default async function NewEmployeePage({
   const defaultCompanyId = requestedId && accessibleIds.includes(requestedId) ? requestedId : selectable[0]?.id;
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-4xl">
       <h1 className="text-[22px] font-extrabold text-text">Add Employee</h1>
       <p className="mt-0.5 text-[13px] text-text-secondary">Manual entry — bulk import is available from the Employee Database page.</p>
       <div className="mt-5 rounded-xl border border-border bg-surface p-6 shadow-sm">

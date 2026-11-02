@@ -40,7 +40,7 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-4xl">
       <h1 className="text-[22px] font-extrabold text-text">Edit {employee.full_name}</h1>
       <div className="mt-5 rounded-xl border border-border bg-surface p-6 shadow-sm">
         <EmployeeForm
@@ -64,6 +64,40 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
             bankName: privateDetails?.bank_name ?? "",
             bankAccountNo: privateDetails?.bank_account_no ?? "",
             epfNo: privateDetails?.epf_no ?? "",
+            socsoNo: privateDetails?.socso_no ?? "",
+            taxNo: privateDetails?.tax_no ?? "",
+            taxBranch: privateDetails?.tax_branch ?? "",
+            bankId: privateDetails?.bank_id ?? "",
+            bankBranchCode: privateDetails?.bank_branch_code ?? "",
+            basicRate: privateDetails?.basic_rate != null ? String(privateDetails.basic_rate) : "",
+            payBasis: privateDetails?.pay_basis ?? "",
+            paymentMode: privateDetails?.payment_mode ?? "",
+            employeeNo: employee.employee_no ?? "",
+            oldIcNo: employee.old_ic_no ?? "",
+            passportNo: employee.passport_no ?? "",
+            homePhone: employee.home_phone ?? "",
+            addressLine: employee.address_line ?? "",
+            addressCity: employee.address_city ?? "",
+            addressState: employee.address_state ?? "",
+            addressPostcode: employee.address_postcode ?? "",
+            permAddressLine: employee.perm_address_line ?? "",
+            permCity: employee.perm_city ?? "",
+            permState: employee.perm_state ?? "",
+            permPostcode: employee.perm_postcode ?? "",
+            spouseName: employee.spouse_name ?? "",
+            spouseIcNo: employee.spouse_ic_no ?? "",
+            spouseWorking: employee.spouse_working === true ? "Yes" : employee.spouse_working === false ? "No" : "",
+            childrenCount: employee.children_count != null ? String(employee.children_count) : "",
+            childRelief: employee.child_relief != null ? String(employee.child_relief) : "",
+            emergencyName: employee.emergency_name ?? "",
+            emergencyPhone: employee.emergency_phone ?? "",
+            emergencyRelationship: employee.emergency_relationship ?? "",
+            jobLevel: employee.job_level ?? "",
+            dateConfirmed: employee.date_confirmed ?? "",
+            datePromoted: employee.date_promoted ?? "",
+            resignDate: employee.resign_date ?? "",
+            educationBackground: employee.education_background ?? "",
+            workingExperience: employee.working_experience ?? "",
             dateOfBirth: employee.date_of_birth ?? "",
             nationality: employee.nationality ?? "",
             gender: employee.gender ?? "",

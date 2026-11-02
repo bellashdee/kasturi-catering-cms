@@ -41,25 +41,125 @@ export type EmployeeInput = {
   maritalStatus?: string;
   branch?: string;
   shortName?: string;
+  // Personnel Information form
+  employeeNo?: string;
+  oldIcNo?: string;
+  passportNo?: string;
+  homePhone?: string;
+  addressLine?: string;
+  addressCity?: string;
+  addressState?: string;
+  addressPostcode?: string;
+  permAddressLine?: string;
+  permCity?: string;
+  permState?: string;
+  permPostcode?: string;
+  spouseName?: string;
+  spouseIcNo?: string;
+  /** "Yes", "No" or blank. */
+  spouseWorking?: string;
+  childrenCount?: string;
+  childRelief?: string;
+  emergencyName?: string;
+  emergencyPhone?: string;
+  emergencyRelationship?: string;
+  jobLevel?: string;
+  dateConfirmed?: string;
+  datePromoted?: string;
+  resignDate?: string;
+  educationBackground?: string;
+  workingExperience?: string;
+  // Admin only (employee_private_details)
+  socsoNo?: string;
+  taxNo?: string;
+  taxBranch?: string;
+  bankId?: string;
+  bankBranchCode?: string;
+  basicRate?: string;
+  payBasis?: string;
+  paymentMode?: string;
   /** Login account of this person (admin only); lets them submit and see their own OT. null clears the link. */
   userId?: string | null;
 };
+
+type PrivateInput = Pick<EmployeeInput, "bankName" | "bankAccountNo" | "epfNo" | "socsoNo" | "taxNo" | "taxBranch" | "bankId" | "bankBranchCode" | "basicRate" | "payBasis" | "paymentMode">;
+const PRIVATE_KEYS: (keyof PrivateInput)[] = ["bankName", "bankAccountNo", "epfNo", "socsoNo", "taxNo", "taxBranch", "bankId", "bankBranchCode", "basicRate", "payBasis", "paymentMode"];
+const hasPrivateInput = (input: Partial<EmployeeInput>) => PRIVATE_KEYS.some((k) => input[k] !== undefined);
+
+function numberOrNull(v: string | undefined, label: string): number | null {
+  const t = v?.trim().replace(/,/g, "");
+  if (!t) return null;
+  const n = Number(t);
+  if (!Number.isFinite(n) || n < 0) throw new Error(`Enter a valid ${label}.`);
+  return n;
+}
 
 async function savePrivateDetails(
   supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
   employeeId: string,
   companyId: string,
-  input: { bankName?: string; bankAccountNo?: string; epfNo?: string },
+  input: PrivateInput,
 ) {
+  const text = (v: string | undefined) => v?.trim() || null;
+  const basicRate = numberOrNull(input.basicRate, "basic rate");
   const { error } = await supabase.from("employee_private_details").upsert({
     employee_id: employeeId,
     company_id: companyId,
-    bank_name: input.bankName?.trim() || null,
-    bank_account_no: input.bankAccountNo?.trim() || null,
-    epf_no: input.epfNo?.trim() || null,
+    bank_name: text(input.bankName),
+    bank_account_no: text(input.bankAccountNo),
+    epf_no: text(input.epfNo),
+    socso_no: text(input.socsoNo),
+    tax_no: text(input.taxNo),
+    tax_branch: text(input.taxBranch),
+    bank_id: text(input.bankId),
+    bank_branch_code: text(input.bankBranchCode),
+    basic_rate: basicRate,
+    pay_basis: text(input.payBasis),
+    payment_mode: text(input.paymentMode),
     updated_at: new Date().toISOString(),
   });
-  if (error) throw new Error("Only Madam Penny or Nabilah can save bank and KWSP details.");
+  if (error) throw new Error("Only Madam Penny or Nabilah can save salary, bank, KWSP, SOCSO and tax details.");
+}
+
+/** The Personnel Information details of the staff record (address, spouse, emergency contact, job dates, education, experience). */
+function personnelColumns(input: Partial<EmployeeInput>) {
+  const text = (v: string | undefined) => v?.trim() || null;
+  const date = (v: string | undefined, label: string) => {
+    const t = text(v);
+    if (t && !/^\d{4}-\d{2}-\d{2}$/.test(t)) throw new Error(`Enter a valid ${label}.`);
+    return t;
+  };
+  const children = numberOrNull(input.childrenCount, "number of children");
+  if (children !== null && !Number.isInteger(children)) throw new Error("Enter a valid number of children.");
+  const spouseWorking = input.spouseWorking === "Yes" ? true : input.spouseWorking === "No" ? false : null;
+  return {
+    employee_no: text(input.employeeNo),
+    old_ic_no: text(input.oldIcNo),
+    passport_no: text(input.passportNo),
+    home_phone: text(input.homePhone),
+    address_line: text(input.addressLine),
+    address_city: text(input.addressCity),
+    address_state: text(input.addressState),
+    address_postcode: text(input.addressPostcode),
+    perm_address_line: text(input.permAddressLine),
+    perm_city: text(input.permCity),
+    perm_state: text(input.permState),
+    perm_postcode: text(input.permPostcode),
+    spouse_name: text(input.spouseName),
+    spouse_ic_no: text(input.spouseIcNo),
+    spouse_working: spouseWorking,
+    children_count: children,
+    child_relief: numberOrNull(input.childRelief, "child relief"),
+    emergency_name: text(input.emergencyName),
+    emergency_phone: text(input.emergencyPhone),
+    emergency_relationship: text(input.emergencyRelationship),
+    job_level: text(input.jobLevel),
+    date_confirmed: date(input.dateConfirmed, "date confirmed"),
+    date_promoted: date(input.datePromoted, "date promoted"),
+    resign_date: date(input.resignDate, "date resigned"),
+    education_background: text(input.educationBackground),
+    working_experience: text(input.workingExperience),
+  };
 }
 
 /** Date of birth, nationality, gender, race, religion, marital status and branch; the date of birth comes from the IC number when it is not typed. */
@@ -96,13 +196,14 @@ export async function createEmployee(input: EmployeeInput) {
       phone: input.phone || null,
       email: input.email || null,
       ...personalColumns(input),
+      ...personnelColumns(input),
     })
     .select("id")
     .single();
 
   if (error) throw error;
 
-  if (input.bankName || input.bankAccountNo || input.epfNo) {
+  if (PRIVATE_KEYS.some((k) => input[k]?.trim())) {
     await savePrivateDetails(supabase, data.id, input.companyId, input);
   }
 
@@ -141,35 +242,19 @@ export async function attachEmployeeToCompanies(employeeId: string, companyIds: 
     const { data: sameCompany } = await supabase.from("employees").select("id, full_name").eq("company_id", companyId);
     const key = (s: string) => s.toUpperCase().replace(/\s+/g, " ").trim();
     if ((sameCompany ?? []).some((e) => key(e.full_name) === key(source.full_name))) continue;
+    // the copy keeps every detail of the source except its own id, creation time and the linked login
+    const { id: _id, created_at: _createdAt, user_id: _userId, company_id: _companyId, ...details } = source;
+    void _id; void _createdAt; void _userId; void _companyId;
     const { data: copy, error: insertError } = await supabase
       .from("employees")
-      .insert({
-        company_id: companyId,
-        full_name: source.full_name,
-        department: source.department,
-        position: source.position,
-        employment_type: source.employment_type,
-        status: source.status,
-        join_date: source.join_date,
-        ic_passport_no: source.ic_passport_no,
-        phone: source.phone,
-        email: source.email,
-        date_of_birth: source.date_of_birth,
-        nationality: source.nationality,
-        gender: source.gender,
-        race: source.race,
-        religion: source.religion,
-        marital_status: source.marital_status,
-        branch: source.branch,
-        short_name: source.short_name,
-      })
+      .insert({ ...details, company_id: companyId })
       .select("id")
       .single();
     if (insertError) throw new Error("You cannot add staff to one of the selected companies.");
     created.push(copy.id);
     if (sourcePrivate) {
       // only an admin can write these; for anybody else the copy simply has none
-      await supabase.from("employee_private_details").upsert({ employee_id: copy.id, company_id: companyId, bank_name: sourcePrivate.bank_name, bank_account_no: sourcePrivate.bank_account_no, epf_no: sourcePrivate.epf_no, updated_at: new Date().toISOString() });
+      await supabase.from("employee_private_details").upsert({ ...sourcePrivate, employee_id: copy.id, company_id: companyId, updated_at: new Date().toISOString() });
     }
   }
   revalidatePath("/hr");
@@ -198,6 +283,7 @@ export async function updateEmployee(employeeId: string, input: Partial<Employee
       phone: input.phone || null,
       email: input.email || null,
       ...personalColumns(input),
+      ...personnelColumns(input),
       ...(input.userId !== undefined ? { user_id: input.userId } : {}),
     })
     .eq("id", employeeId);
@@ -207,7 +293,7 @@ export async function updateEmployee(employeeId: string, input: Partial<Employee
     throw error;
   }
 
-  if (input.bankName !== undefined || input.bankAccountNo !== undefined || input.epfNo !== undefined) {
+  if (hasPrivateInput(input)) {
     const { data: emp } = await supabase.from("employees").select("company_id").eq("id", employeeId).single();
     if (emp) await savePrivateDetails(supabase, employeeId, emp.company_id, input);
   }

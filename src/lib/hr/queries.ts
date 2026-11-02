@@ -116,7 +116,7 @@ export async function listAttendanceForEmployee(supabase: DB, employeeId: string
 export async function getEmployeePrivateDetails(supabase: DB, employeeId: string) {
   const { data, error } = await supabase
     .from("employee_private_details")
-    .select("bank_name, bank_account_no, epf_no")
+    .select("bank_name, bank_account_no, epf_no, socso_no, tax_no, tax_branch, bank_id, bank_branch_code, basic_rate, pay_basis, payment_mode")
     .eq("employee_id", employeeId)
     .maybeSingle();
   if (error) throw error;
