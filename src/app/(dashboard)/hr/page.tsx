@@ -95,8 +95,8 @@ export default async function HRPage({
     title: exportTable.title,
     subtitle,
     landscape: true,
-    columns: ["No.", "Name", "Company", "I/C or Passport No.", "Mobile No.", "Department", "Position", "Date Joined", "Status"],
-    rows: exportTable.rows.map((r, i) => [String(i + 1), r[1], r[2], r[3], r[10], r[13], r[14], r[16], r[17]]),
+    columns: ["No.", "Name", "Company", "I/C or Passport No.", "Position", "Mobile No.", "Date Joined", "Status"],
+    rows: exportTable.rows.map((r, i) => [String(i + 1), r[1], r[2], r[3], r[14], r[10], r[16], r[17]]),
   };
 
   const linkClass = "flex h-9 items-center gap-2 whitespace-nowrap rounded-lg border border-border-strong bg-surface px-3.5 text-[13px] font-semibold text-text hover:bg-surface-alt";
@@ -184,8 +184,8 @@ export default async function HRPage({
             <div className="grid grid-cols-[2fr_1.2fr_1.2fr_1fr_1fr_1fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
               <div>Name</div>
               <div>I/C / Passport</div>
-              <div>Department</div>
               <div>Position</div>
+              <div>Mobile No.</div>
               <div>Join Date</div>
               <div>Status</div>
             </div>
@@ -212,8 +212,8 @@ export default async function HRPage({
                     )}
                   </div>
                   <div className="break-words text-text-secondary">{first.ic_passport_no || "—"}</div>
-                  <div className="text-text-secondary">{joined(group.map((g) => g.department))}</div>
                   <div className="text-text-secondary">{joined(group.map((g) => g.position))}</div>
+                  <div className="break-words text-text-secondary">{first.phone || "—"}</div>
                   <div className="text-text-secondary">{joined(group.map((g) => g.join_date))}</div>
                   <div className="flex flex-wrap gap-1">
                     {statuses.map((st) => (
