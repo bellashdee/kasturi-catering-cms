@@ -181,9 +181,9 @@ export function EmployeeForm({
       )}
 
       <Section title="General">
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {field("employeeNo", "Employee No.", { placeholder: "e.g. A02", upper: true })}
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <label className={labelClass}>Name *</label>
             <input required value={form.fullName} onChange={(e) => set("fullName", e.target.value)} className={inputClass} placeholder="e.g. Aina Ismail" />
           </div>
@@ -221,13 +221,13 @@ export function EmployeeForm({
           <label className={labelClass}>Address</label>
           <input value={form.addressLine ?? ""} onChange={(e) => set("addressLine", e.target.value)} className={inputClass} placeholder="e.g. NO.3, JALAN SETIA 12/10, TAMAN SETIA INDAH" />
         </div>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {field("addressCity", "City")}
           {field("addressState", "State")}
           {field("addressPostcode", "Postcode", { inputMode: "numeric" })}
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div>
             <label className={labelClass}>I/C No.</label>
             <input
@@ -247,7 +247,7 @@ export function EmployeeForm({
           {field("passportNo", "Passport No.", { upper: true })}
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div>
             <label className={labelClass}>Date of Birth (from I/C No.)</label>
             <input type="date" value={form.dateOfBirth} onChange={(e) => set("dateOfBirth", e.target.value)} className={inputClass} />
@@ -267,7 +267,7 @@ export function EmployeeForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {field("homePhone", "Phone No.")}
           <div>
             <label className={labelClass}>Mobile No.</label>
@@ -279,7 +279,7 @@ export function EmployeeForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div>
             <label className={labelClass}>Race</label>
             <Select value={form.race} onChange={(e) => set("race", e.target.value)} className={inputClass}>
@@ -318,14 +318,14 @@ export function EmployeeForm({
           </button>
         </div>
         <input value={form.permAddressLine ?? ""} onChange={(e) => set("permAddressLine", e.target.value)} className={`${inputClass} -mt-3`} />
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {field("permCity", "City")}
           {field("permState", "State")}
           {field("permPostcode", "Postcode", { inputMode: "numeric" })}
         </div>
       </Section>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Section title="Spouse">
           {field("spouseName", "Name")}
           {field("spouseIcNo", "I/C No.")}
@@ -337,7 +337,7 @@ export function EmployeeForm({
               <option value="No">No</option>
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {field("childrenCount", "No. of Children", { inputMode: "numeric" })}
             {field("childRelief", "Child Relief", { inputMode: "decimal", placeholder: "e.g. 2.00" })}
           </div>
@@ -351,21 +351,21 @@ export function EmployeeForm({
       </div>
 
       <Section title="Payroll Information">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className={labelClass}>Branch</label>
             <SearchSelect value={form.branch ?? ""} onChange={(v) => set("branch", v)} options={BRANCHES} className={inputClass} placeholder="Search or choose the branch" />
           </div>
           {field("department", "Department", { placeholder: "e.g. Kitchen" })}
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className={labelClass}>Job Title (Position)</label>
             <input value={form.position} onChange={(e) => set("position", e.target.value.toUpperCase())} className={`${inputClass} uppercase`} placeholder="e.g. HEAD CHEF" />
           </div>
           {field("jobLevel", "Job Level")}
         </div>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div>
             <label className={labelClass}>Date Joined</label>
             <input type="date" value={form.joinDate} onChange={(e) => set("joinDate", e.target.value)} className={inputClass} />
@@ -374,7 +374,7 @@ export function EmployeeForm({
           {field("datePromoted", "Date Promoted", { type: "date" })}
           {field("resignDate", "Date Resigned", { type: "date" })}
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className={labelClass}>Employment Type</label>
             <Select value={form.employmentType} onChange={(e) => set("employmentType", e.target.value)} className={inputClass}>
@@ -401,7 +401,7 @@ export function EmployeeForm({
       {canEditPrivate && (
         <>
           <Section title="Salary" note="visible to Super Admin and Company Admin only">
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               {field("basicRate", "Basic Rate (RM)", { inputMode: "decimal" })}
               <div>
                 <label className={labelClass}>Pay Basis</label>
@@ -420,11 +420,11 @@ export function EmployeeForm({
             </div>
           </Section>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Section title="Bank" note="Admin only">
               {field("bankName", "Bank Name", { placeholder: "e.g. Maybank" })}
               {field("bankAccountNo", "A/C No.", { inputMode: "numeric" })}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {field("bankId", "Bank ID")}
                 {field("bankBranchCode", "Branch Code")}
               </div>
@@ -433,7 +433,7 @@ export function EmployeeForm({
             <Section title="Accounts Related" note="Admin only">
               {field("epfNo", "EPF (KWSP) No.")}
               {field("socsoNo", "SOCSO No.")}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {field("taxNo", "Tax No.")}
                 {field("taxBranch", "Tax Branch")}
               </div>

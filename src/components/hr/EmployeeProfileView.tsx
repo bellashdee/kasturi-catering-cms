@@ -25,10 +25,27 @@ import { dobFromIc } from "@/lib/hr/ic";
 import { shortNameOf } from "@/lib/hr/shortName";
 import { canUsePayrollCentre } from "@/lib/hr/payrollAccess";
 import { StatusBadge } from "@/components/StatusBadge";
-import { SectionCard, EmptyRow, StatRow } from "@/components/dashboard/SectionCard";
+import { SectionCard, EmptyRow } from "@/components/dashboard/SectionCard";
 import type { HrAccess } from "@/lib/hr/access";
 import { CertificateList } from "@/components/hr/CertificateList";
 import { LeaveItem } from "@/components/hr/LeaveItem";
+
+const emptyField = (v: React.ReactNode) => v === null || v === undefined || v === "" || (typeof v === "string" && v.startsWith("Restricted"));
+
+/** The details of a card laid out in a tidy grid: a small label over the value, the same on every card of the page. */
+function Fields({ cols = 2, children }: { cols?: 2 | 3; children: React.ReactNode }) {
+  return <dl className={`grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 ${cols === 3 ? "lg:grid-cols-3" : ""}`}>{children}</dl>;
+}
+
+function Field({ label, value, wide, wide2 }: { label: string; value: React.ReactNode; wide?: boolean; wide2?: boolean }) {
+  const empty = emptyField(value);
+  return (
+    <div className={wide ? "col-span-full" : wide2 ? "sm:col-span-2" : ""}>
+      <dt className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">{label}</dt>
+      <dd className={`mt-0.5 break-words text-[14px] leading-snug ${empty ? "text-text-muted" : "font-semibold text-text"}`}>{empty ? (typeof value === "string" && value ? value : "—") : value}</dd>
+    </div>
+  );
+}
 
 /**
  * Everything about one staff member: the staff information, documents and certificates, leave, overtime and (only for the people who may
@@ -120,87 +137,102 @@ export async function EmployeeProfileView({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-5">
-        <SectionCard title="General">
-          <StatRow label="Employee No." value={employee.employee_no || "—"} />
-          <StatRow label="Name" value={employee.full_name} />
-          <StatRow label="Address" value={employee.address_line || "—"} />
-          <StatRow label="City" value={employee.address_city || "—"} />
-          <StatRow label="State" value={employee.address_state || "—"} />
-          <StatRow label="Postcode" value={employee.address_postcode || "—"} />
-          <StatRow label="I/C No." value={employee.ic_passport_no || "—"} />
-          <StatRow label="Old I/C No." value={employee.old_ic_no || "—"} />
-          <StatRow label="Passport No." value={employee.passport_no || "—"} />
-          <StatRow label="Date of Birth" value={dobText} />
-          <StatRow label="Nationality" value={employee.nationality || "—"} />
-          <StatRow label="Gender" value={employee.gender || "—"} />
-          <StatRow label="Race" value={employee.race || "—"} />
-          <StatRow label="Religion" value={employee.religion || "—"} />
-          <StatRow label="Marital Status" value={employee.marital_status || "—"} />
-          <StatRow label="Phone No." value={employee.home_phone || "—"} />
-          <StatRow label="Mobile No." value={employee.phone || "—"} />
-          <StatRow label="Email" value={employee.email || "—"} />
-          <StatRow label="Short Name" value={shortNameOf(employee.full_name, employee.short_name)} />
-        </SectionCard>
-
-        <div className="flex flex-col gap-5">
-          <SectionCard title="Permanent Address">
-            <StatRow label="Address" value={employee.perm_address_line || "—"} />
-            <StatRow label="City" value={employee.perm_city || "—"} />
-            <StatRow label="State" value={employee.perm_state || "—"} />
-            <StatRow label="Postcode" value={employee.perm_postcode || "—"} />
-          </SectionCard>
-          <SectionCard title="Spouse">
-            <StatRow label="Name" value={employee.spouse_name || "—"} />
-            <StatRow label="I/C No." value={employee.spouse_ic_no || "—"} />
-            <StatRow label="Working?" value={employee.spouse_working === null || employee.spouse_working === undefined ? "—" : employee.spouse_working ? "Yes" : "No"} />
-            <StatRow label="No. of Children" value={employee.children_count ?? "—"} />
-            <StatRow label="Child Relief" value={employee.child_relief != null ? Number(employee.child_relief).toFixed(2) : "—"} />
-          </SectionCard>
-          <SectionCard title="Emergency Contact">
-            <StatRow label="Name" value={employee.emergency_name || "—"} />
-            <StatRow label="Phone No." value={employee.emergency_phone || "—"} />
-            <StatRow label="Relationship" value={employee.emergency_relationship || "—"} />
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
+        <div className="lg:col-span-2">
+          <SectionCard title="General">
+            <Fields cols={3}>
+              <Field label="Employee No." value={employee.employee_no} />
+              <Field label="Name" value={employee.full_name} wide2 />
+              <Field label="I/C No." value={employee.ic_passport_no} />
+              <Field label="Old I/C No." value={employee.old_ic_no} />
+              <Field label="Passport No." value={employee.passport_no} />
+              <Field label="Date of Birth" value={dobText === "—" ? null : dobText} />
+              <Field label="Nationality" value={employee.nationality} />
+              <Field label="Gender" value={employee.gender} />
+              <Field label="Race" value={employee.race} />
+              <Field label="Religion" value={employee.religion} />
+              <Field label="Marital Status" value={employee.marital_status} />
+              <Field label="Short Name" value={shortNameOf(employee.full_name, employee.short_name)} />
+              <Field label="Mobile No." value={employee.phone} />
+              <Field label="Phone No." value={employee.home_phone} />
+              <Field label="Email" value={employee.email} />
+              <Field label="Address" value={employee.address_line} wide />
+              <Field label="City" value={employee.address_city} />
+              <Field label="State" value={employee.address_state} />
+              <Field label="Postcode" value={employee.address_postcode} />
+            </Fields>
           </SectionCard>
         </div>
+
+        <SectionCard title="Permanent Address">
+          <Fields>
+            <Field label="Address" value={employee.perm_address_line} wide />
+            <Field label="City" value={employee.perm_city} />
+            <Field label="State" value={employee.perm_state} />
+            <Field label="Postcode" value={employee.perm_postcode} />
+          </Fields>
+        </SectionCard>
+
+        <SectionCard title="Emergency Contact">
+          <Fields>
+            <Field label="Name" value={employee.emergency_name} wide />
+            <Field label="Phone No." value={employee.emergency_phone} />
+            <Field label="Relationship" value={employee.emergency_relationship} />
+          </Fields>
+        </SectionCard>
+
+        <SectionCard title="Spouse">
+          <Fields>
+            <Field label="Name" value={employee.spouse_name} wide />
+            <Field label="I/C No." value={employee.spouse_ic_no} />
+            <Field label="Working?" value={employee.spouse_working === null || employee.spouse_working === undefined ? null : employee.spouse_working ? "Yes" : "No"} />
+            <Field label="No. of Children" value={employee.children_count} />
+            <Field label="Child Relief" value={employee.child_relief != null ? Number(employee.child_relief).toFixed(2) : null} />
+          </Fields>
+        </SectionCard>
 
         <SectionCard title="Payroll Information">
-          <StatRow label="Branch" value={employee.branch || "—"} />
-          <StatRow label="Department" value={employee.department || "—"} />
-          <StatRow label="Job Title" value={employee.position || "—"} />
-          <StatRow label="Job Level" value={employee.job_level || "—"} />
-          <StatRow label="Date Joined" value={employee.join_date || "—"} />
-          <StatRow label="Date Confirmed" value={employee.date_confirmed || "—"} />
-          <StatRow label="Date Promoted" value={employee.date_promoted || "—"} />
-          <StatRow label="Date Resigned" value={employee.resign_date || "—"} />
-          <StatRow label="Employment Type" value={EMPLOYMENT_TYPE_LABEL[employee.employment_type] ?? employee.employment_type} />
-          <StatRow label="Status" value={EMPLOYEE_STATUS_LABEL[employee.status] ?? employee.status} />
-          <StatRow label="Basic Rate" value={!canSeePrivate ? restricted : privateDetails?.basic_rate != null ? formatCurrency(Number(privateDetails.basic_rate)) : "—"} />
-          <StatRow label="Pay Basis" value={!canSeePrivate ? restricted : privateDetails?.pay_basis || "—"} />
-          <StatRow label="Payment Mode" value={!canSeePrivate ? restricted : privateDetails?.payment_mode || "—"} />
+          <Fields>
+            <Field label="Branch" value={employee.branch} />
+            <Field label="Department" value={employee.department} />
+            <Field label="Job Title" value={employee.position} />
+            <Field label="Job Level" value={employee.job_level} />
+            <Field label="Date Joined" value={employee.join_date} />
+            <Field label="Date Confirmed" value={employee.date_confirmed} />
+            <Field label="Date Promoted" value={employee.date_promoted} />
+            <Field label="Date Resigned" value={employee.resign_date} />
+            <Field label="Employment Type" value={EMPLOYMENT_TYPE_LABEL[employee.employment_type] ?? employee.employment_type} />
+            <Field label="Status" value={EMPLOYEE_STATUS_LABEL[employee.status] ?? employee.status} />
+            <Field label="Basic Rate" value={!canSeePrivate ? restricted : privateDetails?.basic_rate != null ? formatCurrency(Number(privateDetails.basic_rate)) : null} />
+            <Field label="Pay Basis" value={!canSeePrivate ? restricted : privateDetails?.pay_basis} />
+            <Field label="Payment Mode" value={!canSeePrivate ? restricted : privateDetails?.payment_mode} />
+          </Fields>
         </SectionCard>
 
-        <div className="flex flex-col gap-5">
-          <SectionCard title="Accounts Related">
-            <StatRow label="EPF (KWSP) No." value={kwspValue} />
-            <StatRow label="SOCSO No." value={!canSeePrivate ? restricted : privateDetails?.socso_no || "—"} />
-            <StatRow label="Tax No." value={!canSeePrivate ? restricted : privateDetails?.tax_no || "—"} />
-            <StatRow label="Tax Branch" value={!canSeePrivate ? restricted : privateDetails?.tax_branch || "—"} />
-          </SectionCard>
-          <SectionCard title="Bank">
-            <StatRow label="Bank Name" value={!canSeePrivate ? restricted : privateDetails?.bank_name || "—"} />
-            <StatRow label="A/C No." value={!canSeePrivate ? restricted : privateDetails?.bank_account_no || "—"} />
-            <StatRow label="Bank ID" value={!canSeePrivate ? restricted : privateDetails?.bank_id || "—"} />
-            <StatRow label="Branch Code" value={!canSeePrivate ? restricted : privateDetails?.bank_branch_code || "—"} />
-          </SectionCard>
-        </div>
+        <SectionCard title="Accounts Related">
+          <Fields>
+            <Field label="EPF (KWSP) No." value={kwspValue === "—" ? null : kwspValue} />
+            <Field label="SOCSO No." value={!canSeePrivate ? restricted : privateDetails?.socso_no} />
+            <Field label="Tax No." value={!canSeePrivate ? restricted : privateDetails?.tax_no} />
+            <Field label="Tax Branch" value={!canSeePrivate ? restricted : privateDetails?.tax_branch} />
+          </Fields>
+        </SectionCard>
+
+        <SectionCard title="Bank">
+          <Fields>
+            <Field label="Bank Name" value={!canSeePrivate ? restricted : privateDetails?.bank_name} />
+            <Field label="A/C No." value={!canSeePrivate ? restricted : privateDetails?.bank_account_no} />
+            <Field label="Bank ID" value={!canSeePrivate ? restricted : privateDetails?.bank_id} />
+            <Field label="Branch Code" value={!canSeePrivate ? restricted : privateDetails?.bank_branch_code} />
+          </Fields>
+        </SectionCard>
 
         <SectionCard title="Education Background">
-          {employee.education_background ? <p className="whitespace-pre-line text-[13.5px] text-text">{employee.education_background}</p> : <EmptyRow text="Not filled in yet." />}
+          {employee.education_background ? <p className="whitespace-pre-line text-[14px] text-text">{employee.education_background}</p> : <EmptyRow text="Not filled in yet." />}
         </SectionCard>
 
         <SectionCard title="Working Experience">
-          {employee.working_experience ? <p className="whitespace-pre-line text-[13.5px] text-text">{employee.working_experience}</p> : <EmptyRow text="Not filled in yet." />}
+          {employee.working_experience ? <p className="whitespace-pre-line text-[14px] text-text">{employee.working_experience}</p> : <EmptyRow text="Not filled in yet." />}
         </SectionCard>
 
         <SectionCard
@@ -278,7 +310,7 @@ export async function EmployeeProfileView({
         </SectionCard>
 
         {isAdmin && showHistory && (
-          <div className="col-span-2">
+          <div className="lg:col-span-2">
             <EditHistoryCard employeeIds={recordIds} />
           </div>
         )}
