@@ -48,7 +48,7 @@ type Row = {
   /** a staff claim; paidMethod is how the claim was paid back to the staff member */
   claim?: { id: string; status: string; paymentDate: string | null; claimant: string | null; department: string | null; paidMethod: string | null };
   /** a row that comes from the claims / top-ups table (it can be edited and deleted here) */
-  tx?: { id: string; type: "expense" | "top_up"; claimant: string; department: string; category: string; description: string; companyId: string; sharedCompanyIds: string[] };
+  tx?: { id: string; type: "expense" | "top_up"; claimant: string; department: string; category: string; description: string; companyId: string; sharedCompanyIds: string[]; hasReceipt: boolean };
 };
 
 /**
@@ -142,7 +142,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
       person: short(t.person_name),
       documentId: t.document_id,
       claim: t.type === "expense" ? { id: t.id, status: t.payment_status, paymentDate: t.payment_date, claimant: short(t.claimant_name), department: t.claimant_department, paidMethod: t.claim_payment_method } : undefined,
-      tx: { id: t.id, type: t.type === "expense" ? "expense" : "top_up", claimant: t.claimant_name ?? "", department: t.claimant_department ?? "", category: t.category ?? "", description: t.description ?? "", companyId: t.company_id, sharedCompanyIds: t.shared_company_ids ?? [] },
+      tx: { id: t.id, type: t.type === "expense" ? "expense" : "top_up", claimant: t.claimant_name ?? "", department: t.claimant_department ?? "", category: t.category ?? "", description: t.description ?? "", companyId: t.company_id, sharedCompanyIds: t.shared_company_ids ?? [], hasReceipt: !!t.document_id },
     })),
   ].sort((a, b) => a.date.localeCompare(b.date) || a.created.localeCompare(b.created));
 

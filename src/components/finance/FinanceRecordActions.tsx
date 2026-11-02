@@ -24,6 +24,7 @@ import { CompanyChips } from "@/components/pettyCash/CompanyChips";
 import { MultiChoiceSelect } from "@/components/ui/MultiChoiceSelect";
 import { PETTY_CASH_CATEGORIES, joinCategories, splitCategories } from "@/lib/operationPettyCash/constants";
 import { splitCompanies } from "@/lib/pettyCash/companies";
+import { ANY_UPLOAD_ACCEPT, fileTypeFromMime, uploadDocument } from "@/lib/documents/upload";
 
 export type InvoiceEditData = { id: string; number: string; invoiceDate: string; dueDate: string; amount: string; taxAmount: string; description: string };
 
@@ -182,7 +183,7 @@ export function CustomerPaymentActions({ payment }: { payment: { id: string; amo
   );
 }
 
-export type ClaimEditData = { id: string; type: "expense" | "top_up"; claimant: string; department: string; category: string; description: string; amount: string; date: string; companyId: string; sharedCompanyIds: string[] };
+export type ClaimEditData = { id: string; type: "expense" | "top_up"; claimant: string; department: string; category: string; description: string; amount: string; date: string; companyId: string; sharedCompanyIds: string[]; /** a receipt is already attached */ hasReceipt?: boolean };
 
 /** Edit (Save / Cancel) and Delete (Undo) of a petty cash staff claim or top-up in the Petty Cash list. */
 export function PettyCashClaimActions({ claim, companies }: { claim: ClaimEditData; companies: { id: string; name: string }[] }) {
@@ -190,6 +191,8 @@ export function PettyCashClaimActions({ claim, companies }: { claim: ClaimEditDa
   const [open, setOpen] = useState(false);
   const [f, setF] = useState(claim);
   const [companyIds, setCompanyIds] = useState<string[]>([claim.companyId, ...claim.sharedCompanyIds]);
+  // the receipt / photo of the claim, added or replaced here
+  const [receipt, setReceipt] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = (patch: Partial<ClaimEditData>) => setF((p) => ({ ...p, ...patch }));
@@ -199,11 +202,18 @@ export function PettyCashClaimActions({ claim, companies }: { claim: ClaimEditDa
     setBusy(true);
     setError(null);
     try {
-      const r = await updatePettyCashClaim(claim.id, { claimantName: f.claimant, claimantDepartment: f.department, category: f.category, description: f.description, amount: Number(f.amount), transactionDate: f.date, ...splitCompanies(companyIds, claim.companyId) });
+      const where = splitCompanies(companyIds, claim.companyId);
+      let documentId: string | undefined;
+      if (receipt) {
+        const doc = await uploadDocument({ companyId: where.companyId, module: "finance", fileType: fileTypeFromMime(receipt), file: receipt, skipMarkdown: true });
+        documentId = doc.id;
+      }
+      const r = await updatePettyCashClaim(claim.id, { claimantName: f.claimant, claimantDepartment: f.department, category: f.category, description: f.description, amount: Number(f.amount), transactionDate: f.date, documentId, ...where });
       if (!r.ok) {
         setError(r.error);
         return;
       }
+      setReceipt(null);
       setOpen(false);
       router.refresh();
     } catch (err) {
@@ -258,6 +268,13 @@ export function PettyCashClaimActions({ claim, companies }: { claim: ClaimEditDa
             <div>
               <label className={LABEL}>Description</label>
               <input className={FIELD} value={f.description} onChange={(e) => set({ description: e.target.value })} />
+            </div>
+            <div className="sm:col-span-2">
+              <label className={LABEL}>Receipt / photo</label>
+              <input type="file" accept={ANY_UPLOAD_ACCEPT} onChange={(e) => setReceipt(e.target.files?.[0] ?? null)} className="mt-1 block w-full text-[13px]" />
+              <p className="mt-1 text-[11.5px] text-text-muted">
+                {claim.hasReceipt ? "A receipt is already attached. Choose a file only to replace it." : "No receipt yet. Choose the photo or the file of the receipt."}
+              </p>
             </div>
             <div className="flex justify-end gap-2.5 sm:col-span-2">
               <button type="button" className={BTN_GHOST} disabled={busy} onClick={() => setOpen(false)}>
