@@ -8,6 +8,7 @@ import { LATE_GRACE_MINUTES } from "@/lib/driver/constants";
 import { DUE_SOON_DAYS, formatRM, paymentUrgency } from "@/lib/finance/payments";
 import { canAccessModule } from "@/lib/modules";
 import type { ModuleKey } from "@/lib/constants";
+import { daysBetween } from "@/lib/hr/probation";
 
 type DB = SupabaseClient<Database>;
 
@@ -285,7 +286,7 @@ export async function getHRSummary(supabase: DB, companyIds: string[]) {
   const today = todayIso();
 
   // Already-expired documents stay in the list (no lower bound) until they are renewed.
-  const [{ count: staffCount }, { data: expiring }, { data: expiringCompanyDocs }] = await Promise.all([
+  const [{ count: staffCount }, { data: expiring }, { data: expiringCompanyDocs }, { data: probations }] = await Promise.all([
     supabase
       .from("employees")
       .select("id", { count: "exact", head: true })
@@ -305,9 +306,20 @@ export async function getHRSummary(supabase: DB, companyIds: string[]) {
       .not("expiry_date", "is", null)
       .lte("expiry_date", monthAhead)
       .order("expiry_date", { ascending: true }),
+    // probations that end within 30 days, or ended without a decision (only the HR admins can read these; others get none)
+    supabase
+      .from("employee_probation")
+      .select("id, employee_id, current_end_date, employees(full_name)")
+      .in("company_id", companyIds)
+      .eq("is_confirmed", false)
+      .eq("needs_verification", false)
+      .not("current_end_date", "is", null)
+      .lte("current_end_date", monthAhead)
+      .order("current_end_date", { ascending: true }),
   ]);
 
   return {
+    probations: (probations ?? []).map((p) => ({ ...p, daysLeft: p.current_end_date ? daysBetween(today, p.current_end_date) : 0 })),
     staffCount: staffCount ?? 0,
     expiringCertificates: (expiring ?? []).map((c) => ({ ...c, expired: !!c.expiry_date && c.expiry_date < today })),
     expiringCompanyDocs: (expiringCompanyDocs ?? []).map((d) => ({ ...d, expired: !!d.expiry_date && d.expiry_date < today })),
@@ -537,6 +549,22 @@ export function buildAlerts(input: {
       meta: "Admin & Finance",
       href: "/spending/petty-cash?status=pending_payment",
     });
+  }
+  // HR is reminded 30, 14 and 7 days before a probation ends (the line turns more urgent at each mark), and after it ended without a decision
+  for (const pr of input.hr.probations) {
+    const name = pr.employees?.full_name ?? "Staff";
+    if (pr.daysLeft < 0) {
+      alerts.push({ severity: "warning", title: `Probation ended, decision needed: ${name}`, meta: `HR · ended ${pr.current_end_date}`, href: `/hr/${pr.employee_id}#probation`, listHref: "/hr/probation?status=pending_confirmation" });
+    } else {
+      const mark = pr.daysLeft <= 7 ? 7 : pr.daysLeft <= 14 ? 14 : 30;
+      alerts.push({
+        severity: mark === 7 ? "danger" : mark === 14 ? "warning" : "info",
+        title: `Probation ending: ${name} (${pr.daysLeft === 0 ? "today" : `${pr.daysLeft} day${pr.daysLeft === 1 ? "" : "s"}`})`,
+        meta: `HR · probation ends ${pr.current_end_date}`,
+        href: `/hr/${pr.employee_id}#probation`,
+        listHref: "/hr/probation?status=review_required",
+      });
+    }
   }
   for (const cert of input.hr.expiringCertificates) {
     alerts.push({

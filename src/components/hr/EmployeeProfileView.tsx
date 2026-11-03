@@ -29,6 +29,9 @@ import { SectionCard, EmptyRow } from "@/components/dashboard/SectionCard";
 import type { HrAccess } from "@/lib/hr/access";
 import { CertificateList } from "@/components/hr/CertificateList";
 import { LeaveItem } from "@/components/hr/LeaveItem";
+import { ProbationPanel } from "@/components/hr/ProbationPanel";
+import { getProbationForPerson } from "@/lib/hr/probationQueries";
+import { todayInMalaysia } from "@/lib/format";
 
 const emptyField = (v: React.ReactNode) => v === null || v === undefined || v === "" || (typeof v === "string" && v.startsWith("Restricted"));
 
@@ -78,6 +81,10 @@ export async function EmployeeProfileView({
   const { data: sameName } = await supabase.from("employees").select("*, companies(name)").ilike("full_name", likeExact(employee.full_name)).order("created_at");
   const records = (sameName ?? []).filter((r) => r.id === employee.id || access.canSee(r));
   const recordIds = records.map((r) => r.id);
+  const today = todayInMalaysia();
+  // the probation belongs to the person (one record), whichever company's staff record is open; only the admins see it
+  const probationData = isAdmin ? await getProbationForPerson(supabase, recordIds.length > 0 ? recordIds : [id], today) : null;
+  const { data: companyRow } = isAdmin ? await supabase.from("companies").select("legal_name").eq("id", probationData?.probation.company_id ?? employee.company_id).maybeSingle() : { data: null };
   const [{ data: allCertificates }, leave, overtime, payroll, privateDetails] = await Promise.all([
     supabase.from("employee_certificates").select("*").in("employee_id", recordIds.length > 0 ? recordIds : [id]).order("expiry_date", { ascending: true }),
     listLeaveForEmployee(supabase, id),
@@ -234,6 +241,24 @@ export async function EmployeeProfileView({
         <SectionCard title="Working Experience">
           {employee.working_experience ? <p className="whitespace-pre-line text-[14px] text-text">{employee.working_experience}</p> : <EmptyRow text="Not filled in yet." />}
         </SectionCard>
+
+        {isAdmin && (
+          <div className="lg:col-span-2">
+            <SectionCard title="Probation">
+              <ProbationPanel
+                employeeId={probationData?.probation.employee_id ?? id}
+                companyId={probationData?.probation.company_id ?? employee.company_id}
+                companyName={companyRow?.legal_name ?? employee.companies?.name ?? ""}
+                employeeName={employee.full_name}
+                probation={probationData?.probation ?? null}
+                events={probationData?.events ?? []}
+                status={probationData?.status ?? null}
+                userId={session.userId}
+                today={today}
+              />
+            </SectionCard>
+          </div>
+        )}
 
         <SectionCard
           title="Staff Documents & Certificates"

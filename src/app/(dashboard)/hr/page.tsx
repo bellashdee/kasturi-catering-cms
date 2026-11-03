@@ -140,9 +140,14 @@ export default async function HRPage({
           Overtime &amp; OT Form
         </Link>
         {access.adminAnywhere && (
-          <Link href={`/hr/documents${query}`} className={linkClass}>
-            Licences &amp; Documents
-          </Link>
+          <>
+            <Link href={`/hr/probation${query}`} className={linkClass}>
+              Probation Tracker
+            </Link>
+            <Link href={`/hr/documents${query}`} className={linkClass}>
+              Licences &amp; Documents
+            </Link>
+          </>
         )}
       </div>
 

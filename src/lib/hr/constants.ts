@@ -28,7 +28,7 @@ export const CERT_TYPE_LABEL: Record<string, string> = {
 };
 
 /** Employee document types that never expire, so no expiry date is asked for. */
-export const NO_EXPIRY_CERT_TYPES = ["confirmation_letter", "loa", "warning_letter", "show_cause_letter", "contract", "appraisal"];
+export const NO_EXPIRY_CERT_TYPES = ["offer_letter", "probation_extension_letter", "confirmation_letter", "loa", "warning_letter", "show_cause_letter", "contract", "appraisal"];
 
 /** Letters and notices the company gives to a staff member (the staff member sees them in their own profile). */
 export const STAFF_LETTER_TYPES = ["warning_letter", "show_cause_letter", "appraisal"];

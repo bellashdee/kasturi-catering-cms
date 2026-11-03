@@ -1780,6 +1780,190 @@ export type Database = {
           },
         ]
       }
+      employee_probation: {
+        Row: {
+          id: string
+          employee_id: string
+          company_id: string
+          start_date: string | null
+          probation_months: number | null
+          original_end_date: string | null
+          current_end_date: string | null
+          source: string
+          position_in_letter: string | null
+          letter_date: string | null
+          offer_letter_document_id: string | null
+          needs_verification: boolean
+          verification_note: string | null
+          is_confirmed: boolean
+          confirmed_date: string | null
+          confirmation_letter_status: string
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          employee_id: string
+          company_id: string
+          start_date?: string | null
+          probation_months?: number | null
+          original_end_date?: string | null
+          current_end_date?: string | null
+          source?: string
+          position_in_letter?: string | null
+          letter_date?: string | null
+          offer_letter_document_id?: string | null
+          needs_verification?: boolean
+          verification_note?: string | null
+          is_confirmed?: boolean
+          confirmed_date?: string | null
+          confirmation_letter_status?: string
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          employee_id?: string
+          company_id?: string
+          start_date?: string | null
+          probation_months?: number | null
+          original_end_date?: string | null
+          current_end_date?: string | null
+          source?: string
+          position_in_letter?: string | null
+          letter_date?: string | null
+          offer_letter_document_id?: string | null
+          needs_verification?: boolean
+          verification_note?: string | null
+          is_confirmed?: boolean
+          confirmed_date?: string | null
+          confirmation_letter_status?: string
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_probation_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_probation_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_probation_events: {
+        Row: {
+          id: string
+          probation_id: string
+          employee_id: string
+          company_id: string
+          kind: string
+          reason: string | null
+          notes: string | null
+          evidence_document_id: string | null
+          previous_end_date: string | null
+          new_end_date: string | null
+          extension_months: number | null
+          effective_date: string | null
+          letter_text: string | null
+          status: string
+          requested_by: string | null
+          requested_by_name: string | null
+          requested_at: string
+          decided_by: string | null
+          decided_by_name: string | null
+          decided_at: string | null
+          decision_note: string | null
+          issued_at: string | null
+          issued_document_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          probation_id: string
+          employee_id: string
+          company_id: string
+          kind: string
+          reason?: string | null
+          notes?: string | null
+          evidence_document_id?: string | null
+          previous_end_date?: string | null
+          new_end_date?: string | null
+          extension_months?: number | null
+          effective_date?: string | null
+          letter_text?: string | null
+          status?: string
+          requested_by?: string | null
+          requested_by_name?: string | null
+          requested_at?: string
+          decided_by?: string | null
+          decided_by_name?: string | null
+          decided_at?: string | null
+          decision_note?: string | null
+          issued_at?: string | null
+          issued_document_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          probation_id?: string
+          employee_id?: string
+          company_id?: string
+          kind?: string
+          reason?: string | null
+          notes?: string | null
+          evidence_document_id?: string | null
+          previous_end_date?: string | null
+          new_end_date?: string | null
+          extension_months?: number | null
+          effective_date?: string | null
+          letter_text?: string | null
+          status?: string
+          requested_by?: string | null
+          requested_by_name?: string | null
+          requested_at?: string
+          decided_by?: string | null
+          decided_by_name?: string | null
+          decided_at?: string | null
+          decision_note?: string | null
+          issued_at?: string | null
+          issued_document_id?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_probation_events_probation_id_fkey"
+            columns: ["probation_id"]
+            isOneToOne: false
+            referencedRelation: "employee_probation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_probation_events_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_probation_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           company_id: string
