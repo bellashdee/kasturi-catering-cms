@@ -393,23 +393,17 @@ export async function cancelLetter(eventId: string, note: string): Promise<Actio
   });
 }
 
-/** The approved letter is issued: its PDF (already uploaded) is filed in the staff profile, and a confirmation makes the staff member Confirmed. */
-export async function issueLetter(eventId: string, documentId: string): Promise<ActionResult> {
+/** The approved letter is issued: its PDF (already uploaded as a private staff file) is linked to the record, and a confirmation makes the staff member Confirmed. */
+export async function issueLetter(eventId: string, fileId: string): Promise<ActionResult> {
   return runAction(async () => {
     const { supabase } = await requireAdmin();
     const event = await getEvent(supabase, eventId);
     if (event.status !== "approved") throw new Error("The letter must be approved by management before it is issued.");
+    const { data: file } = await supabase.from("employee_files").select("id, employee_id").eq("id", fileId).maybeSingle();
+    if (!file || file.employee_id !== event.employee_id) throw new Error("The letter file was not found for this staff member.");
     const probation = await getProbation(supabase, event.probation_id);
-    const { error } = await supabase.from("employee_probation_events").update({ status: "issued", issued_at: new Date().toISOString(), issued_document_id: documentId }).eq("id", eventId);
+    const { error } = await supabase.from("employee_probation_events").update({ status: "issued", issued_at: new Date().toISOString(), issued_file_id: fileId }).eq("id", eventId);
     if (error) throw error;
-    await supabase.from("employee_certificates").insert({
-      employee_id: event.employee_id,
-      company_id: event.company_id,
-      cert_type: event.kind === "confirmation" ? "confirmation_letter" : "probation_extension_letter",
-      cert_name: event.kind === "confirmation" ? "Confirmation Letter" : "Probation Extension Letter",
-      issued_date: todayInMalaysia(),
-      document_id: documentId,
-    });
     if (event.kind === "confirmation") {
       await supabase
         .from("employee_probation")

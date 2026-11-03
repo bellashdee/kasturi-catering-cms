@@ -7,6 +7,8 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Select } from "@/components/ui/Select";
 import { fileTypeFromMime, uploadDocument } from "@/lib/documents/upload";
 import { downloadLetterPdf, letterPdfFile } from "@/lib/hr/letterPdf";
+import { StaffFileLink } from "@/components/hr/StaffFilesCard";
+import { uploadStaffFile } from "@/lib/hr/staffFileUpload";
 import {
   CONFIRMATION_LETTER_LABEL,
   EVENT_STATUS_LABEL,
@@ -480,8 +482,9 @@ function LetterCard({ event, onChange, ...props }: PanelProps & { event: Probati
   async function issue() {
     await run(async () => {
       const file = letterPdfFile({ companyName: props.companyName, text, filename });
-      const doc = await uploadDocument({ companyId: props.companyId, module: "hr", fileType: "pdf", file, skipMarkdown: true });
-      return issueLetter(event.id, doc.id);
+      const uploaded = await uploadStaffFile({ employeeId: event.employee_id, kind: event.kind === "confirmation" ? "confirmation_letter" : "probation_extension_letter", title: title, issuedDate: props.today, file });
+      if (!uploaded.ok) return { ok: false, error: uploaded.error };
+      return issueLetter(event.id, uploaded.fileId);
     });
   }
 
@@ -578,6 +581,7 @@ function History({ events }: { events: ProbationEvent[] }) {
             <div className="mt-1 flex gap-3">
               {e.evidence_document_id && <DocumentViewLink documentId={e.evidence_document_id} label="📎 Evidence" className="text-[12.5px] font-semibold text-primary hover:underline" />}
               {e.issued_document_id && <DocumentViewLink documentId={e.issued_document_id} label="📎 Issued letter" className="text-[12.5px] font-semibold text-primary hover:underline" />}
+              {e.issued_file_id && <StaffFileLink fileId={e.issued_file_id} label="Issued letter" />}
             </div>
           </div>
         ))}

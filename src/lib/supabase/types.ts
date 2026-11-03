@@ -1714,6 +1714,66 @@ export type Database = {
           },
         ]
       }
+      employee_files: {
+        Row: {
+          id: string
+          employee_id: string
+          company_id: string
+          kind: string
+          title: string
+          issued_date: string | null
+          storage_path: string
+          original_filename: string
+          content_type: string | null
+          file_size: number | null
+          uploaded_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          employee_id: string
+          company_id: string
+          kind: string
+          title: string
+          issued_date?: string | null
+          storage_path: string
+          original_filename: string
+          content_type?: string | null
+          file_size?: number | null
+          uploaded_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          employee_id?: string
+          company_id?: string
+          kind?: string
+          title?: string
+          issued_date?: string | null
+          storage_path?: string
+          original_filename?: string
+          content_type?: string | null
+          file_size?: number | null
+          uploaded_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_files_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_files_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_private_details: {
         Row: {
           bank_account_no: string | null
@@ -1886,6 +1946,7 @@ export type Database = {
           decision_note: string | null
           issued_at: string | null
           issued_document_id: string | null
+          issued_file_id: string | null
           created_at: string
         }
         Insert: {
@@ -1912,6 +1973,7 @@ export type Database = {
           decision_note?: string | null
           issued_at?: string | null
           issued_document_id?: string | null
+          issued_file_id?: string | null
           created_at?: string
         }
         Update: {
@@ -1938,6 +2000,7 @@ export type Database = {
           decision_note?: string | null
           issued_at?: string | null
           issued_document_id?: string | null
+          issued_file_id?: string | null
           created_at?: string
         }
         Relationships: [

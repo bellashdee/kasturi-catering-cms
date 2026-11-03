@@ -30,6 +30,7 @@ import type { HrAccess } from "@/lib/hr/access";
 import { CertificateList } from "@/components/hr/CertificateList";
 import { LeaveItem } from "@/components/hr/LeaveItem";
 import { ProbationPanel } from "@/components/hr/ProbationPanel";
+import { StaffFilesCard, type StaffFileRow } from "@/components/hr/StaffFilesCard";
 import { getProbationsForPerson } from "@/lib/hr/probationQueries";
 import { todayInMalaysia } from "@/lib/format";
 
@@ -88,6 +89,14 @@ export async function EmployeeProfileView({
     ? await supabase.from("companies").select("id, name, legal_name").in("id", Array.from(new Set([employee.company_id, ...probations.map((p) => p.probation.company_id)])))
     : { data: null };
   const companyOf = (companyId: string) => probationCompanies?.find((c) => c.id === companyId);
+  // the letters and papers kept for this person (the database only returns them to a Super Admin and to the person themself)
+  const { data: fileRows } = await supabase
+    .from("employee_files")
+    .select("id, kind, title, issued_date, original_filename, created_at, companies(name)")
+    .in("employee_id", recordIds.length > 0 ? recordIds : [id])
+    .order("issued_date", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
+  const staffFiles: StaffFileRow[] = (fileRows ?? []).map((f) => ({ id: f.id, kind: f.kind, title: f.title, issued_date: f.issued_date, original_filename: f.original_filename, company: f.companies?.name ?? "" }));
   const [{ data: allCertificates }, leave, overtime, payroll, privateDetails] = await Promise.all([
     supabase.from("employee_certificates").select("*").in("employee_id", recordIds.length > 0 ? recordIds : [id]).order("expiry_date", { ascending: true }),
     listLeaveForEmployee(supabase, id),
@@ -268,6 +277,14 @@ export async function EmployeeProfileView({
               </div>
             );
           })}
+
+        {(isAdmin || staffFiles.length > 0) && (
+          <div className="lg:col-span-2">
+            <SectionCard title="Letters & Documents (HR Record)">
+              <StaffFilesCard employeeId={id} files={staffFiles} canManage={isAdmin} />
+            </SectionCard>
+          </div>
+        )}
 
         <SectionCard
           title="Staff Documents & Certificates"
