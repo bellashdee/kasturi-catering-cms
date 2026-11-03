@@ -9,6 +9,7 @@ import { requirePayrollAccess } from "@/lib/hr/payrollAccess";
 import { runAction, type ActionResult } from "@/lib/actionResult";
 import { recordAudit } from "@/lib/audit";
 import { syncModulesFromPosition } from "@/lib/positionAccessSync";
+import { setLoginEmail } from "@/lib/hr/loginEmailSync";
 import type { Database } from "@/lib/supabase/types";
 
 async function requireUser() {
@@ -262,7 +263,15 @@ export async function attachEmployeeToCompanies(employeeId: string, companyIds: 
   return { created: created.length };
 }
 
-export async function updateEmployee(employeeId: string, input: Partial<EmployeeInput>) {
+/** Returns the problem as a result (a thrown message is hidden in production), so "email already used" reaches the screen. */
+export async function updateEmployee(employeeId: string, input: Partial<EmployeeInput>): Promise<ActionResult> {
+  return runAction(async () => {
+    await applyEmployeeUpdate(employeeId, input);
+    return {};
+  });
+}
+
+async function applyEmployeeUpdate(employeeId: string, input: Partial<EmployeeInput>) {
   const { supabase } = await requireUser();
 
   // Changing a staff record (and linking a login to it) is for the admins of the company.
@@ -270,6 +279,11 @@ export async function updateEmployee(employeeId: string, input: Partial<Employee
   if (!target) throw new Error("This staff record was not found.");
   const { data: privateBefore } = await supabase.from("employee_private_details").select("*").eq("employee_id", employeeId).maybeSingle();
   await requireHrAdmin(supabase, target.company_id, input.userId !== undefined ? "Only Madam Penny or Nabilah can link a login account to a staff record." : "Only Madam Penny or Nabilah can change staff details. Ask them in My Profile (Request a change).");
+
+  // a changed email goes to the login linked to this staff record too (Settings > Members), so the sign-in email stays the same
+  const newEmail = input.email?.trim().toLowerCase();
+  const loginId = input.userId !== undefined ? input.userId : target.user_id;
+  if (newEmail && loginId && newEmail !== (target.email ?? "").trim().toLowerCase()) await setLoginEmail(loginId, newEmail);
 
   const { error } = await supabase
     .from("employees")

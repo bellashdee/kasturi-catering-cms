@@ -158,7 +158,12 @@ export function EmployeeForm({
     const payload: EmployeeInput = accounts ? { ...base, userId: linkedUserId || null } : base;
     try {
       if (employeeId) {
-        await updateEmployee(employeeId, payload);
+        const result = await updateEmployee(employeeId, payload);
+        if (!result.ok) {
+          setError(result.error);
+          setSaving(false);
+          return;
+        }
         if (workCompanyIds.length > 0) await attachEmployeeToCompanies(employeeId, workCompanyIds);
         router.push(`/hr/${employeeId}`);
       } else {
