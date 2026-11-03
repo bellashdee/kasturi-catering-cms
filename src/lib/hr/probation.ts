@@ -183,10 +183,11 @@ export function parseOfferLetter(raw: string): OfferLetterData {
 
   let startDate: string | null = null;
   let position: string | null = null;
-  const commence = text.match(new RegExp(String.raw`employment\s+(?:will\s+)?commence(?:s|d)?\s+on\s+(?:(?:Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day,?\s+)?(${DATE_PATTERN})\s*(?:as|,|\.)?\s*([^.\n]*)`, "i"));
+  const commence = text.match(new RegExp(String.raw`employment(?:\s+with\s+the\s+Company)?\s+(?:will\s+|shall\s+)?commence(?:s|d)?\s+on\s+(?:(?:Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day,?\s+)?(${DATE_PATTERN})(\s*,?\s*as\s+[^.\n]*)?`, "i"));
   if (commence) {
     startDate = parseLetterDate(commence[1]);
-    position = commence[2].replace(/\s+/g, " ").replace(/^(a|an|the)\s+/i, "").trim().replace(/[,;:]$/, "") || null;
+    // the position only when the sentence names it ("... on 5th May 2026 as Cook."), never the next sentence
+    position = (commence[2] ?? "").replace(/^\s*,?\s*as\s+/i, "").replace(/\s+/g, " ").replace(/^(a|an|the)\s+/i, "").trim().replace(/[,;:]$/, "") || null;
   }
   if (!position) {
     const re = text.match(/RE\s*:\s*OFFER OF EMPLOYMENT\s*[^\w\n]*\s*([^\n]+)/i);

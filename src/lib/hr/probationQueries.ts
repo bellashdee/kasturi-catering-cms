@@ -12,7 +12,15 @@ export const hasApprovedExtension = (events: ProbationEvent[]) => events.some((e
 
 /** The probation of one person (the staff records of every company they work in are looked at) and its whole history, oldest first. */
 export async function getProbationForPerson(supabase: DB, employeeIds: string[], today: string) {
-  const { data: probation } = await supabase.from("employee_probation").select("*").in("employee_id", employeeIds).limit(1).maybeSingle();
+  // a person who works in two companies can have a probation in each: the one still running (the latest) is shown first
+  const { data: probation } = await supabase
+    .from("employee_probation")
+    .select("*")
+    .in("employee_id", employeeIds)
+    .order("is_confirmed", { ascending: true })
+    .order("start_date", { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle();
   if (!probation) return null;
   const { data: events } = await supabase.from("employee_probation_events").select("*").eq("probation_id", probation.id).order("created_at", { ascending: true });
   const list = events ?? [];
