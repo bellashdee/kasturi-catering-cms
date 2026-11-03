@@ -10,21 +10,21 @@ const APPROVED_EXTENSION = ["approved", "issued"];
 
 export const hasApprovedExtension = (events: ProbationEvent[]) => events.some((e) => e.kind === "extension" && APPROVED_EXTENSION.includes(e.status));
 
-/** The probation of one person (the staff records of every company they work in are looked at) and its whole history, oldest first. */
-export async function getProbationForPerson(supabase: DB, employeeIds: string[], today: string) {
-  // a person who works in two companies can have a probation in each: the one still running (the latest) is shown first
-  const { data: probation } = await supabase
+/** Every probation of one person (a person who works in two companies has one in each), the running one first, each with its whole history, oldest first. */
+export async function getProbationsForPerson(supabase: DB, employeeIds: string[], today: string) {
+  const { data: rows } = await supabase
     .from("employee_probation")
     .select("*")
     .in("employee_id", employeeIds)
     .order("is_confirmed", { ascending: true })
-    .order("start_date", { ascending: false, nullsFirst: false })
-    .limit(1)
-    .maybeSingle();
-  if (!probation) return null;
-  const { data: events } = await supabase.from("employee_probation_events").select("*").eq("probation_id", probation.id).order("created_at", { ascending: true });
-  const list = events ?? [];
-  return { probation, events: list, status: probationStatus(probation, hasApprovedExtension(list), today) };
+    .order("start_date", { ascending: false, nullsFirst: false });
+  const probations = rows ?? [];
+  if (probations.length === 0) return [];
+  const { data: events } = await supabase.from("employee_probation_events").select("*").in("probation_id", probations.map((p) => p.id)).order("created_at", { ascending: true });
+  return probations.map((probation) => {
+    const list = (events ?? []).filter((e) => e.probation_id === probation.id);
+    return { probation, events: list, status: probationStatus(probation, hasApprovedExtension(list), today) };
+  });
 }
 
 export type DashboardRow = {

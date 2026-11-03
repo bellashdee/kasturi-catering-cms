@@ -58,6 +58,8 @@ export type PanelProps = {
   status: ProbationStatus | null;
   userId: string;
   today: string;
+  /** the first probation of the page carries the #probation link target */
+  anchor?: boolean;
 };
 
 function Item({ label, value }: { label: string; value: React.ReactNode }) {
@@ -89,7 +91,7 @@ export function ProbationPanel(props: PanelProps) {
   };
 
   return (
-    <div className="flex flex-col gap-4" id="probation">
+    <div className="flex flex-col gap-4" id={props.anchor === false ? undefined : "probation"}>
       {error && <Notice tone="danger">{error}</Notice>}
 
       {!probation ? (
