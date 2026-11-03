@@ -15,6 +15,18 @@ export async function adminCompanyIds(supabase: DB, companyIds: string[]): Promi
   return flags.filter(([, ok]) => ok).map(([id]) => id);
 }
 
+/** Companies (of those given) where the user may manage payments of this category: Finance / Admin, or a supplier payment editor for supplier payments. */
+export async function paymentCompanyIds(supabase: DB, companyIds: string[], category: PaymentCategory): Promise<string[]> {
+  const flags = await Promise.all(
+    companyIds.map(async (id) => {
+      let { data, error } = await supabase.rpc("user_can_manage_payments", { target_company_id: id, target_category: category });
+      if (error) ({ data } = await supabase.rpc("user_is_company_admin", { target_company_id: id }));
+      return [id, data === true] as const;
+    }),
+  );
+  return flags.filter(([, ok]) => ok).map(([id]) => id);
+}
+
 export async function listPaymentAccounts(supabase: DB, companyIds: string[], category?: PaymentCategory, includeInactive = false) {
   let query = supabase.from("payment_accounts").select("*, companies(name)").in("company_id", companyIds).order("name");
   if (category) query = query.eq("category", category);

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
-import { adminCompanyIds, listPaymentAccounts } from "@/lib/finance/paymentQueries";
+import { paymentCompanyIds, listPaymentAccounts } from "@/lib/finance/paymentQueries";
 import { PAYMENT_CATEGORY_LABEL, RENTAL_UTILITY_COMPANY_NAME, type PaymentCategory, type UtilityType } from "@/lib/finance/payments";
 import { malaysiaMonthNow } from "@/lib/driverAttendance/date";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
@@ -28,7 +28,7 @@ export async function PaymentNewPage({ category, searchParams }: { category: Pay
 
   const sp = await searchParams;
   const { accessibleIds } = resolveCompanyScope(session, companies, sp.company);
-  const adminIds = await adminCompanyIds(supabase, accessibleIds);
+  const adminIds = await paymentCompanyIds(supabase, accessibleIds, category);
   let selectable = companies.filter((c) => adminIds.includes(c.id));
   if (category !== "supplier") selectable = selectable.filter((c) => c.name === RENTAL_UTILITY_COMPANY_NAME);
 

@@ -27,8 +27,11 @@ async function requireUser() {
   return { supabase, userId: user.id };
 }
 
-async function requireFinanceAdmin(supabase: DB, companyId: string) {
-  const { data } = await supabase.rpc("user_is_company_admin", { target_company_id: companyId });
+/** Finance / Admin of the company, or (for supplier payments only) a person on the supplier payment editors list. */
+async function requireFinanceAdmin(supabase: DB, companyId: string, category?: string) {
+  let { data, error } = await supabase.rpc("user_can_manage_payments", { target_company_id: companyId, target_category: category ?? "" });
+  // until the editors list is in the database, only the admin check applies
+  if (error) ({ data } = await supabase.rpc("user_is_company_admin", { target_company_id: companyId }));
   if (data !== true) throw new Error("Only Finance / Admin users of this company can manage payments and bank details.");
 }
 
@@ -142,7 +145,7 @@ async function rememberAccount(supabase: DB, input: PaymentInput, userId: string
 export async function createPayment(input: PaymentInput, options: { allowDuplicate?: boolean } = {}): Promise<{ id: string } | { duplicates: DuplicateHit[] }> {
   const { supabase, userId } = await requireUser();
   validate(input);
-  await requireFinanceAdmin(supabase, input.companyId);
+  await requireFinanceAdmin(supabase, input.companyId, input.category);
   await assertCategoryAllowed(supabase, input.companyId, input.category);
 
   if (!options.allowDuplicate) {
@@ -224,7 +227,7 @@ export async function updatePayment(paymentId: string, input: PaymentInput, opti
 
   const { data: current } = await supabase.from("finance_payments").select("*").eq("id", paymentId).maybeSingle();
   if (!current) throw new Error("Payment not found.");
-  await requireFinanceAdmin(supabase, current.company_id);
+  await requireFinanceAdmin(supabase, current.company_id, current.category);
   if (input.companyId !== current.company_id || input.category !== current.category) throw new Error("The company and category of a payment cannot be changed.");
 
   // a payment of the same supplier and amount can be a separate invoice: the person may save it anyway
@@ -288,9 +291,9 @@ export async function markPaymentPaid(paymentId: string, input: { paidDate: stri
   if (input.paidDate > todayInMalaysia()) throw new Error("The payment date cannot be in the future.");
   if (!input.paymentReference?.trim()) throw new Error("Enter the payment reference.");
 
-  const { data: current } = await supabase.from("finance_payments").select("company_id, status, amount, payee_name, paid_details_pending").eq("id", paymentId).maybeSingle();
+  const { data: current } = await supabase.from("finance_payments").select("company_id, category, status, amount, payee_name, paid_details_pending").eq("id", paymentId).maybeSingle();
   if (!current) throw new Error("Payment not found.");
-  await requireFinanceAdmin(supabase, current.company_id);
+  await requireFinanceAdmin(supabase, current.company_id, current.category);
   // A payment ticked as completed in the checklist can still get its payment date and reference afterwards.
   if (current.status === "paid" && !current.paid_details_pending) throw new Error("This payment is already marked as paid.");
 
@@ -314,9 +317,9 @@ export async function markPaymentPaid(paymentId: string, input: { paidDate: stri
 /** Attach the Payment Voucher to the payment it belongs to (the company is fixed by the payment record). */
 export async function attachPaymentVoucher(paymentId: string, input: { documentId: string; voucherNumber?: string }) {
   const { supabase } = await requireUser();
-  const { data: current } = await supabase.from("finance_payments").select("company_id").eq("id", paymentId).maybeSingle();
+  const { data: current } = await supabase.from("finance_payments").select("company_id, category").eq("id", paymentId).maybeSingle();
   if (!current) throw new Error("Payment not found.");
-  await requireFinanceAdmin(supabase, current.company_id);
+  await requireFinanceAdmin(supabase, current.company_id, current.category);
 
   const { error } = await supabase
     .from("finance_payments")
@@ -351,7 +354,7 @@ export type AccountInput = {
 export async function saveAccount(input: AccountInput, accountId?: string) {
   const { supabase } = await requireUser();
   if (!input.name?.trim()) throw new Error("Enter the name.");
-  await requireFinanceAdmin(supabase, input.companyId);
+  await requireFinanceAdmin(supabase, input.companyId, input.category);
   await assertCategoryAllowed(supabase, input.companyId, input.category);
 
   const row = {
@@ -403,9 +406,9 @@ function revalidatePaymentPaths(paymentId?: string) {
 /** Checklist step before payment: Not Started (pending) <-> In Progress. Paying still goes through Mark as Paid. */
 export async function setPaymentProgress(paymentId: string, progress: "pending" | "in_progress") {
   const { supabase } = await requireUser();
-  const { data: current } = await supabase.from("finance_payments").select("company_id, status").eq("id", paymentId).maybeSingle();
+  const { data: current } = await supabase.from("finance_payments").select("company_id, category, status").eq("id", paymentId).maybeSingle();
   if (!current) throw new Error("Payment not found.");
-  await requireFinanceAdmin(supabase, current.company_id);
+  await requireFinanceAdmin(supabase, current.company_id, current.category);
   if (current.status === "paid") throw new Error("This payment is already paid.");
   if (current.status === progress) return;
 
@@ -430,7 +433,7 @@ export async function deletePayment(paymentId: string): Promise<ActionResult<{ u
     const { supabase } = await requireUser();
     const { data: row } = await supabase.from("finance_payments").select("*").eq("id", paymentId).maybeSingle();
     if (!row) throw new Error("This payment was not found (it may already be deleted).");
-    await requireFinanceAdmin(supabase, row.company_id);
+    await requireFinanceAdmin(supabase, row.company_id, row.category);
     const { count: linked } = await supabase.from("supplier_payments").select("id", { count: "exact", head: true }).eq("finance_payment_id", paymentId);
     if ((linked ?? 0) > 0) throw new Error("A supplier payment request is linked to this payment, so it cannot be deleted.");
     const { error } = await createAdminClient().from("finance_payments").delete().eq("id", paymentId).eq("company_id", row.company_id);
@@ -447,7 +450,7 @@ export async function restorePayment(undo: PaymentUndo): Promise<ActionResult> {
     const { supabase } = await requireUser();
     const row = undo.row as Database["public"]["Tables"]["finance_payments"]["Insert"];
     if (!row?.id || !row.company_id) throw new Error("There is nothing to put back.");
-    await requireFinanceAdmin(supabase, row.company_id);
+    await requireFinanceAdmin(supabase, row.company_id, row.category);
     const { error } = await supabase.from("finance_payments").insert(row);
     if (error) {
       if (error.code === "23505") throw new Error("This payment was already put back.");
@@ -481,9 +484,9 @@ export async function recordPayment(
     const reference = input.paymentReference?.trim();
     if (!reference) throw new Error("Enter the payment reference.");
 
-    const { data: current } = await supabase.from("finance_payments").select("company_id, status, amount, payee_name, paid_details_pending").eq("id", paymentId).maybeSingle();
+    const { data: current } = await supabase.from("finance_payments").select("company_id, category, status, amount, payee_name, paid_details_pending").eq("id", paymentId).maybeSingle();
     if (!current) throw new Error("Payment not found.");
-    await requireFinanceAdmin(supabase, current.company_id);
+    await requireFinanceAdmin(supabase, current.company_id, current.category);
     // a payment ticked as paid in the checklist (details pending) still needs its amount, date and reference
     if (current.status === "paid" && !current.paid_details_pending) throw new Error("This payment is already marked as paid.");
 

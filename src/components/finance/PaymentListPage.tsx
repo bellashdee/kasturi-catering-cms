@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
-import { adminCompanyIds, listPaymentAccounts, listPaymentsForMonth } from "@/lib/finance/paymentQueries";
+import { paymentCompanyIds, listPaymentAccounts, listPaymentsForMonth } from "@/lib/finance/paymentQueries";
 import {
   PAYMENT_CATEGORY_LABEL,
   STATUS_FILTER_OPTIONS,
@@ -55,7 +55,7 @@ export async function PaymentListPage({ category, searchParams }: { category: Pa
 
   const sp = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, sp.company);
-  const adminIds = await adminCompanyIds(supabase, targetCompanyIds);
+  const adminIds = await paymentCompanyIds(supabase, targetCompanyIds, category);
   const query = sp.company ? `company=${sp.company}` : "";
 
   const now = malaysiaMonthNow();
