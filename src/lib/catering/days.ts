@@ -1,8 +1,8 @@
 import { MEAL_TYPE_LABEL, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
 
 /**
- * An optional alternative menu for one day ("second menu"): menu, pax, meal types, service type and price per meal.
- * It is shown to the office and kept in the day's remarks on approval; it is not added to the quotation total.
+ * An optional second menu for one day: menu, pax, meal types, service type and price per meal.
+ * Its amount (pax x price per meal) is added to the amount of the day, so it is part of the total.
  */
 export type SecondChoice = {
   menu: string;
@@ -48,8 +48,24 @@ export function dayPax(day: Pick<EventDay, "servicePax" | "secondServiceType" | 
   return (day.servicePax ?? 0) + (day.secondServiceType ? day.secondServicePax ?? 0 : 0);
 }
 
-export function dayAmount(day: EventDay): number {
+/** The amount of the main menu of a day: its pax x the price per pax. */
+export function dayMainAmount(day: EventDay): number {
   return Math.round(dayPax(day) * (day.pricePerPax ?? 0) * 100) / 100;
+}
+
+/** The amount of one second menu: its pax x its price per meal. */
+export function secondMenuAmount(c: SecondChoice): number {
+  return Math.round((c.pax ?? 0) * (c.pricePerMeal ?? 0) * 100) / 100;
+}
+
+/** The amount of the second menus of a day. */
+export function daySecondMenusAmount(day: EventDay): number {
+  return Math.round(secondMenusOf(day).reduce((t, c) => t + secondMenuAmount(c), 0) * 100) / 100;
+}
+
+/** The amount of a day: the main menu plus the second menus. */
+export function dayAmount(day: EventDay): number {
+  return Math.round((dayMainAmount(day) + daySecondMenusAmount(day)) * 100) / 100;
 }
 
 const shortDate = (iso: string) => iso.split("-").reverse().slice(0, 2).join("/");
@@ -77,7 +93,15 @@ export function quotationSeedRows(
 ): QuotationSeedRow[] {
   if (days.length > 0) {
     return days
-      .map((d, i) => ({ itemName: dayLineName(d, i), quantity: dayPax(d), unitPrice: d.pricePerPax ?? 0 }))
+      .flatMap((d, i) => [
+        { itemName: dayLineName(d, i), quantity: dayPax(d), unitPrice: d.pricePerPax ?? 0 },
+        // each second menu is a line of its own (its pax x its price per meal), so that the quotation adds up to the same total
+        ...secondMenusOf(d).map((c, n) => ({
+          itemName: `Day ${i + 1} (${shortDate(d.dayDate)}) — Second menu ${n + 1}${c.menu.trim() ? `: ${c.menu.trim().split("\n")[0]}` : ""}`,
+          quantity: c.pax ?? 0,
+          unitPrice: c.pricePerMeal ?? 0,
+        })),
+      ])
       .filter((r) => r.quantity > 0 && r.unitPrice > 0);
   }
   if (single.pax && single.pricePerPax) return [{ itemName: single.eventName, quantity: single.pax, unitPrice: single.pricePerPax }];

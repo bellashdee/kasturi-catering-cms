@@ -220,7 +220,7 @@ export function additionalServiceLines(a: AdditionalServices | undefined): Extra
   return lines;
 }
 
-/** A day with its second menus written into its remarks (a saved day has no place of its own for them); they are not part of the quotation. */
+/** A day with its second menus written into its remarks (a saved day has no place of its own for them); their amount is part of the total. */
 export function withSecondMenusInRemarks(d: EventDay): EventDay {
   const menus = secondMenusOf(d);
   return {
@@ -235,7 +235,7 @@ export function withSecondMenusInRemarks(d: EventDay): EventDay {
 /** Plain-text version of one second menu of a day, written into the event when the request is approved. */
 export function describeSecondChoice(c: SecondChoice, labels: { meal: Record<string, string>; service: Record<string, string> }, number?: number): string {
   return [
-    `Second menu${number ? ` ${number}` : ""} (an alternative menu offered to the customer; not included in the quotation):`,
+    `Second menu${number ? ` ${number}` : ""} (offered to the customer; its amount is included in the total):`,
     `Menu: ${c.menu}`,
     `Qty pax: ${c.pax ?? "-"}`,
     `Meal type: ${c.mealTypes.map((m) => labels.meal[m] ?? m).join(", ") || "-"}`,

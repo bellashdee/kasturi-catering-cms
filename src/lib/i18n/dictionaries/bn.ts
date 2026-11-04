@@ -4260,7 +4260,12 @@ const dictionary: Record<string, string> = {
   "Log in with your email or username, then your password.": "ইমেইল বা ইউজারনেম দিয়ে লগ ইন করুন, তারপর পাসওয়ার্ড দিন।",
   "Already have an account?": "আগে থেকেই অ্যাকাউন্ট আছে?",
   "Can view the Main Dashboard (the company figures)": "প্রধান ড্যাশবোর্ড (কোম্পানির পরিসংখ্যান) দেখতে পারেন",
-  "Can view the Main Dashboard": "প্রধান ড্যাশবোর্ড দেখতে পারেন"
+  "Can view the Main Dashboard": "প্রধান ড্যাশবোর্ড দেখতে পারেন",
+  "Their amount (pax x price per meal) is added to the total.": "এগুলোর পরিমাণ (জন x প্রতি বেলার দাম) মোটের সাথে যোগ হয়।",
+  "(included in the total)": "(মোটের মধ্যে ধরা আছে)",
+  "Second menus:": "দ্বিতীয় মেনু:",
+  "Day total:": "দিনের মোট:",
+  "Day total (main menu + second menus):": "দিনের মোট (প্রধান মেনু + দ্বিতীয় মেনু):"
 };
 
 export default dictionary;

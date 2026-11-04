@@ -2,7 +2,7 @@
 
 import { SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
 import { MealTypeSelect } from "@/components/catering/MealTypeSelect";
-import type { SecondChoice } from "@/lib/catering/days";
+import { secondMenuAmount, type SecondChoice } from "@/lib/catering/days";
 import { LUMP_SUM_LABEL, type AdditionalServices } from "@/lib/catering/quotationRequest";
 import { ChoiceSelect } from "@/components/ui/ChoiceSelect";
 import { formatPrice } from "@/lib/format";
@@ -38,6 +38,12 @@ export function SecondChoiceEditor({ value, onChange }: { value: SecondChoice; o
           <input type="number" min="0" step="0.01" value={value.pricePerMeal ?? ""} onChange={(e) => patch({ pricePerMeal: e.target.value ? Number(e.target.value) : undefined })} className={inputClass} placeholder="e.g. 35.00" />
         </div>
       </div>
+
+      {secondMenuAmount(value) > 0 && (
+        <div className="mt-2 text-xs text-text-muted">
+          Amount: <span className="font-semibold text-text">{formatPrice(secondMenuAmount(value))}</span>
+        </div>
+      )}
 
       <div className="mt-3">
         <label className={labelClass}>Meal type</label>

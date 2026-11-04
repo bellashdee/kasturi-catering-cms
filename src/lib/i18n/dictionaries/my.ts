@@ -4254,7 +4254,12 @@ const dictionary: Record<string, string> = {
   "Log in with your email or username, then your password.": "အီးမေးလ် သို့မဟုတ် အသုံးပြုသူအမည်ဖြင့် လော့ဂ်အင်ဝင်ပြီး စကားဝှက်ထည့်ပါ။",
   "Already have an account?": "အကောင့် ရှိပြီးသားလား?",
   "Can view the Main Dashboard (the company figures)": "ပင်မဒက်ရှ်ဘုတ် (ကုမ္ပဏီ ကိန်းဂဏန်းများ) ကို ကြည့်နိုင်သည်",
-  "Can view the Main Dashboard": "ပင်မဒက်ရှ်ဘုတ်ကို ကြည့်နိုင်သည်"
+  "Can view the Main Dashboard": "ပင်မဒက်ရှ်ဘုတ်ကို ကြည့်နိုင်သည်",
+  "Their amount (pax x price per meal) is added to the total.": "၎င်းတို့၏ ပမာဏ (ဦးရေ x တစ်ထမင်းစားစျေး) ကို စုစုပေါင်းထဲ ပေါင်းထည့်ပါသည်။",
+  "(included in the total)": "(စုစုပေါင်းတွင် ပါဝင်သည်)",
+  "Second menus:": "ဒုတိယမီနူးများ:",
+  "Day total:": "ယနေ့ စုစုပေါင်း:",
+  "Day total (main menu + second menus):": "ယနေ့ စုစုပေါင်း (အဓိကမီနူး + ဒုတိယမီနူးများ):"
 };
 
 export default dictionary;

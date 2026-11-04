@@ -4230,7 +4230,12 @@ const dictionary: Record<string, string> = {
  "A person can sign in with the username or with the email, in the first box of the sign-in page.": "Seseorang boleh log masuk dengan username atau dengan email, dalam kotak pertama di halaman log masuk.",
  "The modules a person sees follow their position in HR (for example Reports are only for the Directors). Changing a position in HR updates the modules by itself; choosing modules here changes them until the position is changed again. My Profile, Priority Centre, Bulletin Board, Company Spending, Claim OT and the AI Assistant are for everyone.": "Modul yang dilihat seseorang mengikut jawatan mereka di HR (contohnya Reports hanya untuk Director). Menukar jawatan di HR mengemas kini modul dengan sendirinya; memilih modul di sini mengubahnya sehingga jawatan ditukar lagi. My Profile, Priority Centre, Bulletin Board, Company Spending, Claim OT dan AI Assistant adalah untuk semua orang.",
   "Can view the Main Dashboard (the company figures)": "Boleh melihat Papan Pemuka Utama (angka syarikat)",
-  "Can view the Main Dashboard": "Boleh melihat Papan Pemuka Utama"
+  "Can view the Main Dashboard": "Boleh melihat Papan Pemuka Utama",
+  "Their amount (pax x price per meal) is added to the total.": "Jumlah amaunnya (pax x harga sehidangan) ditambah ke jumlah keseluruhan.",
+  "(included in the total)": "(termasuk dalam jumlah)",
+  "Second menus:": "Menu kedua:",
+  "Day total:": "Jumlah hari:",
+  "Day total (main menu + second menus):": "Jumlah hari (menu utama + menu kedua):"
 };
 
 export default dictionary;

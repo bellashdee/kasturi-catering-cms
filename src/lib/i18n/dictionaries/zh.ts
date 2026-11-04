@@ -4267,7 +4267,12 @@ const dictionary: Record<string, string> = {
   "Log in with your email or username, then your password.": "用电邮或用户名登录，然后输入密码。",
   "Already have an account?": "已经有账号？",
   "Can view the Main Dashboard (the company figures)": "可以查看主面板（公司数据）",
-  "Can view the Main Dashboard": "可以查看主面板"
+  "Can view the Main Dashboard": "可以查看主面板",
+  "Their amount (pax x price per meal) is added to the total.": "它们的金额（人数 x 每餐价格）会加进总额。",
+  "(included in the total)": "（已计入总额）",
+  "Second menus:": "第二菜单：",
+  "Day total:": "当天总额：",
+  "Day total (main menu + second menus):": "当天总额（主菜单 + 第二菜单）："
 };
 
 export default dictionary;

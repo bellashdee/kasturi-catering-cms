@@ -2,7 +2,7 @@
 
 import { MAX_EVENT_DAYS, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
 import { MealTypeSelect } from "@/components/catering/MealTypeSelect";
-import { MAX_SECOND_MENUS, dayAmount, dayPax, emptySecondChoice, secondMenusOf, type EventDay } from "@/lib/catering/days";
+import { MAX_SECOND_MENUS, dayAmount, dayMainAmount, daySecondMenusAmount, dayPax, emptySecondChoice, secondMenusOf, type EventDay } from "@/lib/catering/days";
 import { SecondChoiceEditor } from "@/components/catering/QuotationRequestExtras";
 import { formatPrice } from "@/lib/format";
 import { ChoiceSelect } from "@/components/ui/ChoiceSelect";
@@ -176,7 +176,8 @@ export function EventDaysEditor({
               <input type="number" min="0" step="0.01" value={day.pricePerPax ?? ""} onChange={(e) => patch(i, { pricePerPax: e.target.value ? Number(e.target.value) : undefined })} className={inputClass} placeholder="e.g. 35.00" />
               <div className="mt-2 text-xs text-text-muted">
                 Total pax: <span className="font-semibold text-text">{dayPax(day) || "—"}</span>
-                {day.pricePerPax ? <> · Amount: <span className="font-semibold text-text">{formatPrice(dayAmount(day))}</span></> : null}
+                {day.pricePerPax ? <> · Amount: <span className="font-semibold text-text">{formatPrice(dayMainAmount(day))}</span></> : null}
+                {daySecondMenusAmount(day) > 0 ? <> · Second menus: <span className="font-semibold text-text">{formatPrice(daySecondMenusAmount(day))}</span> · Day total: <span className="font-semibold text-text">{formatPrice(dayAmount(day))}</span></> : null}
               </div>
             </div>
           </div>
@@ -184,7 +185,7 @@ export function EventDaysEditor({
           {secondChoice && (
             <div className="mt-3">
               <div className="text-[13px] font-extrabold text-text">Second menu (optional)</div>
-              <p className="mb-2 text-xs text-text-muted">Alternative menus for this day, up to 5 a day (for example one for each meal type). They are shown to the office and are not added to the total.</p>
+              <p className="mb-2 text-xs text-text-muted">Alternative menus for this day, up to 5 a day (for example one for each meal type). Their amount (pax x price per meal) is added to the total.</p>
               <div className="flex flex-col gap-3">
                 {secondMenusOf(day).map((menu, n) => (
                   <div key={n}>

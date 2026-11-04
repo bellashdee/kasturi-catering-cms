@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EVENT_TYPE_LABEL, MEAL_TYPE_LABEL, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
-import { dayAmount, dayPax, menuRows, secondMenusOf, type EventDay } from "@/lib/catering/days";
+import { dayAmount, dayMainAmount, daySecondMenusAmount, dayPax, menuRows, secondMenuAmount, secondMenusOf, type EventDay } from "@/lib/catering/days";
 import {
   ATTACHMENT_BUCKET,
   REQUIREMENT_FIELDS,
@@ -122,7 +122,7 @@ export default async function QuotationRequestPage({ params, searchParams }: { p
                   </div>
                   <div className="text-text-secondary">
                     {d.mealTypes.map((m) => MEAL_TYPE_LABEL[m] ?? m).join(", ") || "no meal type"} · {SERVICE_TYPE_LABEL[d.serviceType] ?? d.serviceType} · {dayPax(d)} pax
-                    {d.pricePerPax ? ` · ${formatPrice(d.pricePerPax)} / pax = ${formatPrice(dayAmount(d))}` : " · no price"}
+                    {d.pricePerPax ? ` · ${formatPrice(d.pricePerPax)} / pax = ${formatPrice(dayMainAmount(d))}` : " · no price"}
                   </div>
                   {menuRows(d.menuDetails).length > 0 && (
                     <ol className="mt-1 list-decimal pl-5 text-text-secondary">
@@ -131,14 +131,15 @@ export default async function QuotationRequestPage({ params, searchParams }: { p
                   )}
                   {secondMenusOf(d).map((m, n) => (
                     <div key={n} className="mt-2 rounded border border-border bg-surface px-3 py-2">
-                      <div className="font-semibold text-text">Second menu {n + 1} <span className="text-xs font-normal text-text-muted">(alternative; not in the total)</span></div>
+                      <div className="font-semibold text-text">Second menu {n + 1} <span className="text-xs font-normal text-text-muted">(included in the total)</span></div>
                       <div className="text-text-secondary">
                         {m.mealTypes.map((t) => MEAL_TYPE_LABEL[t] ?? t).join(", ") || "no meal type"} · {SERVICE_TYPE_LABEL[m.serviceType] ?? m.serviceType} · {m.pax ?? "—"} pax
-                        {m.pricePerMeal !== undefined ? ` · ${formatPrice(m.pricePerMeal)} / meal` : ""}
+                        {m.pricePerMeal !== undefined ? ` · ${formatPrice(m.pricePerMeal)} / meal = ${formatPrice(secondMenuAmount(m))}` : ""}
                       </div>
                       <div className="whitespace-pre-line text-xs text-text-muted">{m.menu}</div>
                     </div>
                   ))}
+                  {daySecondMenusAmount(d) > 0 && <div className="mt-1 text-xs font-semibold text-text">Day total (main menu + second menus): {formatPrice(dayAmount(d))}</div>}
                   {d.remarks && <div className="mt-1 whitespace-pre-line text-xs text-text-muted">Remarks: {d.remarks}</div>}
                 </div>
               ))}
