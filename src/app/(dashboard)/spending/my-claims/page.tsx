@@ -102,9 +102,7 @@ export default async function MyClaimsPage() {
                       </td>
                       <td className="px-3 py-2.5">{c.document_id ? <DocumentViewLink documentId={c.document_id} /> : <span className="text-text-muted">—</span>}</td>
                       <td className="px-3 py-2.5">
-                        {paid ? (
-                          <span className="text-[12px] text-text-muted">—</span>
-                        ) : (
+                        {(
                           <MyClaimActions
                             claim={{ id: c.id, companyId: c.company_id, date: c.transaction_date, amount: String(c.amount), amountText: Number(c.amount).toFixed(2), payer: c.person_name ?? "", paymentMethod: c.payment_method ?? "", category: c.category ?? "", description: c.description ?? "", hasReceipt: !!c.document_id }}
                             companies={companies}

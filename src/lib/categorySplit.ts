@@ -51,6 +51,19 @@ export function splitCells(total: string, categories: string[], companyIds: stri
 export const splitAddsUp = (total: string | number, cells: { amount: number }[]) =>
   cells.reduce((t, c) => t + Math.round(c.amount * 100), 0) === Math.round(Number(total || 0) * 100);
 
+export type SplitShare = { companyId: string; category: string; amount: number };
+
+/** Checked on the server: a split between companies (and categories), each part more than 0, each pair once, together the whole amount. */
+export function checkSplitShares(total: number, shares: { companyId: string; category?: string; amount: number }[] | undefined, category = ""): SplitShare[] | null {
+  if (!shares || shares.length < 2) return null;
+  const clean = shares.map((s) => ({ companyId: s.companyId, category: (s.category ?? category).trim(), amount: Math.round(Number(s.amount) * 100) / 100 }));
+  if (clean.some((s) => !s.companyId)) throw new Error("Choose the company of each part of the amount.");
+  if (clean.some((s) => !Number.isFinite(s.amount) || s.amount <= 0)) throw new Error("Enter an amount more than 0 for each part.");
+  if (new Set(clean.map((s) => `${s.companyId}|${s.category.toUpperCase()}`)).size !== clean.length) throw new Error("Each company and category can only be chosen once.");
+  if (!splitAddsUp(total, clean)) throw new Error("The parts must add up to the total amount.");
+  return clean;
+}
+
 /** Checked on the server: at least two parts, each more than 0, each category only once, together the whole amount. */
 export function checkCategoryShares(total: number, shares: CategoryShare[] | undefined): CategoryShare[] | null {
   if (!shares || shares.length < 2) return null;

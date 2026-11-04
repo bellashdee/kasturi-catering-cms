@@ -2,6 +2,19 @@
 
 import { splitAddsUp, type SplitCell } from "@/lib/categorySplit";
 
+/** Whether to split the amount (between the companies, or by category): ticked, each part is its own record; not ticked, one record. */
+export function SplitChoice({ label, checked, onChange, on, off }: { label: string; checked: boolean; onChange: (checked: boolean) => void; on: string; off: string }) {
+  return (
+    <label className="flex items-start gap-2.5 rounded-lg border border-border bg-surface-alt px-3 py-2.5 text-[13px]">
+      <input type="checkbox" className="mt-0.5 h-4 w-4" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <span>
+        <span className="font-semibold text-text">{label}</span>
+        <span className="block text-[12px] text-text-secondary">{checked ? on : off}</span>
+      </span>
+    </label>
+  );
+}
+
 const inputClass = "mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px] outline-none focus:border-primary";
 const labelClass = "text-[12px] font-semibold text-text-secondary";
 

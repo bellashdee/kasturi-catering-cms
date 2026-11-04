@@ -17,7 +17,7 @@ import { CompanyChips } from "@/components/pettyCash/CompanyChips";
 import { MultiChoiceSelect } from "@/components/ui/MultiChoiceSelect";
 import { splitCompanies } from "@/lib/pettyCash/companies";
 import { chosenCategories, splitAddsUp, splitCells } from "@/lib/categorySplit";
-import { SplitAmountBox } from "@/components/shared/SplitAmountBox";
+import { SplitAmountBox, SplitChoice } from "@/components/shared/SplitAmountBox";
 
 type Company = { id: string; name: string };
 type EntryKind = "expense" | "top_up" | "claim" | "claim_payment";
@@ -122,6 +122,8 @@ export function PettyCashEntryForm({
   const [shareText, setShareText] = useState<Record<string, string>>({});
   // a claim for more than one company: split the amount between them (each company keeps its own part) or keep it as one claim for all
   const [splitBetweenCompanies, setSplitBetweenCompanies] = useState(true);
+  // more than one category: split the amount by category (each part its own record) or keep one record with all the categories
+  const [splitByCategories, setSplitByCategories] = useState(true);
   const [claimant, setClaimant] = useState("");
   const [department, setDepartment] = useState("");
   const [receipt, setReceipt] = useState<File | null>(null);
@@ -134,12 +136,13 @@ export function PettyCashEntryForm({
   const isReceived = kind === "top_up";
   // more than one category: the amount is split between them, each part saved as its own record (money received has no category)
   const categoryList = isReceived ? [] : chosenCategories(splitCategories(category));
-  const byCategory = categoryList.length > 1;
-  // a new claim is split between its companies (the money of each company is kept apart) and its categories
-  const canSplitCompanies = isClaim && !editing && chosenCompanies.length > 1;
+  const canSplitCategories = categoryList.length > 1;
+  const byCategory = canSplitCategories && splitByCategories;
+  // a new claim or spending for more than one company: split between the companies (each keeps its own part) or one record for all
+  const canSplitCompanies = (isClaim || kind === "expense") && !editing && chosenCompanies.length > 1;
   const splitByCompany = canSplitCompanies && splitBetweenCompanies;
   const splitClaim = isClaim && !editing && (splitByCompany || byCategory);
-  const showSplit = splitClaim || (!isClaim && byCategory);
+  const showSplit = splitClaim || (!isClaim && (byCategory || splitByCompany));
   const cells = splitCells(amount, byCategory ? categoryList : [], splitByCompany ? chosenCompanies.map((c) => c.id) : [], shareText);
   const isPayment = kind === "claim_payment";
   const paidClaim = pendingClaims.find((c) => c.id === payClaimId);
@@ -211,7 +214,8 @@ export function PettyCashEntryForm({
       setError("Enter an amount more than 0 for each part.");
       return;
     }
-    const categoryShares = byCategory && !isClaim ? cells.map((c) => ({ category: c.category, amount: c.amount })) : undefined;
+    const categoryShares = byCategory && !isClaim && !splitByCompany ? cells.map((c) => ({ category: c.category, amount: c.amount })) : undefined;
+    const companyShares = splitByCompany && !isClaim ? cells.map((c) => ({ companyId: c.companyId, amount: c.amount, ...(byCategory ? { category: c.category } : {}) })) : undefined;
     if (!paymentMethod) {
       setError(isReceived ? "Choose how the money was received: cash or online transfer." : "Choose how it was paid: cash or online transfer.");
       return;
@@ -257,7 +261,7 @@ export function PettyCashEntryForm({
           })
         : editing
           ? await updatePettyCashEntry(editing.id, { companyId: firstCompanyId, alsoCompanyIds, paymentMethod, categoryShares, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, remarks: remarks.trim() || undefined, amount: Number(amount), documentId, personName: personName || undefined })
-          : await createPettyCashEntry({ companyId: firstCompanyId, alsoCompanyIds, paymentMethod, categoryShares, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, remarks: remarks.trim() || undefined, amount: Number(amount), documentId, personName: personName || undefined });
+          : await createPettyCashEntry({ companyId: firstCompanyId, alsoCompanyIds, paymentMethod, categoryShares, shares: companyShares, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, remarks: remarks.trim() || undefined, amount: Number(amount), documentId, personName: personName || undefined });
       if (!result.ok) {
         setError(result.error);
         return;
@@ -481,15 +485,22 @@ export function PettyCashEntryForm({
       </div>
 
       {canSplitCompanies && (
-        <label className="flex items-start gap-2.5 rounded-lg border border-border bg-surface-alt px-3 py-2.5 text-[13px]">
-          <input type="checkbox" className="mt-0.5 h-4 w-4" checked={splitBetweenCompanies} onChange={(e) => { setSplitBetweenCompanies(e.target.checked); setShareText({}); }} />
-          <span>
-            <span className="font-semibold text-text">Split the amount between the companies</span>
-            <span className="block text-[12px] text-text-secondary">
-              {splitBetweenCompanies ? "Each company gets its own part of the amount." : "Not split: one claim with the whole amount, for all the companies chosen."}
-            </span>
-          </span>
-        </label>
+        <SplitChoice
+          label="Split the amount between the companies"
+          checked={splitBetweenCompanies}
+          onChange={(on) => { setSplitBetweenCompanies(on); setShareText({}); }}
+          on="Each company gets its own part of the amount."
+          off="Not split: one record with the whole amount, for all the companies chosen."
+        />
+      )}
+      {canSplitCategories && (
+        <SplitChoice
+          label="Split the amount by category"
+          checked={splitByCategories}
+          onChange={(on) => { setSplitByCategories(on); setShareText({}); }}
+          on="Each category gets its own part of the amount."
+          off="Not split: one record with the whole amount, under all the categories chosen."
+        />
       )}
 
       <div>

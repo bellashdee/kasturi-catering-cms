@@ -10,7 +10,7 @@ import { DEPARTMENT_OPTIONS } from "@/lib/finance/constants";
 import { DescriptionInput } from "@/components/DescriptionInput";
 import { Select } from "@/components/ui/Select";
 import { MultiChoiceSelect } from "@/components/ui/MultiChoiceSelect";
-import { SplitAmountBox } from "@/components/shared/SplitAmountBox";
+import { SplitAmountBox, SplitChoice } from "@/components/shared/SplitAmountBox";
 import { splitAddsUp, splitCells } from "@/lib/categorySplit";
 
 type Company = { id: string; name: string };
@@ -53,7 +53,9 @@ export function CompanyExpenseUploadReview({
   // the category is never filled in by itself (not even from a receipt read by the AI): the person chooses it
   const [form, setForm] = useState<{ categories: string[]; description: string; amount: string; expenseDate: string }>({ categories: [], description: "", amount: "", expenseDate: "" });
   const [shareText, setShareText] = useState<Record<string, string>>({});
-  const byCategory = form.categories.length > 1;
+  // more than one category: split the amount between them (each part its own expense) or keep one expense under all of them
+  const [splitOn, setSplitOn] = useState(true);
+  const byCategory = form.categories.length > 1 && splitOn;
   const cells = splitCells(form.amount, byCategory ? form.categories : [], [], shareText);
 
   const isUtilities = form.categories.some((c) => /utilit/i.test(c));
@@ -99,7 +101,7 @@ export function CompanyExpenseUploadReview({
       await flow.confirm(async () => {
         await createCompanyExpense({
           companyId,
-          category: form.categories[0],
+          category: byCategory ? form.categories[0] : form.categories.join(" | "),
           categoryShares: byCategory ? cells.map((c) => ({ category: c.category, amount: c.amount })) : undefined,
           department: department || undefined,
           amount: Number(form.amount),
@@ -195,6 +197,15 @@ export function CompanyExpenseUploadReview({
               <input type="number" step="0.01" min="0" value={form.amount} onChange={(e) => { setForm((f) => ({ ...f, amount: e.target.value })); setShareText({}); }} className={inputClass} />
             </div>
 
+            {form.categories.length > 1 && (
+              <SplitChoice
+                label="Split the amount by category"
+                checked={splitOn}
+                onChange={(on) => { setSplitOn(on); setShareText({}); }}
+                on="Each category gets its own part of the amount."
+                off="Not split: one expense with the whole amount, under all the categories chosen."
+              />
+            )}
             {byCategory && (
               <SplitAmountBox title="Split the amount by category (RM) *" total={form.amount} cells={cells} onType={(key, text) => setShareText((p) => ({ ...p, [key]: text }))} onEqual={() => setShareText({})} />
             )}

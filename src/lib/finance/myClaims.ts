@@ -32,6 +32,8 @@ export type MyClaimInput = {
   categoryShares?: CategoryShare[];
   /** a bill for more than one company: how much is for each company (and category); each part is saved as its own claim */
   shares?: { companyId: string; amount: number; category?: string }[];
+  /** a bill for more than one company, not split: the other companies the one claim is also for (counted once) */
+  alsoCompanyIds?: string[];
 };
 
 /** The claims to save: one for each category the amount is split between, otherwise the one claim as it is. */
@@ -108,7 +110,7 @@ export async function submitMyClaim(input: MyClaimInput): Promise<ActionResult> 
           document_id: input.documentId || null,
           person_name: payer.name,
           person_position: null,
-          shared_company_ids: [],
+          shared_company_ids: input.shares && input.shares.length > 1 ? [] : (input.alsoCompanyIds ?? []).filter((id) => id !== part.companyId),
           payment_method: input.paymentMethod,
           created_by: userId,
         })),
@@ -123,17 +125,17 @@ export async function submitMyClaim(input: MyClaimInput): Promise<ActionResult> 
   }, "Could not send the claim. Please try again.");
 }
 
-async function ownPending(admin: Awaited<ReturnType<typeof whoAmI>>["admin"], userId: string, id: string) {
+async function ownClaim(admin: Awaited<ReturnType<typeof whoAmI>>["admin"], userId: string, id: string, { paidToo = false } = {}) {
   const { data: row } = await admin.from("petty_cash_transactions").select("*").eq("id", id).maybeSingle();
   if (!row || row.created_by !== userId || row.type !== "expense") throw new Error("This claim was not found.");
-  if (row.payment_status === "paid") throw new Error("This claim is already paid, so it can no longer be changed.");
+  if (!paidToo && row.payment_status === "paid") throw new Error("This claim is already paid, so it can no longer be deleted.");
   return row;
 }
 
 export async function updateMyClaim(id: string, input: MyClaimInput): Promise<ActionResult> {
   return runAction(async () => {
     const { admin, userId, records } = await whoAmI();
-    const before = await ownPending(admin, userId, id);
+    const before = await ownClaim(admin, userId, id, { paidToo: true });
     const { record, payer } = await checked(input, records);
     // split between more categories: this claim keeps the first category, the others are added as their own claims
     const [first, ...rest] = claimParts(input);
@@ -153,8 +155,7 @@ export async function updateMyClaim(id: string, input: MyClaimInput): Promise<Ac
         ...(input.documentId ? { document_id: input.documentId } : {}),
       })
       .eq("id", id)
-      .eq("created_by", userId)
-      .neq("payment_status", "paid");
+      .eq("created_by", userId);
     if (error) throw error;
     await recordAudit({ companyId: before.company_id, relatedTable: "petty_cash_transactions", relatedId: id, action: "edited", previousValue: `RM ${before.amount} · ${before.transaction_date}`, newValue: `RM ${first.amount} · ${input.date}` });
     if (rest.length > 0) {
@@ -193,7 +194,7 @@ export async function updateMyClaim(id: string, input: MyClaimInput): Promise<Ac
 export async function deleteMyClaim(id: string): Promise<ActionResult<{ row: PettyCashTransactionRow }>> {
   return runAction(async () => {
     const { admin, userId } = await whoAmI();
-    const before = await ownPending(admin, userId, id);
+    const before = await ownClaim(admin, userId, id);
     const { data: removed, error } = await admin.from("petty_cash_transactions").delete().eq("id", id).eq("created_by", userId).neq("payment_status", "paid").select("id");
     if (error || !removed?.length) throw new Error("Could not delete the claim.");
     await recordAudit({ companyId: before.company_id, relatedTable: "petty_cash_transactions", relatedId: id, action: "deleted", previousValue: `RM ${before.amount} · ${before.transaction_date} · ${before.claimant_name ?? ""} (${before.payment_status})`, newValue: "Deleted" });

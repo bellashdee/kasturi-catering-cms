@@ -819,8 +819,8 @@ export type PettyCashClaimEdit = { claimantName?: string; claimantDepartment?: s
 
 /** Who may change a petty cash claim or top-up: the admins of the company, and the person who made it while it is still waiting for payment. */
 async function claimAccess(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], userId: string, row: PettyCashTransactionRow) {
-  const { data: admin } = await supabase.rpc("user_is_company_admin", { target_company_id: row.company_id });
-  if (admin !== true && !(row.created_by === userId && row.payment_status !== "paid")) throw new Error("Only an admin, or the person who made it while it is not paid yet, can change this.");
+  // the person who made it can always change their own claim; otherwise the petty cash holder it is claimed from (or whoever sees all)
+  if (row.created_by === userId) return;
   await assertOwnPerson(supabase, userId, row.person_name);
 }
 

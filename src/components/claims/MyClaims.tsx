@@ -11,7 +11,7 @@ import { PAYMENT_METHOD_LABEL, PETTY_CASH_CATEGORIES, joinCategories, splitCateg
 import { DescriptionInput } from "@/components/DescriptionInput";
 import { Select } from "@/components/ui/Select";
 import { MultiChoiceSelect } from "@/components/ui/MultiChoiceSelect";
-import { SplitAmountBox } from "@/components/shared/SplitAmountBox";
+import { SplitAmountBox, SplitChoice } from "@/components/shared/SplitAmountBox";
 import { chosenCategories, splitAddsUp, splitCells } from "@/lib/categorySplit";
 import { RecordActions } from "@/components/shared/RecordActions";
 import { BTN_GHOST, Dialog } from "@/components/priority/ui";
@@ -62,9 +62,14 @@ function ClaimFields({
   const companyId = multiCompany ? (chosenCompanies[0]?.id ?? "") : v.companyId;
   // more than one company or category: the amount is split between them, each part is its own claim
   const [shareText, setShareText] = useState<Record<string, string>>({});
+  // whether to split: between the companies, and by category (not split: one claim for all of them)
+  const [splitCompaniesOn, setSplitCompaniesOn] = useState(true);
+  const [splitCategoriesOn, setSplitCategoriesOn] = useState(true);
   const categoryList = chosenCategories(splitCategories(v.category));
-  const byCategory = categoryList.length > 1;
-  const byCompany = multiCompany && chosenCompanies.length > 1;
+  const canSplitCategories = categoryList.length > 1;
+  const byCategory = canSplitCategories && splitCategoriesOn;
+  const canSplitCompanies = multiCompany && chosenCompanies.length > 1;
+  const byCompany = canSplitCompanies && splitCompaniesOn;
   const cells = splitCells(v.amount, byCategory ? categoryList : [], byCompany ? chosenCompanies.map((c) => c.id) : [], shareText);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -106,6 +111,8 @@ function ClaimFields({
         // split between companies (and categories): each part with its company; only categories: each part with its category
         shares: byCompany ? cells.map((c) => ({ companyId: c.companyId, amount: c.amount, ...(byCategory ? { category: c.category } : {}) })) : undefined,
         categoryShares: byCategory && !byCompany ? cells.map((c) => ({ category: c.category, amount: c.amount })) : undefined,
+        // not split between the companies: the claim is for all the companies chosen (counted once)
+        alsoCompanyIds: canSplitCompanies && !byCompany ? chosenCompanies.slice(1).map((c) => c.id) : undefined,
       });
       if (!result.ok) {
         setError(result.error);
@@ -185,6 +192,24 @@ function ClaimFields({
         <label className={labelClass}>What did you buy?</label>
         <DescriptionInput value={v.description} onChange={(text) => set({ description: text })} companyId={v.companyId} className={inputClass} placeholder="e.g. Cooking gas for the Ahmad wedding" />
       </div>
+      {canSplitCompanies && (
+        <SplitChoice
+          label="Split the amount between the companies"
+          checked={splitCompaniesOn}
+          onChange={(on) => { setSplitCompaniesOn(on); setShareText({}); }}
+          on="Each company gets its own part of the amount."
+          off="Not split: one claim with the whole amount, for all the companies chosen."
+        />
+      )}
+      {canSplitCategories && (
+        <SplitChoice
+          label="Split the amount by category"
+          checked={splitCategoriesOn}
+          onChange={(on) => { setSplitCategoriesOn(on); setShareText({}); }}
+          on="Each category gets its own part of the amount."
+          off="Not split: one claim with the whole amount, under all the categories chosen."
+        />
+      )}
       {(byCategory || byCompany) && (
         <SplitAmountBox
           title={byCategory && byCompany ? "Split the amount by category and company (RM) *" : byCompany ? "Split the amount between the companies (RM) *" : "Split the amount by category (RM) *"}

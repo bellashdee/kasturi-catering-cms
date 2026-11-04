@@ -7,7 +7,7 @@ import { runAction, type ActionResult } from "@/lib/actionResult";
 import { todayInMalaysia } from "@/lib/format";
 import { assertOwnPerson } from "@/lib/pettyCash/access";
 import type { EntryType, OperationPettyCashRow } from "./constants";
-import { checkCategoryShares, type CategoryShare } from "@/lib/categorySplit";
+import { checkCategoryShares, checkSplitShares, type SplitShare } from "@/lib/categorySplit";
 
 async function requireHolder() {
   const supabase = await createClient();
@@ -44,14 +44,21 @@ export type PettyCashEntryInput = {
   /** cash or online transfer: how the money was received (a top-up) or paid (spent); required for both */
   paymentMethod?: string;
   /** money spent on more than one category: how much of the amount is for each (each part is saved as its own entry) */
-  categoryShares?: CategoryShare[];
+  categoryShares?: { category: string; amount: number }[];
+  /** money spent split between companies (and categories): how much is for each company; each part is its own entry */
+  shares?: { companyId: string; category?: string; amount: number }[];
 };
 
-/** The entries to save: one for each category the amount is split between, otherwise the one entry as it is. */
-function parts(input: PettyCashEntryInput): CategoryShare[] {
-  const shares = input.entryType === "expense" ? checkCategoryShares(input.amount, input.categoryShares) : null;
-  // money received has no category (one chosen before the Type was changed to Received is not kept)
-  return shares ?? [{ category: input.entryType === "expense" ? (input.category?.trim() ?? "") : "", amount: input.amount }];
+/** The entries to save: one for each company (and category) or each category the amount is split between, otherwise the one entry. */
+function parts(input: PettyCashEntryInput): SplitShare[] {
+  if (input.entryType !== "expense") {
+    // money received has no category (one chosen before the Type was changed to Received is not kept)
+    return [{ companyId: input.companyId, category: "", amount: input.amount }];
+  }
+  const byCompany = checkSplitShares(input.amount, input.shares, input.category ?? "");
+  if (byCompany) return byCompany;
+  const byCategory = checkCategoryShares(input.amount, input.categoryShares);
+  return byCategory ? byCategory.map((s) => ({ ...s, companyId: input.companyId })) : [{ companyId: input.companyId, category: input.category?.trim() ?? "", amount: input.amount }];
 }
 
 function validate(input: PettyCashEntryInput) {
@@ -81,7 +88,7 @@ export async function createPettyCashEntry(input: PettyCashEntryInput): Promise<
       .from("operation_petty_cash")
       .insert(
         split.map((part) => ({
-          company_id: input.companyId,
+          company_id: part.companyId,
           entry_type: input.entryType,
           entry_date: input.entryDate,
           category: part.category || null,
@@ -91,7 +98,8 @@ export async function createPettyCashEntry(input: PettyCashEntryInput): Promise<
           document_id: input.documentId || null,
           person_name: input.personName?.trim().slice(0, 200) || null,
           person_position: input.personPosition?.trim().slice(0, 200) || null,
-          shared_company_ids: (input.alsoCompanyIds ?? []).filter((id) => id !== input.companyId),
+          // split between the companies: each part is only for its company; otherwise for all the companies chosen (counted once)
+          shared_company_ids: input.shares && input.shares.length > 1 ? [] : (input.alsoCompanyIds ?? []).filter((id) => id !== part.companyId),
           payment_method: input.paymentMethod,
           created_by: userId,
         })),
