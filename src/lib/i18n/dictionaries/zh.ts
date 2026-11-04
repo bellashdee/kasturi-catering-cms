@@ -4266,6 +4266,8 @@ const dictionary: Record<string, string> = {
   "Receive your username and password.": "收到您的用户名和密码。",
   "Log in with your email or username, then your password.": "用电邮或用户名登录，然后输入密码。",
   "Already have an account?": "已经有账号？",
+  "Can view the Main Dashboard (the company figures)": "可以查看主面板（公司数据）",
+  "Can view the Main Dashboard": "可以查看主面板"
 };
 
 export default dictionary;

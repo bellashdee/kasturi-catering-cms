@@ -134,6 +134,7 @@ export default async function SettingsPage() {
                       </div>
                       <div className="text-text-secondary">
                         {access ? `${ROLE_LABEL[access.role]} · ${companyLabel}` : "No access yet"}
+                        {(m.can_view_main_dashboard || access?.role === "super_admin") && <div className="mt-0.5 text-[11.5px] font-semibold text-[#5f7a55]">Can view the Main Dashboard</div>}
                         {access?.allowed_modules && (
                           <div className="mt-0.5 text-[11.5px] text-text-muted">Modules: {access.allowed_modules.map((k) => ASSIGNABLE_MODULES.find((m) => m.key === k)?.label ?? k).join(", ")}</div>
                         )}
@@ -149,6 +150,7 @@ export default async function SettingsPage() {
                           allCompanies: hasAll,
                           companyIds: rows.map((r) => r.company_id).filter((id): id is string => id !== null),
                           allowedModules: access?.allowed_modules ?? null,
+                          canViewMainDashboard: m.can_view_main_dashboard,
                         }}
                       />
                     </div>

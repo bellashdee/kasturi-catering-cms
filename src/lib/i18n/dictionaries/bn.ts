@@ -4259,6 +4259,8 @@ const dictionary: Record<string, string> = {
   "Receive your username and password.": "আপনার ইউজারনেম ও পাসওয়ার্ড নিন।",
   "Log in with your email or username, then your password.": "ইমেইল বা ইউজারনেম দিয়ে লগ ইন করুন, তারপর পাসওয়ার্ড দিন।",
   "Already have an account?": "আগে থেকেই অ্যাকাউন্ট আছে?",
+  "Can view the Main Dashboard (the company figures)": "প্রধান ড্যাশবোর্ড (কোম্পানির পরিসংখ্যান) দেখতে পারেন",
+  "Can view the Main Dashboard": "প্রধান ড্যাশবোর্ড দেখতে পারেন"
 };
 
 export default dictionary;

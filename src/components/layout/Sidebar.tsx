@@ -23,7 +23,7 @@ const readCollapsed = () => {
   }
 };
 
-export function Sidebar({ companies, allowedModules, badges, taskLinkLabel, showPayroll, scopedToOwnCompanies, userName, roleLabel }: { companies: Company[]; allowedModules: string[] | null; badges?: Record<string, number>; taskLinkLabel?: string; showPayroll?: boolean; scopedToOwnCompanies?: boolean; userName?: string; roleLabel?: string }) {
+export function Sidebar({ companies, allowedModules, badges, taskLinkLabel, showPayroll, scopedToOwnCompanies, userName, roleLabel, showDashboard = true }: { companies: Company[]; allowedModules: string[] | null; badges?: Record<string, number>; taskLinkLabel?: string; showPayroll?: boolean; scopedToOwnCompanies?: boolean; userName?: string; roleLabel?: string; showDashboard?: boolean }) {
   const { open, setOpen } = useMobileNav();
   const pathname = usePathname();
   const router = useRouter();
@@ -92,7 +92,7 @@ export function Sidebar({ companies, allowedModules, badges, taskLinkLabel, show
 
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-3">
           <ProfileLink />
-          <MainDashboardLink />
+          {showDashboard && <MainDashboardLink />}
           <TopLinks taskLabel={taskLinkLabel} />
           <CompanyQuickLinks companies={companies} />
           <div className="my-2 h-px bg-sidebar-line" />

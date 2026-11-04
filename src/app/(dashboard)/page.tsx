@@ -27,6 +27,8 @@ export default async function DashboardPage({
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
+  // the Main Dashboard is not for everybody: the others start at their own profile
+  if (!session.canViewMainDashboard) redirect("/profile");
 
   const supabase = await createClient();
   const { data: allCompanies } = await supabase.from("companies").select("id, name");

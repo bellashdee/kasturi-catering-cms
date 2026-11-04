@@ -35,6 +35,8 @@ export type CreateMemberInput = {
   companyIds: string[];
   /** null = every module. */
   allowedModules?: string[] | null;
+  /** may open the Main Dashboard (a Super Admin always may) */
+  canViewMainDashboard?: boolean;
 };
 
 export async function createMember(input: CreateMemberInput) {
@@ -56,7 +58,7 @@ export async function createMember(input: CreateMemberInput) {
   if (createError) throw createError;
   const userId = created.user.id;
 
-  const { error: profileError } = await admin.from("profiles").update({ username: input.username }).eq("id", userId);
+  const { error: profileError } = await admin.from("profiles").update({ username: input.username, can_view_main_dashboard: input.canViewMainDashboard === true }).eq("id", userId);
   if (profileError) throw profileError;
 
   const { error: accessError } = await admin.from("user_company_access").insert(
@@ -83,6 +85,7 @@ export type UpdateMemberInput = {
   companyIds?: string[];
   /** null = every module; a list = only those modules. */
   allowedModules?: string[] | null;
+  canViewMainDashboard?: boolean;
   newPassword?: string;
 };
 
@@ -124,10 +127,11 @@ async function applyMemberUpdate(userId: string, input: UpdateMemberInput) {
     if (emailError) throw emailError;
   }
 
-  if (input.fullName !== undefined || input.username !== undefined) {
+  if (input.fullName !== undefined || input.username !== undefined || input.canViewMainDashboard !== undefined) {
     const { error } = await admin
       .from("profiles")
       .update({
+        ...(input.canViewMainDashboard !== undefined ? { can_view_main_dashboard: input.canViewMainDashboard } : {}),
         ...(input.fullName !== undefined ? { full_name: input.fullName } : {}),
         ...(input.username !== undefined ? { username: input.username || null } : {}),
       })

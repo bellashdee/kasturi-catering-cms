@@ -17,6 +17,8 @@ export type SessionContext = {
   companyIds: string[];
   /** Modules the user may open; null = every module. */
   allowedModules: string[] | null;
+  /** The Main Dashboard (the company figures) is for the bosses and the staff whose job needs it: a Super Admin always, others when switched on. */
+  canViewMainDashboard: boolean;
 };
 
 const ROLE_RANK: Record<Database["public"]["Enums"]["user_role"], number> = {
@@ -41,7 +43,7 @@ export const getSessionContext = cache(async (): Promise<SessionContext | null> 
   const user = { id: claims.sub, email: typeof claims.email === "string" ? claims.email : undefined };
 
   const [{ data: profile }, { data: access }] = await Promise.all([
-    supabase.from("profiles").select("full_name, email").eq("id", user.id).single(),
+    supabase.from("profiles").select("full_name, email, can_view_main_dashboard").eq("id", user.id).single(),
     supabase.from("user_company_access").select("*").eq("user_id", user.id),
   ]);
 
@@ -61,6 +63,7 @@ export const getSessionContext = cache(async (): Promise<SessionContext | null> 
     hasAllCompaniesAccess,
     companyIds,
     allowedModules: mergeAllowedModules(rows.map((r) => r.allowed_modules)),
+    canViewMainDashboard: role === "super_admin" || profile?.can_view_main_dashboard === true,
   };
 });
 

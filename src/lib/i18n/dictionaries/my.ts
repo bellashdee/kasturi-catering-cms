@@ -4253,6 +4253,8 @@ const dictionary: Record<string, string> = {
   "Receive your username and password.": "သင့်အသုံးပြုသူအမည်နှင့် စကားဝှက်ကို ရယူပါ။",
   "Log in with your email or username, then your password.": "အီးမေးလ် သို့မဟုတ် အသုံးပြုသူအမည်ဖြင့် လော့ဂ်အင်ဝင်ပြီး စကားဝှက်ထည့်ပါ။",
   "Already have an account?": "အကောင့် ရှိပြီးသားလား?",
+  "Can view the Main Dashboard (the company figures)": "ပင်မဒက်ရှ်ဘုတ် (ကုမ္ပဏီ ကိန်းဂဏန်းများ) ကို ကြည့်နိုင်သည်",
+  "Can view the Main Dashboard": "ပင်မဒက်ရှ်ဘုတ်ကို ကြည့်နိုင်သည်"
 };
 
 export default dictionary;

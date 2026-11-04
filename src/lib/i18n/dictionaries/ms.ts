@@ -4229,6 +4229,8 @@ const dictionary: Record<string, string> = {
  "Team Members shows each person's username and email. No email yet means the person signs in with the username only. Press Edit to add the email, change the username, the role, the companies, the modules or a new password.": "Team Members menunjukkan username dan email setiap orang. No email yet bermaksud orang itu log masuk dengan username sahaja. Tekan Edit untuk menambah email, menukar username, peranan, syarikat, modul atau kata laluan baharu.",
  "A person can sign in with the username or with the email, in the first box of the sign-in page.": "Seseorang boleh log masuk dengan username atau dengan email, dalam kotak pertama di halaman log masuk.",
  "The modules a person sees follow their position in HR (for example Reports are only for the Directors). Changing a position in HR updates the modules by itself; choosing modules here changes them until the position is changed again. My Profile, Priority Centre, Bulletin Board, Company Spending, Claim OT and the AI Assistant are for everyone.": "Modul yang dilihat seseorang mengikut jawatan mereka di HR (contohnya Reports hanya untuk Director). Menukar jawatan di HR mengemas kini modul dengan sendirinya; memilih modul di sini mengubahnya sehingga jawatan ditukar lagi. My Profile, Priority Centre, Bulletin Board, Company Spending, Claim OT dan AI Assistant adalah untuk semua orang.",
+  "Can view the Main Dashboard (the company figures)": "Boleh melihat Papan Pemuka Utama (angka syarikat)",
+  "Can view the Main Dashboard": "Boleh melihat Papan Pemuka Utama"
 };
 
 export default dictionary;

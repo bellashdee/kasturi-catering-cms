@@ -35,6 +35,7 @@ export function AddMemberForm({ companies }: { companies: Company[] }) {
   const [allCompanies, setAllCompanies] = useState(false);
   const [companyIds, setCompanyIds] = useState<string[]>([]);
   const [modules, setModules] = useState<string[] | null>(null);
+  const [dashboard, setDashboard] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<{ fullName: string; username: string; email: string; password: string } | null>(null);
@@ -53,6 +54,7 @@ export function AddMemberForm({ companies }: { companies: Company[] }) {
         allCompanies,
         companyIds,
         allowedModules: modules,
+        canViewMainDashboard: role === "super_admin" || dashboard,
       });
       setCreated({ fullName, username, email, password });
       setFullName("");
@@ -62,6 +64,7 @@ export function AddMemberForm({ companies }: { companies: Company[] }) {
       setRole("staff");
       setAllCompanies(false);
       setCompanyIds([]);
+      setDashboard(false);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create member.");
@@ -145,6 +148,10 @@ export function AddMemberForm({ companies }: { companies: Company[] }) {
       />
 
       <ModulePicker value={modules} onChange={setModules} />
+      <label className="mt-2 flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2.5 text-[12.5px] text-text">
+        <input type="checkbox" checked={role === "super_admin" || dashboard} disabled={role === "super_admin"} onChange={(e) => setDashboard(e.target.checked)} />
+        Can view the Main Dashboard (the company figures)
+      </label>
 
       <div className="flex justify-end gap-2.5">
         <button type="button" onClick={() => setOpen(false)} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13.5px] font-semibold text-text">
