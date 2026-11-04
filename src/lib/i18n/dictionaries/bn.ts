@@ -4265,7 +4265,9 @@ const dictionary: Record<string, string> = {
   "(included in the total)": "(মোটের মধ্যে ধরা আছে)",
   "Second menus:": "দ্বিতীয় মেনু:",
   "Day total:": "দিনের মোট:",
-  "Day total (main menu + second menus):": "দিনের মোট (প্রধান মেনু + দ্বিতীয় মেনু):"
+  "Day total (main menu + second menus):": "দিনের মোট (প্রধান মেনু + দ্বিতীয় মেনু):",
+  "only the staff of the company you chose are listed. Choose All Companies to see everyone.": "আপনার বেছে নেওয়া কোম্পানির কর্মীদেরই তালিকায় দেখানো হয়েছে। সবাইকে দেখতে সব কোম্পানি বেছে নিন।",
+  "No staff of this company yet.": "এই কোম্পানির এখনো কোনো কর্মী নেই।"
 };
 
 export default dictionary;

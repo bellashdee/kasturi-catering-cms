@@ -4235,7 +4235,9 @@ const dictionary: Record<string, string> = {
   "(included in the total)": "(termasuk dalam jumlah)",
   "Second menus:": "Menu kedua:",
   "Day total:": "Jumlah hari:",
-  "Day total (main menu + second menus):": "Jumlah hari (menu utama + menu kedua):"
+  "Day total (main menu + second menus):": "Jumlah hari (menu utama + menu kedua):",
+  "only the staff of the company you chose are listed. Choose All Companies to see everyone.": "hanya staf syarikat yang anda pilih disenaraikan. Pilih Semua Syarikat untuk melihat semua orang.",
+  "No staff of this company yet.": "Belum ada staf syarikat ini."
 };
 
 export default dictionary;

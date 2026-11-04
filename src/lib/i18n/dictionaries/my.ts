@@ -4259,7 +4259,9 @@ const dictionary: Record<string, string> = {
   "(included in the total)": "(စုစုပေါင်းတွင် ပါဝင်သည်)",
   "Second menus:": "ဒုတိယမီနူးများ:",
   "Day total:": "ယနေ့ စုစုပေါင်း:",
-  "Day total (main menu + second menus):": "ယနေ့ စုစုပေါင်း (အဓိကမီနူး + ဒုတိယမီနူးများ):"
+  "Day total (main menu + second menus):": "ယနေ့ စုစုပေါင်း (အဓိကမီနူး + ဒုတိယမီနူးများ):",
+  "only the staff of the company you chose are listed. Choose All Companies to see everyone.": "သင်ရွေးထားသော ကုမ္ပဏီ၏ ဝန်ထမ်းများကိုသာ ပြထားသည်။ လူအားလုံးကို ကြည့်ရန် ကုမ္ပဏီအားလုံးကို ရွေးပါ။",
+  "No staff of this company yet.": "ဤကုမ္ပဏီတွင် ဝန်ထမ်း မရှိသေးပါ။"
 };
 
 export default dictionary;

@@ -30,7 +30,7 @@ async function loadInitialPasswords(members: Awaited<ReturnType<typeof listMembe
   return out;
 }
 
-export default async function SettingsPage() {
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ company?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
@@ -50,14 +50,27 @@ export default async function SettingsPage() {
     );
   }
 
-  const members = await listMembers(supabase);
+  const everyone = await listMembers(supabase);
 
-  // Separate by company: a person who works in several companies is one account and is listed under each of their companies.
-  // The people who can open every company (the Super Admins, the company admins) are listed first.
-  const groups: { key: string; title: string; members: typeof members }[] = [
-    { key: "all", title: "All Companies", members: members.filter((m) => m.user_company_access.some((r) => r.company_id === null) || m.user_company_access.length === 0) },
-    ...companies.map((c) => ({ key: c.id, title: c.name, members: members.filter((m) => !m.user_company_access.some((r) => r.company_id === null) && m.user_company_access.some((r) => r.company_id === c.id)) })),
-  ].filter((g) => g.members.length > 0);
+  // A company chosen in the side menu: only the staff of that company are listed (no mixing with the other companies).
+  // They are the people given access to that company and the people whose staff record in that company is linked to their login.
+  const { company: requestedId } = await searchParams;
+  const selected = companies.find((c) => c.id === requestedId);
+  let members = everyone;
+  let groups: { key: string; title: string; members: typeof everyone }[];
+  if (selected) {
+    const { data: linked } = await supabase.from("employees").select("user_id").eq("company_id", selected.id).not("user_id", "is", null);
+    const linkedIds = new Set((linked ?? []).map((e) => e.user_id as string));
+    members = everyone.filter((m) => linkedIds.has(m.id) || m.user_company_access.some((r) => r.company_id === selected.id));
+    groups = members.length > 0 ? [{ key: selected.id, title: selected.name, members }] : [];
+  } else {
+    // All companies: a person who works in several companies is one account and is listed under each of their companies.
+    // The people who can open every company (the Super Admins, the company admins) are listed first.
+    groups = [
+      { key: "all", title: "All Companies", members: everyone.filter((m) => m.user_company_access.some((r) => r.company_id === null) || m.user_company_access.length === 0) },
+      ...companies.map((c) => ({ key: c.id, title: c.name, members: everyone.filter((m) => !m.user_company_access.some((r) => r.company_id === null) && m.user_company_access.some((r) => r.company_id === c.id)) })),
+    ].filter((g) => g.members.length > 0);
+  }
 
   // The password given when the account was made is shown only until the person signs in for the first time (and only if nobody has changed it since).
   const initialPasswords = await loadInitialPasswords(members);
@@ -73,7 +86,7 @@ export default async function SettingsPage() {
             Add, edit, or remove team members and their access — internal use only, no public sign-up.
           </p>
         </div>
-        <AddMemberForm companies={companies} />
+        <AddMemberForm companies={companies} defaultCompanyId={selected?.id} />
       </div>
 
       <SectionCard title="Display">
@@ -81,11 +94,16 @@ export default async function SettingsPage() {
       </SectionCard>
 
       <SectionCard title={`Team Members (${members.length})`}>
+        {selected && (
+          <p className="-mt-1 mb-2 text-[12.5px] text-text-secondary">
+            <b className="text-text">{selected.name}</b> — only the staff of the company you chose are listed. Choose All Companies to see everyone.
+          </p>
+        )}
         <p className="-mt-1 mb-3 text-[12.5px] text-text-secondary">
           <b className="text-success">{withEmail} with email</b> · <b className={withoutEmail ? "text-warning" : "text-text-secondary"}>{withoutEmail} without email</b>. A person can sign in with the username or the email. Use Edit to add or change an email.
         </p>
         {members.length === 0 ? (
-          <EmptyRow text="No one has access yet." />
+          <EmptyRow text={selected ? "No staff of this company yet." : "No one has access yet."} />
         ) : (
           <div className="-mx-5 -mb-5 flex flex-col">
             {groups.map((g) => (

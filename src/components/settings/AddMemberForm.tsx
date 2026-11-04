@@ -24,7 +24,7 @@ function randomPassword(): string {
   return out;
 }
 
-export function AddMemberForm({ companies }: { companies: Company[] }) {
+export function AddMemberForm({ companies, defaultCompanyId }: { companies: Company[]; defaultCompanyId?: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [fullName, setFullName] = useState("");
@@ -33,7 +33,7 @@ export function AddMemberForm({ companies }: { companies: Company[] }) {
   const [password, setPassword] = useState(randomPassword());
   const [role, setRole] = useState<UserRole>("staff");
   const [allCompanies, setAllCompanies] = useState(false);
-  const [companyIds, setCompanyIds] = useState<string[]>([]);
+  const [companyIds, setCompanyIds] = useState<string[]>(defaultCompanyId ? [defaultCompanyId] : []);
   const [modules, setModules] = useState<string[] | null>(null);
   const [dashboard, setDashboard] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -63,7 +63,7 @@ export function AddMemberForm({ companies }: { companies: Company[] }) {
       setPassword(randomPassword());
       setRole("staff");
       setAllCompanies(false);
-      setCompanyIds([]);
+      setCompanyIds(defaultCompanyId ? [defaultCompanyId] : []);
       setDashboard(false);
       router.refresh();
     } catch (err) {

@@ -4272,7 +4272,9 @@ const dictionary: Record<string, string> = {
   "(included in the total)": "（已计入总额）",
   "Second menus:": "第二菜单：",
   "Day total:": "当天总额：",
-  "Day total (main menu + second menus):": "当天总额（主菜单 + 第二菜单）："
+  "Day total (main menu + second menus):": "当天总额（主菜单 + 第二菜单）：",
+  "only the staff of the company you chose are listed. Choose All Companies to see everyone.": "只列出您所选公司的员工。选择“所有公司”可查看所有人。",
+  "No staff of this company yet.": "此公司还没有员工。"
 };
 
 export default dictionary;
