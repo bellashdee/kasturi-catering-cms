@@ -126,7 +126,8 @@ export function PettyCashEntryForm({
   const [splitByCategories, setSplitByCategories] = useState(true);
   const [claimant, setClaimant] = useState("");
   const [department, setDepartment] = useState("");
-  const [receipt, setReceipt] = useState<File | null>(null);
+  // the receipts / photos (several can be chosen at once)
+  const [receipts, setReceipts] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -223,11 +224,13 @@ export function PettyCashEntryForm({
     setSaving(true);
     setError(null);
     try {
-      let documentId: string | undefined;
-      if (receipt) {
-        const doc = await uploadDocument({ companyId: firstCompanyId, module: isClaim ? "finance" : "driver-logistics", fileType: fileTypeFromMime(receipt), file: receipt, skipMarkdown: !isClaim });
-        documentId = doc.id;
+      const uploaded: string[] = [];
+      for (const file of receipts) {
+        const doc = await uploadDocument({ companyId: firstCompanyId, module: isClaim ? "finance" : "driver-logistics", fileType: fileTypeFromMime(file), file, skipMarkdown: !isClaim });
+        uploaded.push(doc.id);
       }
+      const documentId: string | undefined = uploaded[0];
+      const extraDocumentIds = uploaded.slice(1);
       const result = splitClaim
         ? await createSplitPettyCashClaims({
             claimantName: claimant.trim(),
@@ -237,6 +240,7 @@ export function PettyCashEntryForm({
             remarks: remarks.trim() || undefined,
             transactionDate: date,
             documentId,
+            extraDocumentIds,
             personName: personName.trim(),
             paymentMethod,
             shares: cells.map((c) => ({ companyId: c.companyId || firstCompanyId, amount: c.amount, ...(byCategory ? { category: c.category } : {}) })),
@@ -256,12 +260,13 @@ export function PettyCashEntryForm({
             amount: Number(amount),
             transactionDate: date,
             documentId,
+            extraDocumentIds,
             personName: personName.trim(),
             paymentMethod,
           })
         : editing
-          ? await updatePettyCashEntry(editing.id, { companyId: firstCompanyId, alsoCompanyIds, paymentMethod, categoryShares, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, remarks: remarks.trim() || undefined, amount: Number(amount), documentId, personName: personName || undefined })
-          : await createPettyCashEntry({ companyId: firstCompanyId, alsoCompanyIds, paymentMethod, categoryShares, shares: companyShares, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, remarks: remarks.trim() || undefined, amount: Number(amount), documentId, personName: personName || undefined });
+          ? await updatePettyCashEntry(editing.id, { companyId: firstCompanyId, alsoCompanyIds, paymentMethod, categoryShares, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, remarks: remarks.trim() || undefined, amount: Number(amount), documentId, extraDocumentIds, personName: personName || undefined })
+          : await createPettyCashEntry({ companyId: firstCompanyId, alsoCompanyIds, paymentMethod, categoryShares, shares: companyShares, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, remarks: remarks.trim() || undefined, amount: Number(amount), documentId, extraDocumentIds, personName: personName || undefined });
       if (!result.ok) {
         setError(result.error);
         return;
@@ -278,7 +283,7 @@ export function PettyCashEntryForm({
         setShareText({});
         setDepartment("");
         setPersonName(holderName);
-        setReceipt(null);
+        setReceipts([]);
         (e.target as HTMLFormElement).reset();
       }
       router.refresh();
@@ -521,8 +526,13 @@ export function PettyCashEntryForm({
 
       <div>
         <label className={labelClass}>Receipt / photo {isReceived ? "(optional)" : "(keep it with the record)"}</label>
-        <input type="file" accept={ANY_UPLOAD_ACCEPT} onChange={(e) => setReceipt(e.target.files?.[0] ?? null)} className="mt-1 block w-full text-[13px]" />
-        {editing?.document_id && !receipt && <p className="mt-1 text-[11.5px] text-text-muted">A receipt is already attached. Choose a file only to replace it.</p>}
+        <input type="file" multiple accept={ANY_UPLOAD_ACCEPT} onChange={(e) => setReceipts(Array.from(e.target.files ?? []))} className="mt-1 block w-full text-[13px]" />
+        <p className="mt-1 text-[11.5px] text-text-muted">
+          {receipts.length > 1 ? `${receipts.length} files chosen. ` : ""}
+          {editing && (editing.document_id || (editing.extra_document_ids ?? []).length > 0)
+            ? `Receipts already attached: ${(editing.document_id ? 1 : 0) + (editing.extra_document_ids ?? []).length}. Files chosen here are added to them.`
+            : "You can choose several files at once (hold Ctrl to pick more than one)."}
+        </p>
       </div>
 
       <div className="flex justify-end gap-2.5">

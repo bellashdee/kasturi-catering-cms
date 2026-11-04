@@ -30,6 +30,8 @@ export type OperationPettyCashRow = {
   description: string | null;
   amount: number;
   document_id: string | null;
+  /** the other receipts / photos, after document_id */
+  extra_document_ids?: string[];
   created_by: string | null;
   /** who received (or spent) the money, and the position that holds the petty cash */
   person_name: string | null;

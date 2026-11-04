@@ -191,8 +191,8 @@ export function PettyCashClaimActions({ claim, companies }: { claim: ClaimEditDa
   const [open, setOpen] = useState(false);
   const [f, setF] = useState(claim);
   const [companyIds, setCompanyIds] = useState<string[]>([claim.companyId, ...claim.sharedCompanyIds]);
-  // the receipt / photo of the claim, added or replaced here
-  const [receipt, setReceipt] = useState<File | null>(null);
+  // receipts / photos added here (several at once), they join the ones attached
+  const [receipts, setReceipts] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = (patch: Partial<ClaimEditData>) => setF((p) => ({ ...p, ...patch }));
@@ -203,17 +203,19 @@ export function PettyCashClaimActions({ claim, companies }: { claim: ClaimEditDa
     setError(null);
     try {
       const where = splitCompanies(companyIds, claim.companyId);
-      let documentId: string | undefined;
-      if (receipt) {
-        const doc = await uploadDocument({ companyId: where.companyId, module: "finance", fileType: fileTypeFromMime(receipt), file: receipt, skipMarkdown: true });
-        documentId = doc.id;
+      const uploaded: string[] = [];
+      for (const file of receipts) {
+        const doc = await uploadDocument({ companyId: where.companyId, module: "finance", fileType: fileTypeFromMime(file), file, skipMarkdown: true });
+        uploaded.push(doc.id);
       }
-      const r = await updatePettyCashClaim(claim.id, { claimantName: f.claimant, claimantDepartment: f.department, category: f.category, description: f.description, amount: Number(f.amount), transactionDate: f.date, documentId, remarks: f.remarks ?? "", ...where });
+      const documentId: string | undefined = uploaded[0];
+      const extraDocumentIds = uploaded.slice(1);
+      const r = await updatePettyCashClaim(claim.id, { claimantName: f.claimant, claimantDepartment: f.department, category: f.category, description: f.description, amount: Number(f.amount), transactionDate: f.date, documentId, extraDocumentIds, remarks: f.remarks ?? "", ...where });
       if (!r.ok) {
         setError(r.error);
         return;
       }
-      setReceipt(null);
+      setReceipts([]);
       setOpen(false);
       router.refresh();
     } catch (err) {
@@ -275,9 +277,9 @@ export function PettyCashClaimActions({ claim, companies }: { claim: ClaimEditDa
             </div>
             <div className="sm:col-span-2">
               <label className={LABEL}>Receipt / photo</label>
-              <input type="file" accept={ANY_UPLOAD_ACCEPT} onChange={(e) => setReceipt(e.target.files?.[0] ?? null)} className="mt-1 block w-full text-[13px]" />
+              <input type="file" multiple accept={ANY_UPLOAD_ACCEPT} onChange={(e) => setReceipts(Array.from(e.target.files ?? []))} className="mt-1 block w-full text-[13px]" />
               <p className="mt-1 text-[11.5px] text-text-muted">
-                {claim.hasReceipt ? "A receipt is already attached. Choose a file only to replace it." : "No receipt yet. Choose the photo or the file of the receipt."}
+                {claim.hasReceipt ? "A receipt is already attached. Files chosen here are added to it (several at once)." : "No receipt yet. Choose the photos or files of the receipt (several at once)."}
               </p>
             </div>
             <div className="flex justify-end gap-2.5 sm:col-span-2">

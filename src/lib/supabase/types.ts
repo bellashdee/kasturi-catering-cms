@@ -3909,6 +3909,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           document_id: string | null
+          extra_document_ids: string[]
           entry_date: string
           entry_type: string
           id: string
@@ -3927,6 +3928,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           document_id?: string | null
+          extra_document_ids?: string[]
           entry_date: string
           entry_type: string
           id?: string
@@ -3945,6 +3947,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           document_id?: string | null
+          extra_document_ids?: string[]
           entry_date?: string
           entry_type?: string
           id?: string
@@ -4469,6 +4472,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           document_id: string | null
+          extra_document_ids: string[]
           id: string
           paid_by: string | null
           payment_method: string | null
@@ -4496,6 +4500,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           document_id?: string | null
+          extra_document_ids?: string[]
           id?: string
           paid_by?: string | null
           payment_method?: string | null
@@ -4523,6 +4528,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           document_id?: string | null
+          extra_document_ids?: string[]
           id?: string
           paid_by?: string | null
           payment_method?: string | null

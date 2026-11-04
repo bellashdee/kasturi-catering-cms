@@ -6,6 +6,7 @@ import { recordAudit } from "@/lib/audit";
 import { runAction, type ActionResult } from "@/lib/actionResult";
 import { todayInMalaysia } from "@/lib/format";
 import { assertOwnPerson } from "@/lib/pettyCash/access";
+import { addReceipts } from "@/lib/documents/receipts";
 import type { EntryType, OperationPettyCashRow } from "./constants";
 import { checkCategoryShares, checkSplitShares, type SplitShare } from "@/lib/categorySplit";
 
@@ -37,6 +38,8 @@ export type PettyCashEntryInput = {
   remarks?: string;
   amount: number;
   documentId?: string;
+  /** more receipts / photos, after documentId */
+  extraDocumentIds?: string[];
   personName?: string;
   personPosition?: string;
   /** the other companies the entry is also for (keyed in once, counted once) */
@@ -96,6 +99,7 @@ export async function createPettyCashEntry(input: PettyCashEntryInput): Promise<
           remarks: input.remarks?.trim().slice(0, 500) || null,
           amount: part.amount,
           document_id: input.documentId || null,
+          extra_document_ids: input.extraDocumentIds ?? [],
           person_name: input.personName?.trim().slice(0, 200) || null,
           person_position: input.personPosition?.trim().slice(0, 200) || null,
           // split between the companies: each part is only for its company; otherwise for all the companies chosen (counted once)
@@ -133,7 +137,8 @@ export async function updatePettyCashEntry(id: string, input: PettyCashEntryInpu
         description: input.description?.trim() || null,
         remarks: input.remarks?.trim().slice(0, 500) || null,
         amount: first.amount,
-        document_id: input.documentId ?? before.document_id,
+        // files added here join the receipts already attached (nothing is replaced)
+        ...addReceipts(before, [input.documentId, ...(input.extraDocumentIds ?? [])].filter((id): id is string => !!id)),
         person_name: input.personName?.trim().slice(0, 200) || null,
         person_position: input.personPosition?.trim().slice(0, 200) || null,
         payment_method: input.paymentMethod,
@@ -159,7 +164,7 @@ export async function updatePettyCashEntry(id: string, input: PettyCashEntryInpu
             description: input.description?.trim() || null,
             remarks: input.remarks?.trim().slice(0, 500) || null,
             amount: part.amount,
-            document_id: input.documentId ?? before.document_id,
+            ...addReceipts(before, [input.documentId, ...(input.extraDocumentIds ?? [])].filter((id): id is string => !!id)),
             person_name: input.personName?.trim().slice(0, 200) || null,
             person_position: input.personPosition?.trim().slice(0, 200) || null,
             shared_company_ids: (input.alsoCompanyIds ?? before.shared_company_ids ?? []).filter((c) => c !== input.companyId),
@@ -190,7 +195,7 @@ export async function deletePettyCashEntry(id: string): Promise<ActionResult<{ r
     if (!removed || removed.length !== 1) throw new Error("The entry was not deleted. You may not have permission.");
     await recordAudit({ companyId: before.company_id, relatedTable: "operation_petty_cash", relatedId: id, action: "petty_cash_deleted", previousValue: label(before) });
     refresh();
-    const row: OperationPettyCashRow = { id: before.id, company_id: before.company_id, entry_type: before.entry_type as EntryType, entry_date: before.entry_date, category: before.category, description: before.description, amount: Number(before.amount), document_id: before.document_id, created_by: before.created_by, person_name: before.person_name, person_position: before.person_position, payment_method: before.payment_method, remarks: before.remarks, shared_company_ids: before.shared_company_ids ?? [] };
+    const row: OperationPettyCashRow = { id: before.id, company_id: before.company_id, entry_type: before.entry_type as EntryType, entry_date: before.entry_date, category: before.category, description: before.description, amount: Number(before.amount), document_id: before.document_id, extra_document_ids: before.extra_document_ids ?? [], created_by: before.created_by, person_name: before.person_name, person_position: before.person_position, payment_method: before.payment_method, remarks: before.remarks, shared_company_ids: before.shared_company_ids ?? [] };
     return { row };
   }, "Could not delete the entry. Please try again.");
 }
@@ -208,6 +213,7 @@ export async function restorePettyCashEntry(row: OperationPettyCashRow): Promise
       description: row.description,
       amount: row.amount,
       document_id: row.document_id,
+      extra_document_ids: row.extra_document_ids ?? [],
       created_by: row.created_by,
       person_name: row.person_name,
       person_position: row.person_position,

@@ -12,6 +12,7 @@ import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SpendingSubNav } from "@/components/spending/SpendingSubNav";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
+import { receiptIds } from "@/lib/documents/receipts";
 import { ExportListButtons } from "@/components/procurement/ExportListButtons";
 import { PettyCashEntryForm } from "@/components/pettyCash/PettyCashEntryForm";
 import { PettyCashHolderBar } from "@/components/pettyCash/PettyCashHolderBar";
@@ -46,6 +47,8 @@ type Row = {
   remarks: string | null;
   person: string;
   documentId: string | null;
+  /** every receipt / photo of the record, the first one first */
+  documentIds: string[];
   bookId?: string;
   /** a staff claim; paidMethod is how the claim was paid back to the staff member */
   claim?: { id: string; status: string; paymentDate: string | null; claimant: string | null; department: string | null; paidMethod: string | null };
@@ -128,6 +131,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
       remarks: e.remarks,
       person: short(e.person_name),
       documentId: e.document_id,
+      documentIds: receiptIds(e),
       bookId: e.id,
     })),
     ...transactions.map<Row>((t) => ({
@@ -145,8 +149,9 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
       remarks: t.remarks,
       person: short(t.person_name),
       documentId: t.document_id,
+      documentIds: receiptIds(t),
       claim: t.type === "expense" ? { id: t.id, status: t.payment_status, paymentDate: t.payment_date, claimant: short(t.claimant_name), department: t.claimant_department, paidMethod: t.claim_payment_method } : undefined,
-      tx: { id: t.id, type: t.type === "expense" ? "expense" : "top_up", claimant: t.claimant_name ?? "", department: t.claimant_department ?? "", category: t.category ?? "", description: t.description ?? "", companyId: t.company_id, sharedCompanyIds: t.shared_company_ids ?? [], hasReceipt: !!t.document_id, remarks: t.remarks ?? "" },
+      tx: { id: t.id, type: t.type === "expense" ? "expense" : "top_up", claimant: t.claimant_name ?? "", department: t.claimant_department ?? "", category: t.category ?? "", description: t.description ?? "", companyId: t.company_id, sharedCompanyIds: t.shared_company_ids ?? [], hasReceipt: receiptIds(t).length > 0, remarks: t.remarks ?? "" },
     })),
   ].sort((a, b) => a.date.localeCompare(b.date) || a.created.localeCompare(b.created));
 
@@ -182,7 +187,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
 
   const editing = sp.edit ? book.find((e) => e.id === sp.edit) : undefined;
   const editingRow: OperationPettyCashRow | undefined = editing
-    ? { id: editing.id, company_id: editing.company_id, entry_type: editing.entry_type as EntryType, entry_date: editing.entry_date, category: editing.category, description: editing.description, amount: Number(editing.amount), document_id: editing.document_id, created_by: editing.created_by, person_name: editing.person_name, person_position: editing.person_position, payment_method: editing.payment_method, remarks: editing.remarks, shared_company_ids: editing.shared_company_ids ?? [] }
+    ? { id: editing.id, company_id: editing.company_id, entry_type: editing.entry_type as EntryType, entry_date: editing.entry_date, category: editing.category, description: editing.description, amount: Number(editing.amount), document_id: editing.document_id, extra_document_ids: editing.extra_document_ids ?? [], created_by: editing.created_by, person_name: editing.person_name, person_position: editing.person_position, payment_method: editing.payment_method, remarks: editing.remarks, shared_company_ids: editing.shared_company_ids ?? [] }
     : undefined;
 
   const keep = new URLSearchParams({ ...(sp.company ? { company: sp.company } : {}), holder: who.name, month, ...(everyone ? { all: "1" } : {}) });
@@ -351,7 +356,15 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
                             <span className="text-text-muted">—</span>
                           )}
                         </td>
-                        <td className="whitespace-nowrap px-3 py-2.5">{r.documentId ? <DocumentViewLink documentId={r.documentId} /> : <span className="text-text-muted">—</span>}</td>
+                        <td className="whitespace-nowrap px-3 py-2.5">{r.documentIds.length > 0 ? (
+                            <div className="flex flex-col gap-0.5">
+                              {r.documentIds.map((id, i) => (
+                                <DocumentViewLink key={id} documentId={id} label={r.documentIds.length > 1 ? `📷 View ${i + 1}` : "📷 View"} />
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-text-muted">—</span>
+                          )}</td>
                         <td className="min-w-[11rem] px-3 py-2.5">
                           {r.bookId ? (
                             <OperationPettyCashRowActions id={r.bookId} editHref={editHref(r.bookId)} />

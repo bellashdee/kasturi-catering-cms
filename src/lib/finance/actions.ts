@@ -10,6 +10,7 @@ import { assertOwnPerson, claimPayers, pettyCashAccess } from "@/lib/pettyCash/a
 import { confirmedPaymentDate, todayInMalaysia } from "@/lib/format";
 import { isPaymentMethod } from "@/lib/operationPettyCash/constants";
 import { checkCategoryShares, type CategoryShare } from "@/lib/categorySplit";
+import { addReceipts } from "@/lib/documents/receipts";
 import { DUPLICATE_INVOICE_MESSAGE } from "@/lib/finance/constants";
 import type { Database } from "@/lib/supabase/types";
 
@@ -255,6 +256,8 @@ export type PettyCashInput = {
   amount: number;
   transactionDate: string;
   documentId?: string;
+  /** more receipts / photos, after documentId */
+  extraDocumentIds?: string[];
   /** who received the money (a top-up) or pays the claim; the position is no longer asked (older records may have one) */
   personName?: string;
   personPosition?: string;
@@ -295,6 +298,7 @@ export async function createPettyCashTransaction(input: PettyCashInput): Promise
     // the claim date: today (Malaysia) unless a date is given; the payment date is recorded separately when it is paid
     transaction_date: input.transactionDate || todayInMalaysia(),
     document_id: input.documentId || null,
+    extra_document_ids: input.extraDocumentIds ?? [],
     person_name: input.personName?.trim().slice(0, 200) || null,
     person_position: input.personPosition?.trim().slice(0, 200) || null,
     shared_company_ids: (input.alsoCompanyIds ?? []).filter((id) => id !== input.companyId),
@@ -334,6 +338,8 @@ export type SplitClaimInput = {
   alsoCompanyIds?: string[];
   /** cash or online transfer: how the staff member paid */
   paymentMethod?: string;
+  /** more receipts / photos, after documentId */
+  extraDocumentIds?: string[];
   /** what it was for, e.g. the event the things were bought for */
   remarks?: string;
 };
@@ -371,6 +377,7 @@ export async function createSplitPettyCashClaims(input: SplitClaimInput): Promis
           amount: s.amount,
           transaction_date: input.transactionDate || todayInMalaysia(),
           document_id: input.documentId || null,
+          extra_document_ids: input.extraDocumentIds ?? [],
           person_name: input.personName.trim().slice(0, 200),
           person_position: input.personPosition?.trim().slice(0, 200) || null,
           shared_company_ids: (input.alsoCompanyIds ?? []).filter((id) => id !== s.companyId),
@@ -815,7 +822,7 @@ export async function restoreCustomerPayment(row: CustomerPaymentRow): Promise<A
   }, "Could not put the payment back.");
 }
 
-export type PettyCashClaimEdit = { claimantName?: string; claimantDepartment?: string; category?: string; description?: string; amount: number; transactionDate: string; companyId?: string; alsoCompanyIds?: string[]; /** a receipt added (or replacing the one attached) */ documentId?: string; remarks?: string };
+export type PettyCashClaimEdit = { claimantName?: string; claimantDepartment?: string; category?: string; description?: string; amount: number; transactionDate: string; companyId?: string; alsoCompanyIds?: string[]; /** receipts added (they join the ones attached) */ documentId?: string; extraDocumentIds?: string[]; remarks?: string };
 
 /** Who may change a petty cash claim or top-up: the admins of the company, and the person who made it while it is still waiting for payment. */
 async function claimAccess(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], userId: string, row: PettyCashTransactionRow) {
@@ -847,8 +854,8 @@ export async function updatePettyCashClaim(id: string, input: PettyCashClaimEdit
         transaction_date: input.transactionDate,
         // the main company and the other companies it is also for (keyed once, counted once)
         ...(input.companyId ? { company_id: input.companyId, shared_company_ids: (input.alsoCompanyIds ?? []).filter((c) => c !== input.companyId) } : {}),
-        // the receipt is only changed when a new one is added
-        ...(input.documentId ? { document_id: input.documentId } : {}),
+        // files added here join the receipts already attached (nothing is replaced)
+        ...(input.documentId || input.extraDocumentIds?.length ? addReceipts(before, [input.documentId, ...(input.extraDocumentIds ?? [])].filter((id): id is string => !!id)) : {}),
       })
       .eq("id", id);
     if (error) throw error;
