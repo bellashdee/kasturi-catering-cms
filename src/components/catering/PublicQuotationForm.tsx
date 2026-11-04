@@ -192,11 +192,11 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label className={labelClass}>Event venue *</label>
+          <label className={labelClass}>Event location *</label>
           <input required maxLength={300} value={form.location} onChange={(e) => set("location", e.target.value)} className={inputClass} placeholder="e.g. Dewan Serbaguna, Menara ABC" />
         </div>
         <div>
-          <label className={labelClass}>Event address</label>
+          <label className={labelClass}>Address</label>
           <input maxLength={500} value={form.eventAddress} onChange={(e) => set("eventAddress", e.target.value)} className={inputClass} placeholder="Full address of the venue" />
         </div>
       </div>
