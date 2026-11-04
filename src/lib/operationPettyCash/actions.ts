@@ -33,6 +33,8 @@ export type PettyCashEntryInput = {
   entryDate: string;
   category?: string;
   description?: string;
+  /** what it was for, e.g. the event the things were bought for */
+  remarks?: string;
   amount: number;
   documentId?: string;
   personName?: string;
@@ -84,6 +86,7 @@ export async function createPettyCashEntry(input: PettyCashEntryInput): Promise<
           entry_date: input.entryDate,
           category: part.category || null,
           description: input.description?.trim() || null,
+          remarks: input.remarks?.trim().slice(0, 500) || null,
           amount: part.amount,
           document_id: input.documentId || null,
           person_name: input.personName?.trim().slice(0, 200) || null,
@@ -120,6 +123,7 @@ export async function updatePettyCashEntry(id: string, input: PettyCashEntryInpu
         entry_date: input.entryDate,
         category: first.category || null,
         description: input.description?.trim() || null,
+        remarks: input.remarks?.trim().slice(0, 500) || null,
         amount: first.amount,
         document_id: input.documentId ?? before.document_id,
         person_name: input.personName?.trim().slice(0, 200) || null,
@@ -145,6 +149,7 @@ export async function updatePettyCashEntry(id: string, input: PettyCashEntryInpu
             entry_date: input.entryDate,
             category: part.category,
             description: input.description?.trim() || null,
+            remarks: input.remarks?.trim().slice(0, 500) || null,
             amount: part.amount,
             document_id: input.documentId ?? before.document_id,
             person_name: input.personName?.trim().slice(0, 200) || null,
@@ -177,7 +182,7 @@ export async function deletePettyCashEntry(id: string): Promise<ActionResult<{ r
     if (!removed || removed.length !== 1) throw new Error("The entry was not deleted. You may not have permission.");
     await recordAudit({ companyId: before.company_id, relatedTable: "operation_petty_cash", relatedId: id, action: "petty_cash_deleted", previousValue: label(before) });
     refresh();
-    const row: OperationPettyCashRow = { id: before.id, company_id: before.company_id, entry_type: before.entry_type as EntryType, entry_date: before.entry_date, category: before.category, description: before.description, amount: Number(before.amount), document_id: before.document_id, created_by: before.created_by, person_name: before.person_name, person_position: before.person_position, payment_method: before.payment_method, shared_company_ids: before.shared_company_ids ?? [] };
+    const row: OperationPettyCashRow = { id: before.id, company_id: before.company_id, entry_type: before.entry_type as EntryType, entry_date: before.entry_date, category: before.category, description: before.description, amount: Number(before.amount), document_id: before.document_id, created_by: before.created_by, person_name: before.person_name, person_position: before.person_position, payment_method: before.payment_method, remarks: before.remarks, shared_company_ids: before.shared_company_ids ?? [] };
     return { row };
   }, "Could not delete the entry. Please try again.");
 }
@@ -200,6 +205,7 @@ export async function restorePettyCashEntry(row: OperationPettyCashRow): Promise
       person_position: row.person_position,
       shared_company_ids: row.shared_company_ids ?? [],
       payment_method: row.payment_method,
+      remarks: row.remarks ?? null,
     });
     if (error) throw error;
     await recordAudit({ companyId: row.company_id, relatedTable: "operation_petty_cash", relatedId: row.id, action: "petty_cash_restored", newValue: label({ entry_type: row.entry_type, amount: row.amount, entry_date: row.entry_date, description: row.description }) });

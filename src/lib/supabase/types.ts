@@ -3913,6 +3913,7 @@ export type Database = {
           entry_type: string
           id: string
           payment_method: string | null
+          remarks: string | null
           person_name: string | null
           person_position: string | null
           shared_company_ids: string[]
@@ -3930,6 +3931,7 @@ export type Database = {
           entry_type: string
           id?: string
           payment_method?: string | null
+          remarks?: string | null
           person_name?: string | null
           person_position?: string | null
           shared_company_ids?: string[]
@@ -3947,6 +3949,7 @@ export type Database = {
           entry_type?: string
           id?: string
           payment_method?: string | null
+          remarks?: string | null
           person_name?: string | null
           person_position?: string | null
           shared_company_ids?: string[]
@@ -4469,6 +4472,7 @@ export type Database = {
           id: string
           paid_by: string | null
           payment_method: string | null
+          remarks: string | null
           payment_date: string | null
           payment_reference: string | null
           payment_remarks: string | null
@@ -4495,6 +4499,7 @@ export type Database = {
           id?: string
           paid_by?: string | null
           payment_method?: string | null
+          remarks?: string | null
           payment_date?: string | null
           payment_reference?: string | null
           payment_remarks?: string | null
@@ -4521,6 +4526,7 @@ export type Database = {
           id?: string
           paid_by?: string | null
           payment_method?: string | null
+          remarks?: string | null
           payment_date?: string | null
           payment_reference?: string | null
           payment_remarks?: string | null

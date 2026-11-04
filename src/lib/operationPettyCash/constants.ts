@@ -36,6 +36,8 @@ export type OperationPettyCashRow = {
   person_position: string | null;
   /** cash or online transfer (older entries may have none) */
   payment_method: string | null;
+  /** what it was for, e.g. the event the things were bought for */
+  remarks: string | null;
   /** the other companies this entry is also for (company_id is the main one); the amount is counted once */
   shared_company_ids: string[];
 };

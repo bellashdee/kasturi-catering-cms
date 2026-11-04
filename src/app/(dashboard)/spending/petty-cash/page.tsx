@@ -42,13 +42,15 @@ type Row = {
   category: string | null;
   /** cash or online transfer: how the money was received, spent or paid by the staff member */
   method?: string | null;
+  /** what it was for, e.g. the event the things were bought for */
+  remarks: string | null;
   person: string;
   documentId: string | null;
   bookId?: string;
   /** a staff claim; paidMethod is how the claim was paid back to the staff member */
   claim?: { id: string; status: string; paymentDate: string | null; claimant: string | null; department: string | null; paidMethod: string | null };
   /** a row that comes from the claims / top-ups table (it can be edited and deleted here) */
-  tx?: { id: string; type: "expense" | "top_up"; claimant: string; department: string; category: string; description: string; companyId: string; sharedCompanyIds: string[]; hasReceipt: boolean };
+  tx?: { id: string; type: "expense" | "top_up"; claimant: string; department: string; category: string; description: string; companyId: string; sharedCompanyIds: string[]; hasReceipt: boolean; remarks: string };
 };
 
 /**
@@ -123,6 +125,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
       title: e.description || (e.entry_type === "top_up" ? ENTRY_TYPE_LABEL.top_up : "—"),
       category: e.category,
       method: e.payment_method,
+      remarks: e.remarks,
       person: short(e.person_name),
       documentId: e.document_id,
       bookId: e.id,
@@ -139,10 +142,11 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
       title: t.description || (t.type === "top_up" ? ENTRY_TYPE_LABEL.top_up : "—"),
       category: t.category,
       method: t.payment_method,
+      remarks: t.remarks,
       person: short(t.person_name),
       documentId: t.document_id,
       claim: t.type === "expense" ? { id: t.id, status: t.payment_status, paymentDate: t.payment_date, claimant: short(t.claimant_name), department: t.claimant_department, paidMethod: t.claim_payment_method } : undefined,
-      tx: { id: t.id, type: t.type === "expense" ? "expense" : "top_up", claimant: t.claimant_name ?? "", department: t.claimant_department ?? "", category: t.category ?? "", description: t.description ?? "", companyId: t.company_id, sharedCompanyIds: t.shared_company_ids ?? [], hasReceipt: !!t.document_id },
+      tx: { id: t.id, type: t.type === "expense" ? "expense" : "top_up", claimant: t.claimant_name ?? "", department: t.claimant_department ?? "", category: t.category ?? "", description: t.description ?? "", companyId: t.company_id, sharedCompanyIds: t.shared_company_ids ?? [], hasReceipt: !!t.document_id, remarks: t.remarks ?? "" },
     })),
   ].sort((a, b) => a.date.localeCompare(b.date) || a.created.localeCompare(b.created));
 
@@ -178,7 +182,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
 
   const editing = sp.edit ? book.find((e) => e.id === sp.edit) : undefined;
   const editingRow: OperationPettyCashRow | undefined = editing
-    ? { id: editing.id, company_id: editing.company_id, entry_type: editing.entry_type as EntryType, entry_date: editing.entry_date, category: editing.category, description: editing.description, amount: Number(editing.amount), document_id: editing.document_id, created_by: editing.created_by, person_name: editing.person_name, person_position: editing.person_position, payment_method: editing.payment_method, shared_company_ids: editing.shared_company_ids ?? [] }
+    ? { id: editing.id, company_id: editing.company_id, entry_type: editing.entry_type as EntryType, entry_date: editing.entry_date, category: editing.category, description: editing.description, amount: Number(editing.amount), document_id: editing.document_id, created_by: editing.created_by, person_name: editing.person_name, person_position: editing.person_position, payment_method: editing.payment_method, remarks: editing.remarks, shared_company_ids: editing.shared_company_ids ?? [] }
     : undefined;
 
   const keep = new URLSearchParams({ ...(sp.company ? { company: sp.company } : {}), holder: who.name, month, ...(everyone ? { all: "1" } : {}) });
@@ -186,7 +190,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
   const editHref = (id: string) => `${listHref}${statusParam ? `&status=${statusParam}` : ""}&edit=${id}`;
   const statusHref = (status?: string) => `${listHref}${status ? `&status=${status}` : ""}`;
 
-  const exportHeaders = ["Date", "Company", "Kind", "Category", "Payment method", "Details", "Name", "Claimant", "Claim status", "Claim paid by", "Received (RM)", "Spent (RM)", "Balance (RM)"];
+  const exportHeaders = ["Date", "Company", "Kind", "Category", "Payment method", "Details", "Name", "Claimant", "Remarks", "Claim status", "Claim paid by", "Received (RM)", "Spent (RM)", "Balance (RM)"];
   const moneyColumns = ["Received (RM)", "Spent (RM)", "Balance (RM)"];
   const exportRows = [...shown].reverse().map((r): (string | number)[] => [
     r.date,
@@ -197,6 +201,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
     r.title,
     r.person,
     r.claim?.claimant ?? "",
+    r.remarks ?? "",
     r.claim ? (PETTY_CASH_PAYMENT_STATUS_LABEL[r.claim.status] ?? r.claim.status) : "",
     paymentMethodLabel(r.claim?.paidMethod),
     r.kind === "in" ? round2(r.amount) : "",
@@ -319,6 +324,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
                         <td className="min-w-[18rem] px-3 py-2.5">
                           <div className="font-semibold text-text">{r.title}</div>
                           {r.category && <div className="text-[11.5px] text-text-muted">{r.category}</div>}
+                          {r.remarks && <div className="text-[11.5px] text-text-secondary">{`Remarks: ${r.remarks}`}</div>}
                           {r.method && (
                             <div className="flex gap-1 text-[11.5px] font-semibold text-text-secondary">
                               <span>{r.kind === "in" ? "Payment received by:" : r.claim ? "Staff paid by:" : "Paid by:"}</span> <span>{paymentMethodLabel(r.method)}</span>

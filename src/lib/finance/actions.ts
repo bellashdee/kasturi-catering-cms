@@ -262,6 +262,8 @@ export type PettyCashInput = {
   alsoCompanyIds?: string[];
   /** cash or online transfer: how the staff member paid (a claim) or how the money was received (a top-up) */
   paymentMethod?: string;
+  /** what it was for, e.g. the event the things were bought for */
+  remarks?: string;
 };
 
 export async function createPettyCashTransaction(input: PettyCashInput): Promise<ActionResult> {
@@ -288,6 +290,7 @@ export async function createPettyCashTransaction(input: PettyCashInput): Promise
     payment_status: input.type === "expense" ? "pending_payment" : "paid",
     category: input.type === "expense" ? input.category || null : null,
     description: input.description || null,
+    remarks: input.remarks?.trim().slice(0, 500) || null,
     amount: input.amount,
     // the claim date: today (Malaysia) unless a date is given; the payment date is recorded separately when it is paid
     transaction_date: input.transactionDate || todayInMalaysia(),
@@ -331,6 +334,8 @@ export type SplitClaimInput = {
   alsoCompanyIds?: string[];
   /** cash or online transfer: how the staff member paid */
   paymentMethod?: string;
+  /** what it was for, e.g. the event the things were bought for */
+  remarks?: string;
 };
 
 /** A staff claim split between companies and/or categories: one claim for each part with its own amount, all saved together or not at all. */
@@ -362,6 +367,7 @@ export async function createSplitPettyCashClaims(input: SplitClaimInput): Promis
           payment_status: "pending_payment" as const,
           category: s.category?.trim() || input.category || null,
           description: input.description || null,
+          remarks: input.remarks?.trim().slice(0, 500) || null,
           amount: s.amount,
           transaction_date: input.transactionDate || todayInMalaysia(),
           document_id: input.documentId || null,
@@ -809,7 +815,7 @@ export async function restoreCustomerPayment(row: CustomerPaymentRow): Promise<A
   }, "Could not put the payment back.");
 }
 
-export type PettyCashClaimEdit = { claimantName?: string; claimantDepartment?: string; category?: string; description?: string; amount: number; transactionDate: string; companyId?: string; alsoCompanyIds?: string[]; /** a receipt added (or replacing the one attached) */ documentId?: string };
+export type PettyCashClaimEdit = { claimantName?: string; claimantDepartment?: string; category?: string; description?: string; amount: number; transactionDate: string; companyId?: string; alsoCompanyIds?: string[]; /** a receipt added (or replacing the one attached) */ documentId?: string; remarks?: string };
 
 /** Who may change a petty cash claim or top-up: the admins of the company, and the person who made it while it is still waiting for payment. */
 async function claimAccess(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], userId: string, row: PettyCashTransactionRow) {
@@ -836,6 +842,7 @@ export async function updatePettyCashClaim(id: string, input: PettyCashClaimEdit
         // money received (a top-up) has no category
         category: before.type === "expense" ? input.category?.trim() || null : null,
         description: input.description?.trim() || null,
+        remarks: input.remarks?.trim().slice(0, 500) || null,
         amount: input.amount,
         transaction_date: input.transactionDate,
         // the main company and the other companies it is also for (keyed once, counted once)

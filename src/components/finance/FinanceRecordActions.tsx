@@ -183,7 +183,7 @@ export function CustomerPaymentActions({ payment }: { payment: { id: string; amo
   );
 }
 
-export type ClaimEditData = { id: string; type: "expense" | "top_up"; claimant: string; department: string; category: string; description: string; amount: string; date: string; companyId: string; sharedCompanyIds: string[]; /** a receipt is already attached */ hasReceipt?: boolean };
+export type ClaimEditData = { id: string; type: "expense" | "top_up"; claimant: string; department: string; category: string; description: string; amount: string; date: string; companyId: string; sharedCompanyIds: string[]; /** a receipt is already attached */ hasReceipt?: boolean; /** what it was for, e.g. the event */ remarks?: string };
 
 /** Edit (Save / Cancel) and Delete (Undo) of a petty cash staff claim or top-up in the Petty Cash list. */
 export function PettyCashClaimActions({ claim, companies }: { claim: ClaimEditData; companies: { id: string; name: string }[] }) {
@@ -208,7 +208,7 @@ export function PettyCashClaimActions({ claim, companies }: { claim: ClaimEditDa
         const doc = await uploadDocument({ companyId: where.companyId, module: "finance", fileType: fileTypeFromMime(receipt), file: receipt, skipMarkdown: true });
         documentId = doc.id;
       }
-      const r = await updatePettyCashClaim(claim.id, { claimantName: f.claimant, claimantDepartment: f.department, category: f.category, description: f.description, amount: Number(f.amount), transactionDate: f.date, documentId, ...where });
+      const r = await updatePettyCashClaim(claim.id, { claimantName: f.claimant, claimantDepartment: f.department, category: f.category, description: f.description, amount: Number(f.amount), transactionDate: f.date, documentId, remarks: f.remarks ?? "", ...where });
       if (!r.ok) {
         setError(r.error);
         return;
@@ -268,6 +268,10 @@ export function PettyCashClaimActions({ claim, companies }: { claim: ClaimEditDa
             <div>
               <label className={LABEL}>Description</label>
               <input className={FIELD} value={f.description} onChange={(e) => set({ description: e.target.value })} />
+            </div>
+            <div className="sm:col-span-2">
+              <label className={LABEL}>Remarks (e.g. the event it was bought for)</label>
+              <input className={FIELD} maxLength={500} value={f.remarks ?? ""} onChange={(e) => set({ remarks: e.target.value })} placeholder="e.g. JDT FC event, 12 Nov" />
             </div>
             <div className="sm:col-span-2">
               <label className={LABEL}>Receipt / photo</label>

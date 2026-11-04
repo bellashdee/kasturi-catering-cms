@@ -115,6 +115,8 @@ export function PettyCashEntryForm({
   const [paymentMethod, setPaymentMethod] = useState(editing?.payment_method ?? "");
   const [category, setCategory] = useState(editing?.category ?? "");
   const [description, setDescription] = useState(editing?.description ?? "");
+  // what it was for, e.g. the event the things were bought for
+  const [remarks, setRemarks] = useState(editing?.remarks ?? "");
   const [personName, setPersonName] = useState(editing?.person_name ?? holderName);
   // the amount split between the categories (and the companies of a claim): what was typed for each part; empty = shared equally
   const [shareText, setShareText] = useState<Record<string, string>>({});
@@ -228,6 +230,7 @@ export function PettyCashEntryForm({
             claimantDepartment: department.trim() || undefined,
             category: category || undefined,
             description: description || undefined,
+            remarks: remarks.trim() || undefined,
             transactionDate: date,
             documentId,
             personName: personName.trim(),
@@ -245,6 +248,7 @@ export function PettyCashEntryForm({
             claimantDepartment: department.trim() || undefined,
             category: category || undefined,
             description: description || undefined,
+            remarks: remarks.trim() || undefined,
             amount: Number(amount),
             transactionDate: date,
             documentId,
@@ -252,8 +256,8 @@ export function PettyCashEntryForm({
             paymentMethod,
           })
         : editing
-          ? await updatePettyCashEntry(editing.id, { companyId: firstCompanyId, alsoCompanyIds, paymentMethod, categoryShares, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, amount: Number(amount), documentId, personName: personName || undefined })
-          : await createPettyCashEntry({ companyId: firstCompanyId, alsoCompanyIds, paymentMethod, categoryShares, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, amount: Number(amount), documentId, personName: personName || undefined });
+          ? await updatePettyCashEntry(editing.id, { companyId: firstCompanyId, alsoCompanyIds, paymentMethod, categoryShares, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, remarks: remarks.trim() || undefined, amount: Number(amount), documentId, personName: personName || undefined })
+          : await createPettyCashEntry({ companyId: firstCompanyId, alsoCompanyIds, paymentMethod, categoryShares, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, remarks: remarks.trim() || undefined, amount: Number(amount), documentId, personName: personName || undefined });
       if (!result.ok) {
         setError(result.error);
         return;
@@ -265,6 +269,7 @@ export function PettyCashEntryForm({
         setPaymentMethod("");
         setCategory("");
         setDescription("");
+        setRemarks("");
         setClaimant("");
         setShareText({});
         setDepartment("");
@@ -486,6 +491,11 @@ export function PettyCashEntryForm({
           </span>
         </label>
       )}
+
+      <div>
+        <label className={labelClass}>Remarks (e.g. the event it was bought for)</label>
+        <input value={remarks} onChange={(e) => setRemarks(e.target.value)} maxLength={500} placeholder="e.g. JDT FC event, 12 Nov" className={inputClass} />
+      </div>
 
       {showSplit && (
         <SplitAmountBox
