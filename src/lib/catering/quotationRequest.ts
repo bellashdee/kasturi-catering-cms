@@ -35,7 +35,9 @@ export type AdditionalServices = {
   /** Optional: the office can price it later. */
   equipmentHandlingPrice?: number;
   staffServing: boolean | null;
-  /** Optional: RM for the whole event. */
+  /** How many staff serve (requests sent before it was asked count as 1, with the price for the whole event). */
+  staffServingQuantity?: number;
+  /** Optional: RM for one staff. */
   staffServingPrice?: number;
   transportation: boolean | null;
   /** RM for the whole event. */
@@ -50,7 +52,15 @@ export type AdditionalServices = {
   staffServingIncluded?: boolean;
   transportationIncluded?: boolean;
   domeSetIncluded?: boolean;
+  /**
+   * Delivery (transportation) and equipment handling charged together as one lump sum: both have the same answer and
+   * the quotation has one line at lumpSumPrice instead of two.
+   */
+  deliveryEquipmentLumpSum?: boolean;
+  lumpSumPrice?: number;
 };
+
+export const LUMP_SUM_LABEL = "Delivery & equipment handling (lump sum)";
 
 export const noAdditionalServices = (): AdditionalServices => ({ equipmentHandling: false, staffServing: false, transportation: false, domeSet: false });
 
@@ -66,11 +76,21 @@ export function additionalRows(a: AdditionalServices | null | undefined, extras:
   const price = (n: number | undefined, perPax = false) => (n && n > 0 ? `RM ${n.toFixed(2)}${perPax ? " per pax" : ""}` : "");
   const detail = (yes: boolean | null, included: boolean | undefined, n: number | undefined) => (!yes ? "" : included ? "Included in the food price" : price(n));
   if (a) {
+    const delivery = a.deliveryEquipmentLumpSum
+      ? [{ label: LUMP_SUM_LABEL, yes: !!a.equipmentHandling, detail: detail(a.equipmentHandling, a.equipmentHandlingIncluded, a.lumpSumPrice) }]
+      : [
+          { label: "Equipment handling", yes: !!a.equipmentHandling, detail: detail(a.equipmentHandling, a.equipmentHandlingIncluded, a.equipmentHandlingPrice) },
+          { label: "Transportation", yes: !!a.transportation, detail: detail(a.transportation, a.transportationIncluded, a.transportationPrice) },
+        ];
     return [
-      { label: "Equipment handling", yes: !!a.equipmentHandling, detail: detail(a.equipmentHandling, a.equipmentHandlingIncluded, a.equipmentHandlingPrice) },
-      { label: "Staff serving", yes: !!a.staffServing, detail: detail(a.staffServing, a.staffServingIncluded, a.staffServingPrice) },
-      { label: "Transportation", yes: !!a.transportation, detail: detail(a.transportation, a.transportationIncluded, a.transportationPrice) },
-      { label: "Dome set", yes: !!a.domeSet, detail: a.domeSet ? domeSetDetail(a.domeSetQuantity ?? 1, a.domeSetIncluded ? null : a.domeSetPrice) : "" },
+      delivery[0],
+      {
+        label: "Staff serving",
+        yes: !!a.staffServing,
+        detail: !a.staffServing ? "" : a.staffServingQuantity ? countDetail(a.staffServingQuantity, "staff", "staff", a.staffServingIncluded ? null : a.staffServingPrice) : detail(a.staffServing, a.staffServingIncluded, a.staffServingPrice),
+      },
+      ...delivery.slice(1),
+      { label: "Dome set", yes: !!a.domeSet, detail: a.domeSet ? countDetail(a.domeSetQuantity ?? 1, "set", "sets", a.domeSetIncluded ? null : a.domeSetPrice) : "" },
     ];
   }
   const line = (name: string) => extras.find((i) => i.itemName === name);
@@ -86,15 +106,21 @@ export function additionalRows(a: AdditionalServices | null | undefined, extras:
     .map((r) => ({
       label: r.label,
       yes: !!r.item,
-      detail: !r.item ? "" : r.label === "Dome set" ? domeSetDetail(r.item.quantity, r.item.unitPrice) : price(r.item.unitPrice, r.perPax),
+      detail: !r.item
+        ? ""
+        : r.label === "Dome set"
+          ? countDetail(r.item.quantity, "set", "sets", r.item.unitPrice)
+          : r.label === "Staff serving" && r.item.quantity > 1
+            ? countDetail(r.item.quantity, "staff", "staff", r.item.unitPrice)
+            : price(r.item.unitPrice, r.perPax),
     }));
 }
 
 /** "3 sets × RM 50.00 per set = RM 150.00", or "3 sets · Included in the food price" (price null). */
-function domeSetDetail(sets: number, pricePerSet: number | null | undefined): string {
-  const count = `${sets} set${sets === 1 ? "" : "s"}`;
-  if (pricePerSet === null) return `${count} · Included in the food price`;
-  return pricePerSet && pricePerSet > 0 ? `${count} × RM ${pricePerSet.toFixed(2)} per set = RM ${(sets * pricePerSet).toFixed(2)}` : count;
+function countDetail(n: number, one: string, many: string, pricePerUnit: number | null | undefined): string {
+  const count = `${n} ${n === 1 ? one : many}`;
+  if (pricePerUnit === null) return `${count} · Included in the food price`;
+  return pricePerUnit && pricePerUnit > 0 ? `${count} × RM ${pricePerUnit.toFixed(2)} per ${one} = RM ${(n * pricePerUnit).toFixed(2)}` : count;
 }
 
 /** The quotation lines for the ticked additional services. */
@@ -105,9 +131,11 @@ export function additionalServiceLines(a: AdditionalServices | undefined): Extra
   const add = (yes: boolean | null, included: boolean | undefined, name: string, price: number | undefined, quantity = 1) => {
     if (yes) lines.push({ itemName: included ? `${name} (included in the food price)` : name, quantity, unitPrice: included ? 0 : (price ?? 0) });
   };
-  add(a.equipmentHandling, a.equipmentHandlingIncluded, "Equipment handling", a.equipmentHandlingPrice);
-  add(a.staffServing, a.staffServingIncluded, "Staff serving", a.staffServingPrice);
-  add(a.transportation, a.transportationIncluded, "Transportation", a.transportationPrice);
+  if (a.deliveryEquipmentLumpSum) add(a.equipmentHandling, a.equipmentHandlingIncluded, LUMP_SUM_LABEL, a.lumpSumPrice);
+  else add(a.equipmentHandling, a.equipmentHandlingIncluded, "Equipment handling", a.equipmentHandlingPrice);
+  // staff serving: quantity = number of staff, unit price = price per staff
+  add(a.staffServing, a.staffServingIncluded, "Staff serving", a.staffServingPrice, a.staffServingQuantity ?? 1);
+  if (!a.deliveryEquipmentLumpSum) add(a.transportation, a.transportationIncluded, "Transportation", a.transportationPrice);
   // dome sets: quantity = number of sets, unit price = price per set
   add(a.domeSet, a.domeSetIncluded, "Dome set", a.domeSetPrice, a.domeSetQuantity ?? 1);
   return lines;

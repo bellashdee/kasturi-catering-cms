@@ -107,25 +107,34 @@ function sanitizeAdditional(a: AdditionalServices | undefined): AdditionalServic
     included: yes && included === true,
     price: yes && included !== true ? price(v, label, false) : undefined,
   });
-  const e = one(a.equipmentHandling, a.equipmentHandlingIncluded, a.equipmentHandlingPrice, "Equipment handling");
+  const count = (n: number | undefined, message: string) => {
+    if (!(n !== undefined && Number.isInteger(n) && n >= 1 && n <= 1000)) throw new Error(message);
+    return n;
+  };
+  // delivery and equipment handling as one lump sum: one answer and one price for both
+  const lumpSum = a.deliveryEquipmentLumpSum === true;
+  const e = one(a.equipmentHandling, a.equipmentHandlingIncluded, lumpSum ? a.lumpSumPrice : a.equipmentHandlingPrice, lumpSum ? "Delivery & equipment handling" : "Equipment handling");
   const s = one(a.staffServing, a.staffServingIncluded, a.staffServingPrice, "Staff serving");
-  const t = one(a.transportation, a.transportationIncluded, a.transportationPrice, "Transportation");
+  const staff = s.yes ? count(a.staffServingQuantity, "Staff serving: enter how many staff.") : undefined;
+  const t = lumpSum ? e : one(a.transportation, a.transportationIncluded, a.transportationPrice, "Transportation");
   const d = one(a.domeSet, a.domeSetIncluded, a.domeSetPrice, "Dome set");
-  const sets = a.domeSetQuantity;
-  if (d.yes && !(sets !== undefined && Number.isInteger(sets) && sets >= 1 && sets <= 1000)) throw new Error("Dome set: enter how many sets.");
+  const sets = d.yes ? count(a.domeSetQuantity, "Dome set: enter how many sets.") : undefined;
   return {
+    deliveryEquipmentLumpSum: lumpSum,
+    lumpSumPrice: lumpSum ? e.price : undefined,
     equipmentHandling: e.yes,
     equipmentHandlingIncluded: e.included,
-    equipmentHandlingPrice: e.price,
+    equipmentHandlingPrice: lumpSum ? undefined : e.price,
     staffServing: s.yes,
     staffServingIncluded: s.included,
+    staffServingQuantity: staff,
     staffServingPrice: s.price,
     transportation: t.yes,
     transportationIncluded: t.included,
-    transportationPrice: t.price,
+    transportationPrice: lumpSum ? undefined : t.price,
     domeSet: d.yes,
     domeSetIncluded: d.included,
-    domeSetQuantity: d.yes ? sets : undefined,
+    domeSetQuantity: sets,
     domeSetPrice: d.price,
   };
 }

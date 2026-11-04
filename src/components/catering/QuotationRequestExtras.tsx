@@ -3,7 +3,7 @@
 import { SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
 import { MealTypeSelect } from "@/components/catering/MealTypeSelect";
 import type { SecondChoice } from "@/lib/catering/days";
-import type { AdditionalServices } from "@/lib/catering/quotationRequest";
+import { LUMP_SUM_LABEL, type AdditionalServices } from "@/lib/catering/quotationRequest";
 import { ChoiceSelect } from "@/components/ui/ChoiceSelect";
 import { formatPrice } from "@/lib/format";
 
@@ -84,7 +84,11 @@ const ANSWERS = [
 /** The answer of one requirement as the box shows it: "" (not answered), yes, no or included in the food price. */
 const answerOf = (yes: boolean | null, included: boolean | undefined) => (yes === null ? "" : included ? "included" : yes ? "yes" : "no");
 
-/** "Additional requirement": each of equipment handling, staff serving, transportation and dome set is answered by searching and choosing: Yes (with an optional RM), No or Included in the food price. */
+/**
+ * "Additional requirement": each of equipment handling, staff serving, transportation and dome set is answered by searching and choosing:
+ * Yes (with an optional RM), No or Included in the food price. Staff serving and dome set also ask how many (staff / sets) and the price
+ * of one; delivery and equipment handling can be charged together as one lump sum.
+ */
 export function AdditionalServicesEditor({
   value,
   onChange,
@@ -99,39 +103,50 @@ export function AdditionalServicesEditor({
   const num = (v: string) => (v ? Number(v) : undefined);
   const labelCls = "min-w-44 text-[13px] font-semibold text-text";
 
-  const line = (label: string, yes: boolean | null, included: boolean | undefined, price: number | undefined, set: (answer: string) => Partial<AdditionalServices>, setPrice: (n: number | undefined) => Partial<AdditionalServices>) => {
-    const answer = answerOf(yes, included);
+  const answer = (v: string) => ({ yes: v === "" ? null : v !== "no", included: v === "included" });
+
+  const line = (
+    label: string,
+    yes: boolean | null,
+    included: boolean | undefined,
+    price: number | undefined,
+    set: (answer: string) => Partial<AdditionalServices>,
+    setPrice: (n: number | undefined) => Partial<AdditionalServices>,
+    pricePlaceholder = "RM (optional)",
+  ) => {
+    const a = answerOf(yes, included);
     return (
       <div className={row}>
         <span className={labelCls}>{label}</span>
         <div className="w-60">
-          <ChoiceSelect required value={answer} onChange={(v) => patch(set(v))} options={ANSWERS} placeholder="Search or choose" className={box} />
+          <ChoiceSelect required value={a} onChange={(v) => patch(set(v))} options={ANSWERS} placeholder="Search or choose" className={box} />
         </div>
-        <input type="number" min="0" step="0.01" disabled={answer !== "yes"} value={answer === "yes" ? (price ?? "") : ""} onChange={(e) => patch(setPrice(num(e.target.value)))} className={small} placeholder="RM (optional)" />
+        <input type="number" min="0" step="0.01" disabled={a !== "yes"} value={a === "yes" ? (price ?? "") : ""} onChange={(e) => patch(setPrice(num(e.target.value)))} className={small} placeholder={pricePlaceholder} />
       </div>
     );
   };
-  const answer = (v: string) => ({ yes: v === "" ? null : v !== "no", included: v === "included" });
 
-  /** Dome set: when it is given, how many sets, and (when charged) the price of one set. */
-  const domeRow = () => {
-    const a = answerOf(value.domeSet, value.domeSetIncluded);
-    const sets = value.domeSetQuantity;
-    const subtotal = a === "yes" && sets && value.domeSetPrice ? sets * value.domeSetPrice : 0;
+  /** A requirement counted in units (staff, dome sets): when it is given, how many, and (when charged) the price of one. */
+  type Counted = { yes: boolean | null; included?: boolean; quantity?: number; price?: number };
+  const countRow = (label: string, ask: string, perUnit: string, c: Counted, toPatch: (c: Counted) => Partial<AdditionalServices>) => {
+    const a = answerOf(c.yes, c.included);
+    const subtotal = a === "yes" && c.quantity && c.price ? c.quantity * c.price : 0;
     return (
       <div className={row}>
-        <span className={labelCls}>Dome set</span>
+        <span className={labelCls}>{label}</span>
         <div className="w-60">
           <ChoiceSelect
             required
             value={a}
             onChange={(v) =>
-              patch({
-                domeSet: answer(v).yes,
-                domeSetIncluded: answer(v).included,
-                ...(v === "yes" ? {} : { domeSetPrice: undefined }),
-                ...(v === "yes" || v === "included" ? { domeSetQuantity: value.domeSetQuantity ?? 1 } : { domeSetQuantity: undefined }),
-              })
+              patch(
+                toPatch({
+                  yes: answer(v).yes,
+                  included: answer(v).included,
+                  price: v === "yes" ? c.price : undefined,
+                  quantity: v === "yes" || v === "included" ? (c.quantity ?? 1) : undefined,
+                }),
+              )
             }
             options={ANSWERS}
             placeholder="Search or choose"
@@ -141,11 +156,11 @@ export function AdditionalServicesEditor({
         {(a === "yes" || a === "included") && (
           <>
             <label className="flex items-center gap-1.5 text-[12.5px] font-semibold text-text-secondary">
-              How many sets *
-              <input type="number" min="1" step="1" required value={sets ?? ""} onChange={(e) => patch({ domeSetQuantity: num(e.target.value) })} className="h-9 w-20 rounded border border-border-strong px-2 text-[13px] outline-none" />
+              {ask} *
+              <input type="number" min="1" step="1" required value={c.quantity ?? ""} onChange={(e) => patch(toPatch({ ...c, quantity: num(e.target.value) }))} className="h-9 w-20 rounded border border-border-strong px-2 text-[13px] outline-none" />
             </label>
             {a === "yes" && (
-              <input type="number" min="0" step="0.01" value={value.domeSetPrice ?? ""} onChange={(e) => patch({ domeSetPrice: num(e.target.value) })} className={small} placeholder="RM / set (optional)" />
+              <input type="number" min="0" step="0.01" value={c.price ?? ""} onChange={(e) => patch(toPatch({ ...c, price: num(e.target.value) }))} className={small} placeholder={`RM / ${perUnit} (optional)`} />
             )}
             {subtotal > 0 && <span className="text-[12.5px] text-text-muted">= {formatPrice(subtotal)}</span>}
           </>
@@ -154,12 +169,48 @@ export function AdditionalServicesEditor({
     );
   };
 
+  const lumpSum = !!value.deliveryEquipmentLumpSum;
+  function switchLumpSum(on: boolean) {
+    // one answer and one price for both: it starts from the equipment handling answer
+    if (on) patch({ deliveryEquipmentLumpSum: true, transportation: value.equipmentHandling, transportationIncluded: value.equipmentHandlingIncluded, equipmentHandlingPrice: undefined, transportationPrice: undefined });
+    else patch({ deliveryEquipmentLumpSum: false, lumpSumPrice: undefined });
+  }
+
+  const staffRow = countRow(
+    "Staff serving",
+    "How many staff",
+    "staff",
+    { yes: value.staffServing, included: value.staffServingIncluded, quantity: value.staffServingQuantity, price: value.staffServingPrice },
+    (c) => ({ staffServing: c.yes, staffServingIncluded: c.included, staffServingQuantity: c.quantity, staffServingPrice: c.price }),
+  );
+  const domeRow = countRow(
+    "Dome set",
+    "How many sets",
+    "set",
+    { yes: value.domeSet, included: value.domeSetIncluded, quantity: value.domeSetQuantity, price: value.domeSetPrice },
+    (c) => ({ domeSet: c.yes, domeSetIncluded: c.included, domeSetQuantity: c.quantity, domeSetPrice: c.price }),
+  );
+
   return (
     <div className="flex flex-col gap-2">
-      {line("Equipment handling", value.equipmentHandling, value.equipmentHandlingIncluded, value.equipmentHandlingPrice, (v) => ({ equipmentHandling: answer(v).yes, equipmentHandlingIncluded: answer(v).included, ...(v === "yes" ? {} : { equipmentHandlingPrice: undefined }) }), (n) => ({ equipmentHandlingPrice: n }))}
-      {line("Staff serving (RM / event)", value.staffServing, value.staffServingIncluded, value.staffServingPrice, (v) => ({ staffServing: answer(v).yes, staffServingIncluded: answer(v).included, ...(v === "yes" ? {} : { staffServingPrice: undefined }) }), (n) => ({ staffServingPrice: n }))}
-      {line("Transportation (RM)", value.transportation, value.transportationIncluded, value.transportationPrice, (v) => ({ transportation: answer(v).yes, transportationIncluded: answer(v).included, ...(v === "yes" ? {} : { transportationPrice: undefined }) }), (n) => ({ transportationPrice: n }))}
-      {domeRow()}
+      <label className="flex cursor-pointer items-center gap-2 text-[13px] font-semibold text-text">
+        <input type="checkbox" checked={lumpSum} onChange={(e) => switchLumpSum(e.target.checked)} className="accent-[var(--color-primary)]" />
+        Delivery &amp; equipment handling as one lump-sum price
+      </label>
+      {lumpSum
+        ? line(
+            LUMP_SUM_LABEL,
+            value.equipmentHandling,
+            value.equipmentHandlingIncluded,
+            value.lumpSumPrice,
+            (v) => ({ equipmentHandling: answer(v).yes, equipmentHandlingIncluded: answer(v).included, transportation: answer(v).yes, transportationIncluded: answer(v).included, ...(v === "yes" ? {} : { lumpSumPrice: undefined }) }),
+            (n) => ({ lumpSumPrice: n }),
+            "RM lump sum (optional)",
+          )
+        : line("Equipment handling", value.equipmentHandling, value.equipmentHandlingIncluded, value.equipmentHandlingPrice, (v) => ({ equipmentHandling: answer(v).yes, equipmentHandlingIncluded: answer(v).included, ...(v === "yes" ? {} : { equipmentHandlingPrice: undefined }) }), (n) => ({ equipmentHandlingPrice: n }))}
+      {staffRow}
+      {!lumpSum && line("Transportation (RM)", value.transportation, value.transportationIncluded, value.transportationPrice, (v) => ({ transportation: answer(v).yes, transportationIncluded: answer(v).included, ...(v === "yes" ? {} : { transportationPrice: undefined }) }), (n) => ({ transportationPrice: n }))}
+      {domeRow}
     </div>
   );
 }
