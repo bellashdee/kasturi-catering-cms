@@ -51,3 +51,6 @@ next-env.d.ts
 
 # local MarkItDown install (not part of the project)
 /MARKITDOWN GENERATOR/
+
+# Claude Code personal settings
+.claude/settings.local.json

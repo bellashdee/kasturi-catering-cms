@@ -27,7 +27,7 @@ export async function getPendingSubmissions(supabase: DB, companyIds: string[]) 
       .from("quotation_requests")
       .select("id, event_name, customer_name, sales_agent, created_at, company_id", { count: "exact" })
       .in("company_id", companyIds)
-      .eq("status", "pending")
+      .eq("tracking_status", "new_request")
       .order("created_at", { ascending: false })
       .limit(5),
   ]);
@@ -62,7 +62,8 @@ export async function getPendingSubmissions(supabase: DB, companyIds: string[]) 
 export async function countPendingSubmissions(supabase: DB): Promise<number> {
   const [customers, quotations] = await Promise.all([
     supabase.from("customer_intake_submissions").select("id", { count: "exact", head: true }).eq("status", "pending"),
-    supabase.from("quotation_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
+    // only the inbox people can read requests at all (row level security), so for everyone else this counts 0
+    supabase.from("quotation_requests").select("id", { count: "exact", head: true }).eq("tracking_status", "new_request"),
   ]);
   return (customers.count ?? 0) + (quotations.count ?? 0);
 }

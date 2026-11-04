@@ -1,6 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
-import { dayPax, type EventDay } from "@/lib/catering/days";
 
 type DB = SupabaseClient<Database>;
 
@@ -120,15 +119,14 @@ const QUOTATION_RANK: Record<string, number> = { accepted: 4, sent: 3, draft: 2,
 
 /**
  * The calendar entries of a date range. A multi-day event gives one entry per day (with that day's pax, meals and times);
- * an event without separate days gives one entry on its date. A quotation request from a sales agent that has not been
- * approved yet is shown too (as a request), so a new request is on the calendar as soon as it comes in. Nothing is invented:
- * a missing time or menu stays empty.
+ * an event without separate days gives one entry on its date. Quotation requests from sales agents are never shown: only
+ * events (from the Excel import or New Event) are on the calendar. Nothing is invented: a missing time or menu stays empty.
  */
 export async function loadCalendarEntries(supabase: DB, companyIds: string[], start: string, end: string, today: string): Promise<CalendarEntry[]> {
   if (companyIds.length === 0) return [];
   const eventSelect = "id, event_name, status, location, pic_name, pax_count, event_date, event_time, setup_time, meal_types, menu_description, company_id, second_service_type, service_pax, companies(name), customers(name)";
 
-  const [{ data: inRange, error: e1 }, { data: dayRows, error: e2 }, { data: requests, error: e3 }] = await Promise.all([
+  const [{ data: inRange, error: e1 }, { data: dayRows, error: e2 }] = await Promise.all([
     supabase.from("catering_events").select(eventSelect).in("company_id", companyIds).gte("event_date", start).lte("event_date", end),
     supabase
       .from("catering_event_days")
@@ -136,11 +134,9 @@ export async function loadCalendarEntries(supabase: DB, companyIds: string[], st
       .in("company_id", companyIds)
       .gte("day_date", start)
       .lte("day_date", end),
-    supabase.from("quotation_requests").select("id, company_id, event_name, customer_name, location, pic_name, days, companies(name)").in("company_id", companyIds).eq("status", "pending"),
   ]);
   if (e1) throw e1;
   if (e2) throw e2;
-  if (e3) throw e3;
 
   // events that have separate days (those days are the entries); the others are shown on their own date
   const candidateIds = (inRange ?? []).map((e) => e.id);
@@ -216,40 +212,6 @@ export async function loadCalendarEntries(supabase: DB, companyIds: string[], st
       dayCount: 1,
       quotation: null,
       alert: null,
-    });
-  }
-
-  // quotation requests that no one has approved yet: one entry per requested day
-  for (const r of requests ?? []) {
-    const days = (Array.isArray(r.days) ? r.days : []) as unknown as EventDay[];
-    days.forEach((d, i) => {
-      if (!d.dayDate || d.dayDate < start || d.dayDate > end) return;
-      entries.push({
-        key: `req:${r.id}:${d.dayDate}`,
-        kind: "request",
-        eventId: "",
-        requestId: r.id,
-        dayId: null,
-        companyId: r.company_id,
-        eventName: r.event_name,
-        status: "request",
-        phase: "request",
-        companyName: r.companies?.name ?? "",
-        customerName: r.customer_name ?? "",
-        date: d.dayDate,
-        eventTime: d.eventTime ?? "",
-        setupTime: d.setupTime ?? "",
-        venue: r.location,
-        pic: r.pic_name,
-        pax: dayPax(d),
-        twoServices: !!d.secondServiceType,
-        mealTypes: d.mealTypes ?? [],
-        menu: d.menuDetails ?? null,
-        dayNumber: days.length > 1 ? i + 1 : null,
-        dayCount: days.length,
-        quotation: null,
-        alert: null,
-      });
     });
   }
 

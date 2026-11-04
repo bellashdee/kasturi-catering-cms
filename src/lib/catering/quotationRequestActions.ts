@@ -1,16 +1,13 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/types";
 import { EVENT_TYPE_LABEL, MAX_EVENT_DAYS, MEAL_TYPE_LABEL, SALES_AGENTS, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
-import { dayPax, normalizeMenu, quotationSeedRows, type EventDay } from "@/lib/catering/days";
+import { normalizeMenu, type EventDay } from "@/lib/catering/days";
 import { INTAKE_COMPANIES, INTAKE_HOURLY_LIMIT } from "@/lib/catering/intake";
 import {
   MAX_EXTRA_ITEMS,
   additionalServiceLines,
-  withSecondMenusInRemarks,
   type AdditionalServices,
   type ExtraItem,
   type QuotationRequestInput,
@@ -18,13 +15,12 @@ import {
 } from "@/lib/catering/quotationRequest";
 import { validateDays } from "@/lib/catering/validation";
 import { MAX_SECOND_MENUS, secondMenusOf } from "@/lib/catering/days";
-import { createEvent, createQuotation } from "@/lib/catering/actions";
 import { QUOTATION_NOTIFY_EMAIL, SITE_URL } from "@/lib/catering/intake";
 import { escapeHtml, sendNotificationEmail } from "@/lib/notify/email";
 import { dayAmount } from "@/lib/catering/days";
 import { formatPrice } from "@/lib/format";
 
-type Result = { ok: boolean; error?: string; eventId?: string };
+type Result = { ok: boolean; error?: string; requestCode?: string };
 
 const clean = (s: string | undefined, max = 500) => {
   const v = s?.trim();
@@ -194,7 +190,7 @@ async function saveQuotationRequest(companySlug: string, input: QuotationRequest
     .gte("created_at", since);
   if ((count ?? 0) >= INTAKE_HOURLY_LIMIT) throw new Error("Too many submissions right now. Please try again in a while.");
 
-  const { error } = await admin.from("quotation_requests").insert({
+  const { data: saved, error } = await admin.from("quotation_requests").insert({
     company_id: company.id,
     sales_agent: input.salesAgent,
     customer_name: customerName,
@@ -209,13 +205,15 @@ async function saveQuotationRequest(companySlug: string, input: QuotationRequest
     days: days as unknown as Json,
     extra_items: extraItems as unknown as Json,
     additional: additional as unknown as Json,
-  });
+  }).select("request_code").single();
   if (error) throw new Error("Could not save. Please try again.");
+  const requestCode = saved.request_code ?? undefined;
 
   // tell the office; the request is already saved, so a missing or failing email never fails the form
   try {
     const total = days.reduce((t, d) => t + dayAmount(d), 0) + extraItems.reduce((t, i) => t + i.quantity * i.unitPrice, 0);
     const result = await notifyNewQuotationRequest({
+      requestCode,
       companyName: company.name,
       salesAgent: input.salesAgent,
       customerName,
@@ -227,10 +225,10 @@ async function saveQuotationRequest(companySlug: string, input: QuotationRequest
   } catch (err) {
     console.warn("Quotation request saved; email step failed:", err instanceof Error ? err.message : err);
   }
-  return { ok: true };
+  return { ok: true, requestCode };
 }
 
-async function notifyNewQuotationRequest(r: { companyName: string; salesAgent: string; customerName: string; eventName: string; days: EventDay[]; total: number }) {
+async function notifyNewQuotationRequest(r: { requestCode?: string; companyName: string; salesAgent: string; customerName: string; eventName: string; days: EventDay[]; total: number }) {
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? SITE_URL).replace(/\/$/, "");
   const reviewUrl = `${siteUrl}/catering/quotation-requests`;
   const to = process.env.QUOTATION_NOTIFY_EMAIL ?? QUOTATION_NOTIFY_EMAIL;
@@ -240,15 +238,15 @@ async function notifyNewQuotationRequest(r: { companyName: string; salesAgent: s
   const totalText = r.total > 0 ? formatPrice(r.total) : "no price entered";
 
   const text = [
-    `New quotation request from ${r.salesAgent} (${r.companyName})`,
+    `New quotation request ${r.requestCode ?? ""} from ${r.salesAgent} (${r.companyName})`,
     "",
     `Event: ${r.eventName}`,
     `Customer: ${r.customerName}`,
     `Date: ${dates}`,
     `Estimated total: ${totalText}`,
     "",
-    `Review and approve it here: ${reviewUrl}`,
-    "Nothing is saved to the system until you approve it.",
+    `Open it in the Quotation Request Inbox: ${reviewUrl}`,
+    "The request does not create an event; prepare the quotation in AutoCount.",
   ].join("\n");
   const html = `<div style="font-family:Arial,sans-serif;font-size:14px;color:#1a2433">
 <h3 style="margin:0 0 8px">New quotation request from ${escapeHtml(r.salesAgent)}</h3>
@@ -259,146 +257,10 @@ async function notifyNewQuotationRequest(r: { companyName: string; salesAgent: s
 <tr><td style="padding:3px 12px 3px 0;color:#5a6577">Date</td><td>${escapeHtml(dates)}</td></tr>
 <tr><td style="padding:3px 12px 3px 0;color:#5a6577">Estimated total</td><td>${escapeHtml(totalText)}</td></tr>
 </table>
-<p><a href="${reviewUrl}" style="background:#1d6fd6;color:#fff;padding:9px 16px;border-radius:6px;text-decoration:none;font-weight:bold">Review and approve</a></p>
-<p style="color:#5a6577;font-size:12px">Nothing is saved to the system until you approve it.</p>
+<p><a href="${reviewUrl}" style="background:#1d6fd6;color:#fff;padding:9px 16px;border-radius:6px;text-decoration:none;font-weight:bold">Open the request</a></p>
+<p style="color:#5a6577;font-size:12px">The request does not create an event; prepare the quotation in AutoCount.</p>
 </div>`;
 
-  return sendNotificationEmail({ to, subject: `New quotation request: ${r.eventName} (${r.salesAgent})`, text, html });
+  return sendNotificationEmail({ to, subject: `New quotation request ${r.requestCode ?? ""}: ${r.eventName} (${r.salesAgent})`, text, html });
 }
 
-async function requireUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not signed in.");
-  return { supabase, userId: user.id };
-}
-
-/**
- * Turns a pending request into a catering event (enquiry) with a draft quotation: the customer is linked by name or
- * created if new, the days become the event's days and the quotation lines are pax x price per day plus the extra items.
- */
-export async function approveQuotationRequest(requestId: string): Promise<Result> {
-  try {
-    return await approveRequest(requestId);
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Could not approve. Please try again." };
-  }
-}
-
-async function approveRequest(requestId: string): Promise<Result> {
-  const { supabase, userId } = await requireUser();
-  const { data: r, error: readError } = await supabase.from("quotation_requests").select("*").eq("id", requestId).single();
-  if (readError) throw readError;
-  if (r.status !== "pending") throw new Error("This request has already been reviewed.");
-
-  const days = (r.days as unknown as EventDay[]).map((d) => ({ ...d, mealTypes: d.mealTypes ?? [] }));
-  // a day's second menus (alternative menus) are kept in that day's remarks; they are not part of the quotation
-  const withSecondChoice = withSecondMenusInRemarks;
-  const extras = r.extra_items as unknown as ExtraItem[];
-  const submittedOn = r.created_at.slice(0, 10);
-
-  // 1) the event (skipped when an earlier attempt already created it)
-  let eventId = r.catering_event_id;
-  if (!eventId) {
-    const escaped = r.customer_name.replace(/[\\%_]/g, "\\$&");
-    const { data: found } = await supabase.from("customers").select("id").eq("company_id", r.company_id).ilike("name", escaped).maybeSingle();
-    let customerId = found?.id;
-    if (!customerId) {
-      const { data: created, error: customerError } = await supabase
-        .from("customers")
-        .insert({
-          company_id: r.company_id,
-          name: r.customer_name,
-          contact_person: r.pic_name,
-          phone: r.pic_phone,
-          notes: `Created from a quotation request by sales agent ${r.sales_agent} on ${submittedOn}.`,
-        })
-        .select("id")
-        .single();
-      if (customerError) throw customerError;
-      customerId = created.id;
-    }
-
-    const common = {
-      companyId: r.company_id,
-      customerId,
-      eventName: r.event_name,
-      eventType: r.event_type,
-      location: r.location ?? undefined,
-      picName: r.pic_name ?? undefined,
-      picPhone: r.pic_phone ?? undefined,
-      salesAgent: r.sales_agent,
-      kitchenSetup: r.kitchen_setup ?? undefined,
-      cateringSetup: r.catering_setup ?? undefined,
-      eventDetails: `Requested by sales agent ${r.sales_agent} through the quotation form on ${submittedOn}.`,
-      status: "enquiry",
-    };
-    const only = days.length === 1 ? days[0] : null;
-    const event = await createEvent(
-      only
-        ? {
-            ...common,
-            eventDate: only.dayDate,
-            eventTime: only.eventTime,
-            setupTime: only.setupTime,
-            paxCount: dayPax(only),
-            mealTypes: only.mealTypes,
-            serviceType: only.serviceType,
-            servicePax: only.servicePax,
-            secondServiceType: only.secondServiceType,
-            secondServicePax: only.secondServicePax,
-            pricePerPax: only.pricePerPax,
-            menuDescription: only.menuDetails,
-            remarks: [withSecondChoice(only).remarks, r.remarks].filter(Boolean).join("\n\n") || undefined,
-          }
-        : { ...common, eventDate: days[0].dayDate, remarks: r.remarks ?? undefined, days: days.map(withSecondChoice) },
-    );
-    eventId = event.id;
-    const { error: linkError } = await supabase.from("quotation_requests").update({ catering_event_id: eventId }).eq("id", requestId);
-    if (linkError) throw linkError;
-  }
-
-  // 2) the draft quotation: one line per day (pax x price) plus the extra items
-  const lines = [
-    ...quotationSeedRows(days.length === 1 ? [] : days, {
-      eventName: r.event_name,
-      pax: days.length === 1 ? dayPax(days[0]) : null,
-      pricePerPax: days.length === 1 ? days[0].pricePerPax ?? null : null,
-    }),
-    ...extras.map((i) => ({ itemName: i.itemName, quantity: i.quantity, unitPrice: i.unitPrice })),
-  ];
-  if (lines.length === 0) throw new Error("There is no priced line to put in the quotation.");
-  const quotation = await createQuotation({
-    companyId: r.company_id,
-    eventId,
-    quotationNumber: `Q-${Date.now().toString().slice(-6)}`,
-    items: lines.map((l) => ({ ...l, discountPercent: 0 })),
-  });
-
-  const { error: updateError } = await supabase
-    .from("quotation_requests")
-    .update({ status: "approved", quotation_id: quotation.id, reviewed_by: userId, reviewed_at: new Date().toISOString() })
-    .eq("id", requestId);
-  if (updateError) throw updateError;
-  revalidatePath("/catering");
-  revalidatePath("/catering/quotation-requests");
-  return { ok: true, eventId };
-}
-
-export async function rejectQuotationRequest(requestId: string): Promise<Result> {
-  try {
-    const { supabase, userId } = await requireUser();
-    const { error } = await supabase
-      .from("quotation_requests")
-      .update({ status: "rejected", reviewed_by: userId, reviewed_at: new Date().toISOString() })
-      .eq("id", requestId)
-      .eq("status", "pending");
-    if (error) throw error;
-    revalidatePath("/catering/quotation-requests");
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Could not reject. Please try again." };
-  }
-}

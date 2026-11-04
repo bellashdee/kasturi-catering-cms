@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { errorMessage } from "@/lib/actionResult";
-import { approveQuotationRequest, rejectQuotationRequest } from "@/lib/catering/quotationRequestActions";
 import { rememberCancelledEvent } from "@/components/catering/CalendarUndoBanner";
 import { cancelEventFromCalendar, deleteEventFromCalendar, quickUpdateEvent, restoreEventStatus } from "@/lib/catering/calendarActions";
 
@@ -28,7 +27,7 @@ const inputClass = "mt-1 h-9 w-full rounded-md border border-border-strong bg-wh
 const labelClass = "text-[11.5px] font-semibold text-text-secondary";
 const btn = "rounded-md border border-border-strong bg-white px-2.5 py-1 text-[12px] font-semibold text-text hover:border-primary hover:text-primary disabled:opacity-50";
 
-/** Edit (save / cancel), Cancel event (with Undo) and Delete of one calendar entry; Approve / Reject for a quotation request. */
+/** Edit (save / cancel), Cancel event (with Undo) and Delete of one calendar entry. */
 export function CalendarEntryActions({ entry, canDelete, query, canQuickEdit = true }: { entry: ActionEntry; canDelete: boolean; query: string; canQuickEdit?: boolean }) {
   const router = useRouter();
   const { t } = useI18n();
@@ -70,25 +69,6 @@ export function CalendarEntryActions({ entry, canDelete, query, canQuickEdit = t
   }
 
   const fullEdit = `/catering/${entry.eventId}/edit${query}`;
-
-  if (entry.kind === "request") {
-    return (
-      <div className="mt-2 flex flex-col gap-1.5">
-        <div className="flex flex-wrap gap-1.5">
-          <button type="button" disabled={busy} onClick={() => void run(() => approveQuotationRequest(entry.requestId!))} className="rounded-md bg-primary px-2.5 py-1 text-[12px] font-semibold text-white disabled:opacity-50">
-            Approve &amp; create quotation
-          </button>
-          <button type="button" disabled={busy} onClick={() => { if (window.confirm(t("Reject this quotation request?"))) void run(() => rejectQuotationRequest(entry.requestId!)); }} className={`${btn} text-danger`}>
-            Reject
-          </button>
-          <Link href={`/catering/quotation-requests${query}`} className={btn}>
-            Open request
-          </Link>
-        </div>
-        {error && <div role="alert" className="text-[12px] text-danger">{error}</div>}
-      </div>
-    );
-  }
 
   return (
     <div className="mt-2 flex flex-col gap-2">

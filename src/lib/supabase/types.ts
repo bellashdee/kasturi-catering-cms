@@ -5499,8 +5499,67 @@ export type Database = {
           },
         ]
       }
+      quotation_request_access: {
+        Row: { created_at: string; note: string | null; user_id: string }
+        Insert: { created_at?: string; note?: string | null; user_id: string }
+        Update: { created_at?: string; note?: string | null; user_id?: string }
+        Relationships: []
+      }
+      quotation_request_history: {
+        Row: { changed_at: string; changed_by: string | null; field: string; id: string; new_value: string | null; old_value: string | null; request_id: string }
+        Insert: { changed_at?: string; changed_by?: string | null; field: string; id?: string; new_value?: string | null; old_value?: string | null; request_id: string }
+        Update: { changed_at?: string; changed_by?: string | null; field?: string; id?: string; new_value?: string | null; old_value?: string | null; request_id?: string }
+        Relationships: [
+          {
+            foreignKeyName: "quotation_request_history_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "quotation_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotation_request_history_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotation_request_notes: {
+        Row: { body: string; created_at: string; created_by: string | null; id: string; request_id: string; updated_at: string | null; updated_by: string | null }
+        Insert: { body: string; created_at?: string; created_by?: string | null; id?: string; request_id: string; updated_at?: string | null; updated_by?: string | null }
+        Update: { body?: string; created_at?: string; created_by?: string | null; id?: string; request_id?: string; updated_at?: string | null; updated_by?: string | null }
+        Relationships: [
+          {
+            foreignKeyName: "quotation_request_notes_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "quotation_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotation_request_notes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quotation_requests: {
         Row: {
+          request_code: string | null
+          tracking_status: string
+          autocount_quotation_no: string | null
+          autocount_invoice_no: string | null
+          quotation_prepared_on: string | null
+          sent_to_customer_on: string | null
+          customer_response_on: string | null
+          follow_up_on: string | null
+          handled_by: string | null
+          updated_at: string | null
+          updated_by: string | null
           catering_event_id: string | null
           catering_setup: string | null
           company_id: string
@@ -5525,6 +5584,17 @@ export type Database = {
           status: string
         }
         Insert: {
+          request_code?: string | null
+          tracking_status?: string
+          autocount_quotation_no?: string | null
+          autocount_invoice_no?: string | null
+          quotation_prepared_on?: string | null
+          sent_to_customer_on?: string | null
+          customer_response_on?: string | null
+          follow_up_on?: string | null
+          handled_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
           catering_event_id?: string | null
           catering_setup?: string | null
           company_id: string
@@ -5549,6 +5619,17 @@ export type Database = {
           status?: string
         }
         Update: {
+          request_code?: string | null
+          tracking_status?: string
+          autocount_quotation_no?: string | null
+          autocount_invoice_no?: string | null
+          quotation_prepared_on?: string | null
+          sent_to_customer_on?: string | null
+          customer_response_on?: string | null
+          follow_up_on?: string | null
+          handled_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
           catering_event_id?: string | null
           catering_setup?: string | null
           company_id?: string
@@ -5573,6 +5654,13 @@ export type Database = {
           status?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "quotation_requests_handled_by_fkey"
+            columns: ["handled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "quotation_requests_catering_event_id_fkey"
             columns: ["catering_event_id"]
@@ -6577,6 +6665,8 @@ export type Database = {
       user_can_use_payroll_centre: { Args: never; Returns: boolean }
       user_gets_payment_reminders: { Args: never; Returns: boolean }
       user_is_local_staff: { Args: never; Returns: boolean }
+      user_has_quotation_request_access: { Args: never; Returns: boolean }
+      quotation_request_people: { Args: never; Returns: { user_id: string; full_name: string | null }[] }
       user_has_company_access: {
         Args: { target_company_id: string }
         Returns: boolean

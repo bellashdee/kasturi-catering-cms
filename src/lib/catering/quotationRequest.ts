@@ -28,6 +28,46 @@ export type QuotationRequestInput = {
 
 export const MAX_EXTRA_ITEMS = 30;
 
+/**
+ * Where a request stands in the Quotation Request Inbox. The quotation and the invoice themselves are made in AutoCount; no status
+ * creates an event (a confirmed event comes in through the Excel import or New Event).
+ */
+export const TRACKING_STATUS_LABEL: Record<string, string> = {
+  new_request: "New Request",
+  under_review: "Under Review",
+  need_more_info: "Need More Information",
+  quotation_prepared: "Quotation Prepared in AutoCount",
+  sent_to_customer: "Sent to Customer",
+  follow_up_required: "Follow-Up Required",
+  customer_confirmed: "Customer Confirmed",
+  customer_declined: "Customer Declined",
+  cancelled: "Cancelled",
+};
+
+export const TRACKING_STATUS_TONE: Record<string, "info" | "warning" | "success" | "danger" | "neutral"> = {
+  new_request: "info",
+  under_review: "info",
+  need_more_info: "warning",
+  quotation_prepared: "info",
+  sent_to_customer: "info",
+  follow_up_required: "warning",
+  customer_confirmed: "success",
+  customer_declined: "danger",
+  cancelled: "neutral",
+};
+
+/** What Nabilah, Adlan or Ms. Penny keep up to date for a request (dates as YYYY-MM-DD, "" = not set). */
+export type TrackingInput = {
+  trackingStatus: string;
+  autocountQuotationNo: string;
+  autocountInvoiceNo: string;
+  quotationPreparedOn: string;
+  sentToCustomerOn: string;
+  customerResponseOn: string;
+  followUpOn: string;
+  handledBy: string;
+};
+
 /** The tick-boxes under "Additional requirement": each one answered Yes becomes a line of the quotation. */
 export type AdditionalServices = {
   /** true = yes, false = no, null = not answered yet (the public form requires an answer for each). */

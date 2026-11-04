@@ -55,7 +55,7 @@ export default async function CateringPage({
     .from("quotation_requests")
     .select("id", { count: "exact", head: true })
     .in("company_id", targetCompanyIds)
-    .eq("status", "pending");
+    .eq("tracking_status", "new_request");
 
   return (
     <div className="flex flex-col gap-5">

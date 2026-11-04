@@ -42,7 +42,7 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
   const [additional, setAdditional] = useState<AdditionalServices>(unansweredAdditionalServices());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sentName, setSentName] = useState<string | null>(null);
+  const [sent, setSent] = useState<{ name: string; code?: string } | null>(null);
 
   function set<K extends keyof Header>(key: K, value: Header[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -67,7 +67,7 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
       if (!result.ok) {
         setError(result.error ?? "Something went wrong.");
       } else {
-        setSentName(form.eventName);
+        setSent({ name: form.eventName, code: result.requestCode });
         // keep the sales agent selected so several requests can be sent one after another
         setForm({ ...emptyHeader, salesAgent: form.salesAgent });
         setDays([emptyDay()]);
@@ -83,9 +83,10 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      {sentName && (
+      {sent && (
         <div className="rounded-lg border border-success/30 bg-success-bg px-3 py-2 text-sm text-success">
-          Thank you. The quotation request for <span className="font-semibold">{sentName}</span> was sent to the office. You can fill in another one below.
+          Thank you. The quotation request for <span className="font-semibold">{sent.name}</span> was sent to the office
+          {sent.code && <> (Request ID <span className="font-extrabold">{sent.code}</span>)</>}. You can fill in another one below.
         </div>
       )}
       {error && <div className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">{error}</div>}
