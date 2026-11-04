@@ -498,8 +498,26 @@ export type Database = {
           },
         ]
       }
+      event_import_batches: {
+        Row: { company_id: string; created_count: number; details: Json; file_name: string; id: string; imported_at: string; imported_by: string | null; sheet_name: string | null; skipped_count: number; updated_count: number }
+        Insert: { company_id: string; created_count?: number; details?: Json; file_name: string; id?: string; imported_at?: string; imported_by?: string | null; sheet_name?: string | null; skipped_count?: number; updated_count?: number }
+        Update: { company_id?: string; created_count?: number; details?: Json; file_name?: string; id?: string; imported_at?: string; imported_by?: string | null; sheet_name?: string | null; skipped_count?: number; updated_count?: number }
+        Relationships: [
+          {
+            foreignKeyName: "event_import_batches_imported_by_fkey"
+            columns: ["imported_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       catering_events: {
         Row: {
+          end_time: string | null
+          event_address: string | null
+          autocount_quotation_no: string | null
+          autocount_invoice_no: string | null
           catering_setup: string | null
           company_id: string
           created_at: string
@@ -534,6 +552,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          end_time?: string | null
+          event_address?: string | null
+          autocount_quotation_no?: string | null
+          autocount_invoice_no?: string | null
           catering_setup?: string | null
           company_id: string
           created_at?: string
@@ -568,6 +590,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          end_time?: string | null
+          event_address?: string | null
+          autocount_quotation_no?: string | null
+          autocount_invoice_no?: string | null
           catering_setup?: string | null
           company_id?: string
           created_at?: string
