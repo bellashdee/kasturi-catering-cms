@@ -6,11 +6,19 @@ import { EVENT_TYPE_LABEL, MAX_EVENT_DAYS, MEAL_TYPE_LABEL, SALES_AGENTS, SERVIC
 import { normalizeMenu, type EventDay } from "@/lib/catering/days";
 import { INTAKE_COMPANIES, INTAKE_HOURLY_LIMIT } from "@/lib/catering/intake";
 import {
+  ATTACHMENT_BUCKET,
+  ATTACHMENT_EXTENSIONS,
+  ATTACHMENT_MAX_BYTES,
+  MAX_ATTACHMENTS,
   MAX_EXTRA_ITEMS,
+  REQUIREMENT_FIELDS,
   additionalServiceLines,
+  attachmentExtension,
   type AdditionalServices,
   type ExtraItem,
   type QuotationRequestInput,
+  type RequestAttachment,
+  type RequestRequirements,
   type SecondChoice,
 } from "@/lib/catering/quotationRequest";
 import { validateDays } from "@/lib/catering/validation";
@@ -20,7 +28,7 @@ import { escapeHtml, sendNotificationEmail } from "@/lib/notify/email";
 import { dayAmount } from "@/lib/catering/days";
 import { formatPrice } from "@/lib/format";
 
-type Result = { ok: boolean; error?: string; requestCode?: string };
+type Result = { ok: boolean; error?: string; requestCode?: string; warning?: string };
 
 const clean = (s: string | undefined, max = 500) => {
   const v = s?.trim();
@@ -35,6 +43,7 @@ function sanitizeDay(d: EventDay, index: number): EventDay {
     dayDate: d.dayDate,
     setupTime: d.setupTime || undefined,
     eventTime: d.eventTime || undefined,
+    endTime: sanitizeTime(d.endTime, `Day ${index + 1}: the event end time`),
     mealTypes: d.mealTypes ?? [],
     serviceType: d.serviceType,
     servicePax: d.servicePax,
@@ -45,6 +54,72 @@ function sanitizeDay(d: EventDay, index: number): EventDay {
     remarks: clean(d.remarks, 1000) ?? undefined,
     secondMenus: sanitizeSecondMenus(d, index),
   };
+}
+
+function sanitizeTime(v: string | undefined, label: string): string | undefined {
+  const t = v?.trim();
+  if (!t) return undefined;
+  if (!/^\d{2}:\d{2}(:\d{2})?$/.test(t)) throw new Error(`${label} is not a valid time.`);
+  return t.slice(0, 5);
+}
+
+/** The menu and catering requirements: each one optional, trimmed and size-limited; menu options is a whole number from 1 to 20. */
+function sanitizeRequirements(r: RequestRequirements | undefined): RequestRequirements {
+  const out: RequestRequirements = {};
+  if (r?.menuOptions !== undefined) {
+    if (!Number.isInteger(r.menuOptions) || r.menuOptions < 1 || r.menuOptions > 20) throw new Error("Number of menu options: enter a whole number from 1 to 20.");
+    out.menuOptions = r.menuOptions;
+  }
+  for (const f of REQUIREMENT_FIELDS) {
+    const v = clean(r?.[f.key], 1000);
+    if (v) out[f.key] = v;
+  }
+  return out;
+}
+
+/** The folder of a company's request attachments; a file the browser names must be inside it. */
+const attachmentFolder = (companyId: string) => companyId;
+
+/**
+ * Public (no login), before sending: a one-time permission to upload ONE attachment into this company's folder of the private
+ * attachments bucket. The type and size are checked here; nothing else can be written, and only the inbox people can read it.
+ */
+export async function requestAttachmentUpload(companySlug: string, file: { name: string; size: number }): Promise<{ ok: boolean; error?: string; path?: string; token?: string }> {
+  try {
+    const company = INTAKE_COMPANIES[companySlug];
+    if (!company) throw new Error("This link is not valid.");
+    const ext = attachmentExtension(file.name);
+    if (!ATTACHMENT_EXTENSIONS.includes(ext)) throw new Error(`${file.name}: attach a PDF, a photo, a Word or an Excel file.`);
+    if (!(file.size > 0) || file.size > ATTACHMENT_MAX_BYTES) throw new Error(`${file.name}: each file must be smaller than 10 MB.`);
+    const path = `${attachmentFolder(company.id)}/${crypto.randomUUID()}.${ext}`;
+    const { data, error } = await createAdminClient().storage.from(ATTACHMENT_BUCKET).createSignedUploadUrl(path);
+    if (error || !data) throw new Error("Could not prepare the upload. Please try again.");
+    return { ok: true, path, token: data.token };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Could not prepare the upload." };
+  }
+}
+
+/** Each attachment must really be in the company's folder and not too big (the browser's word is not enough). */
+async function checkAttachments(admin: ReturnType<typeof createAdminClient>, companyId: string, files: RequestAttachment[] | undefined): Promise<RequestAttachment[]> {
+  const list = files ?? [];
+  if (list.length > MAX_ATTACHMENTS) throw new Error(`At most ${MAX_ATTACHMENTS} attachments.`);
+  const folder = attachmentFolder(companyId);
+  const checked: RequestAttachment[] = [];
+  for (const f of list) {
+    if (!f.path?.startsWith(`${folder}/`) || f.path.includes("..")) throw new Error("An attachment is not valid. Please attach it again.");
+    const fileName = f.path.slice(folder.length + 1);
+    const { data: found } = await admin.storage.from(ATTACHMENT_BUCKET).list(folder, { search: fileName, limit: 5 });
+    const object = found?.find((o) => o.name === fileName);
+    if (!object) throw new Error(`${f.name}: the file was not uploaded. Please attach it again.`);
+    const size = Number((object.metadata as { size?: number } | null)?.size ?? 0);
+    if (size > ATTACHMENT_MAX_BYTES) {
+      await admin.storage.from(ATTACHMENT_BUCKET).remove([f.path]);
+      throw new Error(`${f.name}: each file must be smaller than 10 MB.`);
+    }
+    checked.push({ path: f.path, name: clean(f.name, 200) ?? fileName, mime: clean(f.mime, 100) ?? undefined, size });
+  }
+  return checked;
 }
 
 function sanitizeExtras(items: ExtraItem[]): ExtraItem[] {
@@ -167,6 +242,9 @@ async function saveQuotationRequest(companySlug: string, input: QuotationRequest
   if (!picPhone) throw new Error("Enter the PIC contact number.");
   const phoneDigits = picPhone.replace(/\D/g, "").length;
   if (phoneDigits < 7 || phoneDigits > 15 || !/^[+\d][\d\s()+-]*$/.test(picPhone)) throw new Error("The PIC contact number is not valid.");
+  const contactEmail = clean(input.contactEmail, 200);
+  if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) throw new Error("The e-mail address is not valid.");
+  const requirements = sanitizeRequirements(input.requirements);
 
   if (!Array.isArray(input.days) || input.days.length === 0) throw new Error("Add at least one event day.");
   if (input.days.length > MAX_EVENT_DAYS) throw new Error(`At most ${MAX_EVENT_DAYS} days.`);
@@ -189,6 +267,7 @@ async function saveQuotationRequest(companySlug: string, input: QuotationRequest
     .eq("company_id", company.id)
     .gte("created_at", since);
   if ((count ?? 0) >= INTAKE_HOURLY_LIMIT) throw new Error("Too many submissions right now. Please try again in a while.");
+  const attachments = await checkAttachments(admin, company.id, input.attachments);
 
   const { data: saved, error } = await admin.from("quotation_requests").insert({
     company_id: company.id,
@@ -199,15 +278,28 @@ async function saveQuotationRequest(companySlug: string, input: QuotationRequest
     location: clean(input.location, 300),
     pic_name: clean(input.picName, 200),
     pic_phone: clean(input.picPhone, 50),
+    contact_email: contactEmail,
+    company_address: clean(input.companyAddress, 500),
+    event_address: clean(input.eventAddress, 500),
+    requirements: requirements as unknown as Json,
     kitchen_setup: clean(input.kitchenSetup, 2000),
     catering_setup: clean(input.cateringSetup, 2000),
     remarks: clean(input.remarks, 2000),
     days: days as unknown as Json,
     extra_items: extraItems as unknown as Json,
     additional: additional as unknown as Json,
-  }).select("request_code").single();
+  }).select("id, request_code").single();
   if (error) throw new Error("Could not save. Please try again.");
   const requestCode = saved.request_code ?? undefined;
+
+  // the request is saved; a file that cannot be linked is reported, not a reason to send the whole request again
+  let warning: string | undefined;
+  if (attachments.length > 0) {
+    const { error: filesError } = await admin.from("quotation_request_files").insert(
+      attachments.map((f) => ({ request_id: saved.id, storage_path: f.path, file_name: f.name, mime_type: f.mime ?? null, size_bytes: f.size })),
+    );
+    if (filesError) warning = "The request was sent, but the attachments could not be saved. Please send the files to the office directly.";
+  }
 
   // tell the office; the request is already saved, so a missing or failing email never fails the form
   try {
@@ -225,7 +317,7 @@ async function saveQuotationRequest(companySlug: string, input: QuotationRequest
   } catch (err) {
     console.warn("Quotation request saved; email step failed:", err instanceof Error ? err.message : err);
   }
-  return { ok: true, requestCode };
+  return { ok: true, requestCode, warning };
 }
 
 async function notifyNewQuotationRequest(r: { requestCode?: string; companyName: string; salesAgent: string; customerName: string; eventName: string; days: EventDay[]; total: number }) {

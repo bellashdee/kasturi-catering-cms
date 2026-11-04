@@ -5,7 +5,17 @@ import { getSessionContext } from "@/lib/auth";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EVENT_TYPE_LABEL, MEAL_TYPE_LABEL, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
 import { dayAmount, dayPax, menuRows, secondMenusOf, type EventDay } from "@/lib/catering/days";
-import { TRACKING_STATUS_LABEL, TRACKING_STATUS_TONE, additionalRows, additionalServiceLines, type AdditionalServices, type ExtraItem } from "@/lib/catering/quotationRequest";
+import {
+  ATTACHMENT_BUCKET,
+  REQUIREMENT_FIELDS,
+  TRACKING_STATUS_LABEL,
+  TRACKING_STATUS_TONE,
+  additionalRows,
+  additionalServiceLines,
+  type AdditionalServices,
+  type ExtraItem,
+  type RequestRequirements,
+} from "@/lib/catering/quotationRequest";
 import { formatCurrency, formatMalaysiaDate, formatMalaysiaDateTime, formatPrice, formatTime12 } from "@/lib/format";
 import { RequestNotes, RequestTrackingForm } from "@/components/catering/QuotationRequestInbox";
 
@@ -23,11 +33,12 @@ export default async function QuotationRequestPage({ params, searchParams }: { p
   const { company } = await searchParams;
   const query = company ? `?company=${company}` : "";
 
-  const [{ data: r }, { data: notes }, { data: history }, { data: people }] = await Promise.all([
+  const [{ data: r }, { data: notes }, { data: history }, { data: people }, { data: files }] = await Promise.all([
     supabase.from("quotation_requests").select("*, companies(name)").eq("id", id).maybeSingle(),
     supabase.from("quotation_request_notes").select("id, body, created_at, created_by, author:profiles!quotation_request_notes_created_by_fkey(full_name)").eq("request_id", id).order("created_at"),
     supabase.from("quotation_request_history").select("id, field, old_value, new_value, changed_at, author:profiles!quotation_request_history_changed_by_fkey(full_name)").eq("request_id", id).order("changed_at", { ascending: false }).limit(200),
     supabase.rpc("quotation_request_people"),
+    supabase.from("quotation_request_files").select("id, storage_path, file_name, size_bytes").eq("request_id", id).order("created_at"),
   ]);
   if (!r) notFound();
 
@@ -40,6 +51,15 @@ export default async function QuotationRequestPage({ params, searchParams }: { p
   const total = days.reduce((t, d) => t + dayAmount(d), 0) + extras.reduce((t, i) => t + i.quantity * i.unitPrice, 0);
   const handlers = (people ?? []).map((p) => ({ id: p.user_id, name: p.full_name ?? "—" }));
   const { data: { user } } = await supabase.auth.getUser();
+  const requirements = (r.requirements as RequestRequirements | null) ?? {};
+  const writtenRequirements = REQUIREMENT_FIELDS.filter((f) => requirements[f.key]);
+  // download links last 10 minutes and are made with the viewer's own login, so the bucket's rules (inbox people only) apply
+  const attachments = await Promise.all(
+    (files ?? []).map(async (f) => {
+      const { data: signed } = await supabase.storage.from(ATTACHMENT_BUCKET).createSignedUrl(f.storage_path, 600, { download: f.file_name });
+      return { ...f, url: signed?.signedUrl ?? null };
+    }),
+  );
 
   return (
     <div className="flex flex-col gap-5">
@@ -72,6 +92,9 @@ export default async function QuotationRequestPage({ params, searchParams }: { p
                 ["Venue", r.location],
                 ["Contact person (PIC)", r.pic_name],
                 ["Contact number", r.pic_phone],
+                ["E-mail", r.contact_email],
+                ["Company address", r.company_address],
+                ["Event address", r.event_address],
                 ["Sales agent", r.sales_agent],
                 ["Estimated total", total > 0 ? formatCurrency(total) : "No price given"],
               ].map(([label, value]) => (
@@ -91,7 +114,10 @@ export default async function QuotationRequestPage({ params, searchParams }: { p
                   <div className="font-bold text-text">
                     Day {i + 1} · {d.dayDate ? formatMalaysiaDate(`${d.dayDate}T00:00:00+08:00`) : "no date"}
                     <span className="ml-2 font-normal text-text-muted">
-                      {[d.setupTime ? `Set-up (kitchen) ${formatTime12(d.setupTime)}` : "", d.eventTime ? `Event ${formatTime12(d.eventTime)}` : ""].filter(Boolean).join(" · ")}
+                      {[
+                        d.setupTime ? `Set-up (kitchen) ${formatTime12(d.setupTime)}` : "",
+                        d.eventTime ? `Event ${formatTime12(d.eventTime)}${d.endTime ? ` – ${formatTime12(d.endTime)}` : ""}` : "",
+                      ].filter(Boolean).join(" · ")}
                     </span>
                   </div>
                   <div className="text-text-secondary">
@@ -118,6 +144,47 @@ export default async function QuotationRequestPage({ params, searchParams }: { p
               ))}
             </div>
           </section>
+
+          {(requirements.menuOptions || writtenRequirements.length > 0) && (
+            <section className={card}>
+              <div className={heading}>Menu &amp; catering requirements</div>
+              <dl className="flex flex-col gap-2 text-[13px]">
+                {requirements.menuOptions && (
+                  <div>
+                    <dt className="text-[11.5px] font-semibold text-text-muted">Number of menu options</dt>
+                    <dd className="font-semibold text-text">{requirements.menuOptions}</dd>
+                  </div>
+                )}
+                {writtenRequirements.map((f) => (
+                  <div key={f.key}>
+                    <dt className="text-[11.5px] font-semibold text-text-muted">{f.label}</dt>
+                    <dd className="whitespace-pre-line text-text">{requirements[f.key]}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          )}
+
+          {attachments.length > 0 && (
+            <section className={card}>
+              <div className={heading}>Attachments</div>
+              <ul className="flex flex-col gap-1.5 text-[13px]">
+                {attachments.map((f) => (
+                  <li key={f.id} className="flex items-center justify-between rounded-lg border border-border bg-surface-alt px-3 py-2">
+                    <span className="truncate text-text">
+                      {f.file_name}
+                      {f.size_bytes ? <span className="ml-1 text-xs text-text-muted">({Math.max(1, Math.round(f.size_bytes / 1024))} KB)</span> : null}
+                    </span>
+                    {f.url ? (
+                      <a href={f.url} className="ml-3 shrink-0 font-semibold text-primary">Download</a>
+                    ) : (
+                      <span className="ml-3 shrink-0 text-xs text-danger">Not available</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           <section className={card}>
             <div className={heading}>Additional requirement &amp; set-up</div>

@@ -4929,6 +4929,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          can_view_main_dashboard: boolean
           created_at: string
           email: string
           full_name: string
@@ -4938,6 +4939,7 @@ export type Database = {
           username: string | null
         }
         Insert: {
+          can_view_main_dashboard?: boolean
           created_at?: string
           email: string
           full_name: string
@@ -4947,6 +4949,7 @@ export type Database = {
           username?: string | null
         }
         Update: {
+          can_view_main_dashboard?: boolean
           created_at?: string
           email?: string
           full_name?: string
@@ -5505,6 +5508,20 @@ export type Database = {
         Update: { created_at?: string; note?: string | null; user_id?: string }
         Relationships: []
       }
+      quotation_request_files: {
+        Row: { created_at: string; file_name: string; id: string; mime_type: string | null; request_id: string; size_bytes: number | null; storage_path: string }
+        Insert: { created_at?: string; file_name: string; id?: string; mime_type?: string | null; request_id: string; size_bytes?: number | null; storage_path: string }
+        Update: { created_at?: string; file_name?: string; id?: string; mime_type?: string | null; request_id?: string; size_bytes?: number | null; storage_path?: string }
+        Relationships: [
+          {
+            foreignKeyName: "quotation_request_files_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "quotation_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quotation_request_history: {
         Row: { changed_at: string; changed_by: string | null; field: string; id: string; new_value: string | null; old_value: string | null; request_id: string }
         Insert: { changed_at?: string; changed_by?: string | null; field: string; id?: string; new_value?: string | null; old_value?: string | null; request_id: string }
@@ -5549,6 +5566,10 @@ export type Database = {
       }
       quotation_requests: {
         Row: {
+          contact_email: string | null
+          company_address: string | null
+          event_address: string | null
+          requirements: Json
           request_code: string | null
           tracking_status: string
           autocount_quotation_no: string | null
@@ -5584,6 +5605,10 @@ export type Database = {
           status: string
         }
         Insert: {
+          contact_email?: string | null
+          company_address?: string | null
+          event_address?: string | null
+          requirements?: Json
           request_code?: string | null
           tracking_status?: string
           autocount_quotation_no?: string | null
@@ -5619,6 +5644,10 @@ export type Database = {
           status?: string
         }
         Update: {
+          contact_email?: string | null
+          company_address?: string | null
+          event_address?: string | null
+          requirements?: Json
           request_code?: string | null
           tracking_status?: string
           autocount_quotation_no?: string | null

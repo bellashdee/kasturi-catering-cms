@@ -34,6 +34,7 @@ export function EventDaysEditor({
   secondService = true,
   secondChoice = false,
   mealRequired = false,
+  endTime = false,
 }: {
   days: EventDay[];
   onChange: (days: EventDay[]) => void;
@@ -43,6 +44,8 @@ export function EventDaysEditor({
   secondChoice?: boolean;
   /** At least one meal type must be ticked on every day (the public quotation request form). */
   mealRequired?: boolean;
+  /** Ask when the event ends (the public quotation request form; an event day keeps no end time yet). */
+  endTime?: boolean;
 }) {
   function patch(i: number, change: Partial<EventDay>) {
     onChange(days.map((d, idx) => (idx === i ? { ...d, ...change } : d)));
@@ -92,7 +95,7 @@ export function EventDaysEditor({
             )}
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className={`grid gap-4 ${endTime ? "grid-cols-4" : "grid-cols-3"}`}>
             <div>
               <label className={labelClass}>Event date *</label>
               <input type="date" required value={day.dayDate} onChange={(e) => patch(i, { dayDate: e.target.value })} className={inputClass} />
@@ -105,6 +108,12 @@ export function EventDaysEditor({
               <label className={labelClass}>Event time *</label>
               <input type="time" required value={day.eventTime ?? ""} onChange={(e) => patch(i, { eventTime: e.target.value })} className={inputClass} />
             </div>
+            {endTime && (
+              <div>
+                <label className={labelClass}>Event end time</label>
+                <input type="time" value={day.endTime ?? ""} onChange={(e) => patch(i, { endTime: e.target.value || undefined })} className={inputClass} />
+              </div>
+            )}
           </div>
 
           <div className="mt-3">

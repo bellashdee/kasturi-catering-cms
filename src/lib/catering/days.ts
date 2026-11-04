@@ -27,6 +27,8 @@ export type EventDay = {
   dayDate: string;
   setupTime?: string;
   eventTime?: string;
+  /** Only on a quotation request: when the event ends (an event day has no end time yet). */
+  endTime?: string;
   mealTypes: string[];
   serviceType: string;
   servicePax?: number;

@@ -22,11 +22,50 @@ export type QuotationRequestInput = {
   extraItems: ExtraItem[];
   /** The answered additional requirement (equipment handling, staff serving, transportation). */
   additional?: AdditionalServices;
+  /** The customer's e-mail and company address, and the address of the event venue (all optional). */
+  contactEmail?: string;
+  companyAddress?: string;
+  eventAddress?: string;
+  /** Menu and catering requirements written by the sales agent. */
+  requirements?: RequestRequirements;
+  /** Files already uploaded with requestAttachmentUpload (menu references, floor plans ...). */
+  attachments?: RequestAttachment[];
   /** Honeypot: real people leave it empty. */
   website?: string;
 };
 
 export const MAX_EXTRA_ITEMS = 30;
+
+/** "Menu and catering requirements" of a request: how many menu options, and what the customer asked for in their own words. */
+export type RequestRequirements = {
+  menuOptions?: number;
+  foodPreferences?: string;
+  dietary?: string;
+  vegetarian?: string;
+  equipment?: string;
+  tableChair?: string;
+  serving?: string;
+};
+
+/** The written requirements, in the order the form and the inbox show them. */
+export const REQUIREMENT_FIELDS: { key: Exclude<keyof RequestRequirements, "menuOptions">; label: string; placeholder: string }[] = [
+  { key: "foodPreferences", label: "Food preferences", placeholder: "e.g. less spicy, more chicken dishes, local favourites" },
+  { key: "dietary", label: "Special dietary requirements", placeholder: "e.g. no seafood, nut allergy, diabetic-friendly" },
+  { key: "vegetarian", label: "Vegetarian requirements", placeholder: "e.g. 10 pax vegetarian, 2 pax vegan" },
+  { key: "equipment", label: "Equipment requirements", placeholder: "e.g. chafing dishes, PA system, warmers" },
+  { key: "tableChair", label: "Table and chair requirements", placeholder: "e.g. 10 round tables, 100 chairs with covers" },
+  { key: "serving", label: "Serving requirements", placeholder: "e.g. waiters to serve VIP table, buffet line refill" },
+];
+
+/** One file attached to a request: where it was uploaded and what it is. */
+export type RequestAttachment = { path: string; name: string; mime?: string; size: number };
+
+export const ATTACHMENT_BUCKET = "quotation-request-files";
+export const MAX_ATTACHMENTS = 5;
+export const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
+export const ATTACHMENT_EXTENSIONS = ["pdf", "jpg", "jpeg", "png", "webp", "heic", "doc", "docx", "xls", "xlsx"];
+export const ATTACHMENT_ACCEPT = ".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx,.xls,.xlsx,image/*,application/pdf";
+export const attachmentExtension = (name: string) => (name.split(".").pop() ?? "").toLowerCase();
 
 /**
  * Where a request stands in the Quotation Request Inbox. The quotation and the invoice themselves are made in AutoCount; no status
