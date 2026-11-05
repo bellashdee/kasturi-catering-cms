@@ -188,6 +188,7 @@ function sanitizeAdditional(a: AdditionalServices | undefined): AdditionalServic
   const s = one(a.staffServing, a.staffServingIncluded, a.staffServingPrice, "Staff serving");
   const staff = s.yes ? count(a.staffServingQuantity, "Staff serving: enter how many staff.") : undefined;
   const t = lumpSum ? e : one(a.transportation, a.transportationIncluded, a.transportationPrice, "Transportation");
+  const trips = !lumpSum && t.yes ? count(a.transportationTrips, "Transportation: enter how many trips.") : undefined;
   const d = one(a.domeSet, a.domeSetIncluded, a.domeSetPrice, "Dome set");
   const sets = d.yes ? count(a.domeSetQuantity, "Dome set: enter how many sets.") : undefined;
   return {
@@ -202,6 +203,7 @@ function sanitizeAdditional(a: AdditionalServices | undefined): AdditionalServic
     staffServingPrice: s.price,
     transportation: t.yes,
     transportationIncluded: t.included,
+    transportationTrips: trips,
     transportationPrice: lumpSum ? undefined : t.price,
     domeSet: d.yes,
     domeSetIncluded: d.included,

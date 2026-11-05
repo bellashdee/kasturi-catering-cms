@@ -4261,7 +4261,13 @@ const dictionary: Record<string, string> = {
   "Day total:": "ယနေ့ စုစုပေါင်း:",
   "Day total (main menu + second menus):": "ယနေ့ စုစုပေါင်း (အဓိကမီနူး + ဒုတိယမီနူးများ):",
   "only the staff of the company you chose are listed. Choose All Companies to see everyone.": "သင်ရွေးထားသော ကုမ္ပဏီ၏ ဝန်ထမ်းများကိုသာ ပြထားသည်။ လူအားလုံးကို ကြည့်ရန် ကုမ္ပဏီအားလုံးကို ရွေးပါ။",
-  "No staff of this company yet.": "ဤကုမ္ပဏီတွင် ဝန်ထမ်း မရှိသေးပါ။"
+  "No staff of this company yet.": "ဤကုမ္ပဏီတွင် ဝန်ထမ်း မရှိသေးပါ။",
+ "How many trips": "ခရီးစဉ် ဘယ်နှစ်ခု",
+ "How many staff": "ဝန်ထမ်း ဘယ်နှစ်ဦး",
+ "How many sets": "ဘယ်နှစ်စုံ",
+ "Transportation: enter how many trips.": "သယ်ယူပို့ဆောင်ရေး- ခရီးစဉ် ဘယ်နှစ်ခု ထည့်ပါ။",
+ "Staff serving: enter how many staff.": "ဝန်ထမ်းဖြင့် ပွဲတည်ပေးခြင်း- ဝန်ထမ်း ဘယ်နှစ်ဦး ထည့်ပါ။",
+ "Dome set: enter how many sets.": "Dome set- ဘယ်နှစ်စုံ ထည့်ပါ။"
 };
 
 export default dictionary;

@@ -4267,7 +4267,13 @@ const dictionary: Record<string, string> = {
   "Day total:": "দিনের মোট:",
   "Day total (main menu + second menus):": "দিনের মোট (প্রধান মেনু + দ্বিতীয় মেনু):",
   "only the staff of the company you chose are listed. Choose All Companies to see everyone.": "আপনার বেছে নেওয়া কোম্পানির কর্মীদেরই তালিকায় দেখানো হয়েছে। সবাইকে দেখতে সব কোম্পানি বেছে নিন।",
-  "No staff of this company yet.": "এই কোম্পানির এখনো কোনো কর্মী নেই।"
+  "No staff of this company yet.": "এই কোম্পানির এখনো কোনো কর্মী নেই।",
+ "How many trips": "কয়টি ট্রিপ",
+ "How many staff": "কতজন কর্মী",
+ "How many sets": "কয়টি সেট",
+ "Transportation: enter how many trips.": "পরিবহন: কয়টি ট্রিপ লিখুন।",
+ "Staff serving: enter how many staff.": "কর্মীদের পরিবেশন: কতজন কর্মী লিখুন।",
+ "Dome set: enter how many sets.": "ডোম সেট: কয়টি সেট লিখুন।"
 };
 
 export default dictionary;

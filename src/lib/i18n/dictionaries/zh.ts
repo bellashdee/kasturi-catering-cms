@@ -4274,7 +4274,13 @@ const dictionary: Record<string, string> = {
   "Day total:": "当天总额：",
   "Day total (main menu + second menus):": "当天总额（主菜单 + 第二菜单）：",
   "only the staff of the company you chose are listed. Choose All Companies to see everyone.": "只列出您所选公司的员工。选择“所有公司”可查看所有人。",
-  "No staff of this company yet.": "此公司还没有员工。"
+  "No staff of this company yet.": "此公司还没有员工。",
+ "How many trips": "几趟",
+ "How many staff": "几位员工",
+ "How many sets": "几套",
+ "Transportation: enter how many trips.": "运输：请填写几趟。",
+ "Staff serving: enter how many staff.": "员工服务：请填写几位员工。",
+ "Dome set: enter how many sets.": "圆顶帐篷套装：请填写几套。"
 };
 
 export default dictionary;

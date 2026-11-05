@@ -119,7 +119,9 @@ export type AdditionalServices = {
   /** Optional: RM for one staff. */
   staffServingPrice?: number;
   transportation: boolean | null;
-  /** RM for the whole event. */
+  /** How many trips (requests sent before it was asked count as 1 trip, with the price for the whole event). */
+  transportationTrips?: number;
+  /** Optional: RM for one trip. */
   transportationPrice?: number;
   domeSet: boolean | null;
   /** How many dome sets (requests sent before it was asked count as 1 set). */
@@ -159,7 +161,11 @@ export function additionalRows(a: AdditionalServices | null | undefined, extras:
       ? [{ label: LUMP_SUM_LABEL, yes: !!a.equipmentHandling, detail: detail(a.equipmentHandling, a.equipmentHandlingIncluded, a.lumpSumPrice) }]
       : [
           { label: "Equipment handling", yes: !!a.equipmentHandling, detail: detail(a.equipmentHandling, a.equipmentHandlingIncluded, a.equipmentHandlingPrice) },
-          { label: "Transportation", yes: !!a.transportation, detail: detail(a.transportation, a.transportationIncluded, a.transportationPrice) },
+          {
+            label: "Transportation",
+            yes: !!a.transportation,
+            detail: !a.transportation ? "" : a.transportationTrips ? countDetail(a.transportationTrips, "trip", "trips", a.transportationIncluded ? null : a.transportationPrice) : detail(a.transportation, a.transportationIncluded, a.transportationPrice),
+          },
         ];
     return [
       delivery[0],
@@ -214,7 +220,8 @@ export function additionalServiceLines(a: AdditionalServices | undefined): Extra
   else add(a.equipmentHandling, a.equipmentHandlingIncluded, "Equipment handling", a.equipmentHandlingPrice);
   // staff serving: quantity = number of staff, unit price = price per staff
   add(a.staffServing, a.staffServingIncluded, "Staff serving", a.staffServingPrice, a.staffServingQuantity ?? 1);
-  if (!a.deliveryEquipmentLumpSum) add(a.transportation, a.transportationIncluded, "Transportation", a.transportationPrice);
+  // transportation: quantity = number of trips, unit price = price per trip
+  if (!a.deliveryEquipmentLumpSum) add(a.transportation, a.transportationIncluded, "Transportation", a.transportationPrice, a.transportationTrips ?? 1);
   // dome sets: quantity = number of sets, unit price = price per set
   add(a.domeSet, a.domeSetIncluded, "Dome set", a.domeSetPrice, a.domeSetQuantity ?? 1);
   return lines;

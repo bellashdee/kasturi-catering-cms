@@ -92,8 +92,8 @@ const answerOf = (yes: boolean | null, included: boolean | undefined) => (yes ==
 
 /**
  * "Additional requirement": each of equipment handling, staff serving, transportation and dome set is answered by searching and choosing:
- * Yes (with an optional RM), No or Included in the food price. Staff serving and dome set also ask how many (staff / sets) and the price
- * of one; delivery and equipment handling can be charged together as one lump sum.
+ * Yes (with an optional RM), No or Included in the food price. Staff serving, transportation and dome set also ask how many (staff / trips / sets)
+ * and the price of one; delivery and equipment handling can be charged together as one lump sum.
  */
 export function AdditionalServicesEditor({
   value,
@@ -178,7 +178,7 @@ export function AdditionalServicesEditor({
   const lumpSum = !!value.deliveryEquipmentLumpSum;
   function switchLumpSum(on: boolean) {
     // one answer and one price for both: it starts from the equipment handling answer
-    if (on) patch({ deliveryEquipmentLumpSum: true, transportation: value.equipmentHandling, transportationIncluded: value.equipmentHandlingIncluded, equipmentHandlingPrice: undefined, transportationPrice: undefined });
+    if (on) patch({ deliveryEquipmentLumpSum: true, transportation: value.equipmentHandling, transportationIncluded: value.equipmentHandlingIncluded, equipmentHandlingPrice: undefined, transportationPrice: undefined, transportationTrips: undefined });
     else patch({ deliveryEquipmentLumpSum: false, lumpSumPrice: undefined });
   }
 
@@ -195,6 +195,14 @@ export function AdditionalServicesEditor({
     "set",
     { yes: value.domeSet, included: value.domeSetIncluded, quantity: value.domeSetQuantity, price: value.domeSetPrice },
     (c) => ({ domeSet: c.yes, domeSetIncluded: c.included, domeSetQuantity: c.quantity, domeSetPrice: c.price }),
+  );
+
+  const transportRow = countRow(
+    "Transportation",
+    "How many trips",
+    "trip",
+    { yes: value.transportation, included: value.transportationIncluded, quantity: value.transportationTrips, price: value.transportationPrice },
+    (c) => ({ transportation: c.yes, transportationIncluded: c.included, transportationTrips: c.quantity, transportationPrice: c.price }),
   );
 
   return (
@@ -215,7 +223,7 @@ export function AdditionalServicesEditor({
           )
         : line("Equipment handling", value.equipmentHandling, value.equipmentHandlingIncluded, value.equipmentHandlingPrice, (v) => ({ equipmentHandling: answer(v).yes, equipmentHandlingIncluded: answer(v).included, ...(v === "yes" ? {} : { equipmentHandlingPrice: undefined }) }), (n) => ({ equipmentHandlingPrice: n }))}
       {staffRow}
-      {!lumpSum && line("Transportation (RM)", value.transportation, value.transportationIncluded, value.transportationPrice, (v) => ({ transportation: answer(v).yes, transportationIncluded: answer(v).included, ...(v === "yes" ? {} : { transportationPrice: undefined }) }), (n) => ({ transportationPrice: n }))}
+      {!lumpSum && transportRow}
       {domeRow}
     </div>
   );

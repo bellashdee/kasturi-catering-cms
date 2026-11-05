@@ -4237,7 +4237,13 @@ const dictionary: Record<string, string> = {
   "Day total:": "Jumlah hari:",
   "Day total (main menu + second menus):": "Jumlah hari (menu utama + menu kedua):",
   "only the staff of the company you chose are listed. Choose All Companies to see everyone.": "hanya staf syarikat yang anda pilih disenaraikan. Pilih Semua Syarikat untuk melihat semua orang.",
-  "No staff of this company yet.": "Belum ada staf syarikat ini."
+  "No staff of this company yet.": "Belum ada staf syarikat ini.",
+ "How many trips": "Berapa trip",
+ "How many staff": "Berapa ramai staf",
+ "How many sets": "Berapa set",
+ "Transportation: enter how many trips.": "Pengangkutan: masukkan berapa trip.",
+ "Staff serving: enter how many staff.": "Kakitangan menghidang: masukkan berapa ramai staf.",
+ "Dome set: enter how many sets.": "Set kubah: masukkan berapa set."
 };
 
 export default dictionary;
