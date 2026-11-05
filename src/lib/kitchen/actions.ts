@@ -1,5 +1,6 @@
 "use server";
 
+import { isModuleEditor } from "@/lib/moduleAccess";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -533,9 +534,8 @@ export type MenuItemRow = KTables["menu_items"]["Row"];
 export type MenuSnapshot = { menu: MenuRow; items: MenuItemRow[] };
 
 async function kitchenAdmin(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], companyId: string, message: string) {
-  // a company admin, or a person on the full-access list (Mr. Adlan): they delete and put back with the service role below, because the delete policies are admin only
-  const { data } = await supabase.rpc("user_can_manage_payments", { target_company_id: companyId, target_category: "supplier" });
-  if (data !== true) throw new Error(message);
+  // a company admin, or a person on the module editors list (Mr. Adlan)
+  if (!(await isModuleEditor(supabase, companyId, "kitchen"))) throw new Error(message);
 }
 
 export type PurchaseRequestEdit = { quantity: number; unit?: string; requiredDate?: string; notes?: string };

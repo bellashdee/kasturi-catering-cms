@@ -1,5 +1,6 @@
 "use server";
 
+import { isModuleEditor } from "@/lib/moduleAccess";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -382,9 +383,8 @@ export type ApprovalRow = Tables["approvals"]["Row"];
 export type RequestSnapshot = { request: ProcurementRequestRow; approval: ApprovalRow | null };
 
 async function requireAdminOf(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], companyId: string, message: string) {
-  // a company admin, or a person on the full-access list (Mr. Adlan): they delete and put back with the service role below, because the delete policies are admin only
-  const { data } = await supabase.rpc("user_can_manage_payments", { target_company_id: companyId, target_category: "supplier" });
-  if (data !== true) throw new Error(message);
+  // a company admin, or a person on the module editors list (Mr. Adlan)
+  if (!(await isModuleEditor(supabase, companyId, "supplier-procurement"))) throw new Error(message);
 }
 
 const countOf = async (query: PromiseLike<{ count: number | null }>) => (await query).count ?? 0;

@@ -97,7 +97,7 @@ export default async function FinancePaymentsReportPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const adminIds = await adminCompanyIds(supabase, targetCompanyIds);
+  const adminIds = await adminCompanyIds(supabase, targetCompanyIds, "finance-admin");
   const now = malaysiaMonthNow();
   const year = Number(yearParam) || now.year;
   const month = Number(monthParam) || now.month;

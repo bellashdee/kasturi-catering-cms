@@ -1,3 +1,4 @@
+import { isModuleEditor } from "@/lib/moduleAccess";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
@@ -39,8 +40,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
 
   const adminFlags = await Promise.all(
     selectable.map(async (c) => {
-      const { data } = await supabase.rpc("user_is_company_admin", { target_company_id: c.id });
-      return [c.id, data === true] as const;
+      return [c.id, await isModuleEditor(supabase, c.id, "driver-logistics")] as const;
     }),
   );
   const adminCompanyIds = new Set(adminFlags.filter(([, isAdmin]) => isAdmin).map(([id]) => id));

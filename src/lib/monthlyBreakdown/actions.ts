@@ -1,5 +1,6 @@
 "use server";
 
+import { isModuleEditor } from "@/lib/moduleAccess";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { runAction, type ActionResult } from "@/lib/actionResult";
@@ -13,8 +14,7 @@ async function requireAdmin(companyId: string) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not signed in.");
-  const { data } = await supabase.rpc("user_is_company_admin", { target_company_id: companyId });
-  if (data !== true) throw new Error("Only a Finance / Admin user of this company can change the monthly breakdown.");
+  if (!(await isModuleEditor(supabase, companyId, "finance-admin"))) throw new Error("Only a Finance / Admin user of this company can change the monthly breakdown.");
   return { supabase, userId: user.id };
 }
 

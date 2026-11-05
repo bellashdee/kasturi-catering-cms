@@ -1,5 +1,6 @@
 "use server";
 
+import { isModuleEditor } from "@/lib/moduleAccess";
 import { fromMalaysiaInputValue, toMalaysiaInputValue } from "@/lib/format";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -31,8 +32,7 @@ export type DriverInput = {
 };
 
 async function requireCompanyAdmin(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], companyId: string) {
-  const { data } = await supabase.rpc("user_is_company_admin", { target_company_id: companyId });
-  if (data !== true) throw new Error("Only an admin can manage the driver list.");
+  if (!(await isModuleEditor(supabase, companyId, "driver-logistics"))) throw new Error("Only an admin can manage the driver list.");
 }
 
 /**

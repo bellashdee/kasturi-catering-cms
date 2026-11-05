@@ -23,7 +23,7 @@ export default async function PaymentAccountsPage({ searchParams }: { searchPara
   const sp = await searchParams;
   const category = (CATEGORIES.includes(sp.category as PaymentCategory) ? sp.category : "supplier") as PaymentCategory;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, sp.company);
-  const adminIds = await adminCompanyIds(supabase, targetCompanyIds);
+  const adminIds = await adminCompanyIds(supabase, targetCompanyIds, "finance-admin");
   const query = sp.company ? `&company=${sp.company}` : "";
 
   const header = (

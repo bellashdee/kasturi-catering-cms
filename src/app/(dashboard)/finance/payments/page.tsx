@@ -68,7 +68,7 @@ export default async function PaymentDashboardPage({ searchParams }: { searchPar
 
   const sp = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, sp.company);
-  const adminIds = await adminCompanyIds(supabase, targetCompanyIds);
+  const adminIds = await adminCompanyIds(supabase, targetCompanyIds, "finance-admin");
 
   const now = malaysiaMonthNow();
   const year = Number(sp.year) || now.year;

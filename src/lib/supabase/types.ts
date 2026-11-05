@@ -6751,6 +6751,10 @@ export type Database = {
         Args: { target_category: string; target_company_id: string }
         Returns: boolean
       }
+      user_is_module_editor: {
+        Args: { target_company_id: string; target_module: string }
+        Returns: boolean
+      }
       user_is_company_admin: {
         Args: { target_company_id: string }
         Returns: boolean

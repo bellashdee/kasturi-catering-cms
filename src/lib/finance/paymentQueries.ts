@@ -1,3 +1,4 @@
+import { isModuleEditor } from "@/lib/moduleAccess";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { periodStart, type PaymentCategory } from "@/lib/finance/payments";
@@ -5,9 +6,11 @@ import { periodStart, type PaymentCategory } from "@/lib/finance/payments";
 type DB = SupabaseClient<Database>;
 
 /** Companies (of those given) where the signed-in user is an admin; only these may see payments and bank details. */
-export async function adminCompanyIds(supabase: DB, companyIds: string[]): Promise<string[]> {
+export async function adminCompanyIds(supabase: DB, companyIds: string[], moduleKey?: string): Promise<string[]> {
   const flags = await Promise.all(
     companyIds.map(async (id) => {
+      // with a module, a person on that module's editors list counts as well (Mr. Adlan)
+      if (moduleKey) return [id, await isModuleEditor(supabase, id, moduleKey)] as const;
       const { data } = await supabase.rpc("user_is_company_admin", { target_company_id: id });
       return [id, data === true] as const;
     }),

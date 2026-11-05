@@ -1,5 +1,6 @@
 "use server";
 
+import { isModuleEditor } from "@/lib/moduleAccess";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -687,8 +688,7 @@ export type CustomerPaymentRow = FTables["customer_payments"]["Row"];
 export type PettyCashTransactionRow = FTables["petty_cash_transactions"]["Row"];
 
 async function financeAdmin(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], companyId: string, message: string) {
-  const { data } = await supabase.rpc("user_is_company_admin", { target_company_id: companyId });
-  if (data !== true) throw new Error(message);
+  if (!(await isModuleEditor(supabase, companyId, "finance-admin"))) throw new Error(message);
 }
 
 /** Works the invoice status out again from what has been paid (the same rule as when a payment is recorded). */

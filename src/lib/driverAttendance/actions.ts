@@ -1,5 +1,6 @@
 "use server";
 
+import { isModuleEditor } from "@/lib/moduleAccess";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { logTaskAudit } from "@/lib/taskProofs/actions";
@@ -19,8 +20,7 @@ async function requireUser() {
 type DB = Awaited<ReturnType<typeof requireUser>>["supabase"];
 
 async function isCompanyAdmin(supabase: DB, companyId: string): Promise<boolean> {
-  const { data } = await supabase.rpc("user_is_company_admin", { target_company_id: companyId });
-  return data === true;
+  return isModuleEditor(supabase, companyId, "driver-logistics");
 }
 
 /**

@@ -1,3 +1,4 @@
+import { isModuleEditor } from "@/lib/moduleAccess";
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
@@ -24,8 +25,8 @@ export default async function EditDriverPage({
   }
 
   // Only an admin of this driver's company manages the driver list and links logins to drivers.
-  const { data: isAdmin } = await supabase.rpc("user_is_company_admin", { target_company_id: driver.company_id });
-  if (isAdmin !== true) redirect("/driver-logistics/drivers");
+  const isAdmin = await isModuleEditor(supabase, driver.company_id, "driver-logistics");
+  if (!isAdmin) redirect("/driver-logistics/drivers");
 
   const { data: profiles } = await createAdminClient().from("profiles").select("id, full_name, email, username").eq("is_active", true).order("full_name");
   const accounts = (profiles ?? []).map((p) => ({ id: p.id, label: `${p.full_name} (${p.username || p.email})` }));

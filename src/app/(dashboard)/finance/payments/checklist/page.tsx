@@ -49,7 +49,7 @@ export default async function PaymentChecklistPage({ searchParams }: { searchPar
 
   const sp = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, sp.company);
-  const adminIds = await adminCompanyIds(supabase, targetCompanyIds);
+  const adminIds = await adminCompanyIds(supabase, targetCompanyIds, "finance-admin");
 
   const header = (
     <>
