@@ -132,11 +132,12 @@ export default async function QuotationRequestsPage({ searchParams }: { searchPa
           <EmptyRow text="No quotation request matches." />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px] text-left text-[12.5px]">
+            {/* related details share a column (ID + submitted, customer + contact, event + date, status + handler) so nothing is squeezed */}
+            <table className="w-full min-w-[960px] text-left text-[13px]">
               <thead className="bg-surface-alt text-[11px] font-bold uppercase tracking-wide text-text-muted">
                 <tr>
-                  {["Request ID", "Submitted", "Sales agent", "Customer / company", "Contact person", "Event", "Event date", "Est. pax", "Service type", "Status", "Handled by", "Last updated", ""].map((h) => (
-                    <th key={h} className="px-3 py-2.5">{h}</th>
+                  {["Request", "Customer", "Event", "Pax / service", "Sales agent", "Status", "Last updated", ""].map((h) => (
+                    <th key={h} className="whitespace-nowrap px-4 py-3">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -146,27 +147,41 @@ export default async function QuotationRequestsPage({ searchParams }: { searchPa
                   const services = Array.from(new Set(days.map((d) => SERVICE_TYPE_LABEL[d.serviceType] ?? d.serviceType).filter(Boolean)));
                   const pax = days.reduce((m, d) => Math.max(m, dayPax(d)), 0);
                   const href = `/catering/quotation-requests/${r.id}${query}`;
+                  const isNew = r.tracking_status === "new_request";
                   return (
-                    <tr key={r.id} className="align-top hover:bg-surface-alt/60">
-                      <td className="px-3 py-2.5 font-bold text-text"><Link href={href} className="text-primary">{r.request_code ?? "—"}</Link></td>
-                      <td className="px-3 py-2.5 text-text-secondary">{formatMalaysiaDateTime(r.created_at)}</td>
-                      <td className="px-3 py-2.5">{r.sales_agent}</td>
-                      <td className="px-3 py-2.5 font-semibold text-text">
-                        {r.customer_name}
-                        {companies.length > 1 && <div className="text-[11px] font-normal text-text-muted">{r.companies?.name}</div>}
+                    <tr key={r.id} className={`align-top hover:bg-surface-alt/60 ${isNew ? "bg-info-bg/40" : ""}`}>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <Link href={href} className="font-extrabold text-primary">{r.request_code ?? "—"}</Link>
+                        <div className="mt-0.5 text-[11.5px] text-text-muted">{formatMalaysiaDateTime(r.created_at)}</div>
                       </td>
-                      <td className="px-3 py-2.5">{r.pic_name ?? "—"}</td>
-                      <td className="px-3 py-2.5">{r.event_name}</td>
-                      <td className="px-3 py-2.5 whitespace-nowrap">
-                        {days[0]?.dayDate ? formatMalaysiaDate(`${days[0].dayDate}T00:00:00+08:00`) : "—"}
-                        {days.length > 1 && <div className="text-[11px] text-text-muted">{days.length} days</div>}
+                      <td className="min-w-[180px] px-4 py-3">
+                        <div className="font-semibold text-text">{r.customer_name}</div>
+                        <div className="mt-0.5 text-[11.5px] text-text-muted">
+                          {[r.pic_name, companies.length > 1 ? r.companies?.name : null].filter(Boolean).join(" · ") || "—"}
+                        </div>
                       </td>
-                      <td className="px-3 py-2.5">{pax || "—"}</td>
-                      <td className="px-3 py-2.5">{services.join(", ") || "—"}</td>
-                      <td className="px-3 py-2.5"><StatusBadge tone={TRACKING_STATUS_TONE[r.tracking_status] ?? "neutral"}>{TRACKING_STATUS_LABEL[r.tracking_status] ?? r.tracking_status}</StatusBadge></td>
-                      <td className="px-3 py-2.5">{r.handler?.full_name ?? "—"}</td>
-                      <td className="px-3 py-2.5 text-text-secondary">{r.updated_at ? formatMalaysiaDateTime(r.updated_at) : "—"}</td>
-                      <td className="px-3 py-2.5"><Link href={href} className="font-semibold text-primary">Open</Link></td>
+                      <td className="min-w-[220px] px-4 py-3">
+                        <div className="text-text">{r.event_name}</div>
+                        <div className="mt-0.5 whitespace-nowrap text-[11.5px] text-text-muted">
+                          {days[0]?.dayDate ? formatMalaysiaDate(`${days[0].dayDate}T00:00:00+08:00`) : "No date"}
+                          {days.length > 1 ? ` · ${days.length} days` : ""}
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <div className="font-semibold text-text">{pax ? `${pax} pax` : "—"}</div>
+                        <div className="mt-0.5 text-[11.5px] text-text-muted">{services.join(", ") || "—"}</div>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3">{r.sales_agent}</td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <StatusBadge tone={TRACKING_STATUS_TONE[r.tracking_status] ?? "neutral"}>{TRACKING_STATUS_LABEL[r.tracking_status] ?? r.tracking_status}</StatusBadge>
+                        <div className="mt-1 text-[11.5px] text-text-muted">{r.handler?.full_name ? `Handled by ${r.handler.full_name}` : "Not assigned"}</div>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-[12px] text-text-secondary">{r.updated_at ? formatMalaysiaDateTime(r.updated_at) : "—"}</td>
+                      <td className="px-4 py-3 text-right">
+                        <Link href={href} className="inline-block whitespace-nowrap rounded-lg border border-primary px-3 py-1.5 text-[12.5px] font-semibold text-primary hover:bg-primary hover:text-white">
+                          Open
+                        </Link>
+                      </td>
                     </tr>
                   );
                 })}

@@ -168,29 +168,39 @@ export default async function EventReportPage({ searchParams }: { searchParams: 
           <EmptyRow text={`No events in ${periodLabel} match these filters.`} />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px] text-left text-[12.5px]">
+            <table className="w-full min-w-[920px] text-left text-[13px]">
               <thead className="bg-surface-alt text-[11px] font-bold uppercase tracking-wide text-text-muted">
                 <tr>
-                  {["Date", "Event ID", "Event", "Customer", "Sales agent", "Status", "Revenue", "Costs", "Net profit", "Margin", "P&L", ""].map((h) => (
-                    <th key={h} className={`px-3 py-2.5 ${["Revenue", "Costs", "Net profit", "Margin"].includes(h) ? "text-right" : ""}`}>{h}</th>
+                  {["Date", "Event", "Sales agent", "Status", "Revenue", "Costs", "Net profit", "Margin", ""].map((h) => (
+                    <th key={h} className={`whitespace-nowrap px-4 py-3 ${["Revenue", "Costs", "Net profit", "Margin"].includes(h) ? "text-right" : ""}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {rows.map((r) => (
-                  <tr key={r.id} className="align-top">
-                    <td className="whitespace-nowrap px-3 py-2.5">{r.eventDate}</td>
-                    <td className="px-3 py-2.5 text-text-secondary">{r.eventReference ?? "—"}</td>
-                    <td className="px-3 py-2.5 font-semibold text-text"><Link href={`/catering/${r.id}`} className="text-primary">{r.eventName}</Link></td>
-                    <td className="px-3 py-2.5">{r.customerName ?? "—"}</td>
-                    <td className="px-3 py-2.5">{r.salesAgent ?? "—"}</td>
-                    <td className="px-3 py-2.5">{EVENT_STATUS_LABEL[r.status] ?? r.status}</td>
-                    <td className="px-3 py-2.5 text-right">{formatRM(r.pnl.netRevenue)}</td>
-                    <td className="px-3 py-2.5 text-right">{formatRM(round2(r.pnl.directCosts + r.pnl.additionalExpenses))}</td>
-                    <td className={`px-3 py-2.5 text-right font-semibold ${r.pnl.netProfit < 0 ? "text-danger" : "text-text"}`}>{formatRM(r.pnl.netProfit)}</td>
-                    <td className="px-3 py-2.5 text-right">{formatMargin(r.pnl.margin)}</td>
-                    <td className="px-3 py-2.5"><StatusBadge tone={VERDICT_TONE[r.pnl.verdict]}>{VERDICT_LABEL[r.pnl.verdict]}</StatusBadge></td>
-                    <td className="px-3 py-2.5"><Link href={`/finance/event-pnl/${r.id}`} className="font-semibold text-primary">Open P&amp;L</Link></td>
+                  <tr key={r.id} className="align-top hover:bg-surface-alt/60">
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <div className="font-semibold text-text">{r.eventDate}</div>
+                      <div className="mt-0.5 text-[11.5px] text-text-muted">{r.eventReference ?? "—"}</div>
+                    </td>
+                    <td className="min-w-[220px] px-4 py-3">
+                      <Link href={`/catering/${r.id}`} className="font-semibold text-primary">{r.eventName}</Link>
+                      <div className="mt-0.5 text-[11.5px] text-text-muted">{r.customerName ?? "No customer"}</div>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3">{r.salesAgent ?? "—"}</td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <div>{EVENT_STATUS_LABEL[r.status] ?? r.status}</div>
+                      <div className="mt-1"><StatusBadge tone={VERDICT_TONE[r.pnl.verdict]}>{VERDICT_LABEL[r.pnl.verdict]}</StatusBadge></div>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right">{formatRM(r.pnl.netRevenue)}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right">{formatRM(round2(r.pnl.directCosts + r.pnl.additionalExpenses))}</td>
+                    <td className={`whitespace-nowrap px-4 py-3 text-right font-semibold ${r.pnl.netProfit < 0 ? "text-danger" : "text-text"}`}>{formatRM(r.pnl.netProfit)}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right">{formatMargin(r.pnl.margin)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <Link href={`/finance/event-pnl/${r.id}`} className="inline-block whitespace-nowrap rounded-lg border border-primary px-3 py-1.5 text-[12.5px] font-semibold text-primary hover:bg-primary hover:text-white">
+                        Open P&amp;L
+                      </Link>
+                    </td>
                   </tr>
                 ))}
               </tbody>
