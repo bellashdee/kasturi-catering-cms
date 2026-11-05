@@ -2,8 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
-import { adminCompanyIds } from "@/lib/finance/paymentQueries";
-import { getEventPnlDetail } from "@/lib/finance/eventPnlQueries";
+import { eventPnlCompanyIds, getEventPnlDetail } from "@/lib/finance/eventPnlQueries";
 import {
   ADDITIONAL_COST_TYPE_LABEL,
   COST_BASIS_LABEL,
@@ -50,7 +49,7 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
   if (!detail) notFound();
   const { event, pnl } = detail;
 
-  const allowed = (await adminCompanyIds(supabase, [event.company_id])).length > 0;
+  const allowed = (await eventPnlCompanyIds(supabase, [event.company_id])).length > 0;
   if (!allowed) {
     return (
       <div className="flex flex-col gap-5">

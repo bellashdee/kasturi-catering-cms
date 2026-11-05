@@ -3,12 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { assertValidAssignee } from "@/lib/driver/assignee";
-import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/types";
 import { SALES_AGENTS } from "@/lib/catering/constants";
-import { todayInMalaysia } from "@/lib/format";
 import { recordAudit } from "@/lib/audit";
-import { dueDateFromTerms } from "@/lib/finance/terms";
 import { dayPax, normalizeMenu, type EventDay } from "@/lib/catering/days";
 import { validateDays, validateServiceDetails, validateTimes } from "@/lib/catering/validation";
 import { runAction, type ActionResult } from "@/lib/actionResult";
@@ -55,6 +52,11 @@ export type EventInput = {
   cateringSetup?: string;
   /** Price per pax for a single-day event (a multi-day event has a price on each day). */
   pricePerPax?: number;
+  /** When the event ends, the address of the venue, and the official quotation / invoice numbers in AutoCount. */
+  endTime?: string;
+  eventAddress?: string;
+  autocountQuotationNo?: string;
+  autocountInvoiceNo?: string;
   /**
    * A multi-day event (e.g. 3-5 days): one row per day. When there are days, the event's own date, end date, time,
    * set-up time and pax are worked out from them, and the event-level meal/service/price fields are left empty.
@@ -73,6 +75,10 @@ const clean = (s: string | undefined) => s?.trim() || null;
 
 function contactColumns(input: Partial<EventInput>) {
   return {
+    end_time: input.endTime || null,
+    event_address: clean(input.eventAddress),
+    autocount_quotation_no: clean(input.autocountQuotationNo),
+    autocount_invoice_no: clean(input.autocountInvoiceNo),
     setup_time: input.setupTime || null,
     pic_name: clean(input.picName),
     pic_phone: clean(input.picPhone),
@@ -152,8 +158,15 @@ function validateEvent(input: EventInput) {
   }
 }
 
+/** Confirmed events come in through the Excel import or New Event, which only the Quotation Request Inbox people may use. */
+async function requireEventCreator(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"]) {
+  const { data: allowed } = await supabase.rpc("user_has_quotation_request_access");
+  if (allowed !== true) throw new Error("Only Ms. Nabilah, Mr. Adlan and Ms. Penny can add events.");
+}
+
 export async function createEvent(input: EventInput) {
   const { supabase } = await requireUser();
+  await requireEventCreator(supabase);
   validateEvent(input);
   const { data, error } = await supabase
     .from("catering_events")
@@ -188,11 +201,38 @@ export async function createEvent(input: EventInput) {
   return data;
 }
 
+/** The event fields whose changes are written to the edit history. */
+const EDIT_LABEL: Record<string, string> = {
+  event_name: "Event name",
+  event_date: "Date",
+  end_date: "End date",
+  event_time: "Event time",
+  end_time: "End time",
+  setup_time: "Set-up time",
+  location: "Venue",
+  event_address: "Event address",
+  pax_count: "Pax",
+  event_type: "Event type",
+  meal_types: "Meal type",
+  service_type: "Service type",
+  service_pax: "Service pax",
+  menu_description: "Menu",
+  sales_agent: "Sales agent",
+  pic_name: "PIC",
+  pic_phone: "PIC contact",
+  autocount_quotation_no: "AutoCount quotation no.",
+  autocount_invoice_no: "AutoCount invoice no.",
+  price_per_pax: "Price per pax",
+  remarks: "Remarks",
+  kitchen_setup: "Kitchen set-up",
+  catering_setup: "Catering set-up",
+};
+
 export async function updateEvent(eventId: string, input: EventInput) {
   const { supabase } = await requireUser();
   validateEvent(input);
 
-  const { data: existing, error: existingError } = await supabase.from("catering_events").select("company_id").eq("id", eventId).single();
+  const { data: existing, error: existingError } = await supabase.from("catering_events").select("*").eq("id", eventId).single();
   if (existingError) throw existingError;
 
   const { error } = await supabase
@@ -222,6 +262,28 @@ export async function updateEvent(eventId: string, input: EventInput) {
   const removeQuery = supabase.from("catering_event_days").delete().eq("catering_event_id", eventId);
   const { error: clearError } = rows.length > 0 ? await removeQuery.not("day_date", "in", `(${rows.map((r) => r.day_date).join(",")})`) : await removeQuery;
   if (clearError) throw clearError;
+
+  // who changed what and when: the changed fields go to the audit log, which the event page shows as its edit history
+  const after: Record<string, unknown> = {
+    event_name: input.eventName,
+    location: input.location || null,
+    event_type: input.eventType,
+    menu_description: input.menuDescription || null,
+    ...eventColumns(input),
+  };
+  const shown = (v: unknown) => (v === null || v === undefined || v === "" ? "—" : Array.isArray(v) ? v.join(", ") || "—" : String(v).slice(0, 120));
+  const before = existing as unknown as Record<string, unknown>;
+  const changed = Object.keys(EDIT_LABEL).filter((k) => k in after && shown(before[k]).replace(/:00$/, "") !== shown(after[k]).replace(/:00$/, ""));
+  if (changed.length > 0) {
+    await recordAudit({
+      companyId: existing.company_id,
+      relatedTable: "catering_events",
+      relatedId: eventId,
+      action: "edited",
+      previousValue: changed.map((k) => `${EDIT_LABEL[k]}: ${shown(before[k])}`).join(" · "),
+      newValue: changed.map((k) => `${EDIT_LABEL[k]}: ${shown(after[k])}`).join(" · "),
+    });
+  }
   revalidatePath("/catering");
   revalidatePath(`/catering/${eventId}`);
 }
@@ -477,36 +539,7 @@ export async function updateQuotationStatus(quotationId: string, status: string)
     // someone had confirmed the event manually.
     await updateEventStatus(quotation.catering_event_id, "confirmed");
 
-    // The invoice belongs to Finance, so a member limited to Catering cannot write it themselves. The user was
-    // already verified for this quotation above (it was read and updated under their own access), so the
-    // system creates the invoice on their behalf.
-    const finance = createAdminClient();
-    const customerId = quotation.catering_events?.customer_id;
-    if (customerId) {
-      const { data: existingInvoice } = await finance
-        .from("customer_invoices")
-        .select("id")
-        .eq("quotation_id", quotationId)
-        .maybeSingle();
-
-      if (!existingInvoice) {
-        // the invoice date is today (Malaysia); the due date follows the customer's payment term (14 days when there is none)
-        const invoiceDate = todayInMalaysia();
-        const { data: customer } = await finance.from("customers").select("credit_term").eq("id", customerId).maybeSingle();
-
-        await finance.from("customer_invoices").insert({
-          company_id: quotation.company_id,
-          customer_id: customerId,
-          catering_event_id: quotation.catering_event_id,
-          quotation_id: quotationId,
-          invoice_number: quotation.quotation_number,
-          invoice_date: invoiceDate,
-          due_date: dueDateFromTerms(invoiceDate, customer?.credit_term),
-          amount: quotation.total_amount,
-          status: "pending_review",
-        });
-      }
-    }
+    // The official quotation and invoice are made in AutoCount: no customer invoice is created here any more.
   }
 
   revalidatePath(`/catering/${quotation.catering_event_id}`);

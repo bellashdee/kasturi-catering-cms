@@ -6721,6 +6721,7 @@ export type Database = {
       user_gets_payment_reminders: { Args: never; Returns: boolean }
       user_is_local_staff: { Args: never; Returns: boolean }
       user_has_quotation_request_access: { Args: never; Returns: boolean }
+      user_can_manage_event_pnl: { Args: { target_company_id: string }; Returns: boolean }
       quotation_request_people: { Args: never; Returns: { user_id: string; full_name: string | null }[] }
       user_has_company_access: {
         Args: { target_company_id: string }

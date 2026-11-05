@@ -3,8 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
-import { adminCompanyIds } from "@/lib/finance/paymentQueries";
-import { eventPnlCompanies, eventPnlReviewItems, eventPnlTrend, listEventPnl } from "@/lib/finance/eventPnlQueries";
+import { eventPnlCompanyIds, eventPnlCompanies, eventPnlReviewItems, eventPnlTrend, listEventPnl } from "@/lib/finance/eventPnlQueries";
 import { DATA_FLAG_LABEL, formatChange, formatMargin, percentChange, totalEventPnl, VERDICT_LABEL, VERDICT_TONE } from "@/lib/finance/eventPnl";
 import { MONTH_LABEL } from "@/lib/finance/constants";
 import { formatRM } from "@/lib/finance/payments";
@@ -29,7 +28,7 @@ export default async function MonthlyEventPnlPage({ searchParams }: { searchPara
   const supabase = await createClient();
   const pnlCompanies = await eventPnlCompanies(supabase);
   const { targetCompanyIds } = resolveCompanyScope(session, pnlCompanies, sp.company);
-  const adminIds = await adminCompanyIds(supabase, targetCompanyIds);
+  const adminIds = await eventPnlCompanyIds(supabase, targetCompanyIds);
 
   const header = (
     <>
@@ -47,7 +46,7 @@ export default async function MonthlyEventPnlPage({ searchParams }: { searchPara
     return (
       <div className="flex flex-col gap-5">
         {header}
-        <EmptyRow text="Event P&L holds confidential event financial records and is only available to Finance / Admin users of Signature Solution and Kasturi Indah." />
+        <EmptyRow text="Event P&L holds confidential event financial records and is only available to Finance / Admin users of Signature Solution and Kasturi Indah, Ms. Nabilah, Mr. Adlan and Ms. Penny." />
       </div>
     );
   }

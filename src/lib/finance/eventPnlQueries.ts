@@ -14,6 +14,20 @@ import {
 
 type DB = SupabaseClient<Database>;
 
+/**
+ * Companies (of those given) whose Event P&L the user may see and keep: Finance / Admin of the company, or one of the Quotation Request
+ * Inbox people (Ms. Nabilah, Mr. Adlan, Ms. Penny) who works in it. The database applies the same rule.
+ */
+export async function eventPnlCompanyIds(supabase: DB, companyIds: string[]): Promise<string[]> {
+  const flags = await Promise.all(
+    companyIds.map(async (id) => {
+      const { data } = await supabase.rpc("user_can_manage_event_pnl", { target_company_id: id });
+      return [id, data === true] as const;
+    }),
+  );
+  return flags.filter(([, ok]) => ok).map(([id]) => id);
+}
+
 /** The two companies this module covers, with their ids. */
 export async function eventPnlCompanies(supabase: DB) {
   const { data } = await supabase.from("companies").select("id, name").in("name", [...EVENT_PNL_COMPANY_NAMES]);
@@ -30,6 +44,7 @@ export type EventPnlRow = {
   eventName: string;
   eventDate: string;
   customerName: string | null;
+  salesAgent: string | null;
   status: string;
   pax: number | null;
   pnl: EventPnl;
@@ -46,16 +61,17 @@ function combineSheets(rows: SheetRow[]) {
 }
 
 /** Events with an event date inside [start, end], each calculated once from its own entries. */
-async function loadRows(supabase: DB, companyIds: string[], start: string, end: string, filters: Pick<EventPnlFilters, "search" | "customer" | "status">): Promise<EventPnlRow[]> {
+async function loadRows(supabase: DB, companyIds: string[], start: string, end: string, filters: Pick<EventPnlFilters, "search" | "customer" | "status"> & { salesAgent?: string }): Promise<EventPnlRow[]> {
   if (companyIds.length === 0) return [];
   let query = supabase
     .from("catering_events")
-    .select("id, company_id, event_name, event_reference, event_date, status, pax_count, customers(name), companies(name)")
+    .select("id, company_id, event_name, event_reference, event_date, status, pax_count, sales_agent, customers(name), companies(name)")
     .in("company_id", companyIds)
     .gte("event_date", start)
     .lte("event_date", end)
     .order("event_date", { ascending: true });
   if (filters.status) query = query.eq("status", filters.status as Database["public"]["Enums"]["event_status"]);
+  if (filters.salesAgent) query = query.eq("sales_agent", filters.salesAgent);
   if (filters.search) {
     const s = filters.search.replace(/[%,()]/g, " ").trim();
     if (s) query = query.or(`event_name.ilike.%${s}%,event_reference.ilike.%${s}%`);
@@ -94,6 +110,7 @@ async function loadRows(supabase: DB, companyIds: string[], start: string, end: 
       eventName: e.event_name,
       eventDate: e.event_date,
       customerName: e.customers?.name ?? null,
+      salesAgent: e.sales_agent,
       status: e.status,
       pax: e.pax_count,
       pnl,
@@ -101,6 +118,17 @@ async function loadRows(supabase: DB, companyIds: string[], start: string, end: 
       budget: budgetVsActual(pnl, budget ?? null),
     };
   });
+}
+
+/** One row per event with an event date from `start` to `end` (YYYY-MM-DD): the Event Management report (month, quarter or year). */
+export async function listEventPnlRange(
+  supabase: DB,
+  companyIds: string[],
+  start: string,
+  end: string,
+  filters: { customer?: string; status?: string; salesAgent?: string } = {},
+): Promise<EventPnlRow[]> {
+  return loadRows(supabase, companyIds, start, end, filters);
 }
 
 /** One row per event of the month (by event date). */

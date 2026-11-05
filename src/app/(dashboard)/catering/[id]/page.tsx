@@ -21,15 +21,14 @@ import {
   PAYMENT_STATUS_LABEL,
   STAFF_ROLE_LABEL,
 } from "@/lib/catering/constants";
-import { formatCurrency, formatPrice, formatTime12 } from "@/lib/format";
+import { formatCurrency, formatMalaysiaDateTime, formatPrice, formatTime12 } from "@/lib/format";
 import { dayAmount, dayPax, menuRows } from "@/lib/catering/days";
 import { additionalRows, type AdditionalServices, type ExtraItem } from "@/lib/catering/quotationRequest";
 import { toEventDays } from "@/lib/catering/queries";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SectionCard, EmptyRow } from "@/components/dashboard/SectionCard";
 import { EventStatusSelect } from "@/components/catering/EventStatusSelect";
-import { QuotationActions } from "@/components/catering/QuotationActions";
-import { EventDeleteAction, QuotationRecordActions } from "@/components/catering/CateringRecordActions";
+import { EventDeleteAction } from "@/components/catering/CateringRecordActions";
 import { CostingForm } from "@/components/catering/CostingForm";
 import { StaffAssignForm } from "@/components/catering/StaffAssignForm";
 import { EquipmentAssignForm } from "@/components/catering/EquipmentAssignForm";
@@ -100,6 +99,16 @@ export default async function EventDetailPage({
     supabase.from("vehicles").select("id, plate_number, vehicle_type").eq("company_id", event.company_id).order("plate_number"),
   ]);
 
+  // Event Profit & Loss (Finance / Admin, and the Quotation Request Inbox people) and who changed the event and when
+  const [{ data: canPnl }, { data: auditRows }] = await Promise.all([
+    supabase.rpc("user_can_manage_event_pnl", { target_company_id: event.company_id }),
+    supabase.from("task_audit_log").select("id, action, previous_value, new_value, performed_by, created_at").eq("related_table", "catering_events").eq("related_id", id).order("created_at", { ascending: false }).limit(30),
+  ]);
+  const editors = Array.from(new Set((auditRows ?? []).map((a) => a.performed_by).filter((x): x is string => !!x)));
+  const { data: editorRows } = editors.length ? await supabase.from("profiles").select("id, full_name").in("id", editors) : { data: [] };
+  const editorName = new Map((editorRows ?? []).map((p) => [p.id, p.full_name ?? "—"]));
+  const AUDIT_ACTION: Record<string, string> = { created: "Created", edited: "Edited", status_changed: "Status changed", imported: "Imported from Excel", import_updated: "Updated by Excel import", calendar_edit: "Edited on the calendar", deleted: "Deleted", restored: "Put back" };
+
   const employees = employeesRes.data ?? [];
   const deliveryPersons = await listDeliveryPersons(supabase, [event.company_id]);
   const vehicles = vehiclesRes.data ?? [];
@@ -112,15 +121,24 @@ export default async function EventDetailPage({
           <Link href={`/catering${query}`} className="text-[12.5px] font-semibold text-text-secondary">
             ← Back to Events
           </Link>
-          <div className="mt-2 text-[20px] font-extrabold text-text">{event.event_name}</div>
+          <div className="mt-2 text-[20px] font-extrabold text-text">
+            {event.event_name}
+            {event.event_reference && <span className="ml-2 text-[13px] font-bold text-text-muted">{event.event_reference}</span>}
+          </div>
           <div className="text-[13px] text-text-secondary">
             {event.customers?.name ?? "No customer linked"} · {event.companies?.name} · {event.event_date}
-            {event.end_date ? ` → ${event.end_date} (${eventDays.length || "multi"} days)` : event.event_time ? ` ${formatTime12(event.event_time)}` : ""}
+            {event.end_date ? ` → ${event.end_date} (${eventDays.length || "multi"} days)` : event.event_time ? ` ${formatTime12(event.event_time)}${event.end_time ? ` – ${formatTime12(event.end_time)}` : ""}` : ""}
             {event.location && ` · ${event.location}`}
           </div>
+          {event.event_address && <div className="text-[12.5px] text-text-muted">{event.event_address}</div>}
         </div>
         <div className="flex items-center gap-2">
           <EventStatusSelect eventId={id} status={event.status} />
+          {canPnl === true && (
+            <Link href={`/finance/event-pnl/${id}${query}`} className="rounded-lg bg-primary px-4 py-2 text-[13px] font-semibold text-white">
+              Event Profit &amp; Loss
+            </Link>
+          )}
           <Link href={`/ai-assistant?event=${id}`} className="rounded-lg border border-primary bg-surface px-4 py-2 text-[13px] font-semibold text-primary">
             Ingredients (AI Assistant)
           </Link>
@@ -150,6 +168,19 @@ export default async function EventDetailPage({
         </div>
       </div>
 
+      {(event.autocount_quotation_no || event.autocount_invoice_no) && (
+        <div className="grid grid-cols-4 gap-4">
+          <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
+            <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">AutoCount quotation no.</div>
+            <div className="mt-1 text-[14px] font-bold text-text">{event.autocount_quotation_no ?? "—"}</div>
+          </div>
+          <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
+            <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">AutoCount invoice no.</div>
+            <div className="mt-1 text-[14px] font-bold text-text">{event.autocount_invoice_no ?? "—"}</div>
+          </div>
+        </div>
+      )}
+
       {(event.pic_name || event.pic_phone || event.sales_agent || event.setup_time || event.event_time || event.price_per_pax !== null) && (
         <div className="grid grid-cols-4 gap-4">
           {(event.pic_name || event.pic_phone) && (
@@ -174,7 +205,7 @@ export default async function EventDetailPage({
           {event.event_time && (
             <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
               <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Event time</div>
-              <div className="mt-1 text-[14px] font-bold text-text">{formatTime12(event.event_time)}</div>
+              <div className="mt-1 text-[14px] font-bold text-text">{formatTime12(event.event_time)}{event.end_time ? ` – ${formatTime12(event.end_time)}` : ""}</div>
             </div>
           )}
           {event.price_per_pax !== null && (
@@ -286,10 +317,9 @@ export default async function EventDetailPage({
         </div>
       )}
 
-      <SectionCard title="Quotations" action={<Link href={`/catering/${id}/quotations/new${query}`} className="text-[12.5px] font-semibold text-primary">+ New Quotation</Link>}>
-        {quotations.length === 0 ? (
-          <EmptyRow text="No quotations yet." />
-        ) : (
+      {quotations.length > 0 && (
+        <SectionCard title="Quotations made in the system (before AutoCount)">
+          <p className="-mt-1 mb-3 text-xs text-text-muted">The official quotation and invoice are now made in AutoCount; record their numbers with Edit. These older quotations are kept for reference.</p>
           <div className="-mx-5 -mb-5 divide-y divide-border">
             {quotations.map((q) => (
               <div key={q.id} className="flex items-center justify-between px-5 py-3">
@@ -297,18 +327,12 @@ export default async function EventDetailPage({
                   <div className="text-[13px] font-semibold text-text">{q.quotation_number} · {formatCurrency(q.total_amount)}</div>
                   <div className="text-xs text-text-muted">{q.quotation_items?.length ?? 0} item(s) · Payment: {PAYMENT_STATUS_LABEL[q.payment_status] ?? q.payment_status}</div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <StatusBadge tone={quotationTone(q.status)}>{QUOTATION_STATUS_LABEL[q.status] ?? q.status}</StatusBadge>
-                  <QuotationActions quotationId={q.id} status={q.status} paymentStatus={q.payment_status} />
-                  <QuotationRecordActions
-                    quotation={{ id: q.id, number: q.quotation_number, status: q.status, items: [...(q.quotation_items ?? [])].sort((a, b) => a.sort_order - b.sort_order).map((i) => ({ itemName: i.item_name, quantity: String(i.quantity), unitPrice: String(i.unit_price), discountPercent: String(i.discount_percent) })) }}
-                  />
-                </div>
+                <StatusBadge tone={quotationTone(q.status)}>{QUOTATION_STATUS_LABEL[q.status] ?? q.status}</StatusBadge>
               </div>
             ))}
           </div>
-        )}
-      </SectionCard>
+        </SectionCard>
+      )}
 
       <SectionCard title="Costing">
         <CostingForm companyId={event.company_id} eventId={id} revenue={revenue} initial={costing} />
@@ -413,6 +437,25 @@ export default async function EventDetailPage({
                 </div>
               ))}
           </div>
+        )}
+      </SectionCard>
+      <SectionCard title="Edit history">
+        {(auditRows ?? []).length === 0 ? (
+          <EmptyRow text="No changes recorded yet." />
+        ) : (
+          <ul className="flex flex-col gap-2 text-[12.5px]">
+            {(auditRows ?? []).map((a) => (
+              <li key={a.id} className="border-l-2 border-border pl-3">
+                <div className="font-semibold text-text">{AUDIT_ACTION[a.action] ?? a.action}</div>
+                {a.previous_value && a.new_value && a.previous_value !== a.new_value ? (
+                  <div className="text-text-secondary"><span className="text-text-muted line-through">{a.previous_value}</span> → {a.new_value}</div>
+                ) : a.new_value ? (
+                  <div className="text-text-secondary">{a.new_value}</div>
+                ) : null}
+                <div className="text-[11.5px] text-text-muted">{(a.performed_by && editorName.get(a.performed_by)) || "—"} · {formatMalaysiaDateTime(a.created_at)}</div>
+              </li>
+            ))}
+          </ul>
         )}
       </SectionCard>
     </div>

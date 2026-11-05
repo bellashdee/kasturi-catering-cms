@@ -3,8 +3,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
-import { adminCompanyIds } from "@/lib/finance/paymentQueries";
-import { eventPnlCompanies, eventPnlReviewItems, getEventPnlDetail, listEventPnl } from "@/lib/finance/eventPnlQueries";
+import { eventPnlCompanyIds, eventPnlCompanies, eventPnlReviewItems, getEventPnlDetail, listEventPnl } from "@/lib/finance/eventPnlQueries";
 import {
   ADDITIONAL_COST_TYPE_LABEL,
   COST_BASIS_LABEL,
@@ -53,7 +52,7 @@ export async function GET(request: Request) {
   if (eventId) {
     const detail = await getEventPnlDetail(supabase, eventId);
     if (!detail) return new NextResponse("Event not found.", { status: 404 });
-    if ((await adminCompanyIds(supabase, [detail.event.company_id])).length === 0) return new NextResponse("Not allowed.", { status: 403 });
+    if ((await eventPnlCompanyIds(supabase, [detail.event.company_id])).length === 0) return new NextResponse("Not allowed.", { status: 403 });
     const { event, pnl } = detail;
     const rows: Cell[][] = [
       ["Event P&L"],
@@ -95,7 +94,7 @@ export async function GET(request: Request) {
   const pnlCompanies = await eventPnlCompanies(supabase);
   const requested = url.searchParams.get("company") ?? undefined;
   const { targetCompanyIds } = resolveCompanyScope(session, pnlCompanies, requested);
-  const adminIds = await adminCompanyIds(supabase, targetCompanyIds);
+  const adminIds = await eventPnlCompanyIds(supabase, targetCompanyIds);
   if (adminIds.length === 0) return new NextResponse("Not allowed.", { status: 403 });
 
   const now = malaysiaMonthNow();

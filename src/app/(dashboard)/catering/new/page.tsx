@@ -15,6 +15,15 @@ export default async function NewEventPage({
   if (!session) redirect("/login");
 
   const supabase = await createClient();
+  const { data: allowed } = await supabase.rpc("user_has_quotation_request_access");
+  if (allowed !== true) {
+    return (
+      <div className="mx-auto mt-10 max-w-lg rounded-xl border border-border bg-surface p-6 text-center shadow-sm">
+        <div className="text-[16px] font-extrabold text-text">New Catering Event</div>
+        <p className="mt-2 text-[13px] text-text-secondary">Only Ms. Nabilah, Mr. Adlan and Ms. Penny can add events. Confirmed events come in through the Excel import.</p>
+      </div>
+    );
+  }
   const { data: allCompanies } = await supabase.from("companies").select("id, name").order("name");
   const companies = allCompanies ?? [];
 

@@ -51,6 +51,8 @@ export default async function CateringPage({
     }),
   );
   const adminCompanyIds = new Set(adminFlags.filter(([, isAdmin]) => isAdmin).map(([id]) => id));
+  // New Event is for the people who also import confirmed events (Ms. Nabilah, Mr. Adlan, Ms. Penny)
+  const { data: canAddEvents } = await supabase.rpc("user_has_quotation_request_access");
   const { count: pendingRequests } = await supabase
     .from("quotation_requests")
     .select("id", { count: "exact", head: true })
@@ -64,11 +66,16 @@ export default async function CateringPage({
           <h1 className="text-[22px] font-extrabold text-text">Catering Events</h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">{events.length} event{events.length === 1 ? "" : "s"}</p>
         </div>
-        <div className="flex gap-2.5">
-          <Link href={`/catering/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
-            + New Event
-          </Link>
-        </div>
+        {canAddEvents === true && (
+          <div className="flex gap-2.5">
+            <Link href={`/catering/import${query}`} className="rounded-lg border border-primary bg-surface px-4 py-2.5 text-[13px] font-semibold text-primary">
+              Import from Excel
+            </Link>
+            <Link href={`/catering/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
+              + New Event
+            </Link>
+          </div>
+        )}
       </div>
 
       <CateringSubNav />
@@ -77,7 +84,7 @@ export default async function CateringPage({
 
       {pendingRequests ? (
         <Link href={`/catering/quotation-requests${query}`} className="rounded-xl border border-info bg-info-bg px-4 py-3 text-[13px] font-semibold text-text hover:opacity-90">
-          {`Quotation requests waiting for review: ${pendingRequests}. They are on the Event Calendar too.`}
+          {`New quotation requests in the inbox: ${pendingRequests}. They are not events: a confirmed event comes in through the Excel import or New Event.`}
         </Link>
       ) : null}
 

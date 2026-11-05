@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createEvent, createQuotation, updateEvent, type EventInput } from "@/lib/catering/actions";
+import { createEvent, updateEvent, type EventInput } from "@/lib/catering/actions";
 import { SALES_AGENTS, eventTypeOptions } from "@/lib/catering/constants";
-import { dayAmount, dayPax, normalizeMenu, quotationSeedRows, type EventDay } from "@/lib/catering/days";
-import { additionalServiceLines, noAdditionalServices, withSecondMenusInRemarks, type AdditionalServices } from "@/lib/catering/quotationRequest";
+import { dayAmount, dayPax, normalizeMenu, type EventDay } from "@/lib/catering/days";
+import { additionalRows, additionalServiceLines, noAdditionalServices, withSecondMenusInRemarks, type AdditionalServices } from "@/lib/catering/quotationRequest";
 import { hasPackagePrice } from "@/lib/kitchen/packages/format";
 import { EventDaysEditor, emptyDay } from "@/components/catering/EventDaysEditor";
 import { AdditionalServicesEditor, ExtraItemsEditor, type ExtraRow } from "@/components/catering/QuotationRequestExtras";
@@ -37,6 +37,7 @@ function dayFromEvent(initial: Partial<EventInput> | undefined): EventDay {
     dayDate: initial?.eventDate ?? "",
     setupTime: initial?.setupTime,
     eventTime: initial?.eventTime,
+    endTime: initial?.endTime,
     mealTypes: initial?.mealTypes ?? [],
     serviceType: initial?.serviceType ?? "",
     servicePax: initial?.servicePax,
@@ -67,7 +68,10 @@ export function EventForm({
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [days, setDays] = useState<EventDay[]>(initialDays.length > 0 ? initialDays : eventId ? [dayFromEvent(initial)] : [emptyDay()]);
+  // a multi-day event keeps one end time (the end of its last day)
+  const [days, setDays] = useState<EventDay[]>(
+    initialDays.length > 0 ? initialDays.map((d, i) => (i === initialDays.length - 1 ? { ...d, endTime: initial?.endTime } : d)) : eventId ? [dayFromEvent(initial)] : [emptyDay()],
+  );
   const [extras, setExtras] = useState<ExtraRow[]>([]);
   const [additional, setAdditional] = useState<AdditionalServices>(noAdditionalServices());
   const [form, setForm] = useState<EventInput>({
@@ -86,6 +90,9 @@ export function EventForm({
     salesAgent: initial?.salesAgent ?? "",
     kitchenSetup: initial?.kitchenSetup ?? "",
     cateringSetup: initial?.cateringSetup ?? "",
+    eventAddress: initial?.eventAddress ?? "",
+    autocountQuotationNo: initial?.autocountQuotationNo ?? "",
+    autocountInvoiceNo: initial?.autocountInvoiceNo ?? "",
     status: initial?.status ?? "enquiry",
   });
 
@@ -128,6 +135,7 @@ export function EventForm({
             ...form,
             eventDate: only.dayDate,
             eventTime: only.eventTime,
+            endTime: only.endTime,
             setupTime: only.setupTime,
             paxCount: dayPax(only),
             mealTypes: only.mealTypes,
@@ -140,31 +148,19 @@ export function EventForm({
             remarks: [withSecondMenusInRemarks(only).remarks, form.remarks].filter(Boolean).join("\n\n"),
             days: [],
           }
-        : { ...form, eventDate: days[0].dayDate, packageMenuId: undefined, menuDescription: "", days: days.map(withSecondMenusInRemarks) };
+        : { ...form, eventDate: days[0].dayDate, endTime: days[days.length - 1].endTime, packageMenuId: undefined, menuDescription: "", days: days.map(withSecondMenusInRemarks) };
 
       if (eventId) {
         await updateEvent(eventId, payload);
         router.push(`/catering/${eventId}`);
       } else {
-        const created = await createEvent(payload);
-        // the priced days, the additional requirement and the extra items become a draft quotation, as when a quotation request is approved
-        const lines = [
-          ...quotationSeedRows(singleDay ? [] : days, {
-            eventName: form.eventName,
-            pax: only ? dayPax(only) : null,
-            pricePerPax: only?.pricePerPax ?? null,
-          }),
-          ...additionalLines,
-          ...extraLines,
+        // the official quotation is made in AutoCount: the additional requirement and the extra items are kept in the event details
+        const asked = [
+          ...additionalRows(additional).filter((a) => a.yes).map((a) => `- ${a.label}: Yes${a.detail ? ` (${a.detail})` : ""}`),
+          ...extraLines.map((i) => `- ${i.itemName}: ${i.quantity} x RM ${i.unitPrice.toFixed(2)}`),
         ];
-        if (lines.some((l) => l.unitPrice > 0)) {
-          await createQuotation({
-            companyId: form.companyId,
-            eventId: created.id,
-            quotationNumber: `Q-${Date.now().toString().slice(-6)}`,
-            items: lines.map((l) => ({ ...l, discountPercent: 0 })),
-          });
-        }
+        const eventDetails = [form.eventDetails, asked.length > 0 ? `Additional requirement and extra items:\n${asked.join("\n")}` : ""].filter(Boolean).join("\n\n");
+        const created = await createEvent({ ...payload, eventDetails });
         router.push(`/catering/${created.id}`);
       }
       router.refresh();
@@ -238,9 +234,26 @@ export function EventForm({
         </div>
       </div>
 
-      <div>
-        <label className={labelClass}>Event location</label>
-        <input value={form.location} onChange={(e) => set("location", e.target.value)} className={inputClass} placeholder="Venue / address" />
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelClass}>Event location</label>
+          <input value={form.location} onChange={(e) => set("location", e.target.value)} className={inputClass} placeholder="Venue" />
+        </div>
+        <div>
+          <label className={labelClass}>Address</label>
+          <input value={form.eventAddress ?? ""} onChange={(e) => set("eventAddress", e.target.value)} className={inputClass} placeholder="Full address of the venue" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelClass}>AutoCount quotation no.</label>
+          <input maxLength={50} value={form.autocountQuotationNo ?? ""} onChange={(e) => set("autocountQuotationNo", e.target.value)} className={inputClass} placeholder="As in AutoCount" />
+        </div>
+        <div>
+          <label className={labelClass}>AutoCount invoice no.</label>
+          <input maxLength={50} value={form.autocountInvoiceNo ?? ""} onChange={(e) => set("autocountInvoiceNo", e.target.value)} className={inputClass} placeholder="As in AutoCount" />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -268,14 +281,14 @@ export function EventForm({
           </div>
         )}
         {/* the same day block as the Quotation Request Form; the second service type only shows for an older event that has one */}
-        <EventDaysEditor days={days} onChange={setDays} secondService={days.some((d) => !!d.secondServiceType)} secondChoice mealRequired />
+        <EventDaysEditor days={days} onChange={setDays} secondService={days.some((d) => !!d.secondServiceType)} secondChoice mealRequired endTime />
       </div>
 
       {!eventId && (
         <>
           <div>
             <div className="text-[14px] font-extrabold text-text">Additional requirement</div>
-            <p className="mb-2 text-xs text-text-muted">Search and choose for each one: Yes (add the price if you know it), No, or Included in the food price. Each Yes is added to the draft quotation; Included means it is already in the price of the food.</p>
+            <p className="mb-2 text-xs text-text-muted">Search and choose for each one: Yes (add the price if you know it), No, or Included in the food price. Each Yes is written in the event details for the AutoCount quotation; Included means it is already in the price of the food.</p>
             <AdditionalServicesEditor value={additional} onChange={setAdditional} />
           </div>
 
@@ -320,7 +333,7 @@ export function EventForm({
       {!eventId && (
         <div className="rounded-lg border border-border bg-surface-alt px-4 py-3 text-[13px] text-text-secondary">
           Estimated total: <span className="text-[15px] font-extrabold text-text">{formatPrice(estimatedTotal)}</span>
-          <span className="ml-2 text-xs text-text-muted">(all days + additional requirement + extra items; a draft quotation is made from the priced lines)</span>
+          <span className="ml-2 text-xs text-text-muted">(all days + additional requirement + extra items, for reference: the official quotation is made in AutoCount)</span>
         </div>
       )}
 

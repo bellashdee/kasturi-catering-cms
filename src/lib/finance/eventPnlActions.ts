@@ -16,15 +16,15 @@ async function requireUser() {
   return { supabase, userId: user.id };
 }
 
-/** The signed-in user must be Finance / Admin of the event's company, and the company must be one the module covers. */
+/** The signed-in user must be Finance / Admin of the event's company (or one of the inbox people), and the company must be one the module covers. */
 async function loadEventForFinance(supabase: DB, eventId: string) {
   const { data: event } = await supabase.from("catering_events").select("id, company_id, event_name, event_date, companies(name)").eq("id", eventId).maybeSingle();
   if (!event) throw new Error("Event not found.");
   if (!(EVENT_PNL_COMPANY_NAMES as readonly string[]).includes(event.companies?.name ?? "")) {
     throw new Error("Event P&L is only for Signature Solution and Kasturi Indah events.");
   }
-  const { data: ok } = await supabase.rpc("user_is_company_admin", { target_company_id: event.company_id });
-  if (ok !== true) throw new Error("Only Finance / Admin users of this company can record event revenue and costs.");
+  const { data: ok } = await supabase.rpc("user_can_manage_event_pnl", { target_company_id: event.company_id });
+  if (ok !== true) throw new Error("Only Finance / Admin users of this company, Ms. Nabilah, Mr. Adlan and Ms. Penny can record event revenue and costs.");
   return event;
 }
 
