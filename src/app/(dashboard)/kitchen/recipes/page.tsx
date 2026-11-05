@@ -8,11 +8,13 @@ import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { KitchenSubNav } from "@/components/kitchen/KitchenSubNav";
 import { RECIPE_CATEGORIES, recipeCategory } from "@/lib/kitchen/recipeCategory";
 import { SIDE_LABEL, sideOf, type KitchenSide } from "@/lib/kitchen/side";
+import { ApproveDraftsButton } from "@/components/kitchenPurchase/ApproveRecipeButton";
+import { kitchenPlanAccess } from "@/lib/kitchenPlan/access";
 
 export default async function RecipesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; category?: string; q?: string; side?: string }>;
+  searchParams: Promise<{ company?: string; category?: string; q?: string; side?: string; status?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -21,7 +23,7 @@ export default async function RecipesPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, category: categoryParam, q, side: sideParam } = await searchParams;
+  const { company: requestedId, category: categoryParam, q, side: sideParam, status: statusParam } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -29,7 +31,12 @@ export default async function RecipesPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const allRecipes = await listRecipes(supabase, targetCompanyIds);
+  const everyRecipe = await listRecipes(supabase, targetCompanyIds);
+  const isDraft = (r: unknown) => (r as { status?: string }).status === "draft";
+  const draftCount = everyRecipe.filter(isDraft).length;
+  const draftsOnly = statusParam === "draft";
+  const allRecipes = draftsOnly ? everyRecipe.filter(isDraft) : everyRecipe;
+  const canApprove = draftsOnly ? (await kitchenPlanAccess(session)).canPlan : false;
   const search = q?.trim().toLowerCase();
   const activeSide: KitchenSide | undefined = sideParam === "kitchen" || sideParam === "bar" ? sideParam : undefined;
   const bySearch = search ? allRecipes.filter((r) => r.name.toLowerCase().includes(search)) : allRecipes;
@@ -44,6 +51,7 @@ export default async function RecipesPage({
     if (requestedId) params.set("company", requestedId);
     if (category) params.set("category", category);
     if (side) params.set("side", side);
+    if (draftsOnly) params.set("status", "draft");
     if (q) params.set("q", q);
     const qs = params.toString();
     return `/kitchen/recipes${qs ? `?${qs}` : ""}`;
@@ -78,6 +86,22 @@ export default async function RecipesPage({
         <input name="q" defaultValue={q ?? ""} placeholder="Search recipe name" className="h-9 w-64 rounded-lg border border-border-strong px-3 text-[13px] outline-none focus:border-primary" />
         <button type="submit" className="h-9 rounded-lg border border-border-strong bg-surface px-3.5 text-[13px] font-semibold text-text">Search</button>
       </form>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[12.5px] font-semibold text-text-secondary">Show</span>
+        <Link href={`/kitchen/recipes${query}`} className={`rounded-full border px-3.5 py-1.5 text-[13px] font-semibold ${!draftsOnly ? "border-primary bg-primary text-white" : "border-border-strong bg-surface text-text hover:bg-surface-alt"}`}>
+          All recipes
+        </Link>
+        <Link href={`/kitchen/recipes?${requestedId ? `company=${requestedId}&` : ""}status=draft`} className={`rounded-full border px-3.5 py-1.5 text-[13px] font-semibold ${draftsOnly ? "border-primary bg-primary text-white" : "border-border-strong bg-surface text-text hover:bg-surface-alt"}`}>
+          {`Drafts to review (${draftCount})`}
+        </Link>
+      </div>
+      {draftsOnly && canApprove && recipes.length > 0 && (
+        <div className="rounded-xl border border-warning/40 bg-warning-bg px-4 py-3 text-[13.5px] text-warning">
+          <p className="mb-2">These recipes were filled in from a reference and are not approved, so they are not used for purchase requests. Open a recipe to check and edit it. When you have checked them, approve the ones shown here.</p>
+          <ApproveDraftsButton ids={recipes.map((r) => r.id)} />
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[12.5px] font-semibold text-text-secondary">Side</span>

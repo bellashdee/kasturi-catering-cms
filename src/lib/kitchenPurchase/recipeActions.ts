@@ -51,7 +51,14 @@ Rules: list every ingredient the dish normally needs, once each (oil, salt, spic
     let sources: { title: string; url: string }[] = [];
     let basis: SuggestedRecipe["basis"] = "ai_only";
     if (process.env.GEMINI_API_KEY) {
-      const r = await geminiGenerateWithSources({ turns: [{ role: "user", parts: [{ text: prompt }] }], maxOutputTokens: 4096, search: true, budgetMs: 50_000 });
+      const ask = (search: boolean) => geminiGenerateWithSources({ turns: [{ role: "user", parts: [{ text: prompt }] }], maxOutputTokens: 4096, search, budgetMs: 50_000 });
+      let r;
+      try {
+        r = await ask(true);
+      } catch {
+        // the Google search of the AI service can be out of its daily quota while plain answers still work: the chef is told there is no link
+        r = await ask(false);
+      }
       raw = r.text;
       sources = r.sources.slice(0, 6);
       basis = sources.length > 0 ? "google" : "ai_only";
@@ -182,5 +189,32 @@ export async function approveRecipe(recipeId: string): Promise<ActionResult> {
     revalidatePath("/kitchen/recipes");
     revalidatePath(`/kitchen/recipes/${recipeId}`);
     return {};
+  });
+}
+
+/** A chef approves many reviewed draft recipes at once (only drafts that have ingredients are approved). */
+export async function approveRecipes(ids: string[]): Promise<ActionResult<{ count: number }>> {
+  return runAction(async () => {
+    const session = await getSessionContext();
+    if (!session) throw new Error("Please sign in again.");
+    if (!canAccessModule(session.allowedModules, "kitchen") || !(await kitchenPlanAccess(session)).canPlan) throw new Error("Only a chef, the Kitchen PIC, a manager or an admin can approve recipes.");
+    const list = Array.from(new Set(ids)).slice(0, 1000);
+    if (list.length === 0) throw new Error("There is no recipe to approve.");
+    const db = untyped(await createClient());
+    const approved: { id: string; company_id: string }[] = [];
+    for (let i = 0; i < list.length; i += 100) {
+      const { data, error } = await db.from("recipes").select("id, company_id, status, recipe_ingredients(id)").in("id", list.slice(i, i + 100));
+      if (error) throw error;
+      const ok = (data ?? []).filter((r: { status: string; recipe_ingredients: unknown[] }) => r.status === "draft" && r.recipe_ingredients.length > 0);
+      if (ok.length > 0) {
+        const { error: upError } = await db.from("recipes").update({ status: "approved", approved_by: session.userId, approved_at: new Date().toISOString() }).in("id", ok.map((r: { id: string }) => r.id));
+        if (upError) throw upError;
+        approved.push(...ok.map((r: { id: string; company_id: string }) => ({ id: r.id, company_id: r.company_id })));
+      }
+    }
+    if (approved.length === 0) throw new Error("No draft recipe with ingredients was found to approve.");
+    await recordAudit({ companyId: approved[0].company_id, relatedTable: "recipes", relatedId: approved[0].id, action: "recipes_approved_in_bulk", newValue: `${approved.length} draft recipes approved together by the chef` });
+    revalidatePath("/kitchen/recipes");
+    return { count: approved.length };
   });
 }
