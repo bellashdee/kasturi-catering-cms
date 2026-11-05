@@ -8,7 +8,7 @@ const TABS = [
   { href: "/catering/calendar", label: "Event Calendar", match: (p: string) => p.startsWith("/catering/calendar") },
   { href: "/catering/quotation-requests", label: "Quotation Request Inbox", match: (p: string) => p.startsWith("/catering/quotation-requests") },
   { href: "/catering/import", label: "Import Events", match: (p: string) => p.startsWith("/catering/import") },
-  { href: "/catering/quotations", label: "Quotations", match: (p: string) => p.startsWith("/catering/quotations") },
+  { href: "/catering/event-report", label: "Event Report", match: (p: string) => p.startsWith("/catering/event-report") },
   { href: "/catering/customers", label: "Customers", match: (p: string) => p.startsWith("/catering/customers") },
 ];
 
