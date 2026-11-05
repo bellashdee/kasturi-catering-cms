@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/documents/upload";
+import { uploadReceipt, ANY_UPLOAD_ACCEPT } from "@/lib/documents/upload";
 import { errorMessage } from "@/lib/actionResult";
 import { todayInMalaysia } from "@/lib/format";
 import { createPettyCashEntry, updatePettyCashEntry } from "@/lib/operationPettyCash/actions";
@@ -225,10 +225,7 @@ export function PettyCashEntryForm({
     setError(null);
     try {
       const uploaded: string[] = [];
-      for (const file of receipts) {
-        const doc = await uploadDocument({ companyId: firstCompanyId, module: isClaim ? "finance" : "driver-logistics", fileType: fileTypeFromMime(file), file, skipMarkdown: !isClaim });
-        uploaded.push(doc.id);
-      }
+      for (const file of receipts) uploaded.push(await uploadReceipt(firstCompanyId, file));
       const documentId: string | undefined = uploaded[0];
       const extraDocumentIds = uploaded.slice(1);
       const result = splitClaim

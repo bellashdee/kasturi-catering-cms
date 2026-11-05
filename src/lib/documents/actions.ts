@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureDocumentMarkdown } from "@/lib/documents/markdown";
 
 /**
@@ -12,10 +13,20 @@ import { ensureDocumentMarkdown } from "@/lib/documents/markdown";
  * users with access to the document's company.
  */
 export async function getDocumentSignedUrl(documentId: string, download = false): Promise<string> {
-  const supabase = await createClient();
+  let supabase = await createClient();
 
-  const { data: doc, error } = await supabase.from("documents").select("storage_path, original_filename").eq("id", documentId).single();
-  if (error || !doc) throw new Error("Document not found.");
+  let { data: doc } = await supabase.from("documents").select("storage_path, original_filename").eq("id", documentId).maybeSingle();
+  if (!doc) {
+    // not one of the person's companies: they can still open a file they sent themselves (a receipt of their own claim)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const admin = createAdminClient();
+    const { data: own } = await admin.from("documents").select("storage_path, original_filename, uploaded_by").eq("id", documentId).maybeSingle();
+    if (!user || !own || own.uploaded_by !== user.id) throw new Error("Document not found.");
+    doc = own;
+    supabase = admin as unknown as typeof supabase;
+  }
 
   // download = the browser saves the file under its original name instead of showing it
   const { data, error: urlError } = await supabase.storage.from("documents").createSignedUrl(doc.storage_path, 300, download ? { download: doc.original_filename } : undefined);

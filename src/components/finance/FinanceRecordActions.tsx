@@ -24,7 +24,7 @@ import { CompanyChips } from "@/components/pettyCash/CompanyChips";
 import { MultiChoiceSelect } from "@/components/ui/MultiChoiceSelect";
 import { PETTY_CASH_CATEGORIES, joinCategories, splitCategories } from "@/lib/operationPettyCash/constants";
 import { splitCompanies } from "@/lib/pettyCash/companies";
-import { ANY_UPLOAD_ACCEPT, fileTypeFromMime, uploadDocument } from "@/lib/documents/upload";
+import { ANY_UPLOAD_ACCEPT, uploadReceipt } from "@/lib/documents/upload";
 
 export type InvoiceEditData = { id: string; number: string; invoiceDate: string; dueDate: string; amount: string; taxAmount: string; description: string };
 
@@ -204,10 +204,7 @@ export function PettyCashClaimActions({ claim, companies }: { claim: ClaimEditDa
     try {
       const where = splitCompanies(companyIds, claim.companyId);
       const uploaded: string[] = [];
-      for (const file of receipts) {
-        const doc = await uploadDocument({ companyId: where.companyId, module: "finance", fileType: fileTypeFromMime(file), file, skipMarkdown: true });
-        uploaded.push(doc.id);
-      }
+      for (const file of receipts) uploaded.push(await uploadReceipt(where.companyId, file));
       const documentId: string | undefined = uploaded[0];
       const extraDocumentIds = uploaded.slice(1);
       const r = await updatePettyCashClaim(claim.id, { claimantName: f.claimant, claimantDepartment: f.department, category: f.category, description: f.description, amount: Number(f.amount), transactionDate: f.date, documentId, extraDocumentIds, remarks: f.remarks ?? "", ...where });

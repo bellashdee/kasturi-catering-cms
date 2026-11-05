@@ -13,6 +13,7 @@ import { PETTY_CASH_PAYMENT_STATUS_LABEL } from "@/lib/finance/constants";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
+import { receiptIds } from "@/lib/documents/receipts";
 import { MyClaimActions, MyClaimForm } from "@/components/claims/MyClaims";
 
 
@@ -100,11 +101,21 @@ export default async function MyClaimsPage() {
                         {paid && c.payment_date && <div className="mt-1 text-[11px] text-text-muted">{formatMalaysiaDate(c.payment_date)}</div>}
                         {paid && c.payment_reference && <div className="text-[11px] text-text-muted">{`Reference ID: ${c.payment_reference}`}</div>}
                       </td>
-                      <td className="px-3 py-2.5">{c.document_id ? <DocumentViewLink documentId={c.document_id} /> : <span className="text-text-muted">—</span>}</td>
+                      <td className="px-3 py-2.5">
+                        {receiptIds(c).length > 0 ? (
+                          <div className="flex flex-col gap-0.5">
+                            {receiptIds(c).map((id, i, all) => (
+                              <DocumentViewLink key={id} documentId={id} label={all.length > 1 ? `📷 View ${i + 1}` : "📷 View"} />
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-text-muted">—</span>
+                        )}
+                      </td>
                       <td className="px-3 py-2.5">
                         {(
                           <MyClaimActions
-                            claim={{ id: c.id, companyId: c.company_id, date: c.transaction_date, amount: String(c.amount), amountText: Number(c.amount).toFixed(2), payer: c.person_name ?? "", paymentMethod: c.payment_method ?? "", category: c.category ?? "", description: c.description ?? "", hasReceipt: !!c.document_id }}
+                            claim={{ id: c.id, companyId: c.company_id, date: c.transaction_date, amount: String(c.amount), amountText: Number(c.amount).toFixed(2), payer: c.person_name ?? "", paymentMethod: c.payment_method ?? "", category: c.category ?? "", description: c.description ?? "", hasReceipt: receiptIds(c).length > 0 }}
                             companies={companies}
                             payers={payerList}
                           />

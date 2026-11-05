@@ -10,6 +10,7 @@ import { todayInMalaysia } from "@/lib/format";
 import type { PettyCashTransactionRow } from "@/lib/finance/actions";
 import { isPaymentMethod } from "@/lib/operationPettyCash/constants";
 import { checkCategoryShares, type CategoryShare } from "@/lib/categorySplit";
+import { addReceipts } from "@/lib/documents/receipts";
 
 /**
  * My Claims: any staff member claims back what they bought with their own money, from Ms. Penny or Ms. Nabilah. The staff have no
@@ -28,6 +29,8 @@ export type MyClaimInput = {
   category?: string;
   description?: string;
   documentId?: string;
+  /** more receipts / photos, after documentId (on Edit they are added to the ones attached) */
+  extraDocumentIds?: string[];
   /** bought for more than one category: how much is for each (each part is saved as its own claim, same receipt) */
   categoryShares?: CategoryShare[];
   /** a bill for more than one company: how much is for each company (and category); each part is saved as its own claim */
@@ -108,6 +111,7 @@ export async function submitMyClaim(input: MyClaimInput): Promise<ActionResult> 
           amount: part.amount,
           transaction_date: input.date,
           document_id: input.documentId || null,
+          extra_document_ids: input.extraDocumentIds ?? [],
           person_name: payer.name,
           person_position: null,
           shared_company_ids: input.shares && input.shares.length > 1 ? [] : (input.alsoCompanyIds ?? []).filter((id) => id !== part.companyId),
@@ -152,7 +156,8 @@ export async function updateMyClaim(id: string, input: MyClaimInput): Promise<Ac
         person_name: payer.name,
         person_position: null,
         payment_method: input.paymentMethod,
-        ...(input.documentId ? { document_id: input.documentId } : {}),
+        // files added here join the receipts already attached (nothing is replaced)
+        ...(input.documentId ? addReceipts(before, [input.documentId, ...(input.extraDocumentIds ?? [])]) : {}),
       })
       .eq("id", id)
       .eq("created_by", userId);
@@ -172,7 +177,7 @@ export async function updateMyClaim(id: string, input: MyClaimInput): Promise<Ac
             description: input.description?.trim() || null,
             amount: part.amount,
             transaction_date: input.date,
-            document_id: input.documentId || before.document_id,
+            ...addReceipts(before, [input.documentId, ...(input.extraDocumentIds ?? [])].filter((id): id is string => !!id)),
             person_name: payer.name,
             person_position: null,
             shared_company_ids: [],
@@ -220,6 +225,7 @@ export async function restoreMyClaim(row: PettyCashTransactionRow): Promise<Acti
       amount: row.amount,
       transaction_date: row.transaction_date,
       document_id: row.document_id,
+      extra_document_ids: row.extra_document_ids ?? [],
       person_name: row.person_name,
       person_position: row.person_position,
       shared_company_ids: [],

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { errorMessage, type ActionResult } from "@/lib/actionResult";
 import { todayInMalaysia } from "@/lib/format";
-import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/documents/upload";
+import { uploadReceipt, ANY_UPLOAD_ACCEPT } from "@/lib/documents/upload";
 import { deleteMyClaim, restoreMyClaim, submitMyClaim, updateMyClaim, type MyClaimInput } from "@/lib/finance/myClaims";
 import type { PettyCashTransactionRow } from "@/lib/finance/actions";
 import { PAYMENT_METHOD_LABEL, PETTY_CASH_CATEGORIES, joinCategories, splitCategories } from "@/lib/operationPettyCash/constants";
@@ -52,7 +52,8 @@ function ClaimFields({
 }) {
   const router = useRouter();
   const [v, setV] = useState(initial);
-  const [receipt, setReceipt] = useState<File | null>(null);
+  // the receipts / photos (several can be chosen at once); on Edit they are added to the ones attached
+  const [receipts, setReceipts] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = (patch: Partial<ClaimValues>) => setV((p) => ({ ...p, ...patch }));
@@ -94,11 +95,10 @@ function ClaimFields({
     setSaving(true);
     setError(null);
     try {
-      let documentId: string | undefined;
-      if (receipt) {
-        const doc = await uploadDocument({ companyId, module: "finance", fileType: fileTypeFromMime(receipt), file: receipt, skipMarkdown: true });
-        documentId = doc.id;
-      }
+      const uploaded: string[] = [];
+      for (const file of receipts) uploaded.push(await uploadReceipt(companyId, file));
+      const documentId: string | undefined = uploaded[0];
+      const extraDocumentIds = uploaded.slice(1);
       const result = await onSubmit({
         companyId,
         date: v.date,
@@ -108,6 +108,7 @@ function ClaimFields({
         category: v.category || undefined,
         description: v.description || undefined,
         documentId,
+        extraDocumentIds,
         // split between companies (and categories): each part with its company; only categories: each part with its category
         shares: byCompany ? cells.map((c) => ({ companyId: c.companyId, amount: c.amount, ...(byCategory ? { category: c.category } : {}) })) : undefined,
         categoryShares: byCategory && !byCompany ? cells.map((c) => ({ category: c.category, amount: c.amount })) : undefined,
@@ -118,7 +119,7 @@ function ClaimFields({
         setError(result.error);
         return;
       }
-      setReceipt(null);
+      setReceipts([]);
       form.reset();
       if (clearAfter) {
         setV(initial);
@@ -222,8 +223,11 @@ function ClaimFields({
       )}
       <div>
         <label className={labelClass}>Receipt / photo of the receipt</label>
-        <input type="file" accept={ANY_UPLOAD_ACCEPT} onChange={(e) => setReceipt(e.target.files?.[0] ?? null)} className="mt-1 block w-full text-[13px]" />
-        {hasReceipt && !receipt && <p className="mt-1 text-[11.5px] text-text-muted">A receipt is already attached. Choose a file only to replace it.</p>}
+        <input type="file" multiple accept={ANY_UPLOAD_ACCEPT} onChange={(e) => setReceipts(Array.from(e.target.files ?? []))} className="mt-1 block w-full text-[13px]" />
+        <p className="mt-1 text-[11.5px] text-text-muted">
+          {receipts.length > 1 ? `${receipts.length} files chosen. ` : ""}
+          {hasReceipt ? "A receipt is already attached. Files chosen here are added to it." : "You can choose several files at once (hold Ctrl to pick more than one)."}
+        </p>
       </div>
       <div className="flex justify-end gap-2.5">
         {onCancel && (

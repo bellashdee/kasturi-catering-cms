@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import { generateDocumentMarkdown } from "@/lib/documents/actions";
+import { startReceiptUpload } from "@/lib/documents/receiptUpload";
 
 export type DocumentFileType = "pdf" | "excel" | "csv" | "photo" | "screenshot" | "word" | "powerpoint" | "text" | "other";
 
@@ -63,6 +64,18 @@ export async function uploadDocument(params: {
     }
   }
   return data;
+}
+
+/**
+ * Sends one receipt / photo of a petty cash record or a claim (any signed-in staff member, any of the companies, any size): the
+ * server gives a one-time upload pass and the file goes straight to storage. Returns the document id.
+ */
+export async function uploadReceipt(companyId: string, file: File): Promise<string> {
+  const pass = await startReceiptUpload({ companyId, name: file.name, type: file.type, fileType: fileTypeFromMime(file) });
+  if (!pass.ok) throw new Error(pass.error);
+  const { error } = await createClient().storage.from("documents").uploadToSignedUrl(pass.path, pass.token, file, { contentType: file.type || undefined });
+  if (error) throw new Error(`${file.name} could not be uploaded. Check your connection and try again.`);
+  return pass.id;
 }
 
 /** Files the AI Assistant can read besides photos and PDFs: Word, Excel, CSV, PowerPoint, text. */
