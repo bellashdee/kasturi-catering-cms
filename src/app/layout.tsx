@@ -17,6 +17,9 @@ export const metadata: Metadata = {
   title: "Central Management System",
   description:
     "Central Management System for Signature Solution, Kasturi Indah and O2 Life.",
+  manifest: "/manifest.webmanifest",
+  icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
+  appleWebApp: { capable: true, title: "CMS", statusBarStyle: "default" },
 };
 
 export default async function RootLayout({

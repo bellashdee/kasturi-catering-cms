@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { PushToggle } from "@/components/settings/PushToggle";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { getReminders } from "@/lib/notifications/actions";
@@ -123,6 +124,7 @@ export function NotificationBell() {
                 );
               })}
           </div>
+          <PushToggle compact />
           <div className="border-t border-border px-4 py-2.5 text-right">
             <Link href={`/${query}`} onClick={() => setOpen(false)} className="text-[13px] font-semibold text-primary">
               Open dashboard
