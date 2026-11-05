@@ -382,7 +382,8 @@ export type ApprovalRow = Tables["approvals"]["Row"];
 export type RequestSnapshot = { request: ProcurementRequestRow; approval: ApprovalRow | null };
 
 async function requireAdminOf(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], companyId: string, message: string) {
-  const { data } = await supabase.rpc("user_is_company_admin", { target_company_id: companyId });
+  // a company admin, or a person on the full-access list (Mr. Adlan): they delete and put back with the service role below, because the delete policies are admin only
+  const { data } = await supabase.rpc("user_can_manage_payments", { target_company_id: companyId, target_category: "supplier" });
   if (data !== true) throw new Error(message);
 }
 
@@ -408,7 +409,7 @@ export async function deleteSupplier(id: string): Promise<ActionResult<{ row: Su
     ]);
     const used = [orders && `${orders} purchase order(s)`, invoices && `${invoices} invoice(s)`, lines && `${lines} item price line(s)`, matches && `${matches} ingredient match(es)`, preferred && `${preferred} ingredient(s) that prefer this supplier`].filter(Boolean);
     if (used.length > 0) throw new Error(`This supplier cannot be deleted: it has ${used.join(", ")}. Set the supplier to Inactive instead.`);
-    const { data: removed, error } = await supabase.from("suppliers").delete().eq("id", id).select("id");
+    const { data: removed, error } = await createAdminClient().from("suppliers").delete().eq("id", id).eq("company_id", supplier.company_id).select("id");
     if (error || !removed?.length) throw new Error("Could not delete the supplier.");
     await recordAudit({ companyId: supplier.company_id, relatedTable: "suppliers", relatedId: id, action: "deleted", previousValue: `${supplier.name} · ${supplier.phone ?? "no phone"}`, newValue: "Deleted" });
     revalidatePath("/supplier-procurement");
@@ -496,7 +497,7 @@ export async function deleteSupplierInvoice(id: string): Promise<ActionResult<{ 
     if (payments > 0) throw new Error(`This invoice has ${payments} payment request(s). Deal with them first (a paid invoice cannot be deleted).`);
     if (costs > 0) throw new Error("This invoice is used as a cost of an event. Remove it from the event first.");
     const { supplier_invoice_items: items, ...row } = invoice;
-    const { data: removed, error } = await supabase.from("supplier_invoices").delete().eq("id", id).select("id");
+    const { data: removed, error } = await createAdminClient().from("supplier_invoices").delete().eq("id", id).eq("company_id", invoice.company_id).select("id");
     if (error || !removed?.length) throw new Error("Could not delete the invoice.");
     await recordAudit({ companyId: invoice.company_id, relatedTable: "supplier_invoices", relatedId: id, action: "deleted", previousValue: `${invoice.invoice_number} · RM ${invoice.amount} · ${items.length} line(s)`, newValue: "Deleted" });
     revalidatePath("/supplier-procurement/invoices");

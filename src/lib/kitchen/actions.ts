@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { scaleIngredientRequirements } from "@/lib/kitchen/queries";
 import { runAction, type ActionResult } from "@/lib/actionResult";
@@ -532,7 +533,8 @@ export type MenuItemRow = KTables["menu_items"]["Row"];
 export type MenuSnapshot = { menu: MenuRow; items: MenuItemRow[] };
 
 async function kitchenAdmin(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], companyId: string, message: string) {
-  const { data } = await supabase.rpc("user_is_company_admin", { target_company_id: companyId });
+  // a company admin, or a person on the full-access list (Mr. Adlan): they delete and put back with the service role below, because the delete policies are admin only
+  const { data } = await supabase.rpc("user_can_manage_payments", { target_company_id: companyId, target_category: "supplier" });
   if (data !== true) throw new Error(message);
 }
 
@@ -601,7 +603,7 @@ export async function deleteIngredient(id: string): Promise<ActionResult<{ row: 
     ]);
     const used = [[recipes.count, "recipe line(s)"], [movements.count, "stock movement(s)"], [requests.count, "purchase request(s)"]].filter(([n]) => (n as number) > 0).map(([n, label]) => `${n} ${label}`);
     if (used.length > 0) throw new Error(`This ingredient cannot be deleted: it is used in ${used.join(", ")}.`);
-    const { data: removed, error } = await supabase.from("ingredients").delete().eq("id", id).select("id");
+    const { data: removed, error } = await createAdminClient().from("ingredients").delete().eq("id", id).eq("company_id", ing.company_id).select("id");
     if (error || !removed?.length) throw new Error("Could not delete the ingredient.");
     await recordAudit({ companyId: ing.company_id, relatedTable: "ingredients", relatedId: id, action: "deleted", previousValue: ing.name, newValue: "Deleted" });
     revalidatePath("/kitchen/ingredients");
