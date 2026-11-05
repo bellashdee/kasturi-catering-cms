@@ -59,9 +59,14 @@ export default async function RecipesPage({
             {(activeCategory || search) && ` (of ${allRecipes.length})`}
           </p>
         </div>
-        <Link href={`/kitchen/recipes/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
-          + New Recipe
-        </Link>
+        <div className="flex flex-wrap gap-2.5">
+          <Link href={`/kitchen/recipes/suggest${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text">
+            + Recipe from Google reference
+          </Link>
+          <Link href={`/kitchen/recipes/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
+            + New Recipe
+          </Link>
+        </div>
       </div>
 
       <KitchenSubNav />
@@ -123,7 +128,8 @@ export default async function RecipesPage({
                 >
                   <div className="font-semibold text-text">
                     {r.name}
-                    {(r.recipe_ingredients?.length ?? 0) === 0 && <span className="ml-2 rounded bg-warning-bg px-1.5 py-0.5 text-[10.5px] font-bold text-warning">No ingredients yet</span>}
+                    {(r as { status?: string }).status === "draft" && <span className="ml-2 rounded bg-warning-bg px-1.5 py-0.5 text-[10.5px] font-bold text-warning">Draft: not approved</span>}
+                    {(r.recipe_ingredients?.length ?? 0) === 0 &&<span className="ml-2 rounded bg-warning-bg px-1.5 py-0.5 text-[10.5px] font-bold text-warning">No ingredients yet</span>}
                   </div>
                   <div className="text-text-secondary">{r.yield_pax} pax</div>
                   <div className="text-text-secondary">{r.recipe_ingredients?.length ?? 0}</div>

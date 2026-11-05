@@ -6,6 +6,7 @@ import { getRecipe } from "@/lib/kitchen/queries";
 import { SectionCard } from "@/components/dashboard/SectionCard";
 import { RecipeDeleteButton } from "@/components/kitchen/RecipeDeleteButton";
 import { RecipePaxCalculator } from "@/components/kitchen/RecipePaxCalculator";
+import { ApproveRecipeButton } from "@/components/kitchenPurchase/ApproveRecipeButton";
 
 export default async function RecipeDetailPage({
   params,
@@ -50,6 +51,16 @@ export default async function RecipeDetailPage({
           <RecipeDeleteButton recipeId={recipe.id} recipeName={recipe.name} redirectTo={`/kitchen/recipes${query}`} />
         </div>
       </div>
+
+      {(recipe as { status?: string }).status === "draft" && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warning/40 bg-warning-bg px-4 py-3 text-[13.5px] text-warning">
+          <span>
+            <b>Draft: not approved yet.</b> Check and edit the ingredients and steps, then approve it. A draft recipe is not used for purchase requests.
+            {(recipe as { source_note?: string | null }).source_note && <span className="mt-1 block text-[12.5px]">{(recipe as { source_note?: string | null }).source_note}</span>}
+          </span>
+          <ApproveRecipeButton recipeId={recipe.id} />
+        </div>
+      )}
 
       {recipe.instructions && (
         <div className="rounded-xl border border-border bg-surface p-4 text-[13px] shadow-sm">

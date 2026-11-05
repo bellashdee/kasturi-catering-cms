@@ -245,7 +245,8 @@ export async function createRecipe(input: RecipeInput) {
     .single();
   if (recipeError) throw recipeError;
 
-  const lines = input.ingredients.filter((i) => i.ingredientId && i.quantityPerYield > 0);
+  // a line may have no quantity yet (an ingredient list from a reference recipe): it is kept as the ingredient list, with quantity 0
+  const lines = input.ingredients.filter((i) => i.ingredientId && i.quantityPerYield >= 0);
   if (lines.length > 0) {
     const { error: linesError } = await supabase.from("recipe_ingredients").insert(
       lines.map((l) => ({
@@ -286,8 +287,8 @@ export async function updateRecipe(recipeId: string, input: RecipeUpdateInput) {
   const clash = others?.find((r) => recipeNameKey(r.name) === recipeNameKey(name));
   if (clash) throw new Error(`Another recipe called "${clash.name}" already exists for this company.`);
 
-  const lines = input.ingredients.filter((l) => l.ingredientId && l.quantityPerYield > 0);
-  if (lines.length === 0) throw new Error("Add at least one ingredient with a quantity.");
+  const lines = input.ingredients.filter((l) => l.ingredientId && l.quantityPerYield >= 0);
+  if (lines.length === 0) throw new Error("Add at least one ingredient.");
 
   // an ingredient can only be used from the same company as the recipe
   const { data: allowed } = await supabase.from("ingredients").select("id").eq("company_id", recipe.company_id).in("id", lines.map((l) => l.ingredientId));

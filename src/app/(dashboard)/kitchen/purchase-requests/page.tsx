@@ -13,6 +13,8 @@ import { PurchaseRequestActions } from "@/components/kitchen/PurchaseRequestActi
 import { PurchaseRequestRecordActions } from "@/components/kitchen/KitchenRecordActions";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 import { DeletePurchaseOrderButton } from "@/components/procurement/DeletePurchaseOrderButton";
+import { RequestList } from "@/components/kitchenPurchase/RequestList";
+import { listKitchenRequests } from "@/lib/kitchenPurchase/queries";
 
 function statusTone(status: string): "success" | "warning" | "danger" | "info" {
   if (status === "completed") return "success";
@@ -42,6 +44,7 @@ export default async function PurchaseRequestsPage({
   }
 
   const requests = await listPurchaseRequests(supabase, targetCompanyIds);
+  const kitchenRequests = await listKitchenRequests(supabase, targetCompanyIds);
   const { data: menuOrders } = await supabase
     .from("purchase_orders")
     .select("id, po_number, order_date, status, total_amount, source_events, suppliers(name), companies(name), purchase_order_items(id)")
@@ -58,6 +61,9 @@ export default async function PurchaseRequestsPage({
           <p className="mt-0.5 text-[13px] text-text-secondary">{requests.length} purchase request{requests.length === 1 ? "" : "s"}</p>
         </div>
         <div className="flex flex-wrap gap-2.5">
+          <Link href={`/kitchen/purchase-requests/event${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
+            + New Purchase Request (event menu)
+          </Link>
           <Link href={`/kitchen/purchase-requests/new${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text">
             + Single item
           </Link>
@@ -69,8 +75,16 @@ export default async function PurchaseRequestsPage({
 
       <KitchenSubNav />
 
+      <section className="flex flex-col gap-3">
+        <div>
+          <h2 className="text-[17px] font-extrabold text-text">Purchase Request History</h2>
+          <p className="text-[13px] text-text-secondary">Choose the event menu, check the ingredient list, write the quantities and submit it to the Purchaser. The Purchaser adds the supplier prices.</p>
+        </div>
+        <RequestList rows={kitchenRequests} hrefBase="/kitchen/purchase-requests" query={query} empty="No purchase request yet. Press + New Purchase Request (event menu) to make one." />
+      </section>
+
       <div className="rounded-xl border border-border bg-surface px-4 py-3 text-[14px] text-text-secondary shadow-sm">
-        <b className="text-text">From an event menu or from recipes:</b> 1. Choose the event(s), or choose the recipes and their pax · 2. The menu gives the ingredients and quantities (from the recipes and the pax) · 3. Choose the supplier item of each ingredient, at the latest price of that supplier · 4. One purchase order is made for each supplier.
+        <b className="text-text">From an event menu or from recipes (older way, quantities worked out from the pax):</b> 1. Choose the event(s), or choose the recipes and their pax · 2. The menu gives the ingredients and quantities (from the recipes and the pax) · 3. Choose the supplier item of each ingredient, at the latest price of that supplier · 4. One purchase order is made for each supplier.
       </div>
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">

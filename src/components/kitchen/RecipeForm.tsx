@@ -127,7 +127,7 @@ export function RecipeForm({
           yieldPax: Number(yieldPax) || 1,
           instructions: instructions || undefined,
           ingredients: lines
-            .filter((l) => l.ingredientId && Number(l.quantityPerYield) > 0)
+            .filter((l) => l.ingredientId && Number(l.quantityPerYield || 0) >= 0)
             .map((l) => ({ id: l.id, ingredientId: l.ingredientId, quantityPerYield: Number(l.quantityPerYield), unit: l.unit || undefined })),
         });
         router.push(`/kitchen/recipes/${initial.id}`);
@@ -145,7 +145,7 @@ export function RecipeForm({
       yieldPax: Number(yieldPax) || 1,
       instructions: instructions || undefined,
       ingredients: lines
-        .filter((l) => l.ingredientId && Number(l.quantityPerYield) > 0)
+        .filter((l) => l.ingredientId && Number(l.quantityPerYield || 0) >= 0)
         .map((l) => ({ ingredientId: l.ingredientId, quantityPerYield: Number(l.quantityPerYield), unit: l.unit || undefined })),
     };
     try {
