@@ -1,12 +1,13 @@
 "use client";
 
 import { todayInMalaysia } from "@/lib/format";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPurchaseOrder, type PurchaseOrderInput } from "@/lib/procurement/actions";
 import type { ItemSuggestion } from "@/lib/procurement/itemSuggestions";
 import { ItemNameInput } from "@/components/procurement/ItemNameInput";
 import { Select } from "@/components/ui/Select";
+import { gridEnterKey, useFormShortcuts } from "@/lib/formShortcuts";
 
 type Company = { id: string; name: string };
 type Supplier = { id: string; name: string; company_id: string };
@@ -46,6 +47,8 @@ export function PurchaseOrderForm({
   suggestions?: ItemSuggestion[];
 }) {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [companyId, setCompanyId] = useState(defaultCompanyId ?? companies[0]?.id ?? "");
@@ -83,6 +86,16 @@ export function PurchaseOrderForm({
     });
   }
 
+  useFormShortcuts(
+    {
+      save: () => formRef.current?.requestSubmit(),
+      addRow: () => setItems((prev) => [...prev, emptyItem()]),
+      removeRow: (index) => setItems((prev) => (prev.length > 1 ? prev.filter((_, idx) => idx !== index) : prev)),
+    },
+    gridRef,
+    items.length,
+  );
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!supplierId) {
@@ -112,7 +125,7 @@ export function PurchaseOrderForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-4">
       {error && <div className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">{error}</div>}
 
       <div className="grid grid-cols-2 gap-4">
@@ -150,7 +163,7 @@ export function PurchaseOrderForm({
           </button>
         </div>
         <div className="overflow-x-auto pb-1">
-          <div className="flex min-w-[720px] flex-col gap-2">
+          <div ref={gridRef} onKeyDown={(e) => gridEnterKey(e, gridRef.current, () => setItems((prev) => [...prev, emptyItem()]), items.length)} className="flex min-w-[720px] flex-col gap-2">
             <div className="grid grid-cols-[minmax(0,2.4fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,1.1fr)_4.5rem] gap-2 text-[12.5px] font-bold text-text-secondary">
               <div>Item</div>
               <div>Qty</div>
@@ -160,7 +173,7 @@ export function PurchaseOrderForm({
               <div />
             </div>
             {items.map((item, i) => (
-              <div key={i} className="grid grid-cols-[minmax(0,2.4fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,1.1fr)_4.5rem] items-center gap-2">
+              <div key={i} data-row={i} className="grid grid-cols-[minmax(0,2.4fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,1.1fr)_4.5rem] items-center gap-2">
                 <ItemNameInput value={item.itemName} onChange={(v) => updateItem(i, "itemName", v)} onPick={(s) => pickSuggestion(i, s)} suggestions={suggestionsForCompany} supplierId={supplierId} />
                 <input type="number" min="0" step="0.001" value={item.quantity} onChange={(e) => updateItem(i, "quantity", e.target.value)} placeholder="Qty" aria-label="Qty" className="h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]" />
                 <input list="po-units" maxLength={20} value={item.unit} onChange={(e) => updateItem(i, "unit", e.target.value)} placeholder="kg, pcs..." aria-label="Unit" className="h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]" />
@@ -181,7 +194,7 @@ export function PurchaseOrderForm({
             </datalist>
           </div>
         </div>
-        <p className="mt-1 text-xs text-text-muted">Start typing an item (e.g. &quot;bawang&quot;) to see items ordered before, stock items and menu ingredients. You can also type a new item.</p>
+        <p className="mt-1 text-xs text-text-muted">Shortcuts: Enter = next box (a new row after the last box) · Tab = complete the item · Insert or Alt+N = new row · Ctrl+Delete = remove row · Ctrl+S = save. Start typing an item (e.g. &quot;bawang&quot;) to see items ordered before, stock items and menu ingredients. You can also type a new item.</p>
         <div className="mt-2 text-right text-[14px] font-bold text-text">Total: RM {total.toFixed(2)}</div>
       </div>
 

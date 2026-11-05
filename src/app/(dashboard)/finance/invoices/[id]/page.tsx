@@ -5,6 +5,7 @@ import { getSessionContext } from "@/lib/auth";
 import { getCustomerInvoice } from "@/lib/finance/queries";
 import { INVOICE_STATUS_LABEL, isOverdue } from "@/lib/finance/constants";
 import { formatCurrency } from "@/lib/format";
+import { PrintDocumentButton } from "@/components/shared/PrintDocumentButton";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SectionCard, EmptyRow } from "@/components/dashboard/SectionCard";
 import { RecordCustomerPaymentForm } from "@/components/finance/RecordCustomerPaymentForm";
@@ -60,6 +61,19 @@ export default async function CustomerInvoiceDetailPage({
             {INVOICE_STATUS_LABEL[invoice.status] ?? invoice.status}
           </StatusBadge>
           {overdue && <StatusBadge tone="danger">Overdue</StatusBadge>}
+          <PrintDocumentButton
+            document={{
+              type: "SALES INVOICE",
+              number: invoice.invoice_number,
+              date: invoice.invoice_date,
+              dueDate: invoice.due_date,
+              terms: invoice.customers?.credit_term == null ? null : `${invoice.customers.credit_term} days`,
+              company: { name: invoice.companies?.legal_name || invoice.companies?.name || "", registrationNo: invoice.companies?.registration_no },
+              party: { label: "BILL TO", name: invoice.customers?.name ?? "", address: invoice.customers?.billing_address, phone: invoice.customers?.phone, registrationNo: invoice.customers?.registration_no },
+              lines: [{ description: invoice.description || "Catering services", quantity: 1, unitPrice: Number(invoice.amount), amount: Number(invoice.amount) }],
+              taxAmount: Number(invoice.tax_amount ?? 0),
+            }}
+          />
           <CustomerInvoiceActions
             listHref={`/finance/invoices${query}`}
             invoice={{ id, number: invoice.invoice_number, invoiceDate: invoice.invoice_date, dueDate: invoice.due_date, amount: String(invoice.amount), taxAmount: String(invoice.tax_amount ?? 0), description: invoice.description ?? "" }}

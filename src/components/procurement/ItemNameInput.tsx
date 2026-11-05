@@ -8,6 +8,7 @@ const SOURCE_LABEL: Record<ItemSuggestion["source"], string> = {
   previous: "Ordered before",
   stock: "Stock item",
   menu: "Menu ingredient",
+  invoice: "Invoice item",
 };
 
 /**
@@ -70,6 +71,11 @@ export function ItemNameInput({
           } else if (e.key === "Enter") {
             e.preventDefault();
             pick(matches[active] ?? matches[0]);
+          } else if (e.key === "Tab" && !e.shiftKey && value.trim() !== "") {
+            // a short key: type a few letters (or the item code) and press Tab to complete the item, then go on to the next box
+            const first = matches[active] ?? matches[0];
+            const typed = value.trim().toUpperCase();
+            if (first && (first.name.toUpperCase().startsWith(typed) || (first.code ?? "").toUpperCase() === typed || matches.length === 1)) pick(first);
           } else if (e.key === "Escape") {
             setOpen(false);
           }
@@ -85,7 +91,7 @@ export function ItemNameInput({
         <ul id={listId} role="listbox" className="absolute left-0 right-0 top-10 z-20 max-h-64 overflow-y-auto rounded-lg border border-border-strong bg-surface shadow-lg">
           {matches.map((s, i) => (
             <li
-              key={`${s.source}-${s.name}-${s.supplierId ?? ""}`}
+              key={`${s.source}-${s.code ?? ""}-${s.name}-${s.supplierId ?? ""}`}
               role="option"
               aria-selected={i === active}
               onMouseDown={(e) => {
@@ -95,7 +101,7 @@ export function ItemNameInput({
               onMouseEnter={() => setActive(i)}
               className={`cursor-pointer px-3 py-2 ${i === active ? "bg-info-bg" : ""}`}
             >
-              <div className="text-[13px] font-semibold text-text">{s.name}</div>
+              <div className="text-[13px] font-semibold text-text">{s.code && <span className="mr-1.5 rounded bg-surface-alt px-1.5 py-0.5 text-[11px] font-bold text-text-secondary">{s.code}</span>}{s.name}</div>
               <div className="text-[11px] text-text-muted">
                 {SOURCE_LABEL[s.source]}
                 {s.lastPrice !== undefined && ` · last RM ${s.lastPrice.toFixed(2)}`}

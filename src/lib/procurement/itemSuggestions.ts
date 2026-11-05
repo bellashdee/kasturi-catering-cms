@@ -8,7 +8,9 @@ export type ItemSuggestion = {
   name: string;
   companyId: string;
   /** previous = already ordered before, stock = in the ingredient list, menu = an ingredient of a menu. */
-  source: "previous" | "stock" | "menu";
+  source: "previous" | "stock" | "menu" | "invoice";
+  /** The supplier's item code (from invoices): typing it (a short key) finds the item. */
+  code?: string;
   unit?: string | null;
   /** The unit price on the most recent order of this item. */
   lastPrice?: number;
@@ -56,6 +58,25 @@ export async function getItemSuggestions(supabase: DB, companyIds: string[]): Pr
     });
   }
 
+  // 1b) items on supplier invoices that carry an item code: the code is the short key (newest first, so the first sight of a code + supplier is its latest price)
+  const { data: coded } = await supabase
+    .from("supplier_invoice_items")
+    .select("item_code, item_name, uom, unit_price, supplier_invoices!inner(company_id, supplier_id, invoice_date, suppliers(name))")
+    .in("supplier_invoices.company_id", companyIds)
+    .not("item_code", "is", null)
+    .order("supplier_invoices(invoice_date)", { ascending: false })
+    .limit(3000);
+  const seenCoded = new Set<string>();
+  for (const row of coded ?? []) {
+    const inv = row.supplier_invoices;
+    const code = (row.item_code ?? "").trim();
+    if (!inv || !code) continue;
+    const k = `${inv.company_id}|${key(code)}|${inv.supplier_id}`;
+    if (seenCoded.has(k)) continue;
+    seenCoded.add(k);
+    out.push({ name: row.item_name.trim(), code, companyId: inv.company_id, source: "invoice", unit: row.uom, lastPrice: Number(row.unit_price), supplierId: inv.supplier_id, supplierName: inv.suppliers?.name, lastOrderDate: inv.invoice_date });
+  }
+
   // 2) the kitchen's ingredient list
   const { data: stock } = await supabase.from("ingredients").select("name, unit_of_measure, company_id").in("company_id", companyIds).order("name").limit(3000);
   for (const i of stock ?? []) out.push({ name: i.name.trim(), companyId: i.company_id, source: "stock", unit: i.unit_of_measure });
@@ -82,13 +103,15 @@ export function matchSuggestions(all: ItemSuggestion[], typed: string, supplierI
   if (words.length === 0) return [];
   const rank = (s: ItemSuggestion) => {
     const n = normalise(s.name);
-    const starts = n.startsWith(words[0]) ? 0 : n.includes(` ${words[0]}`) ? 1 : 2;
-    const sourceRank = s.source === "previous" ? (s.supplierId === supplierId ? 0 : 1) : s.source === "stock" ? 2 : 3;
+    const c = s.code ? normalise(s.code) : "";
+    const starts = c && c.startsWith(words[0]) ? -1 : n.startsWith(words[0]) ? 0 : n.includes(` ${words[0]}`) ? 1 : 2;
+    const sourceRank = s.source === "previous" || s.source === "invoice" ? (s.supplierId === supplierId ? 0 : 1) : s.source === "stock" ? 2 : 3;
     return starts * 10 + sourceRank;
   };
   const hits = all.filter((s) => {
     const n = normalise(s.name);
-    return words.every((w) => n.includes(w)) && n !== normalise(typed);
+    const c = s.code ? normalise(s.code) : "";
+    return words.every((w) => n.includes(w) || (c !== "" && c.includes(w))) && n !== normalise(typed);
   });
   // one line per name: the best entry for it (an order from the chosen supplier, then any order, then stock, then menu)
   const best = new Map<string, ItemSuggestion>();

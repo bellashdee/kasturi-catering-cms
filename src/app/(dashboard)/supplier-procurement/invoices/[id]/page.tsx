@@ -5,6 +5,7 @@ import { getSessionContext } from "@/lib/auth";
 import { getSupplierInvoice } from "@/lib/procurement/queries";
 import { INVOICE_STATUS_LABEL, PAYMENT_STATUS_LABEL, isOverdue } from "@/lib/procurement/constants";
 import { formatCurrency, formatUnitPrice } from "@/lib/format";
+import { PrintDocumentButton } from "@/components/shared/PrintDocumentButton";
 import { StatusBadge } from "@/components/StatusBadge";
 import { InvoiceActions } from "@/components/procurement/ProcurementRecordActions";
 import { SectionCard, EmptyRow } from "@/components/dashboard/SectionCard";
@@ -66,6 +67,19 @@ export default async function SupplierInvoiceDetailPage({
             {INVOICE_STATUS_LABEL[invoice.status] ?? invoice.status}
           </StatusBadge>
           {overdue && <StatusBadge tone="danger">Overdue</StatusBadge>}
+          <PrintDocumentButton
+            document={{
+              type: "PURCHASE INVOICE",
+              number: invoice.invoice_number,
+              date: invoice.invoice_date,
+              dueDate: invoice.due_date,
+              terms: invoice.suppliers?.payment_terms,
+              company: { name: invoice.companies?.legal_name || invoice.companies?.name || "", registrationNo: invoice.companies?.registration_no },
+              party: { label: "FROM (SUPPLIER)", name: invoice.suppliers?.name ?? "", address: invoice.suppliers?.billing_address, phone: invoice.suppliers?.phone, registrationNo: invoice.suppliers?.registration_no },
+              reference: invoice.purchase_orders?.po_number,
+              lines: invoice.supplier_invoice_items.map((i) => ({ code: i.item_code, description: i.item_name, quantity: Number(i.quantity), uom: i.uom, unitPrice: Number(i.unit_price), discount: Number(i.discount ?? 0), amount: Number(i.line_total) })),
+            }}
+          />
           <InvoiceActions
             listHref={`/supplier-procurement/invoices${query}`}
             invoice={{

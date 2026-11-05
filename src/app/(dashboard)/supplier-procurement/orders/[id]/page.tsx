@@ -7,6 +7,7 @@ import { PO_STATUS_LABEL } from "@/lib/procurement/constants";
 import { formatCurrency, formatPrice } from "@/lib/format";
 import { PurchaseOrderStatusSelect } from "@/components/procurement/PurchaseOrderStatusSelect";
 import { DeletePurchaseOrderButton } from "@/components/procurement/DeletePurchaseOrderButton";
+import { PrintDocumentButton } from "@/components/shared/PrintDocumentButton";
 import { SectionCard } from "@/components/dashboard/SectionCard";
 
 export default async function PurchaseOrderDetailPage({
@@ -45,6 +46,17 @@ export default async function PurchaseOrderDetailPage({
           </div>
         </div>
         <div className="flex items-start gap-2">
+          <PrintDocumentButton
+            document={{
+              type: "PURCHASE ORDER",
+              number: po.po_number,
+              date: po.order_date,
+              terms: po.suppliers?.payment_terms,
+              company: { name: po.companies?.legal_name || po.companies?.name || "", registrationNo: po.companies?.registration_no },
+              party: { label: "TO (SUPPLIER)", name: po.suppliers?.name ?? "", address: po.suppliers?.billing_address, phone: po.suppliers?.phone, registrationNo: po.suppliers?.registration_no },
+              lines: po.purchase_order_items.map((i) => ({ description: i.item_name, quantity: Number(i.quantity), uom: i.unit, unitPrice: Number(i.unit_price), amount: Number(i.line_total) })),
+            }}
+          />
           <PurchaseOrderStatusSelect poId={id} status={po.status} />
           <DeletePurchaseOrderButton poId={id} poNumber={po.po_number} listHref={`/supplier-procurement/orders${query}`} />
         </div>

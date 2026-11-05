@@ -6384,6 +6384,22 @@ export type Database = {
           },
         ]
       }
+      supplier_note_items: {
+        Row: { id: string; supplier_note_id: string; item_code: string | null; item_name: string; quantity: number; uom: string | null; unit_price: number; line_total: number }
+        Insert: { id?: string; supplier_note_id: string; item_code?: string | null; item_name: string; quantity?: number; uom?: string | null; unit_price?: number; line_total?: number }
+        Update: { id?: string; supplier_note_id?: string; item_code?: string | null; item_name?: string; quantity?: number; uom?: string | null; unit_price?: number; line_total?: number }
+        Relationships: [{ foreignKeyName: "supplier_note_items_supplier_note_id_fkey"; columns: ["supplier_note_id"]; isOneToOne: false; referencedRelation: "supplier_notes"; referencedColumns: ["id"] }]
+      }
+      supplier_notes: {
+        Row: { id: string; company_id: string; supplier_id: string; note_type: string; note_number: string; note_date: string; supplier_invoice_id: string | null; reason: string | null; amount: number; created_by: string | null; created_at: string; updated_at: string }
+        Insert: { id?: string; company_id: string; supplier_id: string; note_type: string; note_number: string; note_date: string; supplier_invoice_id?: string | null; reason?: string | null; amount?: number; created_by?: string | null; created_at?: string; updated_at?: string }
+        Update: { id?: string; company_id?: string; supplier_id?: string; note_type?: string; note_number?: string; note_date?: string; supplier_invoice_id?: string | null; reason?: string | null; amount?: number; created_by?: string | null; created_at?: string; updated_at?: string }
+        Relationships: [
+          { foreignKeyName: "supplier_notes_company_id_fkey"; columns: ["company_id"]; isOneToOne: false; referencedRelation: "companies"; referencedColumns: ["id"] },
+          { foreignKeyName: "supplier_notes_supplier_id_fkey"; columns: ["supplier_id"]; isOneToOne: false; referencedRelation: "suppliers"; referencedColumns: ["id"] },
+          { foreignKeyName: "supplier_notes_supplier_invoice_id_fkey"; columns: ["supplier_invoice_id"]; isOneToOne: false; referencedRelation: "supplier_invoices"; referencedColumns: ["id"] },
+        ]
+      }
       suppliers: {
         Row: {
           account_code: string | null

@@ -51,7 +51,7 @@ export async function listPurchaseOrders(supabase: DB, companyIds: string[]) {
 export async function getPurchaseOrder(supabase: DB, id: string) {
   const { data, error } = await supabase
     .from("purchase_orders")
-    .select("*, suppliers(id, name), companies(name), purchase_order_items(*)")
+    .select("*, suppliers(id, name, billing_address, phone, registration_no, payment_terms), companies(name, legal_name, registration_no), purchase_order_items(*)")
     .eq("id", id)
     .single();
   if (error) throw error;
@@ -73,7 +73,7 @@ export async function listSupplierInvoices(supabase: DB, companyIds: string[], d
 export async function getSupplierInvoice(supabase: DB, id: string) {
   const { data, error } = await supabase
     .from("supplier_invoices")
-    .select("*, suppliers(id, name), companies(name), purchase_orders(id, po_number), supplier_invoice_items(*), supplier_payments(*), documents(id, storage_path, original_filename)")
+    .select("*, suppliers(id, name, billing_address, phone, registration_no, payment_terms), companies(name, legal_name, registration_no), purchase_orders(id, po_number), supplier_invoice_items(*), supplier_payments(*), documents(id, storage_path, original_filename)")
     .eq("id", id)
     .single();
   if (error) throw error;
@@ -124,6 +124,27 @@ export async function getSupplierPayment(supabase: DB, id: string) {
   const { data, error } = await supabase
     .from("supplier_payments")
     .select("*, supplier_invoices(id, invoice_number, amount, supplier_id, suppliers(name)), companies(name)")
+    .eq("id", id)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function listSupplierNotes(supabase: DB, companyIds: string[]) {
+  const { data, error } = await supabase
+    .from("supplier_notes")
+    .select("*, suppliers(name), companies(name), supplier_invoices(invoice_number)")
+    .in("company_id", companyIds)
+    .order("note_date", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+export async function getSupplierNote(supabase: DB, id: string) {
+  const { data, error } = await supabase
+    .from("supplier_notes")
+    .select("*, suppliers(id, name, billing_address, phone, registration_no, payment_terms), companies(name, legal_name, registration_no), supplier_invoices(id, invoice_number), supplier_note_items(*)")
     .eq("id", id)
     .single();
   if (error) throw error;

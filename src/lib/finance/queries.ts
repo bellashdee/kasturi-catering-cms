@@ -355,7 +355,7 @@ export async function listCustomerInvoices(supabase: DB, companyIds: string[], d
 export async function getCustomerInvoice(supabase: DB, id: string) {
   const { data, error } = await supabase
     .from("customer_invoices")
-    .select("*, customers(id, name), companies(name), customer_payments(*)")
+    .select("*, customers(id, name, billing_address, phone, registration_no, credit_term), companies(name, legal_name, registration_no), customer_payments(*)")
     .eq("id", id)
     .single();
   if (error) throw error;
