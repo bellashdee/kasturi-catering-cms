@@ -1,8 +1,8 @@
 import { EVENT_TYPE_OPTIONS, MEAL_TYPE_LABEL, SALES_AGENTS, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
 
 /**
- * Importing confirmed events from the office's Excel file. The columns are found by their header, in any order and with the usual
- * spellings; a value that cannot be read is reported, never guessed. The browser reads the file, the server checks every row again.
+ * Importing confirmed events from the office's Excel file or PDF event list. The columns are found by their header, in any order and with
+ * the usual spellings; a value that cannot be read is reported, never guessed. The browser reads the file, the server checks every row again.
  */
 
 export type ImportField =
@@ -23,21 +23,23 @@ export type ImportField =
   | "autocountInvoiceNo"
   | "status"
   | "eventType"
-  | "remarks";
+  | "remarks"
+  | "revenue"
+  | "companyCode";
 
 /** The columns, in the order of the preview table, with the header words each one is found by (lower case, no punctuation). */
 export const IMPORT_FIELDS: { key: ImportField; label: string; headers: string[]; required?: boolean }[] = [
   { key: "eventReference", label: "Event ID", headers: ["event id", "eventid", "event ref", "event reference", "reference", "ref no", "event no", "event number", "id"] },
   { key: "customerName", label: "Customer / company", headers: ["customer", "customer name", "company", "company name", "customer company name", "client", "client name", "pelanggan", "nama pelanggan", "syarikat"] },
-  { key: "eventName", label: "Event name", headers: ["event name", "event", "event title", "nama acara", "nama majlis", "majlis", "acara"], required: true },
-  { key: "eventDate", label: "Event date", headers: ["event date", "date", "tarikh", "tarikh acara", "tarikh majlis"], required: true },
+  { key: "eventName", label: "Event name", headers: ["event name", "name of event", "event", "event title", "nama acara", "nama majlis", "majlis", "acara"], required: true },
+  { key: "eventDate", label: "Event date", headers: ["event date", "date of event", "date", "tarikh", "tarikh acara", "tarikh majlis"], required: true },
   { key: "startTime", label: "Start time", headers: ["event start time", "start time", "start", "time", "event time", "masa", "masa mula"] },
   { key: "endTime", label: "End time", headers: ["event end time", "end time", "end", "finish time", "masa tamat"] },
   { key: "venue", label: "Venue", headers: ["venue", "location", "event venue", "tempat", "lokasi"] },
   { key: "eventAddress", label: "Event address", headers: ["event address", "address", "venue address", "alamat", "alamat acara"] },
   { key: "pax", label: "Pax", headers: ["number of pax", "no of pax", "pax", "total pax", "guests", "bilangan pax", "jumlah pax", "qty pax"] },
   { key: "mealTypes", label: "Meal type", headers: ["meal type", "meal", "meals", "meal session", "jenis hidangan", "sesi makan"] },
-  { key: "serviceType", label: "Service type", headers: ["catering service type", "service type", "service", "serving type", "jenis perkhidmatan"] },
+  { key: "serviceType", label: "Service type", headers: ["catering service type", "service type", "service", "serving type", "type of serving", "serving", "jenis perkhidmatan"] },
   { key: "menu", label: "Confirmed menu", headers: ["confirmed menu", "menu", "menu details", "menu items", "butiran menu"] },
   { key: "salesAgent", label: "Sales agent", headers: ["sales agent", "agent", "salesperson", "sales person", "ejen"] },
   { key: "autocountQuotationNo", label: "AutoCount quotation no.", headers: ["autocount quotation number", "autocount quotation no", "autocount quotation", "quotation number", "quotation no", "quotation", "qt no", "quote no"] },
@@ -45,6 +47,8 @@ export const IMPORT_FIELDS: { key: ImportField; label: string; headers: string[]
   { key: "status", label: "Event status", headers: ["event status", "status"] },
   { key: "eventType", label: "Event type", headers: ["event type", "type", "jenis acara", "jenis majlis"] },
   { key: "remarks", label: "Remarks", headers: ["event remarks", "remarks", "remark", "notes", "note", "catatan"] },
+  { key: "revenue", label: "Revenue (RM)", headers: ["revenue", "revenue rm", "event revenue", "amount", "amount rm", "total amount", "sales", "jumlah rm"] },
+  { key: "companyCode", label: "Company code (K / SSC)", headers: ["com", "co", "comp", "company code"] },
 ];
 
 export type ImportRow = Record<ImportField, string>;
@@ -98,10 +102,19 @@ const validDate = (y: number, m: number, d: number) => {
   return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d ? `${y}-${pad(m)}-${pad(d)}` : null;
 };
 
-/** "2026-11-04", "4/11/2026" (day first, as in Malaysia), "4 Nov 2026" or an Excel day number → YYYY-MM-DD; null when it is not a date. */
-export function parseDate(text: string): string | null {
+/**
+ * "2026-11-04", "4/11/2026" (day first, as in Malaysia), "4 Nov 2026" or an Excel day number → YYYY-MM-DD; null when it is not a date.
+ * A date written without a year ("1-Nov", "1/11") only counts when the year is given (the one the user chose for the file).
+ */
+export function parseDate(text: string, year?: number): string | null {
   const s = text.trim();
   if (!s) return null;
+  if (year) {
+    const short = /^(\d{1,2})\s*[- ]\s*([a-z]{3})[a-z]*\.?$/i.exec(s);
+    if (short && MONTHS[short[2].toLowerCase()]) return validDate(year, MONTHS[short[2].toLowerCase()], +short[1]);
+    const numeric = /^(\d{1,2})[/.](\d{1,2})$/.exec(s);
+    if (numeric) return validDate(year, +numeric[2], +numeric[1]);
+  }
   let m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s);
   if (m) return validDate(+m[1], +m[2], +m[3]);
   m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$/.exec(s);
@@ -167,7 +180,42 @@ export function parseMealTypes(text: string): { keys: string[]; unknown: string[
   return { keys, unknown };
 }
 
-export const parseServiceType = (text: string): string | null => (text.trim() ? SERVICES.get(norm(text)) ?? null : null);
+/** The short forms of the office's event lists: B = Buffet, P = Pack food, PP = Preplated, D = Dome set, BP = Buffet pack, C = Canapé. */
+const SERVICE_CODES: Record<string, string> = { b: "buffet", p: "pack_food", pp: "pre_plated", d: "dome_set", bp: "buffet_pack", c: "cocktail_canape", h: "hidang" };
+
+export const parseServiceType = (text: string): string | null => (text.trim() ? SERVICES.get(norm(text)) ?? SERVICE_CODES[norm(text)] ?? null : null);
+
+/** "B & D", "Buffet / Dome Set" → the first service type, the others (kept as a note: the pax of each is not given) and the words not known. */
+export function parseServiceTypes(text: string): { key: string | null; others: string[]; unknown: string[] } {
+  const parts = text.split(/[&,/+]| and | dan /i).map((p) => p.trim()).filter(Boolean);
+  const keys: string[] = [];
+  const unknown: string[] = [];
+  for (const p of parts) {
+    const k = parseServiceType(p);
+    if (k) {
+      if (!keys.includes(k)) keys.push(k);
+    } else unknown.push(p);
+  }
+  return { key: keys[0] ?? null, others: keys.slice(1).map((k) => SERVICE_TYPE_LABEL[k] ?? k), unknown };
+}
+
+/** "16,860.00", "1 6,860.00" (a PDF can split the digits), "RM 1,200" → 16860; "-" or empty → null; "invalid" when it is not an amount. */
+export function parseRevenue(text: string): number | null | "invalid" {
+  const s = text.replace(/rm/i, "").replace(/[\s,]/g, "");
+  if (!s || /^-+$/.test(s)) return null;
+  const n = Number(s);
+  return Number.isFinite(n) && n >= 0 && n < 100000000 ? Math.round(n * 100) / 100 : "invalid";
+}
+
+/** Which company a "Com" code of the event list means: K = Kasturi Indah, SSC / SS = Signature Solution, O2 = O2 Life. */
+export function companyOfCode(code: string): string | null {
+  const c = norm(code).replace(/\s+/g, "");
+  if (!c) return null;
+  if (c === "k" || c.startsWith("kasturi")) return "Kasturi Indah";
+  if (c === "ssc" || c === "ss" || c.startsWith("signature")) return "Signature Solution";
+  if (c === "o2" || c.startsWith("o2life")) return "O2 Life";
+  return null;
+}
 export const parseEventType = (text: string): string | null => (text.trim() ? EVENT_TYPES.get(norm(text)) ?? null : null);
 
 /** "Fadilah" or "MS. FADILAH" → "Ms. Fadilah" (the name as in the sales agent list); null when it is no one on the list. */

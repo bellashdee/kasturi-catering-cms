@@ -11,9 +11,11 @@ import {
   IMPORT_FIELDS,
   MAX_IMPORT_ROWS,
   cellText,
+  companyOfCode,
   emptyImportRow,
   fieldOfHeader,
   findHeaderRow,
+  parseDate,
   type CheckedRow,
   type ImportAction,
   type ImportDetail,
@@ -35,18 +37,45 @@ const KIND: Record<CheckedRow["kind"], { label: string; tone: "success" | "info"
   error: { label: "Cannot import", tone: "danger" },
 };
 
-/** The rows of a sheet under its header row, by the column mapping (empty rows are left out). */
-function rowsOf(sheet: Sheet, headerIndex: number, mapping: (ImportField | "")[]): ImportRow[] {
-  return sheet.rows
-    .slice(headerIndex + 1)
-    .map((cells) => {
-      const row = emptyImportRow();
-      mapping.forEach((field, col) => {
-        if (field && !row[field]) row[field] = cellText(cells[col]);
-      });
-      return row;
-    })
-    .filter((r) => Object.values(r).some((v) => v.trim()));
+/** This year in Malaysia: the year given to dates written without one ("1-Nov"). */
+const malaysiaYear = () => Number(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" }).slice(0, 4));
+
+/**
+ * The rows of a sheet under its header row, by the column mapping:
+ * - rows with neither an event name nor a date are left out (blank lines, notes under the table);
+ * - a date without a year takes the year chosen; an empty date takes the date of the row above (a merged date cell);
+ * - when a company code column (K / SSC) is chosen, the rows of the other companies are left out.
+ */
+function rowsOf(sheet: Sheet, headerIndex: number, mapping: (ImportField | "")[], year: number, companyName: string) {
+  const notes: string[] = [];
+  let filled = 0;
+  let otherCompany = 0;
+  let lastDate = "";
+  const rows: ImportRow[] = [];
+  for (const cells of sheet.rows.slice(headerIndex + 1)) {
+    const row = emptyImportRow();
+    mapping.forEach((field, col) => {
+      if (field && !row[field]) row[field] = cellText(cells[col]);
+    });
+    if (!row.eventName.trim() && !row.eventDate.trim()) continue;
+    if (row.eventDate.trim()) {
+      const date = parseDate(row.eventDate, year);
+      if (date) row.eventDate = date;
+      lastDate = row.eventDate;
+    } else if (lastDate) {
+      row.eventDate = lastDate;
+      filled++;
+    }
+    const company = row.companyCode.trim() ? companyOfCode(row.companyCode) : null;
+    if (company && !companyName.toLowerCase().includes(company.toLowerCase())) {
+      otherCompany++;
+      continue;
+    }
+    rows.push(row);
+  }
+  if (filled) notes.push(`${filled} row(s) had no date and took the date of the row above (a merged date cell). Check them in the list.`);
+  if (otherCompany) notes.push(`${otherCompany} row(s) of another company (by the Com column) were left out. Choose that company to import them.`);
+  return { rows, notes };
 }
 
 /**
@@ -66,6 +95,8 @@ export function EventImportFlow({ companies, defaultCompanyId }: { companies: Co
   const [actions, setActions] = useState<ImportAction[]>([]);
   const [busy, setBusy] = useState<"" | "checking" | "importing">("");
   const [error, setError] = useState<string | null>(null);
+  const [notes, setNotes] = useState<string[]>([]);
+  const [year, setYear] = useState(malaysiaYear);
   const [result, setResult] = useState<{ created: number; updated: number; skipped: number; failed: number; details: ImportDetail[] } | null>(null);
 
   const sheet = sheets[sheetIndex];
@@ -88,9 +119,21 @@ export function EventImportFlow({ companies, defaultCompanyId }: { companies: Co
     if (!file) return;
     setError(null);
     setResult(null);
+    const isPdf = /\.pdf$/i.test(file.name) || file.type === "application/pdf";
     try {
-      const workbook = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
-      const list = workbook.SheetNames.map((name) => ({ name, rows: XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[name], { header: 1, defval: "", raw: true }) })).filter((s) => s.rows.length > 0);
+      let list: Sheet[];
+      if (isPdf) {
+        const { readPdfTable } = await import("@/lib/catering/pdfTable");
+        const table = await readPdfTable(await file.arrayBuffer());
+        if (table.length < 2) {
+          setError("No event table could be read from that PDF. A scanned PDF (a photo of the page) has no text: use the Excel file instead.");
+          return;
+        }
+        list = [{ name: "PDF", rows: table }];
+      } else {
+        const workbook = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
+        list = workbook.SheetNames.map((name) => ({ name, rows: XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[name], { header: 1, defval: "", raw: true }) })).filter((s) => s.rows.length > 0);
+      }
       if (list.length === 0) {
         setError("That file has no rows that could be read.");
         return;
@@ -101,7 +144,7 @@ export function EventImportFlow({ companies, defaultCompanyId }: { companies: Co
       const first = Math.max(0, list.findIndex((s) => findHeaderRow(s.rows) >= 0));
       pickSheet(list, first);
     } catch {
-      setError("Could not read that file. Make sure it is a valid .xlsx, .xls or .csv file.");
+      setError(isPdf ? "Could not read that PDF. Make sure it is not password protected, or use the Excel file instead." : "Could not read that file. Make sure it is a valid .xlsx, .xls, .csv or .pdf file.");
     }
   }
 
@@ -151,7 +194,15 @@ export function EventImportFlow({ companies, defaultCompanyId }: { companies: Co
     router.refresh();
   }
 
+  function checkSheet() {
+    if (!sheet) return;
+    const out = rowsOf(sheet, headerIndex, mapping, year, companies.find((c) => c.id === companyId)?.name ?? "");
+    setNotes(out.notes);
+    void check(out.rows);
+  }
+
   function reset() {
+    setNotes([]);
     setSheets([]);
     setRows(null);
     setChecked(null);
@@ -213,12 +264,13 @@ export function EventImportFlow({ companies, defaultCompanyId }: { companies: Co
         </div>
         {error && <div className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">{error}</div>}
         <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border-strong bg-surface-alt px-4 py-14 text-center">
-          <span className="text-[14px] font-bold text-text">Click to choose the confirmed events Excel file</span>
+          <span className="text-[14px] font-bold text-text">Click to choose the confirmed events file (Excel or PDF)</span>
           <span className="max-w-xl text-[12.5px] text-text-muted">
             Columns are found by their header in any order: Event ID, Customer, Event Name, Event Date, Start Time, End Time, Venue, Event Address, Pax, Meal Type,
-            Service Type, Confirmed Menu, Sales Agent, AutoCount Quotation No., AutoCount Invoice No., Event Status, Remarks. Nothing is saved until you press CONFIRM IMPORT.
+            Service Type, Confirmed Menu, Sales Agent, AutoCount Quotation No., AutoCount Invoice No., Event Status, Remarks, Revenue, Com (K / SSC). A PDF event list
+            must be the PDF made from Excel or Word (not a scanned page). Nothing is saved until you press CONFIRM IMPORT.
           </span>
-          <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFile} />
+          <input type="file" accept=".xlsx,.xls,.csv,.pdf,application/pdf" className="hidden" onChange={handleFile} />
         </label>
       </div>
     );
@@ -238,6 +290,11 @@ export function EventImportFlow({ companies, defaultCompanyId }: { companies: Co
       </div>
 
       {error && <div className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">{error}</div>}
+      {notes.length > 0 && (
+        <div className="rounded-lg border border-warning/30 bg-warning-bg px-3 py-2 text-[12.5px] text-warning">
+          {notes.map((n) => <div key={n}>{n}</div>)}
+        </div>
+      )}
 
       {!checked && (
         <div className="rounded-xl border border-border bg-surface p-4">
@@ -250,6 +307,10 @@ export function EventImportFlow({ companies, defaultCompanyId }: { companies: Co
                 </Select>
               </label>
             )}
+            <label className="text-[12.5px] font-semibold text-text-secondary">
+              Year for dates without a year
+              <input type="number" min={2020} max={2100} value={year} onChange={(e) => setYear(Number(e.target.value) || malaysiaYear())} className="mt-1.5 block h-9 w-28 rounded-lg border border-border-strong px-2 text-sm" />
+            </label>
             {headerIndex >= 0 && <div className="text-[12.5px] text-text-muted">Header found on row {headerIndex + 1}. Check which column is which:</div>}
           </div>
           {headerIndex >= 0 && sheet && (
@@ -266,7 +327,7 @@ export function EventImportFlow({ companies, defaultCompanyId }: { companies: Co
                 ))}
               </div>
               {missingRequired.length > 0 && <p className="mt-2 text-[12.5px] text-danger">Choose the column of: {missingRequired.map((f) => f.label).join(", ")}.</p>}
-              <button disabled={busy !== "" || missingRequired.length > 0} onClick={() => void check(rowsOf(sheet, headerIndex, mapping))} className={`${primary} mt-3`}>
+              <button disabled={busy !== "" || missingRequired.length > 0} onClick={checkSheet} className={`${primary} mt-3`}>
                 {busy === "checking" ? "Checking..." : "Check the rows"}
               </button>
             </>
@@ -346,7 +407,7 @@ export function EventImportFlow({ companies, defaultCompanyId }: { companies: Co
             </div>
             <div className="flex gap-2.5">
               <button onClick={() => void check(rows)} disabled={busy !== ""} className={btn}>{busy === "checking" ? "Checking..." : "Check again"}</button>
-              <button onClick={() => { setChecked(null); setRows(null); }} disabled={busy !== ""} className={btn}>Back to columns</button>
+              <button onClick={() => { setChecked(null); setRows(null); setNotes([]); }} disabled={busy !== ""} className={btn}>Back to columns</button>
               <button onClick={() => void confirm()} disabled={busy !== "" || counts.create + counts.update === 0} className={primary}>
                 {busy === "importing" ? "Importing..." : "CONFIRM IMPORT"}
               </button>

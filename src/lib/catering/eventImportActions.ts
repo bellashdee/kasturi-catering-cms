@@ -14,8 +14,9 @@ import {
   parseEventType,
   parseMealTypes,
   parsePax,
+  parseRevenue,
   parseSalesAgent,
-  parseServiceType,
+  parseServiceTypes,
   parseStatus,
   parseTime,
   type CheckedRow,
@@ -62,6 +63,9 @@ type Values = {
   status: string | null;
   event_type: string | null;
   remarks: string | null;
+  total_amount: number | null;
+  /** other service types of the row ("B & D": Dome Set), noted on a new event because the pax of each was not given */
+  otherServices: string[];
 };
 
 const text = (v: string, max: number, label: string, errors: string[]) => {
@@ -92,8 +96,12 @@ function interpret(row: ImportRow): { values: Values; errors: string[]; warnings
   if (row.pax.trim() && pax === null) errors.push(`"${row.pax}" is not a number of pax.`);
   const meals = row.mealTypes.trim() ? parseMealTypes(row.mealTypes) : null;
   if (meals?.unknown.length) warnings.push(`Meal type not known, left out: ${meals.unknown.join(", ")}.`);
-  const service = parseServiceType(row.serviceType);
-  if (row.serviceType.trim() && !service) warnings.push(`Service type "${row.serviceType}" is not in the list, left empty.`);
+  const services = parseServiceTypes(row.serviceType);
+  const service = services.key;
+  if (services.unknown.length) warnings.push(`Service type "${services.unknown.join(", ")}" is not in the list, left out.`);
+  if (services.others.length) warnings.push(`Also ${services.others.join(", ")}: kept as a note (the pax of each service was not given).`);
+  const revenue = parseRevenue(row.revenue);
+  if (revenue === "invalid") errors.push(`"${row.revenue}" is not an amount in RM.`);
   const agent = parseSalesAgent(row.salesAgent);
   if (row.salesAgent.trim() && !agent) warnings.push(`Sales agent "${row.salesAgent}" is not in the list, left empty.`);
   const status = parseStatus(row.status);
@@ -122,6 +130,8 @@ function interpret(row: ImportRow): { values: Values; errors: string[]; warnings
       status,
       event_type: eventType,
       remarks: text(row.remarks, 2000, "The remarks", errors),
+      total_amount: revenue === "invalid" ? null : revenue,
+      otherServices: services.others,
     },
     errors,
     warnings,
@@ -129,7 +139,7 @@ function interpret(row: ImportRow): { values: Values; errors: string[]; warnings
 }
 
 const EVENT_SELECT =
-  "id, event_reference, event_name, event_date, event_time, end_time, location, event_address, pax_count, service_type, service_pax, second_service_type, meal_types, menu_description, sales_agent, autocount_quotation_no, autocount_invoice_no, status, event_type, remarks, customer_id, customers(name)";
+  "id, event_reference, event_name, event_date, event_time, end_time, location, event_address, pax_count, service_type, service_pax, second_service_type, meal_types, menu_description, sales_agent, autocount_quotation_no, autocount_invoice_no, status, event_type, remarks, total_amount, customer_id, customers(name)";
 
 type Existing = {
   id: string;
@@ -152,6 +162,7 @@ type Existing = {
   status: string;
   event_type: string;
   remarks: string | null;
+  total_amount: number | string | null;
   customer_id: string | null;
   customers: { name: string } | null;
 };
@@ -180,6 +191,9 @@ function changesFor(v: Values, e: Existing, hasDays: boolean): Change[] {
   if (v.event_type) add("Event type", EVENT_TYPE_LABEL[e.event_type] ?? e.event_type, EVENT_TYPE_LABEL[v.event_type] ?? v.event_type, "event_type", v.event_type);
   if (v.remarks) add("Remarks", e.remarks ?? "", v.remarks, "remarks", v.remarks);
   if (v.status) add("Status", EVENT_STATUS_LABEL[e.status] ?? e.status, EVENT_STATUS_LABEL[v.status] ?? v.status, "status", v.status);
+  if (v.total_amount !== null && Number(e.total_amount ?? NaN) !== v.total_amount) {
+    add("Revenue (RM)", e.total_amount === null ? "" : Number(e.total_amount).toFixed(2), v.total_amount.toFixed(2), "total_amount", v.total_amount);
+  }
   if (hasDays) return out;
   if (v.event_date) add("Event date", e.event_date, v.event_date, "event_date", v.event_date);
   if (v.event_time) add("Start time", hhmm(e.event_time), v.event_time, "event_time", v.event_time);
@@ -355,7 +369,8 @@ export async function confirmEventImport(input: {
               sales_agent: v.sales_agent,
               autocount_quotation_no: v.autocount_quotation_no,
               autocount_invoice_no: v.autocount_invoice_no,
-              remarks: v.remarks,
+              total_amount: v.total_amount,
+              remarks: [v.remarks, v.otherServices.length ? `Also ${v.otherServices.join(", ")} (the pax of each service was not given).` : ""].filter(Boolean).join("\n") || null,
               ...(v.event_type ? { event_type: v.event_type } : {}),
               // created as an enquiry first: setting the status next makes Kitchen and Operation work for a confirmed event, as everywhere else
               status: "enquiry" as EventStatus,
