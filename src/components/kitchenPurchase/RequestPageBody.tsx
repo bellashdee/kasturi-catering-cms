@@ -7,7 +7,7 @@ import { getKitchenRequest, listSuppliersFor, requestTrail } from "@/lib/kitchen
 import { RequestWorkspace } from "./RequestWorkspace";
 
 /** One purchase request, opened from the Kitchen tab or from the Purchaser's Supplier & Procurement tab. */
-export async function RequestPageBody({ id, backHref, backLabel }: { id: string; backHref: string; backLabel: string }) {
+export async function RequestPageBody({ id, backHref, backLabel, startEditing = false }: { id: string; backHref: string; backLabel: string; startEditing?: boolean }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
   const supabase = await createClient();
@@ -30,6 +30,7 @@ export async function RequestPageBody({ id, backHref, backLabel }: { id: string;
         isKitchen={canAccessModule(session.allowedModules, "kitchen")}
         isPurchaser={canAccessModule(session.allowedModules, "supplier-procurement")}
         canApprove={session.role !== "staff"}
+        startEditing={startEditing}
       />
     </div>
   );

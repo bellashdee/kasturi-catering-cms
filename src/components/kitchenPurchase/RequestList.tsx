@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { StatusBadge } from "@/components/StatusBadge";
+import { RequestRowActions } from "./RequestRowActions";
 import { formatMalaysiaDate } from "@/lib/format";
 import { STATUS_LABEL, statusTone, type RequestStatus } from "@/lib/kitchenPurchase/shared";
 import type { RequestRow } from "@/lib/kitchenPurchase/queries";
 
 /** Purchase requests as tap-able rows: number, event, date, items and status. */
-export function RequestList({ rows, hrefBase, query, empty }: { rows: (RequestRow & { itemCount: number })[]; hrefBase: string; query: string; empty: string }) {
+export function RequestList({ rows, hrefBase, query, empty, kitchenActions = false }: { rows: (RequestRow & { itemCount: number })[]; hrefBase: string; query: string; empty: string; kitchenActions?: boolean }) {
   if (rows.length === 0) return <p className="rounded-xl border border-border bg-surface px-5 py-6 text-[14px] text-text-secondary">{empty}</p>;
   return (
     <ul className="flex flex-col gap-2.5">
@@ -22,6 +23,7 @@ export function RequestList({ rows, hrefBase, query, empty }: { rows: (RequestRo
             </span>
             <StatusBadge tone={statusTone(r.status)}>{STATUS_LABEL[r.status as RequestStatus] ?? r.status}</StatusBadge>
           </Link>
+          {kitchenActions && <RequestRowActions id={r.id} status={r.status} editHref={`${hrefBase}/${r.id}?edit=1${query ? `&${query.slice(1)}` : ""}`} />}
         </li>
       ))}
     </ul>

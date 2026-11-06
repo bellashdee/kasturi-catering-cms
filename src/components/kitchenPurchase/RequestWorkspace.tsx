@@ -54,6 +54,7 @@ export function RequestWorkspace({
   isKitchen,
   isPurchaser,
   canApprove,
+  startEditing = false,
 }: {
   request: RequestRow;
   items: RequestItem[];
@@ -63,15 +64,25 @@ export function RequestWorkspace({
   isKitchen: boolean;
   isPurchaser: boolean;
   canApprove: boolean;
+  startEditing?: boolean;
 }) {
   const router = useRouter();
   const status = request.status as RequestStatus;
-  const kitchenEdit = isKitchen && KITCHEN_EDITABLE.includes(status);
+  const canEdit = isKitchen && KITCHEN_EDITABLE.includes(status);
+  const canDelete = isKitchen && (status === "draft" || status === "pending_submission" || status === "rejected");
   const pricing = isPurchaser && status === "under_review";
   const showPrices = ["under_review", "pending_approval", "approved", "purchased", "completed"].includes(status);
 
   const [rows, setRows] = useState<Draft[]>(() => items.map((i) => ({ key: i.id, id: i.id, itemName: i.itemName, unit: i.unit, quantity: i.quantity === null ? "" : String(i.quantity), menus: i.menus, remark: i.remark ?? "" })));
   const [notes, setNotes] = useState(request.kitchen_notes ?? "");
+  // a request whose quantities are still empty opens for writing; otherwise it is read first and the Edit button opens it
+  const [editing, setEditing] = useState(canEdit && (startEditing || items.every((i) => i.quantity === null)));
+  const kitchenEdit = canEdit && editing;
+  // leaving edit mode also drops ?edit=1 from the address, so the page is not opened for writing again after Save or Cancel
+  const leaveEdit = () => {
+    setEditing(false);
+    if (startEditing) router.replace(window.location.pathname);
+  };
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -282,41 +293,79 @@ export function RequestWorkspace({
 
       {/* what the person can do now */}
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
-        {kitchenEdit && (
+        {(canEdit || canDelete) && (
           <>
-            {!filled && <p className="text-[13px] text-text-secondary">Write the quantity of every item. Then the request can be submitted to the Purchaser.</p>}
+            {kitchenEdit && !filled && <p className="text-[13px] text-text-secondary">Write the quantity of every item. Then the request can be submitted to the Purchaser.</p>}
             <div className="flex flex-wrap gap-2">
-              <button type="button" disabled={!!busy} onClick={() => run("save", () => saveRequestItems(payload()), "Saved.")} className={outline}>
-                {busy === "save" ? "Saving..." : "Save"}
-              </button>
-              <button
-                type="button"
-                disabled={!!busy || !filled}
-                onClick={() =>
-                  run("submit", async () => {
-                    const saved = await saveRequestItems(payload());
-                    if (!saved.ok) return saved;
-                    return submitRequest(request.id);
-                  }, "Submitted to the Purchaser.")
-                }
-                className={primary}
-              >
-                {busy === "submit" ? "Submitting..." : "Submit to Purchaser"}
-              </button>
-              {(status === "draft" || status === "pending_submission") && (
+              {canEdit && !editing && (
+                <button type="button" disabled={!!busy} onClick={() => setEditing(true)} className={outline}>
+                  Edit
+                </button>
+              )}
+              {kitchenEdit && (
+                <>
+                  <button
+                    type="button"
+                    disabled={!!busy}
+                    onClick={() =>
+                      run("save", async () => {
+                        const r = await saveRequestItems(payload());
+                        if (r.ok) leaveEdit();
+                        return r;
+                      }, "Saved.")
+                    }
+                    className={primary}
+                  >
+                    {busy === "save" ? "Saving..." : "Save"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!!busy}
+                    onClick={() => {
+                      setRows(items.map((i) => ({ key: i.id, id: i.id, itemName: i.itemName, unit: i.unit, quantity: i.quantity === null ? "" : String(i.quantity), menus: i.menus, remark: i.remark ?? "" })));
+                      setNotes(request.kitchen_notes ?? "");
+                      setError(null);
+                      leaveEdit();
+                    }}
+                    className={outline}
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
+              {canEdit && (
+                <button
+                  type="button"
+                  disabled={!!busy || !filled || (!editing && items.some((i) => i.quantity === null))}
+                  onClick={() =>
+                    run("submit", async () => {
+                      if (editing) {
+                        const saved = await saveRequestItems(payload());
+                        if (!saved.ok) return saved;
+                      }
+                      return submitRequest(request.id);
+                    }, "Submitted to the Purchaser.")
+                  }
+                  className={outline}
+                >
+                  {busy === "submit" ? "Submitting..." : "Submit to Purchaser"}
+                </button>
+              )}
+              {canDelete && (
                 <button
                   type="button"
                   disabled={!!busy}
                   onClick={() => {
-                    if (window.confirm("Delete this purchase request?")) void run("delete", async () => {
-                      const r = await deleteDraftRequest(request.id);
-                      if (r.ok) router.push("/kitchen/purchase-requests");
-                      return r;
-                    });
+                    if (window.confirm("Delete this purchase request?"))
+                      void run("delete", async () => {
+                        const r = await deleteDraftRequest(request.id);
+                        if (r.ok) router.push("/kitchen/purchase-requests");
+                        return r;
+                      });
                   }}
                   className={danger}
                 >
-                  Delete request
+                  Delete
                 </button>
               )}
             </div>
@@ -377,7 +426,7 @@ export function RequestWorkspace({
             </div>
           </div>
         )}
-        {!kitchenEdit && !isPurchaser && !canApprove && <p className="text-[13px] text-text-secondary">This request is {STATUS_LABEL[status]}.</p>}
+        {!canEdit && !canDelete && !isPurchaser && !canApprove && <p className="text-[13px] text-text-secondary">This request is {STATUS_LABEL[status]}.</p>}
       </div>
 
       <details className="rounded-xl border border-border bg-surface">

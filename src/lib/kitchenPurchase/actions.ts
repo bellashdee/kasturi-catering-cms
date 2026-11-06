@@ -193,7 +193,7 @@ export async function deleteDraftRequest(requestId: string): Promise<ActionResul
     const c = await context();
     need(c.isKitchen, "Only Kitchen can delete a request.");
     const req = await loadRequest(c, requestId);
-    need(req.status === "draft" || req.status === "pending_submission", "Only a request that has not been submitted can be deleted.");
+    need(req.status === "draft" || req.status === "pending_submission" || req.status === "rejected", "Only a request that has not been submitted, or that was rejected, can be deleted.");
     const { error } = await c.db.from("kitchen_purchase_requests").delete().eq("id", req.id);
     if (error) throw error;
     await recordAudit({ companyId: req.company_id, relatedTable: "kitchen_purchase_requests", relatedId: req.id, action: "deleted", previousValue: `${req.request_no} · ${req.event_name} · ${label(req.status)}` });
