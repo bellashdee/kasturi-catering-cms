@@ -105,7 +105,8 @@ export async function getMenu(supabase: DB, id: string) {
 export async function listRecipes(supabase: DB, companyIds: string[]) {
   const { data, error } = await supabase
     .from("recipes")
-    .select("*, menu_items(name), recipe_ingredients(id), companies(name)")
+    // only the number of ingredient lines is shown in the list: counted by the database, not sent line by line
+    .select("*, menu_items(name), recipe_ingredients(count), companies(name)")
     .in("company_id", companyIds)
     .order("name");
   if (error) throw error;

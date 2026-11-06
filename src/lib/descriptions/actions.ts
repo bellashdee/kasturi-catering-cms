@@ -17,10 +17,9 @@ const norm = (s: string) => s.trim().replace(/\s+/g, " ").toUpperCase();
 export async function listDescriptionOptions(companyId: string | null): Promise<DescriptionOption[]> {
   try {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return [];
+    // the signed-in person from the verified token (no round trip to the Supabase auth server)
+    const { data: claims } = await supabase.auth.getClaims();
+    if (!claims?.claims?.sub) return [];
 
     const seen = new Map<string, DescriptionOption>();
     const add = (value: string | null | undefined, hint: string) => {
@@ -31,22 +30,31 @@ export async function listDescriptionOptions(companyId: string | null): Promise<
     };
     const scoped = <T extends { eq: (c: string, v: string) => T }>(q: T) => (companyId ? q.eq("company_id", companyId) : q);
 
-    // the purchase listings (many rows: read the pages, the names repeat)
-    for (let page = 0; page < MAX_PAGES; page++) {
-      const { data, error } = await scoped(supabase.from("supplier_purchase_lines").select("description").order("description")).range(page * PAGE, page * PAGE + PAGE - 1);
-      if (error || !data) break;
-      for (const r of data) add(r.description, "Supplier item");
-      if (data.length < PAGE) break;
-    }
-
-    const [stock, expenses, marketing, petty, operation, costs] = await Promise.all([
+    // the purchase listings (many rows, the names repeat): the first pages are read together with everything else, not one after another
+    const FIRST_PAGES = 3;
+    const linesPage = (page: number) => scoped(supabase.from("supplier_purchase_lines").select("description").order("description")).range(page * PAGE, page * PAGE + PAGE - 1);
+    const [firstPages, [stock, expenses, marketing, petty, operation, costs]] = await Promise.all([
+      Promise.all(Array.from({ length: FIRST_PAGES }, (_, page) => linesPage(page))),
+      Promise.all([
       scoped(supabase.from("ingredients").select("name").order("name").limit(3000)),
       scoped(supabase.from("expenses").select("notes").not("notes", "is", null).limit(3000)),
       scoped(supabase.from("marketing_expenses").select("description").limit(2000)),
       scoped(supabase.from("petty_cash_transactions").select("description").limit(2000)),
       scoped(supabase.from("operation_petty_cash").select("description").limit(2000)),
       scoped(supabase.from("event_cost_entries").select("description").limit(2000)),
+      ]),
     ]);
+    let more = true;
+    for (const { data } of firstPages) {
+      for (const r of data ?? []) add(r.description, "Supplier item");
+      if (!data || data.length < PAGE) more = false;
+    }
+    for (let page = FIRST_PAGES; more && page < MAX_PAGES; page++) {
+      const { data, error } = await linesPage(page);
+      if (error || !data) break;
+      for (const r of data) add(r.description, "Supplier item");
+      if (data.length < PAGE) break;
+    }
     for (const r of stock.data ?? []) add(r.name, "Stock item");
     for (const r of expenses.data ?? []) add(r.notes, "Used before");
     for (const r of marketing.data ?? []) add(r.description, "Used before");
