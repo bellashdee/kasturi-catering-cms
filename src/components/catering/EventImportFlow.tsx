@@ -365,6 +365,7 @@ export function EventImportFlow({ companies, defaultCompanyId }: { companies: Co
                       {c.customerIsNew && c.kind !== "error" && <div className="mt-1 text-[11.5px] text-warning">New customer — will be created</div>}
                       {c.errors.map((m) => <div key={m} className="mt-1 text-[11.5px] text-danger">{m}</div>)}
                       {c.warnings.map((m) => <div key={m} className="mt-1 text-[11.5px] text-text-muted">{m}</div>)}
+                      {c.kind === "duplicate" && c.changes.length > 0 && <div className="mt-1 text-[11.5px] font-semibold text-text-secondary">If you choose &quot;Update the saved event&quot;:</div>}
                       {c.changes.length > 0 && (
                         <ul className="mt-1 text-[11.5px]">
                           {c.changes.map((ch) => (
@@ -383,6 +384,7 @@ export function EventImportFlow({ companies, defaultCompanyId }: { companies: Co
                         className="h-8 rounded border border-border-strong px-1 text-[12.5px]"
                       >
                         {c.kind === "update" ? <option value="update">Update existing</option> : <option value="create">{c.kind === "duplicate" ? "Import as new" : "Import new"}</option>}
+                        {c.kind === "duplicate" && c.changes.length > 0 && <option value="update">Update the saved event</option>}
                         <option value="skip">Skip</option>
                       </Select>
                     </td>

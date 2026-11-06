@@ -61,6 +61,8 @@ type Values = {
   autocount_quotation_no: string | null;
   autocount_invoice_no: string | null;
   status: string | null;
+  /** false when the file has no status (then "Confirmed" is used for a new event, and a saved event keeps its status) */
+  statusGiven: boolean;
   event_type: string | null;
   remarks: string | null;
   total_amount: number | null;
@@ -92,8 +94,10 @@ function interpret(row: ImportRow): { values: Values; errors: string[]; warnings
     if (!t) errors.push(`"${v}" is not a valid ${label}.`);
     return t;
   };
-  const pax = row.pax.trim() ? parsePax(row.pax) : null;
-  if (row.pax.trim() && pax === null) errors.push(`"${row.pax}" is not a number of pax.`);
+  // "-" in an event list means the pax is not known yet
+  const paxText = /^-+$/.test(row.pax.trim()) ? "" : row.pax.trim();
+  const pax = paxText ? parsePax(paxText) : null;
+  if (paxText && pax === null) errors.push(`"${row.pax}" is not a number of pax.`);
   const meals = row.mealTypes.trim() ? parseMealTypes(row.mealTypes) : null;
   if (meals?.unknown.length) warnings.push(`Meal type not known, left out: ${meals.unknown.join(", ")}.`);
   const services = parseServiceTypes(row.serviceType);
@@ -128,6 +132,7 @@ function interpret(row: ImportRow): { values: Values; errors: string[]; warnings
       autocount_quotation_no: text(row.autocountQuotationNo, 50, "The AutoCount quotation number", errors),
       autocount_invoice_no: text(row.autocountInvoiceNo, 50, "The AutoCount invoice number", errors),
       status,
+      statusGiven: !!row.status.trim(),
       event_type: eventType,
       remarks: text(row.remarks, 2000, "The remarks", errors),
       total_amount: revenue === "invalid" ? null : revenue,
@@ -177,12 +182,12 @@ type Change = { field: string; from: string; to: string; column: string; value: 
  * The values of the row that differ from the saved event. A cell left empty never clears a saved value. An event with separate
  * days keeps its dates, times, pax, meals and menu (they belong to its days); only the rest is updated.
  */
-function changesFor(v: Values, e: Existing, hasDays: boolean): Change[] {
+function changesFor(v: Values, e: Existing, hasDays: boolean, keepName = false): Change[] {
   const out: Change[] = [];
   const add = (field: string, from: string, to: string, column: string, value: unknown) => {
     if (!same(from, to)) out.push({ field, from: from || "—", to, column, value });
   };
-  if (v.event_name) add("Event name", e.event_name, v.event_name, "event_name", v.event_name);
+  if (v.event_name && !keepName) add("Event name", e.event_name, v.event_name, "event_name", v.event_name);
   if (v.location) add("Venue", e.location ?? "", v.location, "location", v.location);
   if (v.event_address) add("Event address", e.event_address ?? "", v.event_address, "event_address", v.event_address);
   if (v.sales_agent) add("Sales agent", e.sales_agent ?? "", v.sales_agent, "sales_agent", v.sales_agent);
@@ -190,7 +195,7 @@ function changesFor(v: Values, e: Existing, hasDays: boolean): Change[] {
   if (v.autocount_invoice_no) add("AutoCount invoice no.", e.autocount_invoice_no ?? "", v.autocount_invoice_no, "autocount_invoice_no", v.autocount_invoice_no);
   if (v.event_type) add("Event type", EVENT_TYPE_LABEL[e.event_type] ?? e.event_type, EVENT_TYPE_LABEL[v.event_type] ?? v.event_type, "event_type", v.event_type);
   if (v.remarks) add("Remarks", e.remarks ?? "", v.remarks, "remarks", v.remarks);
-  if (v.status) add("Status", EVENT_STATUS_LABEL[e.status] ?? e.status, EVENT_STATUS_LABEL[v.status] ?? v.status, "status", v.status);
+  if (v.status && v.statusGiven) add("Status", EVENT_STATUS_LABEL[e.status] ?? e.status, EVENT_STATUS_LABEL[v.status] ?? v.status, "status", v.status);
   if (v.total_amount !== null && Number(e.total_amount ?? NaN) !== v.total_amount) {
     add("Revenue (RM)", e.total_amount === null ? "" : Number(e.total_amount).toFixed(2), v.total_amount.toFixed(2), "total_amount", v.total_amount);
   }
@@ -218,6 +223,40 @@ function changesFor(v: Values, e: Existing, hasDays: boolean): Change[] {
 
 type Checked = CheckedRow & { values: Values; changeList: Change[]; existing: Existing | null };
 
+/** The revenue entry the import keeps on the Event P&L (the Event Management Report reads the P&L, not the event). */
+const LIST_REVENUE = "Event list revenue";
+type PnlRevenue = { listEntry: { id: string; amount: number } | null; otherEntries: number };
+
+/**
+ * The Revenue (RM) of the file goes to the event's P&L: the import's own entry is added or corrected; revenue someone entered by hand
+ * is never changed; an enquiry or a cancelled event gets none.
+ */
+function pnlRevenueChange(v: Values, status: string, pnl: PnlRevenue | undefined, warnings: string[]): Change | null {
+  if (!v.total_amount || v.total_amount <= 0) return null;
+  if (status === "enquiry" || status === "cancelled") {
+    warnings.push("Not confirmed: the revenue is not put on the Event P&L.");
+    return null;
+  }
+  const to = v.total_amount.toFixed(2);
+  if (pnl?.listEntry) {
+    return pnl.listEntry.amount === v.total_amount ? null : { field: "Revenue on Event P&L", from: pnl.listEntry.amount.toFixed(2), to, column: "pnl_revenue", value: { amount: v.total_amount, entryId: pnl.listEntry.id } };
+  }
+  if (pnl && pnl.otherEntries > 0) {
+    warnings.push("The Event P&L already has revenue entered by hand: it is not changed.");
+    return null;
+  }
+  return { field: "Revenue on Event P&L", from: "—", to, column: "pnl_revenue", value: { amount: v.total_amount, entryId: null } };
+}
+
+const words = (s: string | null | undefined) => (s ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+/** One name inside the other ("MEDIA DIGITAL JOHOR" and "MEDIA DIGITAL JOHOR (MDJ)"). */
+const near = (a: string | null | undefined, b: string | null | undefined) => {
+  const x = words(a);
+  const y = words(b);
+  return x.length >= 3 && y.length >= 3 && (x.includes(y) || y.includes(x));
+};
+const firstWord = (s: string | null | undefined) => words(s).split(" ")[0] ?? "";
+
 /** Every row checked against the events of the company: new, an update of an existing Event ID, a likely duplicate, or an error. */
 async function checkRows(supabase: Client, companyId: string, rows: ImportRow[]): Promise<Checked[]> {
   if (!Array.isArray(rows) || rows.length === 0) throw new Error("There are no rows to import.");
@@ -238,9 +277,35 @@ async function checkRows(supabase: Client, companyId: string, rows: ImportRow[])
   const dateEvents = (byDate.data ?? []) as unknown as Existing[];
   const known = new Set((customers.data ?? []).map((c) => c.name.trim().toLowerCase()));
 
-  const ids = Array.from(new Set(refEvents.map((e) => e.id)));
-  const { data: dayRows } = ids.length ? await supabase.from("catering_event_days").select("catering_event_id").in("catering_event_id", ids) : { data: [] };
+  const ids = Array.from(new Set([...refEvents, ...dateEvents].map((e) => e.id)));
+  const [{ data: dayRows }, { data: revenueRows }] = ids.length
+    ? await Promise.all([
+        supabase.from("catering_event_days").select("catering_event_id").in("catering_event_id", ids),
+        supabase.from("event_revenue_entries").select("id, catering_event_id, amount, description").in("catering_event_id", ids),
+      ])
+    : [{ data: [] }, { data: [] }];
   const withDays = new Set((dayRows ?? []).map((d) => d.catering_event_id));
+  const pnlOf = new Map<string, PnlRevenue>();
+  for (const r of revenueRows ?? []) {
+    const p = pnlOf.get(r.catering_event_id) ?? { listEntry: null, otherEntries: 0 };
+    if (r.description === LIST_REVENUE && !p.listEntry) p.listEntry = { id: r.id, amount: Number(r.amount) };
+    else p.otherEntries++;
+    pnlOf.set(r.catering_event_id, p);
+  }
+
+  /** What the row would change on a saved event, the P&L revenue included. */
+  const changesOf = (values: Values, e: Existing, keepName: boolean, warnings: string[]) => {
+    const list = changesFor(values, e, withDays.has(e.id), keepName);
+    const revenue = pnlRevenueChange(values, values.statusGiven && values.status ? values.status : e.status, pnlOf.get(e.id), warnings);
+    if (revenue) list.push(revenue);
+    return list;
+  };
+  // a saved event is matched to one row only
+  const taken = new Set<string>();
+  for (const r of read) {
+    const e = r.values.reference ? refEvents.find((x) => same(x.event_reference, r.values.reference)) : undefined;
+    if (e) taken.add(e.id);
+  }
 
   const seenRefs = new Map<string, number>();
   return read.map(({ values, errors, warnings }, i): Checked => {
@@ -256,7 +321,7 @@ async function checkRows(supabase: Client, companyId: string, rows: ImportRow[])
 
     if (errors.length > 0) return { ...base, kind: "error", action: "skip", match: null, existing: null };
     if (existing) {
-      const changeList = changesFor(values, existing, withDays.has(existing.id));
+      const changeList = changesOf(values, existing, false, warnings);
       if (values.customerName && !same(values.customerName, existing.customers?.name)) changeList.push({ field: "Customer", from: existing.customers?.name ?? "—", to: values.customerName, column: "customer", value: values.customerName });
       if (withDays.has(existing.id)) warnings.push("This event has separate days: its dates, times, pax, meals and menu are kept (change them on the event page).");
       if (changeList.length === 0) warnings.push("Nothing to change: the event already has these values.");
@@ -270,15 +335,32 @@ async function checkRows(supabase: Client, companyId: string, rows: ImportRow[])
         existing,
       };
     }
-    // no Event ID match: an event on the same date with the same customer, name or venue is probably this one (never merged by itself)
-    const likely = dateEvents.find(
+    // no Event ID: a saved event on the same date with the same customer, name or venue is probably this one
+    const candidates = dateEvents.filter(
       (e) =>
         e.event_date === values.event_date &&
-        ((values.customerName && same(e.customers?.name, values.customerName)) || same(e.event_name, values.event_name) || (values.location && same(e.location, values.location))),
+        ((values.customerName && same(e.customers?.name, values.customerName)) ||
+          near(e.event_name, values.event_name) ||
+          near(e.customers?.name, values.event_name) ||
+          (values.location && same(e.location, values.location)) ||
+          (values.pax !== null && e.pax_count === values.pax && (firstWord(e.event_name) === firstWord(values.event_name) || firstWord(e.customers?.name) === firstWord(values.event_name)))),
     );
+    const matchOf = (e: Existing) => ({ id: e.id, reference: e.event_reference, name: e.event_name, date: e.event_date, customer: e.customers?.name ?? null });
+    // the same date, a matching name and the same pax: this is the saved event (an event list has no Event ID), so it is updated
+    const sure = candidates.filter((e) => !taken.has(e.id) && values.pax !== null && e.pax_count === values.pax);
+    if (sure.length === 1) {
+      const e = sure[0];
+      taken.add(e.id);
+      warnings.push(`Matched to the saved event ${e.event_reference ?? ""} ${e.event_name} by its date, name and pax (its name is kept).`);
+      const changeList = changesOf(values, e, true, warnings);
+      if (changeList.length === 0) warnings.push("Nothing to change: the event already has these values.");
+      return { ...base, kind: "update", action: changeList.length > 0 ? "update" : "skip", match: matchOf(e), changes: changeList.map(({ field, from, to }) => ({ field, from, to })), changeList, existing: e };
+    }
+    const likely = candidates.find((e) => !taken.has(e.id)) ?? candidates[0];
     if (likely) {
-      warnings.push(`Possibly already saved: ${likely.event_reference ?? ""} ${likely.event_name} on ${likely.event_date}. Skipped unless you choose to import it as a new event.`);
-      return { ...base, kind: "duplicate", action: "skip", match: { id: likely.id, reference: likely.event_reference, name: likely.event_name, date: likely.event_date, customer: likely.customers?.name ?? null }, existing: null };
+      warnings.push(`Possibly already saved: ${likely.event_reference ?? ""} ${likely.event_name} on ${likely.event_date}. Skipped unless you choose "Update the saved event" or "Import as new".`);
+      const changeList = changesOf(values, likely, true, warnings);
+      return { ...base, kind: "duplicate", action: "skip", match: matchOf(likely), changes: changeList.map(({ field, from, to }) => ({ field, from, to })), changeList, existing: likely };
     }
     if (ref && refs.length > 0) warnings.push(`New event: it will keep the Event ID ${ref}.`);
     return { ...base, kind: "new", action: "create", match: null, existing: null };
@@ -311,6 +393,30 @@ async function customerIdFor(supabase: Client, companyId: string, name: string, 
   return id;
 }
 
+/** Adds the import's revenue entry to the Event P&L, or corrects its amount. */
+async function savePnlRevenue(
+  supabase: Client,
+  r: { companyId: string; eventId: string; eventName: string; eventDate: string; amount: number; entryId: string | null; userId: string; fileName: string },
+) {
+  if (r.entryId) {
+    const { error } = await supabase.from("event_revenue_entries").update({ amount: r.amount, updated_by: r.userId }).eq("id", r.entryId);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase.from("event_revenue_entries").insert({
+      company_id: r.companyId,
+      catering_event_id: r.eventId,
+      entry_type: "sales",
+      description: LIST_REVENUE,
+      amount: r.amount,
+      entry_date: r.eventDate,
+      notes: `Revenue (RM) of ${r.fileName}.`,
+      created_by: r.userId,
+    });
+    if (error) throw error;
+  }
+  await recordAudit({ companyId: r.companyId, relatedTable: "event_pnl", relatedId: r.eventId, action: r.entryId ? "revenue_updated" : "revenue_added", newValue: `${r.eventName} · Customer / client sales · RM ${r.amount.toFixed(2)} · from ${r.fileName}` });
+}
+
 /**
  * Step 2 (CONFIRM IMPORT): checks the rows again (the preview is not trusted), then creates the new events and updates the
  * existing ones the user chose, and records the import (file, sheet, who, when, and the old values of every update).
@@ -339,7 +445,14 @@ export async function confirmEventImport(input: {
       const line = i + 1;
       const base = { line, name: c.values.event_name, date: c.values.event_date ?? "" };
       // what each kind of row may do: an error is never imported, an update only updates, a new or likely duplicate row only creates
-      const allowed = c.kind === "error" ? "skip" : c.kind === "update" ? (wanted === "update" ? "update" : "skip") : wanted === "create" ? "create" : "skip";
+      const allowed =
+        c.kind === "error"
+          ? "skip"
+          : c.kind === "update"
+            ? wanted === "update" ? "update" : "skip"
+            : c.kind === "duplicate" && wanted === "update" && c.existing
+              ? "update"
+              : wanted === "create" ? "create" : "skip";
       if (allowed === "skip") {
         skipped++;
         details.push({ ...base, action: c.kind === "error" ? "error" : "skip", message: c.errors.join(" ") || undefined, eventId: c.match?.id, reference: c.match?.reference });
@@ -380,13 +493,24 @@ export async function confirmEventImport(input: {
           if (error) throw error;
           if (v.status && v.status !== "enquiry") await updateEventStatus(event.id, v.status);
           await recordAudit({ companyId: input.companyId, relatedTable: "catering_events", relatedId: event.id, action: "imported", newValue: `${v.event_name} · ${v.event_date} · from ${fileName}` });
+          let message: string | undefined;
+          const revenue = pnlRevenueChange(v, v.status ?? "confirmed", undefined, []);
+          if (revenue) {
+            try {
+              await savePnlRevenue(supabase, { companyId: input.companyId, eventId: event.id, eventName: v.event_name, eventDate: v.event_date as string, ...(revenue.value as { amount: number; entryId: string | null }), userId, fileName });
+            } catch (err) {
+              message = `Event saved, but its revenue could not be put on the Event P&L: ${err instanceof Error ? err.message : (err as { message?: string })?.message ?? "error"}`;
+            }
+          }
           created++;
-          details.push({ ...base, action: "create", eventId: event.id, reference: event.event_reference });
+          details.push({ ...base, action: "create", eventId: event.id, reference: event.event_reference, message });
         } else if (c.existing) {
           const patch: Record<string, unknown> = {};
           let newStatus: string | null = null;
+          let revenue: { amount: number; entryId: string | null } | null = null;
           for (const ch of c.changeList) {
-            if (ch.column === "status") newStatus = ch.value as string;
+            if (ch.column === "pnl_revenue") revenue = ch.value as { amount: number; entryId: string | null };
+            else if (ch.column === "status") newStatus = ch.value as string;
             else if (ch.column === "customer") patch.customer_id = await customerIdFor(supabase, input.companyId, ch.value as string, customers, fileName);
             else patch[ch.column] = ch.value;
           }
@@ -395,6 +519,9 @@ export async function confirmEventImport(input: {
             if (error) throw error;
           }
           if (newStatus) await updateEventStatus(c.existing.id, newStatus);
+          if (revenue) {
+            await savePnlRevenue(supabase, { companyId: input.companyId, eventId: c.existing.id, eventName: c.existing.event_name, eventDate: c.existing.event_date, ...revenue, userId, fileName });
+          }
           const changes = c.changeList.map(({ field, from, to }) => ({ field, from, to }));
           await recordAudit({
             companyId: input.companyId,
@@ -429,6 +556,8 @@ export async function confirmEventImport(input: {
     revalidatePath("/catering");
     revalidatePath("/catering/calendar");
     revalidatePath("/catering/import");
+    revalidatePath("/catering/event-report");
+    revalidatePath("/finance/event-pnl");
     return { created, updated, skipped, failed, details };
   }, "Could not import the events. Please try again.");
 }
