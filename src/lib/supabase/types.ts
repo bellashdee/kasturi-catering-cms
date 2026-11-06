@@ -2859,6 +2859,7 @@ export type Database = {
           document_id: string | null
           expense_date: string
           id: string
+          note_type: string | null
           notes: string | null
           updated_at: string
         }
@@ -2872,6 +2873,7 @@ export type Database = {
           document_id?: string | null
           expense_date: string
           id?: string
+          note_type?: string | null
           notes?: string | null
           updated_at?: string
         }
@@ -2885,6 +2887,7 @@ export type Database = {
           document_id?: string | null
           expense_date?: string
           id?: string
+          note_type?: string | null
           notes?: string | null
           updated_at?: string
         }

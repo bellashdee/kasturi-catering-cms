@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/lib/format";
-import { deleteCompanyExpense, restoreCompanyExpense, updateCompanyExpense, type CompanyExpenseRow } from "@/lib/finance/actions";
+import { deleteCompanyExpense, markExpenseNote, restoreCompanyExpense, updateCompanyExpense, type CompanyExpenseRow } from "@/lib/finance/actions";
 import { departmentChoices } from "@/lib/finance/constants";
 import { AREA, BTN, BTN_GHOST, BTN_SM_GHOST, Dialog, FIELD, LABEL } from "@/components/priority/ui";
 import { Select } from "@/components/ui/Select";
@@ -19,7 +19,11 @@ export type ExpenseListRow = {
   amount: number;
   expenseDate: string;
   notes: string | null;
+  /** marked as a credit note (money back, shown as minus) or a debit note */
+  note?: "credit_note" | "debit_note" | null;
 };
+
+const NOTE_LABEL = { credit_note: "Credit Note", debit_note: "Debit Note" } as const;
 
 type Draft = { id: string; category: string; department: string; amount: string; expenseDate: string; notes: string };
 
@@ -67,6 +71,16 @@ export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow
       } catch (e) {
         setError(e instanceof Error ? e.message : "Something went wrong.");
       }
+    });
+  }
+
+  function mark(r: ExpenseListRow, value: string) {
+    const noteType = value === "credit_note" || value === "debit_note" ? value : null;
+    setError(null);
+    start(async () => {
+      const result = await markExpenseNote(r.id, noteType);
+      if (!result.ok) setError(result.error);
+      else router.refresh();
     });
   }
 
@@ -133,15 +147,34 @@ export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow
           <div>
             <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${e.source === "Company Expenses" ? "bg-surface-alt text-text-secondary" : "bg-info-bg text-primary"}`}>{e.source}</span>
           </div>
-          <div className="font-semibold text-text">{e.category}</div>
-          <div className="text-text-secondary">{formatCurrency(e.amount)}</div>
+          <div>
+            <div className="font-semibold text-text">{e.category}</div>
+            {e.note && (
+              <span className={`mt-0.5 inline-block rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide ${e.note === "credit_note" ? "bg-success-bg text-success" : "bg-warning-bg text-warning"}`}>
+                {NOTE_LABEL[e.note]}
+              </span>
+            )}
+          </div>
+          <div className={e.note === "credit_note" ? "font-semibold text-success" : "text-text-secondary"}>{e.amount < 0 ? `− ${formatCurrency(Math.abs(e.amount))}` : formatCurrency(e.amount)}</div>
           <div className="text-text-secondary">{e.department ?? "—"}</div>
           <div className="truncate text-text-muted" title={e.notes ?? ""}>
             {e.companyName}
             {e.notes ? ` · ${e.notes}` : ""}
           </div>
           {e.source === "Company Expenses" ? (
-            <div className="flex gap-1.5">
+            <div className="flex items-center gap-1.5">
+              <select
+                aria-label="Mark as credit note or debit note"
+                value={e.note ?? ""}
+                disabled={pending}
+                onChange={(ev) => mark(e, ev.target.value)}
+                className="h-8 rounded-md border border-border-strong bg-surface px-1.5 text-[12px] font-semibold text-text"
+              >
+                <option value="">Mark…</option>
+                <option value="credit_note">Credit Note</option>
+                <option value="debit_note">Debit Note</option>
+                {e.note && <option value="none">Remove mark</option>}
+              </select>
               <button type="button" className={BTN_SM_GHOST} onClick={() => edit(e)}>
                 Edit
               </button>

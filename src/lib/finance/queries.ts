@@ -17,6 +17,8 @@ export type CostRow = {
   date: string;
   /** what it was, as written on the record (notes, description, payee) */
   details: string | null;
+  /** a company expense marked as a credit note (money back: its amount is counted as minus) or a debit note */
+  note?: "credit_note" | "debit_note" | null;
 };
 
 /**
@@ -104,7 +106,7 @@ export async function listSpending(supabase: DB, companyIds: string[], from?: st
       .lte("pay_period_end", end),
     supabase
       .from("expenses")
-      .select("id, company_id, amount, category, department, expense_date, notes")
+      .select("id, company_id, amount, category, department, expense_date, notes, note_type")
       .in("company_id", companyIds)
       .gte("expense_date", start)
       .lte("expense_date", end),
@@ -208,11 +210,13 @@ export async function listSpending(supabase: DB, companyIds: string[], from?: st
       source: "Company Expenses",
       category: e.category,
       department: e.department ?? null,
-      amount: Number(e.amount),
+      // a credit note is money given back by the supplier: it takes its amount off the costs
+      amount: e.note_type === "credit_note" ? -Number(e.amount) : Number(e.amount),
       companyId: e.company_id,
       id: e.id,
       date: e.expense_date,
       details: e.notes ?? null,
+      note: e.note_type === "credit_note" || e.note_type === "debit_note" ? e.note_type : null,
     });
   }
 

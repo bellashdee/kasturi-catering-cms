@@ -75,6 +75,8 @@ export type CompanyExpenseRow = {
   amount: number;
   expense_date: string;
   notes: string | null;
+  /** credit_note, debit_note or none */
+  note_type?: string | null;
   document_id: string | null;
   created_by: string | null;
 };
@@ -144,9 +146,34 @@ export async function deleteCompanyExpense(id: string): Promise<CompanyExpenseRo
     amount: Number(before.amount),
     expense_date: before.expense_date,
     notes: before.notes,
+    note_type: before.note_type,
     document_id: before.document_id,
     created_by: before.created_by,
   };
+}
+
+/** Marks a company expense as a Credit Note (money back, counted as minus), a Debit Note (an extra charge), or neither (null). */
+export async function markExpenseNote(id: string, noteType: "credit_note" | "debit_note" | null): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    if (noteType !== null && noteType !== "credit_note" && noteType !== "debit_note") throw new Error("Choose Credit Note or Debit Note.");
+    const { data: before } = await supabase.from("expenses").select("id, company_id, note_type, category, amount, expense_date").eq("id", id).maybeSingle();
+    if (!before) throw new Error("Expense not found.");
+    await requireExpenseAccess(supabase, before.company_id);
+    const { error } = await supabase.from("expenses").update({ note_type: noteType }).eq("id", id);
+    if (error) throw new Error("Could not save the mark.");
+    const label = (t: string | null) => (t === "credit_note" ? "Credit Note" : t === "debit_note" ? "Debit Note" : "No mark");
+    await recordAudit({
+      companyId: before.company_id,
+      relatedTable: "expenses",
+      relatedId: id,
+      action: "expense_marked",
+      previousValue: `${label(before.note_type)} · ${before.category} · RM ${Number(before.amount).toFixed(2)} · ${before.expense_date}`,
+      newValue: label(noteType),
+    });
+    revalidateExpenses();
+    return {};
+  }, "Could not save the mark. Please try again.");
 }
 
 /** Undo a delete: the same expense (same id) is put back. */
@@ -161,6 +188,7 @@ export async function restoreCompanyExpense(row: CompanyExpenseRow) {
     amount: row.amount,
     expense_date: row.expense_date,
     notes: row.notes,
+    note_type: row.note_type ?? null,
     document_id: row.document_id,
     created_by: row.created_by,
   });
