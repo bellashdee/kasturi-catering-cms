@@ -36,6 +36,8 @@ export type CompanyExpenseInput = {
   expenseDate: string;
   notes?: string;
   documentId?: string;
+  /** marked as a Credit Note (money back, counted as minus) or a Debit Note (an extra charge) */
+  noteType?: "credit_note" | "debit_note" | null;
 };
 
 export async function createCompanyExpense(input: CompanyExpenseInput) {
@@ -49,6 +51,7 @@ export async function createCompanyExpense(input: CompanyExpenseInput) {
       amount: part.amount,
       expense_date: input.expenseDate,
       notes: input.notes || null,
+      note_type: input.noteType === "credit_note" || input.noteType === "debit_note" ? input.noteType : null,
       document_id: input.documentId || null,
       created_by: userId,
     })),

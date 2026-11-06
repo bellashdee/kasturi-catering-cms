@@ -49,6 +49,8 @@ export function CompanyExpenseUploadReview({
   const [companyId, setCompanyId] = useState(defaultCompanyId ?? companies[0]?.id ?? "");
   const [department, setDepartment] = useState("");
   const [accountId, setAccountId] = useState("");
+  // marked as a Credit Note (money given back: counted as minus) or a Debit Note (an extra charge); none by default
+  const [noteType, setNoteType] = useState<"credit_note" | "debit_note" | null>(null);
   // one or more categories: with more than one, the amount is split between them and each part is saved as its own expense
   // the category is never filled in by itself (not even from a receipt read by the AI): the person chooses it
   const [form, setForm] = useState<{ categories: string[]; description: string; amount: string; expenseDate: string }>({ categories: [], description: "", amount: "", expenseDate: "" });
@@ -108,6 +110,7 @@ export function CompanyExpenseUploadReview({
           expenseDate: form.expenseDate,
           notes: form.description || undefined,
           documentId: flow.documentId || undefined,
+          noteType,
         });
       });
       router.push(redirectTo);
@@ -193,6 +196,25 @@ export function CompanyExpenseUploadReview({
             </div>
 
             <div>
+              <label className={labelClass}>Mark (optional)</label>
+              <div className="mt-1.5 mb-3 flex flex-wrap gap-2">
+                {([
+                  ["credit_note", "Credit Note", "money given back: counted as minus"],
+                  ["debit_note", "Debit Note", "an extra charge"],
+                ] as const).map(([value, text, hint]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    title={hint}
+                    aria-pressed={noteType === value}
+                    onClick={() => setNoteType(noteType === value ? null : value)}
+                    className={`rounded-lg border px-3.5 py-1.5 text-[13px] font-semibold ${noteType === value ? (value === "credit_note" ? "border-success bg-success-bg text-success" : "border-warning bg-warning-bg text-warning") : "border-border-strong bg-surface text-text-secondary"}`}
+                  >
+                    {noteType === value ? "✓ " : ""}
+                    {text}
+                  </button>
+                ))}
+              </div>
               <label className={labelClass}>{byCategory ? "Total amount (RM) *" : "Amount (RM) *"}</label>
               <input type="number" step="0.01" min="0" value={form.amount} onChange={(e) => { setForm((f) => ({ ...f, amount: e.target.value })); setShareText({}); }} className={inputClass} />
             </div>
