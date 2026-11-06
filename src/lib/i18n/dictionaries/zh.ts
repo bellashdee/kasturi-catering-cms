@@ -4294,7 +4294,10 @@ const dictionary: Record<string, string> = {
  "How many sets": "几套",
  "Transportation: enter how many trips.": "运输：请填写几趟。",
  "Staff serving: enter how many staff.": "员工服务：请填写几位员工。",
- "Dome set: enter how many sets.": "圆顶帐篷套装：请填写几套。"
+ "Dome set: enter how many sets.": "圆顶帐篷套装：请填写几套。",
+  "Previous month": "上个月",
+  "Next month": "下个月",
+  "No catering event in this month.": "这个月没有餐饮活动。"
 };
 
 export default dictionary;

@@ -4287,7 +4287,10 @@ const dictionary: Record<string, string> = {
  "How many sets": "কয়টি সেট",
  "Transportation: enter how many trips.": "পরিবহন: কয়টি ট্রিপ লিখুন।",
  "Staff serving: enter how many staff.": "কর্মীদের পরিবেশন: কতজন কর্মী লিখুন।",
- "Dome set: enter how many sets.": "ডোম সেট: কয়টি সেট লিখুন।"
+ "Dome set: enter how many sets.": "ডোম সেট: কয়টি সেট লিখুন।",
+  "Previous month": "আগের মাস",
+  "Next month": "পরের মাস",
+  "No catering event in this month.": "এই মাসে কোনো ক্যাটারিং ইভেন্ট নেই।"
 };
 
 export default dictionary;

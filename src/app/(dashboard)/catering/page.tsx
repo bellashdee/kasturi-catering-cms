@@ -3,12 +3,13 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
-import { listEvents } from "@/lib/catering/queries";
+import { listEvents, monthRange } from "@/lib/catering/queries";
 import { EVENT_STATUS_LABEL, EVENT_TYPE_LABEL } from "@/lib/catering/constants";
 import { formatCurrency } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SearchBox } from "@/components/SearchBox";
+import { MonthFilter } from "@/components/MonthFilter";
 import { CopyLink } from "@/components/driver/CopyLink";
 import { INTAKE_COMPANIES } from "@/lib/catering/intake";
 import { CateringSubNav } from "@/components/catering/CateringSubNav";
@@ -26,7 +27,7 @@ function statusTone(status: string): "success" | "warning" | "danger" | "info" |
 export default async function CateringPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; q?: string }>;
+  searchParams: Promise<{ company?: string; q?: string; month?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -35,7 +36,7 @@ export default async function CateringPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, q } = await searchParams;
+  const { company: requestedId, q, month } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -43,7 +44,9 @@ export default async function CateringPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const events = await listEvents(supabase, targetCompanyIds, q);
+  const events = await listEvents(supabase, targetCompanyIds, q, month);
+  const range = monthRange(month);
+  const monthLabel = range ? new Date(`${range.start}T00:00:00Z`).toLocaleString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" }) : null;
   const adminFlags = await Promise.all(
     targetCompanyIds.map(async (id) => {
       const { data } = await supabase.rpc("user_is_company_admin", { target_company_id: id });
@@ -64,7 +67,10 @@ export default async function CateringPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[22px] font-extrabold text-text">Catering Events</h1>
-          <p className="mt-0.5 text-[13px] text-text-secondary">{events.length} event{events.length === 1 ? "" : "s"}</p>
+          <p className="mt-0.5 text-[13px] text-text-secondary">
+            {events.length} event{events.length === 1 ? "" : "s"}
+            {monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}
+          </p>
         </div>
         {canAddEvents === true && (
           <div className="flex gap-2.5">
@@ -102,11 +108,14 @@ export default async function CateringPage({
         </div>
       </div>
 
-      <SearchBox placeholder="Search events by name..." />
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+        <SearchBox placeholder="Search events by name..." />
+        <MonthFilter />
+      </div>
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {events.length === 0 ? (
-          <EmptyRow text="No catering events yet. Create one to start quoting and planning." />
+          <EmptyRow text={monthLabel ? "No catering event in this month." : "No catering events yet. Create one to start quoting and planning."} />
         ) : (
           <div>
             <div className="grid grid-cols-[1.8fr_1.2fr_1fr_0.8fr_1fr_1fr_1fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">

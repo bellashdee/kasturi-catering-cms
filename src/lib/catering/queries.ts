@@ -4,7 +4,15 @@ import type { EventDay } from "@/lib/catering/days";
 
 type DB = SupabaseClient<Database>;
 
-export async function listEvents(supabase: DB, companyIds: string[], search?: string) {
+/** "2026-11" -> the first and the last day of that month, or null when it is not a month. */
+export function monthRange(month?: string | null): { start: string; end: string } | null {
+  const m = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(month ?? "");
+  if (!m) return null;
+  const last = new Date(Date.UTC(Number(m[1]), Number(m[2]), 0)).getUTCDate();
+  return { start: `${m[1]}-${m[2]}-01`, end: `${m[1]}-${m[2]}-${String(last).padStart(2, "0")}` };
+}
+
+export async function listEvents(supabase: DB, companyIds: string[], search?: string, month?: string | null) {
   let query = supabase
     .from("catering_events")
     .select("id, event_name, event_date, end_date, event_time, setup_time, location, pax_count, second_service_type, event_type, status, total_amount, company_id, customers(name), companies(name), catering_event_days(id)")
@@ -12,6 +20,9 @@ export async function listEvents(supabase: DB, companyIds: string[], search?: st
     .order("event_date", { ascending: false });
 
   if (search) query = query.ilike("event_name", `%${search}%`);
+  // an event belongs to a month when any of its days falls in it (a many-day event shows in each of its months)
+  const range = monthRange(month);
+  if (range) query = query.lte("event_date", range.end).or(`end_date.gte.${range.start},and(end_date.is.null,event_date.gte.${range.start})`);
 
   const { data, error } = await query;
   if (error) throw error;

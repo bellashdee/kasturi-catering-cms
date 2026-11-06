@@ -4357,6 +4357,9 @@ const dictionary: Record<string, string> = {
  "Open a recipe to see or change it. Press Drafts to review to see the recipes that a chef has not approved yet.": "Buka resipi untuk melihat atau mengubahnya. Tekan Drafts to review untuk melihat resipi yang belum diluluskan chef.",
  "Berasaskan Ayam": "Berasaskan Ayam",
  "Show": "Papar",
+  "Previous month": "Bulan sebelumnya",
+  "Next month": "Bulan seterusnya",
+  "No catering event in this month.": "Tiada acara katering pada bulan ini."
 };
 
 export default dictionary;

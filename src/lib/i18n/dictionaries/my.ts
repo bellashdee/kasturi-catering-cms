@@ -4281,7 +4281,10 @@ const dictionary: Record<string, string> = {
  "How many sets": "ဘယ်နှစ်စုံ",
  "Transportation: enter how many trips.": "သယ်ယူပို့ဆောင်ရေး- ခရီးစဉ် ဘယ်နှစ်ခု ထည့်ပါ။",
  "Staff serving: enter how many staff.": "ဝန်ထမ်းဖြင့် ပွဲတည်ပေးခြင်း- ဝန်ထမ်း ဘယ်နှစ်ဦး ထည့်ပါ။",
- "Dome set: enter how many sets.": "Dome set- ဘယ်နှစ်စုံ ထည့်ပါ။"
+ "Dome set: enter how many sets.": "Dome set- ဘယ်နှစ်စုံ ထည့်ပါ။",
+  "Previous month": "ယခင်လ",
+  "Next month": "နောက်လ",
+  "No catering event in this month.": "ဤလတွင် စားသောက်ဆက်သွယ်ရေး ပွဲ မရှိပါ။"
 };
 
 export default dictionary;
