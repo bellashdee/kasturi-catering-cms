@@ -4353,6 +4353,10 @@ const dictionary: Record<string, string> = {
  "Draft: not approved": "Draf: belum diluluskan",
  "Approve this recipe": "Luluskan resipi ini",
  "Write a menu name, review the ingredients and steps that are found, change them to our kitchen, and approve the recipe.": "Tulis nama menu, semak bahan dan langkah yang dijumpai, ubah mengikut dapur kita, dan luluskan resipi.",
+ "Recipes lists the dishes with their ingredients, grouped by the kind of food: chicken, meat, fish, seafood, egg, vegetable, noodles, soup, dessert, kuih, rice, lamb, tortilla, bread, dipping sauce, porridge, drinks, fruit and sambal. Press a group to see only those recipes.": "Recipes menyenaraikan lauk dengan bahannya, dikumpulkan mengikut jenis makanan: ayam, daging, ikan, seafood, telur, sayur, mee, sup, dessert, kuih, nasi, kambing, tortilla, roti, sauce pencecah, bubur, air, buah dan sambal. Tekan satu kumpulan untuk melihat resipi itu sahaja.",
+ "Open a recipe to see or change it. Press Drafts to review to see the recipes that a chef has not approved yet.": "Buka resipi untuk melihat atau mengubahnya. Tekan Drafts to review untuk melihat resipi yang belum diluluskan chef.",
+ "Berasaskan Ayam": "Berasaskan Ayam",
+ "Show": "Papar",
 };
 
 export default dictionary;
