@@ -19,7 +19,7 @@ import { CompanyChips } from "@/components/pettyCash/CompanyChips";
 
 type Company = { id: string; name: string };
 type Payer = { name: string; position: string };
-export type ClaimValues = { companyId: string; date: string; amount: string; payer: string; paymentMethod: string; category: string; description: string };
+export type ClaimValues = { companyId: string; date: string; amount: string; payer: string; paymentMethod: string; category: string; description: string; /** what it was for, e.g. the event */ remarks?: string };
 
 const inputClass = "mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px] outline-none focus:border-primary";
 const labelClass = "text-[12px] font-semibold text-text-secondary";
@@ -107,6 +107,7 @@ function ClaimFields({
         paymentMethod: v.paymentMethod,
         category: v.category || undefined,
         description: v.description || undefined,
+        remarks: v.remarks?.trim() || undefined,
         documentId,
         extraDocumentIds,
         // split between companies (and categories): each part with its company; only categories: each part with its category
@@ -193,6 +194,10 @@ function ClaimFields({
         <label className={labelClass}>What did you buy?</label>
         <DescriptionInput value={v.description} onChange={(text) => set({ description: text })} companyId={v.companyId} className={inputClass} placeholder="e.g. Cooking gas for the Ahmad wedding" />
       </div>
+      <div>
+        <label className={labelClass}>Remarks (e.g. the event it was bought for)</label>
+        <input value={v.remarks ?? ""} onChange={(e) => set({ remarks: e.target.value })} maxLength={500} placeholder="e.g. JDT FC event, 12 Nov" className={inputClass} />
+      </div>
       {canSplitCompanies && (
         <SplitChoice
           label="Split the amount between the companies"
@@ -249,7 +254,7 @@ export function MyClaimForm({ companies, payers }: { companies: Company[]; payer
     <ClaimFields
       companies={companies}
       payers={payers}
-      initial={{ companyId: "", date: todayInMalaysia(), amount: "", payer: payers.length === 1 ? payers[0].name : "", paymentMethod: "", category: "", description: "" }}
+      initial={{ companyId: "", date: todayInMalaysia(), amount: "", payer: payers.length === 1 ? payers[0].name : "", paymentMethod: "", category: "", description: "", remarks: "" }}
       multiCompany
       submitLabel="Send claim"
       onSubmit={submitMyClaim}

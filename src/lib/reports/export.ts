@@ -13,8 +13,10 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export function exportTableToExcel(filenameBase: string, headers: string[], rows: (string | number)[][], moneyColumns: string[] = []) {
-  const sheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+export function exportTableToExcel(filenameBase: string, headers: string[], rows: (string | number)[][], moneyColumns: string[] = [], summary: { label: string; value: string }[] = []) {
+  // the summary (e.g. total spent and the spending of each company) under the list, after an empty row
+  const summaryRows = summary.length > 0 ? [[], ["SUMMARY"], ...summary.map((l) => [l.label.trim(), l.value])] : [];
+  const sheet = XLSX.utils.aoa_to_sheet([headers, ...rows, ...summaryRows]);
   // RM columns keep their numbers but always show 2 decimal places (3000.00)
   headers.forEach((h, c) => {
     if (!moneyColumns.includes(h)) return;

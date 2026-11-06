@@ -14,6 +14,7 @@ import { SpendingSubNav } from "@/components/spending/SpendingSubNav";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 import { receiptIds } from "@/lib/documents/receipts";
 import { ExportListButtons } from "@/components/procurement/ExportListButtons";
+import { formatRm, spendSummary } from "@/lib/pettyCash/summary";
 import { PettyCashEntryForm } from "@/components/pettyCash/PettyCashEntryForm";
 import { PettyCashHolderBar } from "@/components/pettyCash/PettyCashHolderBar";
 import { PettyCashOverview } from "@/components/pettyCash/PettyCashOverview";
@@ -295,7 +296,20 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
                   </Link>
                 </div>
               )}
-              <ExportListButtons filenameBase={`petty-cash-${month}`} headers={exportHeaders} rows={exportRows} moneyColumns={moneyColumns} />
+              <ExportListButtons
+                filenameBase={`petty-cash-${month}`}
+                headers={exportHeaders}
+                rows={exportRows}
+                moneyColumns={moneyColumns}
+                summary={spendSummary(
+                  shown.filter((r) => r.kind === "out").map((r) => ({ companyId: r.companyId, amount: r.amount })),
+                  companies,
+                  {
+                    before: [{ label: "Total received (money in)", value: formatRm(shown.filter((r) => r.kind === "in").reduce((t, r) => t + r.amount, 0)) }],
+                    after: [{ label: `Balance${month === "all" ? "" : ` at the end of ${month}`}`, value: formatRm(shown.length > 0 ? shown[0].balance : 0), bold: true }],
+                  },
+                )}
+              />
             </div>
           </div>
 

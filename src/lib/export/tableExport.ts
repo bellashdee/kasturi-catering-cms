@@ -24,6 +24,8 @@ export type ExportTable = {
   rows: string[][];
   /** wide tables are better on a landscape page */
   landscape?: boolean;
+  /** printed under the list: e.g. the total spent and the spending of each company */
+  summary?: { label: string; value: string; bold?: boolean }[];
 };
 
 const fileBase = (t: ExportTable) => `${t.title.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase()}-${todayInMalaysia()}`;
@@ -57,6 +59,24 @@ export function buildTablePdf(t: ExportTable): jsPDF {
     alternateRowStyles: { fillColor: [250, 245, 243] },
     margin: { left: 14, right: 14, bottom: 14 },
   });
+
+  if (t.summary && t.summary.length > 0) {
+    const after = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? 34;
+    const lines = t.summary;
+    autoTable(doc, {
+      startY: after + 6,
+      head: [["Summary", "Amount"]],
+      body: lines.map((l) => [plain(l.label), plain(l.value)]),
+      tableWidth: 120,
+      styles: { fontSize: 9, cellPadding: 2, textColor: [51, 38, 43], lineColor: [230, 215, 210], lineWidth: 0.15 },
+      headStyles: { fillColor: [168, 93, 107], textColor: 255 },
+      columnStyles: { 1: { halign: "right" } },
+      didParseCell: (data) => {
+        if (data.section === "body" && lines[data.row.index]?.bold) data.cell.styles.fontStyle = "bold";
+      },
+      margin: { left: 14, right: 14, bottom: 14 },
+    });
+  }
 
   const pages = doc.getNumberOfPages();
   const prepared = `Prepared: ${new Date().toLocaleString("en-GB", { timeZone: "Asia/Kuala_Lumpur", dateStyle: "long", timeStyle: "short" })} (Malaysia time)`;

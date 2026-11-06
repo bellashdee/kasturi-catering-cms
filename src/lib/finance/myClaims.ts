@@ -29,6 +29,8 @@ export type MyClaimInput = {
   category?: string;
   description?: string;
   documentId?: string;
+  /** what it was for, e.g. the event the things were bought for */
+  remarks?: string;
   /** more receipts / photos, after documentId (on Edit they are added to the ones attached) */
   extraDocumentIds?: string[];
   /** bought for more than one category: how much is for each (each part is saved as its own claim, same receipt) */
@@ -108,6 +110,7 @@ export async function submitMyClaim(input: MyClaimInput): Promise<ActionResult> 
           payment_status: "pending_payment",
           category: part.category || null,
           description: input.description?.trim() || null,
+          remarks: input.remarks?.trim().slice(0, 500) || null,
           amount: part.amount,
           transaction_date: input.date,
           document_id: input.documentId || null,
@@ -151,6 +154,7 @@ export async function updateMyClaim(id: string, input: MyClaimInput): Promise<Ac
         claimant_department: record.department,
         category: first.category || null,
         description: input.description?.trim() || null,
+        remarks: input.remarks?.trim().slice(0, 500) || null,
         amount: first.amount,
         transaction_date: input.date,
         person_name: payer.name,
@@ -175,6 +179,7 @@ export async function updateMyClaim(id: string, input: MyClaimInput): Promise<Ac
             payment_status: "pending_payment",
             category: part.category,
             description: input.description?.trim() || null,
+            remarks: input.remarks?.trim().slice(0, 500) || null,
             amount: part.amount,
             transaction_date: input.date,
             ...addReceipts(before, [input.documentId, ...(input.extraDocumentIds ?? [])].filter((id): id is string => !!id)),
@@ -222,6 +227,7 @@ export async function restoreMyClaim(row: PettyCashTransactionRow): Promise<Acti
       payment_status: "pending_payment",
       category: row.category,
       description: row.description,
+      remarks: row.remarks ?? null,
       amount: row.amount,
       transaction_date: row.transaction_date,
       document_id: row.document_id,
