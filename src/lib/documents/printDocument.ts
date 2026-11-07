@@ -13,7 +13,7 @@ const plain = (s: string) =>
     .replace(/[“”]/g, '"')
     .replace(/[^\x20-\x7E -ÿ]/g, "");
 
-export type PrintDocType = "PURCHASE ORDER" | "PURCHASE INVOICE" | "SALES INVOICE" | "CREDIT NOTE" | "DEBIT NOTE";
+export type PrintDocType = "PURCHASE ORDER" | "PURCHASE INVOICE" | "SALES INVOICE" | "CREDIT NOTE" | "DEBIT NOTE" | "PAYMENT VOUCHER";
 
 export type PrintDocument = {
   type: PrintDocType;
@@ -192,8 +192,8 @@ export function buildDocumentPdf(d: PrintDocument): jsPDF {
   doc.setFontSize(8.5);
   doc.line(left, sigY, left + 55, sigY);
   doc.line(right - 55, sigY, right, sigY);
-  doc.text("Prepared by", left, sigY + 4);
-  doc.text(d.type === "PURCHASE ORDER" ? "Authorised signature" : "Received by / Company stamp", right - 55, sigY + 4);
+  doc.text(d.type === "PAYMENT VOUCHER" ? "Prepared / Approved by" : "Prepared by", left, sigY + 4);
+  doc.text(d.type === "PURCHASE ORDER" ? "Authorised signature" : d.type === "PAYMENT VOUCHER" ? "Received by (supplier) / Date" : "Received by / Company stamp", right - 55, sigY + 4);
 
   return doc;
 }
