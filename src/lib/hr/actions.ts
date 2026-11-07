@@ -524,6 +524,8 @@ export type LeaveInput = {
   days: number;
   reason?: string;
   documentId?: string;
+  /** keyed in by an admin or a leave editor for a leave that is already decided; anyone else's request always starts pending */
+  status?: "pending" | "approved";
 };
 
 export type LeaveRow = Database["public"]["Tables"]["leave_requests"]["Row"];
@@ -536,6 +538,8 @@ const LEAVE_TYPES = ["annual", "medical", "emergency", "unpaid", "hospitalisatio
 async function leaveAccess(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], leave: LeaveRow) {
   const { data: admin } = await supabase.rpc("user_is_company_admin", { target_company_id: leave.company_id });
   if (admin === true) return { admin: true };
+  const { data: editor } = await supabase.rpc("user_is_leave_editor");
+  if (editor === true) return { admin: true };
   const { data: owns } = await supabase.rpc("user_owns_employee", { target_employee_id: leave.employee_id });
   if (owns !== true) throw new Error("You can only change your own leave requests.");
   if (leave.status !== "pending") throw new Error("A leave request that is already decided can only be changed by an admin.");
@@ -620,7 +624,14 @@ export async function restoreLeave(snapshot: LeaveSnapshot): Promise<ActionResul
 export async function requestLeave(input: LeaveInput) {
   const { supabase, userId } = await requireUser();
   const { data: owns } = await supabase.rpc("user_owns_employee", { target_employee_id: input.employeeId });
-  if (owns !== true) await requireHrAdmin(supabase, input.companyId, "Only an admin of the company can request leave for other staff.");
+  // an admin (Super Admin) or a leave editor (Ms. Syaza, Mr. Adlan, Ms. Nabilah) may key in the leave of other staff
+  const [{ data: isSuper }, { data: isEditor }] = await Promise.all([supabase.rpc("current_user_is_super_admin"), supabase.rpc("user_is_leave_editor")]);
+  const privileged = isSuper === true || isEditor === true;
+  if (owns !== true && !privileged) throw new Error("Only an admin or a leave editor can request leave for other staff.");
+  if (!input.employeeId || !input.companyId) throw new Error("Choose the staff member.");
+  if (!LEAVE_TYPES.includes(input.leaveType)) throw new Error("Choose the leave type.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(input.endDate) || input.endDate < input.startDate) throw new Error("The end date must be on or after the start date.");
+  const status = privileged && owns !== true && input.status === "approved" ? "approved" : "pending";
 
   const { data: leave, error: leaveError } = await supabase
     .from("leave_requests")
@@ -634,7 +645,7 @@ export async function requestLeave(input: LeaveInput) {
       days: input.days,
       reason: input.reason || null,
       document_id: input.documentId || null,
-      status: "pending",
+      status,
       created_by: userId,
     })
     .select("id")
@@ -655,7 +666,7 @@ export async function requestLeave(input: LeaveInput) {
       module: "hr",
       related_table: "leave_requests",
       related_id: leave.id,
-      status: "pending",
+      status,
       requested_by: userId,
     })
     .select("id")

@@ -6,6 +6,7 @@ import { listLeaveForCompanies } from "@/lib/hr/queries";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { getHrAccess } from "@/lib/hr/access";
 import { LeaveItem } from "@/components/hr/LeaveItem";
+import Link from "next/link";
 
 export default async function LeavePage({
   searchParams,
@@ -27,14 +28,25 @@ export default async function LeavePage({
   }
 
   const access = await getHrAccess(supabase, session, targetCompanyIds);
-  // an admin sees the leave of every employee; anyone else only their own
-  const requests = (await listLeaveForCompanies(supabase, targetCompanyIds)).filter((r) => access.isAdminOf(r.company_id) || access.ownEmployeeIds.has(r.employee_id));
+  // a leave editor (Ms. Syaza, Mr. Adlan, Ms. Nabilah) keys in and looks after the leave of the other staff too, without being an admin
+  const { data: editorFlag } = await supabase.rpc("user_is_leave_editor");
+  const isEditor = editorFlag === true;
+  const canKeyIn = access.adminAnywhere || isEditor;
+  // an admin or a leave editor sees the leave of every employee; anyone else only their own
+  const requests = (await listLeaveForCompanies(supabase, targetCompanyIds)).filter((r) => access.isAdminOf(r.company_id) || isEditor || access.ownEmployeeIds.has(r.employee_id));
 
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <h1 className="text-[22px] font-extrabold text-text">Leave Requests</h1>
-        <p className="mt-0.5 text-[13px] text-text-secondary">{access.adminAnywhere ? "Across all employees you can access." : "Your own leave requests."}</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-[22px] font-extrabold text-text">Leave Requests</h1>
+          <p className="mt-0.5 text-[13px] text-text-secondary">{canKeyIn ? "Across all employees you can access." : "Your own leave requests."}</p>
+        </div>
+        {canKeyIn && (
+          <Link href={`/hr/leave/new${requestedId ? `?company=${requestedId}` : ""}`} className="flex h-9 items-center rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">
+            + Key in leave for staff
+          </Link>
+        )}
       </div>
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
@@ -48,7 +60,7 @@ export default async function LeavePage({
                 <LeaveItem
                   key={r.id}
                   canDecide={admin}
-                  canChange={admin || r.status === "pending"}
+                  canChange={admin || isEditor || r.status === "pending"}
                   leave={{
                     id: r.id,
                     employeeId: r.employee_id,

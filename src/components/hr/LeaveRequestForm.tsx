@@ -18,7 +18,11 @@ function daysBetween(start: string, end: string): number {
   return diff > 0 ? diff : 0;
 }
 
-export function LeaveRequestForm({ employeeId, companyId }: { employeeId: string; companyId: string }) {
+/**
+ * `keyIn`: an admin or leave editor types in the leave of another staff member (a paper form or a message): the status can be set to
+ * "already approved", and after saving the person goes back to the leave list (they cannot open another staff member's profile).
+ */
+export function LeaveRequestForm({ employeeId, companyId, keyIn = false }: { employeeId: string; companyId: string; keyIn?: boolean }) {
   const router = useRouter();
   const [leaveType, setLeaveType] = useState("annual");
   const [otherType, setOtherType] = useState("");
@@ -26,6 +30,7 @@ export function LeaveRequestForm({ employeeId, companyId }: { employeeId: string
   const [endDate, setEndDate] = useState("");
   const [reason, setReason] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [status, setStatus] = useState<"pending" | "approved">("pending");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,8 +50,8 @@ export function LeaveRequestForm({ employeeId, companyId }: { employeeId: string
         const doc = await uploadDocument({ companyId, module: "hr", fileType: fileTypeFromMime(file), file });
         documentId = doc.id;
       }
-      await requestLeave({ employeeId, companyId, leaveType, leaveTypeOther: leaveType === "other" ? otherType.trim() : undefined, startDate, endDate, days, reason, documentId });
-      router.push(`/hr/${employeeId}`);
+      await requestLeave({ employeeId, companyId, leaveType, leaveTypeOther: leaveType === "other" ? otherType.trim() : undefined, startDate, endDate, days, reason, documentId, status: keyIn ? status : undefined });
+      router.push(keyIn ? "/hr/leave" : `/hr/${employeeId}`);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not submit.");
@@ -104,12 +109,22 @@ export function LeaveRequestForm({ employeeId, companyId }: { employeeId: string
         <p className="mt-1 text-[11px] text-text-muted">PDF, Excel, CSV, screenshot or photo. Kept with this leave request.</p>
       </div>
 
+      {keyIn && (
+        <div>
+          <label className={labelClass}>Status</label>
+          <Select value={status} onChange={(e) => setStatus(e.target.value as "pending" | "approved")} className={inputClass}>
+            <option value="pending">Waiting for approval</option>
+            <option value="approved">Already approved (the leave was approved before it was keyed in)</option>
+          </Select>
+        </div>
+      )}
+
       <div className="mt-2 flex justify-end gap-2.5">
         <button type="button" onClick={() => router.back()} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13.5px] font-semibold text-text">
           Cancel
         </button>
         <button type="submit" disabled={saving} className="rounded-lg bg-primary px-5 py-2.5 text-[13.5px] font-semibold text-white disabled:opacity-60">
-          {saving ? "Submitting..." : "Submit for Approval"}
+          {saving ? "Saving..." : keyIn ? (status === "approved" ? "Save leave" : "Save & send for approval") : "Submit for Approval"}
         </button>
       </div>
     </form>
