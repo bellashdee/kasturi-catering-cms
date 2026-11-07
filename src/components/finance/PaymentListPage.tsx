@@ -31,6 +31,7 @@ import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { PaymentSummaryCards } from "@/components/finance/PaymentSummaryCards";
 import { PaymentRowActions, PaymentUndoBanner } from "@/components/finance/PaymentRowActions";
 import { Select } from "@/components/ui/Select";
+import { ToggleSection } from "@/components/shared/ToggleSection";
 import { listSupplierMonth } from "@/lib/finance/supplierMonth";
 import { GenerateSupplierPayments } from "@/components/finance/GenerateSupplierPayments";
 
@@ -218,6 +219,7 @@ export async function PaymentListPage({ category, searchParams }: { category: Pa
       )}
 
       {supplierCompanyId && supplierMonth.length > 0 && (
+        <ToggleSection label={`suppliers with invoices in ${monthLabel} (${supplierMonth.length})`}>
         <SectionCard
           title={`Suppliers with invoices in ${monthLabel} (${supplierMonth.length})`}
           action={<GenerateSupplierPayments companyId={supplierCompanyId} periodMonth={periodMonth} missing={toOpen.length} />}
@@ -252,6 +254,7 @@ export async function PaymentListPage({ category, searchParams }: { category: Pa
             ))}
           </div>
         </SectionCard>
+        </ToggleSection>
       )}
 
       <SectionCard title={`${monthLabel} – ${title}`}>
