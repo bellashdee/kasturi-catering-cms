@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { LeaveKeyIn } from "@/components/hr/LeaveKeyIn";
 
-/** Key in the leave of another staff member (a paper form or a message). For the admins and the leave editors (Ms. Syaza, Mr. Adlan, Ms. Nabilah). */
+/** Key in the leave of another staff member (a paper form or a message). For the admins and the leave editors (Ms. Syaza, Ms. Nabilah). */
 export default async function KeyInLeavePage({ searchParams }: { searchParams: Promise<{ company?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");

@@ -624,7 +624,7 @@ export async function restoreLeave(snapshot: LeaveSnapshot): Promise<ActionResul
 export async function requestLeave(input: LeaveInput) {
   const { supabase, userId } = await requireUser();
   const { data: owns } = await supabase.rpc("user_owns_employee", { target_employee_id: input.employeeId });
-  // an admin (Super Admin) or a leave editor (Ms. Syaza, Mr. Adlan, Ms. Nabilah) may key in the leave of other staff
+  // an admin (Super Admin) or a leave editor (Ms. Syaza, Ms. Nabilah) may key in the leave of other staff
   const [{ data: isSuper }, { data: isEditor }] = await Promise.all([supabase.rpc("current_user_is_super_admin"), supabase.rpc("user_is_leave_editor")]);
   const privileged = isSuper === true || isEditor === true;
   if (owns !== true && !privileged) throw new Error("Only an admin or a leave editor can request leave for other staff.");

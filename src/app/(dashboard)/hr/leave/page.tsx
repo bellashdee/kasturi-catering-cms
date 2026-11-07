@@ -28,7 +28,7 @@ export default async function LeavePage({
   }
 
   const access = await getHrAccess(supabase, session, targetCompanyIds);
-  // a leave editor (Ms. Syaza, Mr. Adlan, Ms. Nabilah) keys in and looks after the leave of the other staff too, without being an admin
+  // a leave editor (Ms. Syaza, Ms. Nabilah) keys in and looks after the leave of the other staff too, without being an admin
   const { data: editorFlag } = await supabase.rpc("user_is_leave_editor");
   const isEditor = editorFlag === true;
   const canKeyIn = access.adminAnywhere || isEditor;
