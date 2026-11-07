@@ -6393,15 +6393,6 @@ export type Database = {
         Update: { id?: string; supplier_note_id?: string; item_code?: string | null; item_name?: string; quantity?: number; uom?: string | null; unit_price?: number; line_total?: number }
         Relationships: [{ foreignKeyName: "supplier_note_items_supplier_note_id_fkey"; columns: ["supplier_note_id"]; isOneToOne: false; referencedRelation: "supplier_notes"; referencedColumns: ["id"] }]
       }
-      supplier_payment_vouchers: {
-        Row: { id: string; company_id: string; supplier_id: string; period_month: string; voucher_number: string; voucher_date: string; status: string; paid_date: string | null; payment_reference: string | null; lines: Json; invoices_total: number; credit_total: number; debit_total: number; net_amount: number; notes: string | null; created_by: string | null; created_at: string; updated_at: string }
-        Insert: { id?: string; company_id: string; supplier_id: string; period_month: string; voucher_number: string; voucher_date: string; status?: string; paid_date?: string | null; payment_reference?: string | null; lines?: Json; invoices_total?: number; credit_total?: number; debit_total?: number; net_amount?: number; notes?: string | null; created_by?: string | null; created_at?: string; updated_at?: string }
-        Update: { id?: string; company_id?: string; supplier_id?: string; period_month?: string; voucher_number?: string; voucher_date?: string; status?: string; paid_date?: string | null; payment_reference?: string | null; lines?: Json; invoices_total?: number; credit_total?: number; debit_total?: number; net_amount?: number; notes?: string | null; created_by?: string | null; created_at?: string; updated_at?: string }
-        Relationships: [
-          { foreignKeyName: "supplier_payment_vouchers_company_id_fkey"; columns: ["company_id"]; isOneToOne: false; referencedRelation: "companies"; referencedColumns: ["id"] },
-          { foreignKeyName: "supplier_payment_vouchers_supplier_id_fkey"; columns: ["supplier_id"]; isOneToOne: false; referencedRelation: "suppliers"; referencedColumns: ["id"] },
-        ]
-      }
       supplier_notes: {
         Row: { id: string; company_id: string; supplier_id: string; note_type: string; note_number: string; note_date: string; supplier_invoice_id: string | null; reason: string | null; amount: number; created_by: string | null; created_at: string; updated_at: string }
         Insert: { id?: string; company_id: string; supplier_id: string; note_type: string; note_number: string; note_date: string; supplier_invoice_id?: string | null; reason?: string | null; amount?: number; created_by?: string | null; created_at?: string; updated_at?: string }

@@ -12,7 +12,6 @@ const TABS = [
   { href: "/supplier-procurement/orders", label: "Purchase Orders", match: (p: string) => p.startsWith("/supplier-procurement/orders") || p.startsWith("/supplier-procurement/requests") },
   { href: "/supplier-procurement/invoices", label: "Invoices", match: (p: string) => p.startsWith("/supplier-procurement/invoices") },
   { href: "/supplier-procurement/notes", label: "Credit / Debit Notes", match: (p: string) => p.startsWith("/supplier-procurement/notes") },
-  { href: "/supplier-procurement/vouchers", label: "Payment Vouchers", match: (p: string) => p.startsWith("/supplier-procurement/vouchers") },
   { href: "/supplier-procurement/payments", label: "Payments", match: (p: string) => p.startsWith("/supplier-procurement/payments") },
 ];
 

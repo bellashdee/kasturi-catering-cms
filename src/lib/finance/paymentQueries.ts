@@ -102,7 +102,7 @@ export async function listPaymentsForMonth(supabase: DB, companyIds: string[], y
 }
 
 export async function getPayment(supabase: DB, id: string) {
-  const { data, error } = await supabase.from("finance_payments").select("*, companies(name)").eq("id", id).single();
+  const { data, error } = await supabase.from("finance_payments").select("*, companies(name, legal_name, registration_no)").eq("id", id).single();
   if (error) throw error;
   return data;
 }

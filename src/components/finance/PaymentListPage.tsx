@@ -31,6 +31,8 @@ import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { PaymentSummaryCards } from "@/components/finance/PaymentSummaryCards";
 import { PaymentRowActions, PaymentUndoBanner } from "@/components/finance/PaymentRowActions";
 import { Select } from "@/components/ui/Select";
+import { listSupplierMonth } from "@/lib/finance/supplierMonth";
+import { GenerateSupplierPayments } from "@/components/finance/GenerateSupplierPayments";
 
 type SearchParams = { company?: string; year?: string; month?: string; status?: string; payee?: string; provider?: string; saved?: string };
 
@@ -102,6 +104,12 @@ export async function PaymentListPage({ category, searchParams }: { category: Pa
     listPaymentsForMonth(supabase, adminIds, year, month, { category, provider: sp.provider || undefined, payee: sp.payee || undefined }),
     category === "supplier" ? Promise.resolve([]) : listPaymentAccounts(supabase, adminIds, category),
   ]);
+
+  // supplier payments: the suppliers that have invoices (and notes) in this month, so their payment vouchers can be opened in one go
+  const supplierCompanyId = category === "supplier" && !allMonths && adminIds.length === 1 ? adminIds[0] : null;
+  const periodMonth = `${year}-${String(month).padStart(2, "0")}-01`;
+  const supplierMonth = supplierCompanyId ? await listSupplierMonth(supabase, supplierCompanyId, periodMonth) : [];
+  const toOpen = supplierMonth.filter((r) => !r.paymentId && r.net > 0);
 
   const rows = payments.filter((p) => matchesStatusFilter(paymentUrgency(p.status, p.due_date, today), sp.status));
   const summary = summarizePayments(payments, today);
@@ -207,6 +215,43 @@ export async function PaymentListPage({ category, searchParams }: { category: Pa
         <div className={`rounded-xl border px-4 py-2.5 text-[13px] font-semibold ${summary.overdue > 0 ? "border-danger/40 bg-danger-bg text-danger" : "border-warning/40 bg-warning-bg text-warning"}`}>
           {summary.overdue > 0 ? "🔴 " : "🟡 "}Still to be paid for {monthLabel}: {formatRM(summary.pending)}{summary.overdue > 0 ? ` (of which ${formatRM(summary.overdue)} is overdue)` : ""}
         </div>
+      )}
+
+      {supplierCompanyId && supplierMonth.length > 0 && (
+        <SectionCard
+          title={`Suppliers with invoices in ${monthLabel} (${supplierMonth.length})`}
+          action={<GenerateSupplierPayments companyId={supplierCompanyId} periodMonth={periodMonth} missing={toOpen.length} />}
+        >
+          <p className="mb-3 text-[12.5px] text-text-secondary">
+            Open the payment voucher to pay a supplier: its invoices of the month, less credit notes, plus debit notes. The amount can be changed afterwards.
+          </p>
+          <div className="-mx-5 -mb-5 divide-y divide-border">
+            {supplierMonth.map((r) => (
+              <div key={r.supplierId} className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 text-[13px]">
+                <div>
+                  <div className="font-semibold text-text">{r.name}</div>
+                  <div className="text-xs text-text-muted">
+                    {r.invoices} invoice{r.invoices === 1 ? "" : "s"} {formatRM(r.invoiceTotal)}
+                    {r.credit > 0 ? ` · credit -${formatRM(r.credit)}` : ""}
+                    {r.debit > 0 ? ` · debit ${formatRM(r.debit)}` : ""}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="font-bold tabular-nums text-text">{formatRM(r.net)}</span>
+                  {r.paymentId ? (
+                    <Link href={`/finance/payments/${r.paymentId}`} className="rounded-lg border border-border-strong px-3 py-1.5 text-[12.5px] font-semibold text-text hover:bg-surface-alt">
+                      Open payment
+                    </Link>
+                  ) : r.net > 0 ? (
+                    <GenerateSupplierPayments companyId={supplierCompanyId} periodMonth={periodMonth} supplierId={r.supplierId} />
+                  ) : (
+                    <span className="text-xs text-text-muted">Nothing to pay</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
       )}
 
       <SectionCard title={`${monthLabel} – ${title}`}>

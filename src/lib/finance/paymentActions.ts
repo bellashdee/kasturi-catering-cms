@@ -8,6 +8,8 @@ import { runAction, type ActionResult } from "@/lib/actionResult";
 import type { Database } from "@/lib/supabase/types";
 import { logTaskAudit } from "@/lib/taskProofs/actions";
 import { todayInMalaysia } from "@/lib/driverAttendance/date";
+import { buildVoucherLines, monthLabel, nextMonthStart } from "@/lib/procurement/vouchers";
+import { nameKey } from "@/lib/finance/supplierMonth";
 import {
   RENTAL_UTILITY_COMPANY_NAME,
   UTILITY_PROVIDER_BY_TYPE,
@@ -549,4 +551,73 @@ export async function recordPayment(
     revalidatePaymentPaths(paymentId);
     return { settled: full, balance: left };
   }, "Could not record the payment. Please try again.");
+}
+
+
+/**
+ * Opens the payment voucher (a supplier payment) of each supplier that has invoices in the month: the amount is its invoices of the month,
+ * less its credit notes, plus its debit notes. A supplier that already has a payment for the month is left alone (never doubled).
+ */
+export async function generateSupplierPayments(companyId: string, periodMonth: string, supplierId?: string): Promise<ActionResult<{ created: number; skipped: number }>> {
+  return runAction(async () => {
+    if (!/^\d{4}-(0[1-9]|1[0-2])-01$/.test(periodMonth)) throw new Error("Select the payment month.");
+    const { supabase, userId } = await requireUser();
+    await requireFinanceAdmin(supabase, companyId, "supplier");
+    const end = nextMonthStart(periodMonth);
+
+    const [{ data: inv }, { data: notes }, { data: existing }, { data: accounts }] = await Promise.all([
+      supabase.from("supplier_invoices").select("supplier_id").eq("company_id", companyId).gte("invoice_date", periodMonth).lt("invoice_date", end),
+      supabase.from("supplier_notes").select("supplier_id").eq("company_id", companyId).gte("note_date", periodMonth).lt("note_date", end),
+      supabase.from("finance_payments").select("payee_name").eq("company_id", companyId).eq("category", "supplier").eq("period_month", periodMonth),
+      supabase.from("payment_accounts").select("id, name, bank_name, account_no").eq("company_id", companyId).eq("category", "supplier").eq("is_active", true),
+    ]);
+    const ids = [...new Set([...(inv ?? []), ...(notes ?? [])].map((r) => r.supplier_id))].filter((id) => !supplierId || id === supplierId);
+    if (ids.length === 0) throw new Error("No supplier invoice or note in that month.");
+    const { data: suppliers } = await supabase.from("suppliers").select("id, name").in("id", ids);
+
+    const done = new Set((existing ?? []).map((p) => nameKey(p.payee_name)));
+    const accountByName = new Map((accounts ?? []).map((a) => [nameKey(a.name), a]));
+    const prefix = `PV-${periodMonth.slice(0, 4)}${periodMonth.slice(5, 7)}-`;
+    const { data: used } = await supabase.from("finance_payments").select("voucher_number").eq("company_id", companyId).like("voucher_number", `${prefix}%`);
+    let counter = (used ?? []).reduce((max, v) => Math.max(max, Number(v.voucher_number?.slice(prefix.length)) || 0), 0);
+
+    let created = 0;
+    let skipped = 0;
+    // one after another so the running voucher numbers do not clash
+    for (const supplier of (suppliers ?? []).sort((a, b) => a.name.localeCompare(b.name))) {
+      if (done.has(nameKey(supplier.name))) continue;
+      const figures = await buildVoucherLines(supabase, companyId, supplier.id, periodMonth);
+      if (figures.net <= 0) {
+        skipped += 1;
+        continue;
+      }
+      counter += 1;
+      const account = accountByName.get(nameKey(supplier.name));
+      const remarks = figures.lines.map((l) => `${l.kind === "invoice" ? "" : l.kind === "credit" ? "CN " : "DN "}${l.ref} ${l.amount.toFixed(2)}`).join("; ").slice(0, 480);
+      const { data, error } = await supabase
+        .from("finance_payments")
+        .insert({
+          company_id: companyId,
+          category: "supplier",
+          account_id: account?.id ?? null,
+          payee_name: supplier.name,
+          bank_name: account?.bank_name ?? null,
+          account_no: account?.account_no ?? null,
+          payment_of: `Invoices of ${monthLabel(periodMonth)}`,
+          period_month: periodMonth,
+          amount: figures.net,
+          voucher_number: `${prefix}${String(counter).padStart(3, "0")}`,
+          remarks,
+          approved_by: userId,
+          created_by: userId,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      await logTaskAudit({ companyId, relatedTable: "finance_payments", relatedId: data.id, action: "payment_created", newValue: `${supplier.name} · RM ${figures.net.toFixed(2)} · payment voucher ${prefix}${String(counter).padStart(3, "0")} (monthly)` });
+      created += 1;
+    }
+    revalidatePaymentPaths();
+    return { created, skipped };
+  }, "Could not open the payment vouchers. Please try again.");
 }

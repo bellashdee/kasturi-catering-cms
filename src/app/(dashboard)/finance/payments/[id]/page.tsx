@@ -22,6 +22,10 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 import { MarkPaidForm, VoucherUpload } from "@/components/finance/PaymentActionsPanel";
 import { PaymentRowActions } from "@/components/finance/PaymentRowActions";
+import { PrintDocumentButton } from "@/components/shared/PrintDocumentButton";
+import { buildVoucherLines } from "@/lib/procurement/vouchers";
+import { nameKey } from "@/lib/finance/supplierMonth";
+import type { PrintDocument } from "@/lib/documents/printDocument";
 
 const PATH: Record<PaymentCategory, string> = {
   supplier: "/finance/supplier-payment",
@@ -62,6 +66,28 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
     listPartPayments(supabase, id),
     payment.approved_by ? supabase.from("profiles").select("full_name").eq("id", payment.approved_by).maybeSingle() : Promise.resolve({ data: null }),
   ]);
+
+  // a supplier payment is the payment voucher: it prints the supplier's invoices and notes of the month when they still add up to the amount
+  let voucherDoc: PrintDocument | null = null;
+  if (payment.category === "supplier") {
+    const { data: supplierRows } = await supabase.from("suppliers").select("id, name, billing_address, phone, registration_no, payment_terms").eq("company_id", payment.company_id);
+    const supplier = (supplierRows ?? []).find((x) => nameKey(x.name) === nameKey(payment.payee_name));
+    const figures = supplier ? await buildVoucherLines(supabase, payment.company_id, supplier.id, payment.period_month) : null;
+    const matches = !!figures && figures.lines.length > 0 && Math.abs(figures.net - Number(payment.amount)) < 0.005;
+    voucherDoc = {
+      type: "PAYMENT VOUCHER",
+      number: payment.voucher_number ?? "-",
+      date: payment.created_at.slice(0, 10),
+      dueDate: payment.due_date,
+      terms: supplier?.payment_terms,
+      company: { name: payment.companies?.legal_name || payment.companies?.name || "", registrationNo: payment.companies?.registration_no },
+      party: { label: "PAY TO (SUPPLIER)", name: payment.payee_name, address: supplier?.billing_address, phone: supplier?.phone, registrationNo: supplier?.registration_no },
+      remarks: [payment.payment_of, payment.bank_name ? `Bank: ${payment.bank_name}` : null, payment.status === "paid" && payment.paid_date ? `Paid ${payment.paid_date}${payment.payment_reference ? ` ref ${payment.payment_reference}` : ""}` : null].filter(Boolean).join(". "),
+      lines: matches && figures
+        ? figures.lines.map((l) => ({ code: l.date.split("-").reverse().join("/"), description: l.description, quantity: 1, unitPrice: l.amount, amount: l.amount }))
+        : [{ description: payment.payment_of || payment.invoice_number || "Supplier payment", quantity: 1, unitPrice: Number(payment.amount), amount: Number(payment.amount) }],
+    };
+  }
 
   const today = todayInMalaysia();
   const totalAmount = Number(payment.amount);
@@ -107,6 +133,7 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
           <div className="flex items-center gap-3">
             {payment.status !== "paid" && paidSoFar > 0 && <StatusBadge tone="warning">Part paid</StatusBadge>}
             <StatusBadge tone={URGENCY_TONE[urgency]}>{urgency === "pending" ? URGENCY_LABEL[urgency] : URGENCY_REMINDER[urgency]}</StatusBadge>
+            {voucherDoc && <PrintDocumentButton document={voucherDoc} label="Print voucher" />}
             <PaymentRowActions id={id} after={backHref} />
           </div>
         </div>
