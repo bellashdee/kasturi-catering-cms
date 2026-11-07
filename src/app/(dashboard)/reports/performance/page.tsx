@@ -5,8 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listCustomerInvoices, listSpending } from "@/lib/finance/queries";
-import { daysOverdue, invoiceBalance, invoiceTotal, isOpenInvoice, supplierInvoiceBalance } from "@/lib/finance/outstanding";
-import { listSupplierInvoices } from "@/lib/procurement/queries";
+import { daysOverdue, invoiceBalance, invoiceTotal, isOpenInvoice } from "@/lib/finance/outstanding";
+import { listSupplierOwed } from "@/lib/finance/paymentQueries";
 import { SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
 import { formatCurrency, malaysiaYearMonth, todayInMalaysia } from "@/lib/format";
 import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
@@ -25,7 +25,7 @@ const SSC_AGENT = "Mr. Ismaizal";
 // Each thing the page reads is read once per request, whichever blocks use it (the blocks below load on their own, so the top of the page shows
 // first and the rest follows as it is ready). `ids` is the company ids joined with commas, so the same read is found again.
 const getInvoices = cache(async (ids: string) => listCustomerInvoices(await createClient(), ids.split(",")));
-const getSupplierInvoices = cache(async (ids: string) => listSupplierInvoices(await createClient(), ids.split(",")));
+const getSupplierOwed = cache(async (ids: string) => listSupplierOwed(await createClient(), ids.split(",")));
 const getSpending = cache(async (ids: string, year: number) => listSpending(await createClient(), ids.split(","), `${year}-01-01`, `${year}-12-31`));
 const getPayments = cache(async (ids: string, year: number) => {
   const { data } = await (await createClient()).from("customer_payments").select("amount, payment_date").in("company_id", ids.split(",")).gte("payment_date", `${year}-01-01`).lte("payment_date", `${year}-12-31`);
@@ -291,15 +291,14 @@ async function OwedToUs({ ids, query }: BlockProps) {
 /** Who we still owe: how late the supplier invoices are and the suppliers with the biggest balance. */
 async function OwedByUs({ ids, query }: BlockProps) {
   const today = todayInMalaysia();
-  const supplierInvoices = await getSupplierInvoices(ids);
-  const open = supplierInvoices.filter((i) => i.status !== "paid").map((i) => ({ i, balance: supplierInvoiceBalance(i) })).filter((x) => x.balance > 0);
+  const open = (await getSupplierOwed(ids)).map((i) => ({ i, balance: i.balance }));
   const owedAll = sum(open.map((x) => x.balance));
   const owedBy = new Map<string, { value: number; count: number; late: number }>();
   const aging = [0, 0, 0, 0, 0];
   for (const { i, balance } of open) {
-    const days = daysOverdue(i.due_date, today);
+    const days = i.due_date ? daysOverdue(i.due_date, today) : 0;
     aging[agingBucket(days)] += balance;
-    const name = i.suppliers?.name ?? "—";
+    const name = i.payee_name.trim().toUpperCase().replace(/\s+/g, " ");
     const c = owedBy.get(name) ?? { value: 0, count: 0, late: 0 };
     c.value += balance;
     c.count += 1;
@@ -314,9 +313,9 @@ async function OwedByUs({ ids, query }: BlockProps) {
 
   return (
     <SectionCard title="Who We Still Owe">
-      <Note>The balance still unpaid on every supplier invoice, all years, as it stands today: {formatCurrency(owedAll)} in all, to {owedBy.size} supplier{owedBy.size === 1 ? "" : "s"} ({open.length} invoices).</Note>
+      <Note>What is still to be paid to the suppliers, from the monthly supplier payments of Finance (the supplier statements): {formatCurrency(owedAll)} in all, to {owedBy.size} supplier{owedBy.size === 1 ? "" : "s"}.</Note>
       {open.length === 0 ? (
-        <EmptyRow text="No supplier invoice is waiting to be paid." />
+        <EmptyRow text="No supplier payment is waiting to be paid." />
       ) : (
         <div className="flex flex-col gap-6">
           <div>

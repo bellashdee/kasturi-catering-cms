@@ -2,7 +2,8 @@ import { paidSoFar } from "@/lib/finance/paymentQueries";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { getMonthlyCostBreakdown } from "@/lib/finance/queries";
-import { NOT_OWED_STATUSES, invoiceBalance, supplierInvoiceBalance } from "@/lib/finance/outstanding";
+import { NOT_OWED_STATUSES, invoiceBalance } from "@/lib/finance/outstanding";
+import { listSupplierOwed } from "@/lib/finance/paymentQueries";
 import { isPettyCashOverdue, pettyCashDaysPending } from "@/lib/finance/constants";
 import { LATE_GRACE_MINUTES } from "@/lib/driver/constants";
 import { DUE_SOON_DAYS, formatRM, paymentUrgency } from "@/lib/finance/payments";
@@ -121,12 +122,8 @@ export async function getSupplierPayments(supabase: DB, companyIds: string[]) {
   const weekAhead = daysFromNowIso(7);
   const monthStart = monthStartIso();
 
-  const [{ data: openInvoices }, { data: paidThisMonthRows }, financePaid] = await Promise.all([
-    supabase
-      .from("supplier_invoices")
-      .select("amount, due_date, status, supplier_payments(amount, status)")
-      .in("company_id", companyIds)
-      .neq("status", "paid"),
+  const [openInvoices, { data: paidThisMonthRows }, financePaid] = await Promise.all([
+    listSupplierOwed(supabase, companyIds),
     supabase
       .from("supplier_payments")
       .select("amount")
@@ -136,13 +133,13 @@ export async function getSupplierPayments(supabase: DB, companyIds: string[]) {
     financePaidThisMonth(supabase, companyIds, "supplier"),
   ]);
 
-  // the balance still owed: the invoice amount less the supplier payments made on it (the same as the Supplier Outstanding Report)
-  const rows = (openInvoices ?? []).filter((r) => supplierInvoiceBalance(r) > 0);
-  const outstanding = rows.reduce((t, r) => t + supplierInvoiceBalance(r), 0);
-  const overdueCount = rows.filter((r) => r.due_date < today).length;
+  // what is still owed to the suppliers: the monthly supplier payments of Finance not paid yet (the same as the Supplier Outstanding Report)
+  const rows = openInvoices;
+  const outstanding = rows.reduce((t, r) => t + r.balance, 0);
+  const overdueCount = rows.filter((r) => r.due_date && r.due_date < today).length;
   const dueTodayCount = rows.filter((r) => r.due_date === today).length;
-  const dueThisWeekCount = rows.filter((r) => r.due_date > today && r.due_date <= weekAhead).length;
-  const upcomingCount = rows.filter((r) => r.due_date > weekAhead).length;
+  const dueThisWeekCount = rows.filter((r) => r.due_date && r.due_date > today && r.due_date <= weekAhead).length;
+  const upcomingCount = rows.filter((r) => !r.due_date || r.due_date > weekAhead).length;
   // the supplier payments recorded in the ledger, plus the Finance supplier payments marked as paid this month
   const paidThisMonth = sum(paidThisMonthRows) + financePaid.directAmount;
 

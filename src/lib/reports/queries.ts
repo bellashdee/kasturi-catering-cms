@@ -2,7 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { resolvePeriod, type DateRange } from "@/lib/finance/constants";
 import { getMonthlyCostBreakdown, getMonthlyRevenue, listSpending } from "@/lib/finance/queries";
-import { NOT_OWED_STATUSES, invoiceBalance, supplierInvoiceBalance } from "@/lib/finance/outstanding";
+import { NOT_OWED_STATUSES, invoiceBalance } from "@/lib/finance/outstanding";
+import { listSupplierOwed } from "@/lib/finance/paymentQueries";
 
 type DB = SupabaseClient<Database>;
 
@@ -111,7 +112,7 @@ export async function getCompanySummary(supabase: DB, companyIds: string[], year
     supabase.from("campaigns").select("id", { count: "exact", head: true }).in("company_id", companyIds).eq("status", "active"),
     supabase.from("production_orders").select("id", { count: "exact", head: true }).in("company_id", companyIds).gte("planned_date", start).lte("planned_date", end),
     supabase.from("deliveries").select("id", { count: "exact", head: true }).in("company_id", companyIds).gte("scheduled_time", `${start}T00:00:00+08:00`).lte("scheduled_time", `${end}T23:59:59.999+08:00`),
-    supabase.from("supplier_invoices").select("amount, supplier_payments(amount, status)").in("company_id", companyIds).neq("status", "paid"),
+    listSupplierOwed(supabase, companyIds),
     // the balance still owed, worked out like the Customer Outstanding Report and the Performance Dashboard (total with tax, less payments)
     supabase.from("customer_invoices").select("amount, tax_amount, status, customer_payments(amount)").in("company_id", companyIds).not("status", "in", `(${NOT_OWED_STATUSES.join(",")})`),
   ]);
@@ -129,7 +130,7 @@ export async function getCompanySummary(supabase: DB, companyIds: string[], year
     activeCampaigns: campaignsRes.count ?? 0,
     productionOrders: productionRes.count ?? 0,
     deliveries: deliveriesRes.count ?? 0,
-    supplierOutstanding: (supplierOutstandingRes.data ?? []).reduce((t, r) => t + supplierInvoiceBalance(r), 0),
+    supplierOutstanding: supplierOutstandingRes.reduce((t, r) => t + r.balance, 0),
     customerOutstanding: (customerOutstandingRes.data ?? []).reduce((t, r) => t + invoiceBalance(r), 0),
   };
 }

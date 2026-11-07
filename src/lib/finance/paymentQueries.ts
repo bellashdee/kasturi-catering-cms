@@ -147,3 +147,37 @@ export async function listPaymentsForChecklist(supabase: DB, companyIds: string[
   if (error) throw error;
   return withPaid(supabase, data ?? []);
 }
+
+export type SupplierOwedRow = {
+  id: string;
+  company_id: string;
+  payee_name: string;
+  /** the month of the supplier's statement, first day (YYYY-MM-01) */
+  period_month: string;
+  due_date: string | null;
+  amount: number;
+  /** what is still to be paid after the part payments */
+  balance: number;
+  payment_of: string | null;
+};
+
+/**
+ * What the companies still owe their suppliers, month by month: the supplier payments of Finance (one line for a supplier and a month, keyed in
+ * from the supplier's statement of account and settled when the payment voucher is issued) that are not paid yet, less any part payment.
+ * This is the one source of "owed to suppliers" for the Supplier Outstanding Report, the Company Summary and the dashboards.
+ */
+export async function listSupplierOwed(supabase: DB, companyIds: string[]): Promise<SupplierOwedRow[]> {
+  const { data, error } = await supabase
+    .from("finance_payments")
+    .select("id, company_id, payee_name, period_month, due_date, amount, payment_of")
+    .in("company_id", companyIds)
+    .eq("category", "supplier")
+    .eq("status", "pending")
+    .order("period_month")
+    .order("payee_name");
+  if (error) throw error;
+  const paid = await paidSoFar(supabase, (data ?? []).map((r) => r.id));
+  return (data ?? [])
+    .map((r) => ({ ...r, amount: Number(r.amount), balance: Math.max(0, round2(Number(r.amount) - (paid.get(r.id) ?? 0))) }))
+    .filter((r) => r.balance > 0);
+}
