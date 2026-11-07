@@ -9,7 +9,6 @@ import { PrintDocumentButton } from "@/components/shared/PrintDocumentButton";
 import { StatusBadge } from "@/components/StatusBadge";
 import { InvoiceActions } from "@/components/procurement/ProcurementRecordActions";
 import { SectionCard, EmptyRow } from "@/components/dashboard/SectionCard";
-import { RequestPaymentForm } from "@/components/procurement/RequestPaymentForm";
 import { SupplierPaymentActions } from "@/components/procurement/SupplierPaymentActions";
 import { PaymentExecutionForm } from "@/components/procurement/PaymentExecutionForm";
 
@@ -37,9 +36,6 @@ export default async function SupplierInvoiceDetailPage({
   }
 
   const overdue = isOverdue(invoice.due_date, invoice.status);
-  const requestedTotal = invoice.supplier_payments.reduce((t, p) => t + (p.status !== "rejected" ? Number(p.amount) : 0), 0);
-  const outstanding = Math.max(0, Number(invoice.amount) - requestedTotal);
-  const hasPendingPayment = invoice.supplier_payments.some((p) => p.status === "pending" || p.status === "approved");
 
   return (
     <div className="flex flex-col gap-5">
@@ -95,7 +91,7 @@ export default async function SupplierInvoiceDetailPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
           <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Amount</div>
           <div className="mt-1 text-xl font-extrabold text-text">{formatCurrency(Number(invoice.amount))}</div>
@@ -103,10 +99,6 @@ export default async function SupplierInvoiceDetailPage({
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
           <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Due Date</div>
           <div className="mt-1 text-xl font-extrabold text-text">{invoice.due_date}</div>
-        </div>
-        <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
-          <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Outstanding</div>
-          <div className="mt-1 text-xl font-extrabold text-text">{formatCurrency(outstanding)}</div>
         </div>
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
           <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Attachment</div>
@@ -142,12 +134,11 @@ export default async function SupplierInvoiceDetailPage({
         )}
       </SectionCard>
 
+      {invoice.supplier_payments.length > 0 && (
       <SectionCard title="Payments">
         <div className="flex flex-col gap-3">
-          {invoice.supplier_payments.length === 0 ? (
-            <EmptyRow text="No payment requests yet." />
-          ) : (
-            <div className="-mx-5 -mt-5 mb-1 divide-y divide-border">
+          {(
+            <div className="-mx-5 -mb-5 divide-y divide-border">
               {invoice.supplier_payments.map((p) => (
                 <div key={p.id} className="flex flex-col gap-2 px-5 py-3 text-[13px]">
                   <div className="flex items-center justify-between">
@@ -168,11 +159,9 @@ export default async function SupplierInvoiceDetailPage({
               ))}
             </div>
           )}
-          {!hasPendingPayment && outstanding > 0 && (
-            <RequestPaymentForm companyId={invoice.company_id} invoiceId={id} outstanding={outstanding} />
-          )}
         </div>
       </SectionCard>
+      )}
     </div>
   );
 }
