@@ -13,6 +13,8 @@ import { buildReportRows } from "@/lib/reports/buildRows";
 import { EventClockForm } from "@/components/driver/EventClockForm";
 import { EventSitesPanel } from "@/components/driver/EventSitesPanel";
 import { CopyLink } from "@/components/driver/CopyLink";
+import { MonthFilter } from "@/components/MonthFilter";
+import { monthLabelOf } from "@/lib/monthFilter";
 import { listEventAttendance, listEventSites, listEventSuggestions } from "@/lib/eventAttendance/queries";
 import { EVENT_CLOCK_COMPANIES, slugForCompany, type StaffType } from "@/lib/eventAttendance/rules";
 import { ROLE_LABEL, listEventDutyStaff } from "@/lib/eventAttendance/staff";
@@ -25,7 +27,7 @@ function formatTime(iso: string | null): string {
  * Attendance: the staff on duty at an event (the drivers and the foreign staff) clock in and out of it, within 100 m of the
  * event location. The same form is sent to them as a link (no login needed).
  */
-export default async function AttendancePage({ searchParams }: { searchParams: Promise<{ company?: string; date?: string; name?: string }> }) {
+export default async function AttendancePage({ searchParams }: { searchParams: Promise<{ company?: string; date?: string; name?: string; month?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
@@ -33,7 +35,8 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   const { data: allCompanies } = await supabase.from("companies").select("id, name").order("name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, date: dateParam, name: nameParam } = await searchParams;
+  const { company: requestedId, date: dateParam, name: nameParam, month } = await searchParams;
+  const monthLabel = monthLabelOf(month);
   const { accessibleIds, targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const selectable = companies.filter((c) => accessibleIds.includes(c.id));
   if (targetCompanyIds.length === 0) return <EmptyRow text="You don't have access to any company yet." />;
@@ -46,7 +49,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   const adminCompanyIds = new Set(adminFlags.filter(([, isAdmin]) => isAdmin).map(([id]) => id));
 
   const [eventRows, eventSites, eventSuggestions, duty] = await Promise.all([
-    listEventAttendance(supabase, targetCompanyIds, { date: dateParam || undefined, name: nameParam || undefined }),
+    listEventAttendance(supabase, targetCompanyIds, { date: dateParam || undefined, name: nameParam || undefined, month }),
     listEventSites(supabase, targetCompanyIds),
     listEventSuggestions(supabase, selectable.map((c) => c.id), todayInMalaysia()),
     listEventDutyStaff(supabase, selectable.map((c) => c.id)),
@@ -100,7 +103,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
     <div className="flex flex-col gap-5">
       <div>
         <h1 className="text-[22px] font-extrabold text-text">Operation Management</h1>
-        <p className="mt-0.5 text-[13px] text-text-secondary">Attendance — the staff on duty at the event (drivers and foreign staff)</p>
+        <p className="mt-0.5 text-[13px] text-text-secondary">Attendance: the staff on duty at the event (drivers and foreign staff){monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}</p>
       </div>
 
       <DriverLogisticsSubNav />
@@ -130,6 +133,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
 
       <form method="get" className="flex flex-wrap items-end gap-3">
         {requestedId && <input type="hidden" name="company" value={requestedId} />}
+        {month && <input type="hidden" name="month" value={month} />}
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Name</label>
           <input name="name" defaultValue={nameParam ?? ""} className="mt-1 h-9 w-56 rounded-lg border border-border-strong px-2 text-[13px]" />
@@ -141,7 +145,9 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
         <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply Filters</button>
       </form>
 
-      <ReportTable filenameBase={`event-attendance-${dateParam || "all"}`} headers={table.headers} rows={table.tableRows} emptyText="No event clock-ins yet." />
+      <MonthFilter />
+
+      <ReportTable filenameBase={`event-attendance-${dateParam || month || "all"}`} headers={table.headers} rows={table.tableRows} emptyText={monthLabel ? "No event clock-in in this month." : "No event clock-ins yet."} />
 
       {adminCompanies.length > 0 && <EventSitesPanel sites={sites} companies={adminCompanies} knownLocations={knownLocations} />}
     </div>

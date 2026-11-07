@@ -12,13 +12,15 @@ import { SupplierProcurementSubNav } from "@/components/procurement/SupplierProc
 import { ProcurementRequestActions } from "@/components/procurement/ProcurementRequestActions";
 import { RequestEditActions } from "@/components/procurement/ProcurementRecordActions";
 import { PurchaseOrdersBoard, type BoardSupplier } from "@/components/procurement/PurchaseOrdersBoard";
+import { MonthFilter } from "@/components/MonthFilter";
+import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
 
 /**
  * Purchase Requests and Purchase Orders in one place. The orders made from the menu of the events (one for each supplier) are listed by
  * supplier with the events, the items and the quantities, and can be edited, deleted or sent to the supplier on WhatsApp. The item requests
  * of the staff that are still waiting (or approved, not yet ordered) are listed above them.
  */
-export default async function PurchaseOrdersPage({ searchParams }: { searchParams: Promise<{ company?: string }> }) {
+export default async function PurchaseOrdersPage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
@@ -26,7 +28,8 @@ export default async function PurchaseOrdersPage({ searchParams }: { searchParam
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId } = await searchParams;
+  const { company: requestedId, month } = await searchParams;
+  const monthLabel = monthLabelOf(month);
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -34,7 +37,7 @@ export default async function PurchaseOrdersPage({ searchParams }: { searchParam
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const [{ data: orders, error }, requests] = await Promise.all([
+  const [{ data: allOrders, error }, allRequests] = await Promise.all([
     supabase
       .from("purchase_orders")
       .select("*, suppliers(id, name, phone, contact_person), companies(name), purchase_order_items(*)")
@@ -45,9 +48,13 @@ export default async function PurchaseOrdersPage({ searchParams }: { searchParam
   ]);
   if (error) throw error;
 
+  // by month: the orders by their order date, the item requests by the day they were made
+  const orders = filterByMonth(allOrders ?? [], month, (o) => o.order_date);
+  const requests = filterByMonth(allRequests, month, (r) => r.created_at);
+
   // the orders of each supplier, the suppliers A to Z
   const bySupplier = new Map<string, BoardSupplier>();
-  for (const o of orders ?? []) {
+  for (const o of orders) {
     const key = o.supplier_id;
     const entry = bySupplier.get(key) ?? { id: key, name: o.suppliers?.name ?? "—", phone: o.suppliers?.phone ?? null, contactPerson: o.suppliers?.contact_person ?? null, orders: [] };
     entry.orders.push({
@@ -67,14 +74,17 @@ export default async function PurchaseOrdersPage({ searchParams }: { searchParam
   const suppliers = Array.from(bySupplier.values()).sort((a, b) => a.name.localeCompare(b.name));
 
   const waiting = requests.filter((r) => r.status === "pending" || r.status === "approved");
-  const count = orders?.length ?? 0;
+  const count = orders.length;
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-[22px] font-extrabold text-text">Supplier & Procurement</h1>
-          <p className="mt-0.5 text-[13px] text-text-secondary">{`${count} purchase order${count === 1 ? "" : "s"} · ${suppliers.length} supplier${suppliers.length === 1 ? "" : "s"}`}</p>
+          <p className="mt-0.5 text-[13px] text-text-secondary">
+            {`${count} purchase order${count === 1 ? "" : "s"} · ${suppliers.length} supplier${suppliers.length === 1 ? "" : "s"}`}
+            {monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}
+          </p>
         </div>
         <div className="flex flex-wrap gap-2.5">
           <Link href={`/supplier-procurement/requests/new${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text">
@@ -90,6 +100,8 @@ export default async function PurchaseOrdersPage({ searchParams }: { searchParam
       </div>
 
       <SupplierProcurementSubNav />
+
+      <MonthFilter />
 
       <div className="rounded-xl border border-border bg-surface px-4 py-3 text-[14px] text-text-secondary shadow-sm">
         <b className="text-text">How it works:</b> 1. Make the orders from an event menu (the ingredient list of the menu, one order for each supplier) · 2. Check the items and quantities here, edit them if needed · 3. Press Send to supplier on WhatsApp: the chat of the supplier opens with the event, its date and the list of items typed in.
@@ -128,7 +140,7 @@ export default async function PurchaseOrdersPage({ searchParams }: { searchParam
         </div>
       )}
 
-      <PurchaseOrdersBoard suppliers={suppliers} query={query} />
+      <PurchaseOrdersBoard suppliers={suppliers} query={query} emptyText={monthLabel ? "No purchase orders in this month." : "No purchase orders yet."} />
     </div>
   );
 }

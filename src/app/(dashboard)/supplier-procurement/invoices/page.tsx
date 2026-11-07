@@ -5,12 +5,14 @@ import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listSupplierInvoices } from "@/lib/procurement/queries";
 import { INVOICE_STATUS_LABEL, isOverdue } from "@/lib/procurement/constants";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatMalaysiaDate } from "@/lib/format";
 import { parseInvoiceDateFilter } from "@/lib/finance/dateFilter";
 import { InvoiceDateFilter } from "@/components/shared/InvoiceDateFilter";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SupplierProcurementSubNav } from "@/components/procurement/SupplierProcurementSubNav";
+import { MonthFilter } from "@/components/MonthFilter";
+import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
 
 function statusTone(status: string, overdue: boolean): "success" | "warning" | "danger" | "neutral" {
   if (status === "paid") return "success";
@@ -22,7 +24,7 @@ function statusTone(status: string, overdue: boolean): "success" | "warning" | "
 export default async function SupplierInvoicesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; dateField?: string; from?: string; to?: string }>;
+  searchParams: Promise<{ company?: string; dateField?: string; from?: string; to?: string; month?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -31,7 +33,7 @@ export default async function SupplierInvoicesPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, dateField, from, to } = await searchParams;
+  const { company: requestedId, dateField, from, to, month } = await searchParams;
   const dateFilter = parseInvoiceDateFilter({ dateField, from, to });
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
@@ -40,14 +42,16 @@ export default async function SupplierInvoicesPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const invoices = await listSupplierInvoices(supabase, targetCompanyIds, dateFilter);
+  // by month: the invoice date (or the due date when the date filter below is set to the due date)
+  const invoices = filterByMonth(await listSupplierInvoices(supabase, targetCompanyIds, dateFilter), month, (inv) => (dateFilter.field === "due_date" ? inv.due_date : inv.invoice_date));
+  const monthLabel = monthLabelOf(month);
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[22px] font-extrabold text-text">Supplier & Procurement</h1>
-          <p className="mt-0.5 text-[13px] text-text-secondary">{invoices.length} invoice{invoices.length === 1 ? "" : "s"}{dateFilter.active ? ` · ${dateFilter.field === "due_date" ? "due" : "dated"} ${dateFilter.from ?? "any date"} to ${dateFilter.to ?? "any date"}` : ""}</p>
+          <p className="mt-0.5 text-[13px] text-text-secondary">{invoices.length} invoice{invoices.length === 1 ? "" : "s"}{dateFilter.active ? ` · ${dateFilter.field === "due_date" ? "due" : "dated"} ${dateFilter.from ?? "any date"} to ${dateFilter.to ?? "any date"}` : ""}{monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}</p>
         </div>
         <Link href={`/supplier-procurement/invoices/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
           + New Invoice
@@ -56,11 +60,13 @@ export default async function SupplierInvoicesPage({
 
       <SupplierProcurementSubNav />
 
-      <InvoiceDateFilter filter={dateFilter} requestedCompanyId={requestedId} clearHref={`/supplier-procurement/invoices${query}`} />
+      <MonthFilter />
+
+      <InvoiceDateFilter filter={dateFilter} requestedCompanyId={requestedId} month={month} clearHref={`/supplier-procurement/invoices${query}`} />
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {invoices.length === 0 ? (
-          <EmptyRow text={dateFilter.active ? "No invoices match this date filter." : "No invoices yet."} />
+          <EmptyRow text={monthLabel ? "No invoices in this month." : dateFilter.active ? "No invoices match this date filter." : "No invoices yet."} />
         ) : (
           <div>
             <div className="grid grid-cols-[1.2fr_1.2fr_1fr_1fr_1fr_1fr_1fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
@@ -82,8 +88,8 @@ export default async function SupplierInvoicesPage({
                 >
                   <div className="font-semibold text-text">{inv.invoice_number}</div>
                   <div className="text-text-secondary">{inv.suppliers?.name}</div>
-                  <div className="text-text-secondary">{inv.invoice_date}</div>
-                  <div className="text-text-secondary">{inv.due_date}</div>
+                  <div className="text-text-secondary">{formatMalaysiaDate(inv.invoice_date)}</div>
+                  <div className="text-text-secondary">{formatMalaysiaDate(inv.due_date)}</div>
                   <div className="text-text-secondary">{formatCurrency(Number(inv.amount))}</div>
                   <div className="text-text-secondary">{inv.companies?.name}</div>
                   <div className="flex items-center gap-1.5">

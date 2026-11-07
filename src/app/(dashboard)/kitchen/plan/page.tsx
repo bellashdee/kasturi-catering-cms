@@ -10,9 +10,11 @@ import { kitchenPlanText } from "@/lib/kitchenPlan/text";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { KitchenSubNav } from "@/components/kitchen/KitchenSubNav";
 import { PlanSteps } from "@/components/kitchenPlan/PlanSteps";
+import { MonthFilter } from "@/components/MonthFilter";
+import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
 
 /** Step 1: choose the event. Nothing is typed: everything is read from the Event Order. */
-export default async function CookingPlanPage({ searchParams }: { searchParams: Promise<{ company?: string }> }) {
+export default async function CookingPlanPage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
   const lang = (await getServerLanguage()) === "ms" ? "ms" : "en";
@@ -20,12 +22,13 @@ export default async function CookingPlanPage({ searchParams }: { searchParams: 
 
   const supabase = await createClient();
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
-  const { company: requestedId } = await searchParams;
+  const { company: requestedId, month } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, allCompanies ?? [], requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
   if (targetCompanyIds.length === 0) return <EmptyRow text="You don't have access to any company yet." />;
 
-  const events = await listPlanEvents(supabase, targetCompanyIds);
+  const events = filterByMonth(await listPlanEvents(supabase, targetCompanyIds), month, (e) => e.date);
+  const monthLabel = monthLabelOf(month);
   const progress = await planProgress(supabase, Array.from(new Set(events.map((e) => e.eventId))));
 
   return (
@@ -38,11 +41,13 @@ export default async function CookingPlanPage({ searchParams }: { searchParams: 
 
       <div>
         <h2 className="text-[20px] font-extrabold text-text">{t.pickTitle}</h2>
-        <p className="mt-0.5 text-[14px] text-text-secondary">{t.pickHint}</p>
+        <p className="mt-0.5 text-[14px] text-text-secondary">{t.pickHint}{monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}</p>
       </div>
 
+      <MonthFilter />
+
       {events.length === 0 ? (
-        <EmptyRow text={t.noEvents} />
+        <EmptyRow text={monthLabel ? (lang === "ms" ? "Tiada acara dalam bulan ini." : "No events in this month.") : t.noEvents} />
       ) : (
         <ul className="flex flex-col gap-3">
           {events.map((e) => {

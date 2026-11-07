@@ -11,6 +11,8 @@ import { dayPax, type EventDay } from "@/lib/catering/days";
 import { TRACKING_STATUS_LABEL, TRACKING_STATUS_TONE } from "@/lib/catering/quotationRequest";
 import { formatMalaysiaDate, formatMalaysiaDateTime } from "@/lib/format";
 import { Select } from "@/components/ui/Select";
+import { MonthFilter } from "@/components/MonthFilter";
+import { monthLabelOf, monthRange } from "@/lib/monthFilter";
 
 type Search = {
   company?: string;
@@ -22,6 +24,7 @@ type Search = {
   sentFrom?: string;
   sentTo?: string;
   sort?: string;
+  month?: string;
 };
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -54,6 +57,10 @@ export default async function QuotationRequestsPage({ searchParams }: { searchPa
   // the event date of a request is its first day
   if (sp.eventFrom && DATE.test(sp.eventFrom)) request = request.gte("days->0->>dayDate", sp.eventFrom);
   if (sp.eventTo && DATE.test(sp.eventTo)) request = request.lte("days->0->>dayDate", sp.eventTo);
+  // the month is the day the request was received (submitted)
+  const range = monthRange(sp.month);
+  const monthLabel = monthLabelOf(sp.month);
+  if (range) request = request.gte("created_at", `${range.start}T00:00:00+08:00`).lte("created_at", `${range.end}T23:59:59.999+08:00`);
   if (sp.sentFrom && DATE.test(sp.sentFrom)) request = request.gte("created_at", `${sp.sentFrom}T00:00:00+08:00`);
   if (sp.sentTo && DATE.test(sp.sentTo)) request = request.lte("created_at", `${sp.sentTo}T23:59:59.999+08:00`);
   const { data: rows, error } = await request.order("created_at", { ascending: sp.sort === "oldest" }).limit(300);
@@ -72,8 +79,11 @@ export default async function QuotationRequestsPage({ searchParams }: { searchPa
 
       <CateringSubNav />
 
+      <MonthFilter />
+
       <form className="flex flex-wrap items-end gap-2.5 rounded-xl border border-border bg-surface p-4 shadow-sm">
         {sp.company && <input type="hidden" name="company" value={sp.company} />}
+        {range && <input type="hidden" name="month" value={sp.month} />}
         <label className="flex flex-col gap-1 text-[11.5px] font-semibold text-text-secondary">
           Search
           <input name="q" defaultValue={sp.q ?? ""} placeholder="Request ID, customer, event, agent" className={`${inputClass} w-64`} />
@@ -124,12 +134,13 @@ export default async function QuotationRequestsPage({ searchParams }: { searchPa
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         <div className="border-b border-border px-5 py-3 text-[13px] font-bold text-text">
           {requests.length} request{requests.length === 1 ? "" : "s"}
+          {monthLabel && <span className="ml-2 font-semibold text-text-secondary">· {monthLabel}</span>}
           {waiting > 0 && <span className="ml-2 font-semibold text-primary">· {waiting} new</span>}
         </div>
         {error ? (
           <div className="px-5 py-4 text-[13px] text-danger">Could not load the requests. Please refresh the page.</div>
         ) : requests.length === 0 ? (
-          <EmptyRow text="No quotation request matches." />
+          <EmptyRow text={monthLabel ? "No quotation request in this month matches." : "No quotation request matches."} />
         ) : (
           <div className="overflow-x-auto">
             {/* related details share a column (ID + submitted, customer + contact, event + date, status + handler) so nothing is squeezed */}

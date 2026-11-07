@@ -16,6 +16,8 @@ import { DeletePurchaseOrderButton } from "@/components/procurement/DeletePurcha
 import { RequestList } from "@/components/kitchenPurchase/RequestList";
 import { listKitchenRequests } from "@/lib/kitchenPurchase/queries";
 import { canAccessModule } from "@/lib/modules";
+import { MonthFilter } from "@/components/MonthFilter";
+import { filterByMonth, monthLabelOf, monthRange } from "@/lib/monthFilter";
 
 function statusTone(status: string): "success" | "warning" | "danger" | "info" {
   if (status === "completed") return "success";
@@ -27,7 +29,7 @@ function statusTone(status: string): "success" | "warning" | "danger" | "info" {
 export default async function PurchaseRequestsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string }>;
+  searchParams: Promise<{ company?: string; month?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -36,7 +38,7 @@ export default async function PurchaseRequestsPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId } = await searchParams;
+  const { company: requestedId, month } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -44,22 +46,27 @@ export default async function PurchaseRequestsPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const requests = await listPurchaseRequests(supabase, targetCompanyIds);
-  const kitchenRequests = await listKitchenRequests(supabase, targetCompanyIds);
-  const { data: menuOrders } = await supabase
+  const monthLabel = monthLabelOf(month);
+  const range = monthRange(month);
+  // the date shown on a request row is the event date (the request date when the event has none)
+  const requests = filterByMonth(await listPurchaseRequests(supabase, targetCompanyIds), month, (r) => r.created_at);
+  const kitchenRequests = filterByMonth(await listKitchenRequests(supabase, targetCompanyIds), month, (r) => r.event_date ?? r.created_at);
+  let menuOrdersQuery = supabase
     .from("purchase_orders")
     .select("id, po_number, order_date, status, total_amount, source_events, suppliers(name), companies(name), purchase_order_items(id)")
     .in("company_id", targetCompanyIds)
     .not("source_events", "is", null)
     .order("created_at", { ascending: false })
     .limit(100);
+  if (range) menuOrdersQuery = menuOrdersQuery.gte("order_date", range.start).lte("order_date", range.end);
+  const { data: menuOrders } = await menuOrdersQuery;
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[22px] font-extrabold text-text">Kitchen</h1>
-          <p className="mt-0.5 text-[13px] text-text-secondary">{kitchenRequests.length} purchase request{kitchenRequests.length === 1 ? "" : "s"}</p>
+          <p className="mt-0.5 text-[13px] text-text-secondary">{kitchenRequests.length} purchase request{kitchenRequests.length === 1 ? "" : "s"}{monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}</p>
         </div>
         <div className="flex flex-wrap gap-2.5">
           <Link href={`/kitchen/purchase-requests/event${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
@@ -73,12 +80,14 @@ export default async function PurchaseRequestsPage({
 
       <KitchenSubNav />
 
+      <MonthFilter />
+
       <section className="flex flex-col gap-3">
         <div>
           <h2 className="text-[17px] font-extrabold text-text">Purchase Request History</h2>
-          <p className="text-[13px] text-text-secondary">Choose the event menu, check the ingredient list, write the quantities and submit it to the Purchaser. The Purchaser adds the supplier prices.</p>
+          <p className="text-[13px] text-text-secondary">Choose the event menu, check the ingredient list, write the quantities and submit the request to the Purchaser. The Purchaser adds the supplier prices.</p>
         </div>
-        <RequestList rows={kitchenRequests} hrefBase="/kitchen/purchase-requests" query={query} kitchenActions={canAccessModule(session.allowedModules, "kitchen")} empty="No purchase request yet. Press + New Purchase Request (event menu) to make one." />
+        <RequestList rows={kitchenRequests} hrefBase="/kitchen/purchase-requests" query={query} kitchenActions={canAccessModule(session.allowedModules, "kitchen")} empty={monthLabel ? "No purchase requests in this month." : "No purchase requests yet. Press + New Purchase Request (event menu) to make one."} />
       </section>
 
       <div className="rounded-xl border border-border bg-surface px-4 py-3 text-[14px] text-text-secondary shadow-sm">
@@ -89,9 +98,9 @@ export default async function PurchaseRequestsPage({
       </div>
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
-        <div className="border-b border-border px-5 py-3 text-[13px] font-bold text-text">Purchase orders made from event menus</div>
+        <div className="border-b border-border px-5 py-3 text-[13px] font-bold text-text">Purchase Orders Made from Event Menus</div>
         {(menuOrders ?? []).length === 0 ? (
-          <EmptyRow text="No purchase order made from an event menu yet." />
+          <EmptyRow text={monthLabel ? "No purchase orders made from event menus in this month." : "No purchase orders made from event menus yet."} />
         ) : (
           (menuOrders ?? []).map((po) => (
             <div key={po.id} className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3 text-[13.5px] last:border-b-0">
@@ -113,7 +122,7 @@ export default async function PurchaseRequestsPage({
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {requests.length === 0 ? (
-          <EmptyRow text="No purchase requests yet." />
+          <EmptyRow text={monthLabel ? "No single-item purchase requests in this month." : "No single-item purchase requests yet."} />
         ) : (
           <div>
             <div className="grid grid-cols-[1.3fr_0.8fr_0.9fr_0.9fr_0.9fr_0.8fr_0.9fr_1.3fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
@@ -121,8 +130,8 @@ export default async function PurchaseRequestsPage({
               <div>Quantity</div>
               <div>Supplier</div>
               <div>Company</div>
-              <div>Request date</div>
-              <div>Required</div>
+              <div>Request Date</div>
+              <div>Required Date</div>
               <div>Status</div>
               <div></div>
             </div>

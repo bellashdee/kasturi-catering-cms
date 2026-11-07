@@ -11,6 +11,8 @@ import { InvoiceDateFilter } from "@/components/shared/InvoiceDateFilter";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow, SectionCard, StatRow } from "@/components/dashboard/SectionCard";
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
+import { MonthFilter } from "@/components/MonthFilter";
+import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
 
 function statusTone(status: string, overdue: boolean): "success" | "warning" | "danger" {
   if (status === "paid") return "success";
@@ -21,7 +23,7 @@ function statusTone(status: string, overdue: boolean): "success" | "warning" | "
 export default async function CustomerInvoicesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; dateField?: string; from?: string; to?: string }>;
+  searchParams: Promise<{ company?: string; dateField?: string; from?: string; to?: string; month?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -30,7 +32,7 @@ export default async function CustomerInvoicesPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, dateField, from, to } = await searchParams;
+  const { company: requestedId, dateField, from, to, month } = await searchParams;
   const dateFilter = parseInvoiceDateFilter({ dateField, from, to });
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
@@ -39,7 +41,10 @@ export default async function CustomerInvoicesPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const invoices = await listCustomerInvoices(supabase, targetCompanyIds, dateFilter);
+  // the month applies to the same date as the date filter (invoice date unless "Due date" is picked)
+  const invoices = filterByMonth(await listCustomerInvoices(supabase, targetCompanyIds, dateFilter), month, (i) => i[dateFilter.field]);
+  const monthLabel = monthLabelOf(month);
+  const filtered = dateFilter.active || !!monthLabel;
   const outstanding = invoices.filter((i) => i.status !== "paid");
   const totalOutstanding = outstanding.reduce((t, i) => t + Number(i.amount), 0);
   const overdueCount = outstanding.filter((i) => isOverdue(i.due_date, i.status)).length;
@@ -49,7 +54,7 @@ export default async function CustomerInvoicesPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[22px] font-extrabold text-text">Admin &amp; Finance</h1>
-          <p className="mt-0.5 text-[13px] text-text-secondary">{invoices.length} customer invoice{invoices.length === 1 ? "" : "s"}{dateFilter.active ? ` · ${dateFilter.field === "due_date" ? "due" : "dated"} ${dateFilter.from ?? "any date"} to ${dateFilter.to ?? "any date"}` : ""}</p>
+          <p className="mt-0.5 text-[13px] text-text-secondary">{invoices.length} customer invoice{invoices.length === 1 ? "" : "s"}{monthLabel ? <span className="font-semibold text-text"> · {dateFilter.field === "due_date" ? "due in " : ""}{monthLabel}</span> : null}{dateFilter.active ? ` · ${dateFilter.field === "due_date" ? "due" : "dated"} ${dateFilter.from ?? "any date"} to ${dateFilter.to ?? "any date"}` : ""}</p>
         </div>
         <Link href={`/finance/invoices/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
           + New Invoice
@@ -58,23 +63,25 @@ export default async function CustomerInvoicesPage({
 
       <FinanceAdminSubNav />
 
-      <InvoiceDateFilter filter={dateFilter} requestedCompanyId={requestedId} clearHref={`/finance/invoices${query}`} />
+      <MonthFilter />
 
-      <SectionCard title={dateFilter.active ? "Customer Outstanding (invoices in this filter)" : "Customer Outstanding"}>
+      <InvoiceDateFilter filter={dateFilter} requestedCompanyId={requestedId} month={month} clearHref={`/finance/invoices${query}`} />
+
+      <SectionCard title={filtered ? "Customer outstanding (invoices in this filter)" : "Customer outstanding"}>
         <StatRow label="Total outstanding" value={formatCurrency(totalOutstanding)} />
         <StatRow label="Overdue invoices" value={overdueCount} />
       </SectionCard>
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {invoices.length === 0 ? (
-          <EmptyRow text={dateFilter.active ? "No invoices match this date filter." : "No customer invoices yet."} />
+          <EmptyRow text={monthLabel && !dateFilter.active ? "No customer invoices in this month." : filtered ? "No invoices match this filter." : "No customer invoices yet."} />
         ) : (
           <div>
             <div className="grid grid-cols-[1.2fr_1.2fr_1fr_1fr_1fr_1fr_1fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
               <div>Invoice #</div>
               <div>Customer</div>
-              <div>Invoice Date</div>
-              <div>Due Date</div>
+              <div>Invoice date</div>
+              <div>Due date</div>
               <div>Amount</div>
               <div>Company</div>
               <div>Status</div>

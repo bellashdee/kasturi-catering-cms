@@ -10,11 +10,13 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { canUsePayrollCentre } from "@/lib/hr/payrollAccess";
 import { MarkPaidButton } from "@/components/hr/MarkPaidButton";
+import { MonthFilter } from "@/components/MonthFilter";
+import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
 
 export default async function PayrollPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string }>;
+  searchParams: Promise<{ company?: string; month?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -24,25 +26,32 @@ export default async function PayrollPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId } = await searchParams;
+  const { company: requestedId, month } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
 
   if (targetCompanyIds.length === 0) {
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const records = await listPayrollForCompanies(supabase, targetCompanyIds);
+  // the month is the month the pay period ends in
+  const records = filterByMonth(await listPayrollForCompanies(supabase, targetCompanyIds), month, (r) => r.pay_period_end);
+  const monthLabel = monthLabelOf(month);
 
   return (
     <div className="flex flex-col gap-5">
       <div>
         <h1 className="text-[22px] font-extrabold text-text">Payroll</h1>
-        <p className="mt-0.5 text-[13px] text-text-secondary">Across all employees you can access.</p>
+        <p className="mt-0.5 text-[13px] text-text-secondary">
+          {records.length} payroll record{records.length === 1 ? "" : "s"} · all employees you can access
+          {monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}
+        </p>
       </div>
+
+      <MonthFilter />
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {records.length === 0 ? (
-          <EmptyRow text="No payroll records yet." />
+          <EmptyRow text={monthLabel ? "No payroll records in this month." : "No payroll records yet."} />
         ) : (
           <div className="divide-y divide-border">
             {records.map((r) => (

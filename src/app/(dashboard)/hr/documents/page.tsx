@@ -7,11 +7,13 @@ import { certificateUrgency } from "@/lib/hr/constants";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { CompanyDocumentList } from "@/components/hr/CompanyDocumentList";
 import { getHrAccess } from "@/lib/hr/access";
+import { MonthFilter } from "@/components/MonthFilter";
+import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
 
 export default async function CompanyDocumentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string }>;
+  searchParams: Promise<{ company?: string; month?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -20,7 +22,7 @@ export default async function CompanyDocumentsPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId } = await searchParams;
+  const { company: requestedId, month } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   if (!(await getHrAccess(supabase, session, targetCompanyIds)).adminAnywhere) redirect("/hr");
   const query = requestedId ? `?company=${requestedId}` : "";
@@ -35,8 +37,10 @@ export default async function CompanyDocumentsPage({
     .in("company_id", targetCompanyIds);
   if (error) throw error;
   // by company, then by title (the titles start with the LIC number)
-  const docs = [...(data ?? [])].sort((a, b) => (a.companies?.name ?? "").localeCompare(b.companies?.name ?? "") || a.title.localeCompare(b.title));
+  // the month is the month the licence or document expires in
+  const docs = filterByMonth([...(data ?? [])], month, (d) => d.expiry_date).sort((a, b) => (a.companies?.name ?? "").localeCompare(b.companies?.name ?? "") || a.title.localeCompare(b.title));
 
+  const monthLabel = monthLabelOf(month);
   const expired = docs.filter((d) => certificateUrgency(d.expiry_date) === "expired").length;
   const soon = docs.filter((d) => certificateUrgency(d.expiry_date) === "expiring_soon").length;
 
@@ -49,7 +53,8 @@ export default async function CompanyDocumentsPage({
           </Link>
           <h1 className="mt-2 text-[22px] font-extrabold text-text">Licences &amp; Documents</h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">
-            Licences, registrations (MBJB, Halal, MOF, SSM, FoSIM), tenancy agreements and similar — {docs.length} document{docs.length === 1 ? "" : "s"}
+            Licences, registrations (MBJB, Halal, MOF, SSM, FoSIM), tenancy agreements and similar · {docs.length} document{docs.length === 1 ? "" : "s"}
+            {monthLabel && <span className="ml-2 font-semibold text-text">expiring in {monthLabel}</span>}
             {expired > 0 && <span className="ml-2 font-semibold text-danger">{expired} expired</span>}
             {soon > 0 && <span className="ml-2 font-semibold text-warning">{soon} expiring within 30 days</span>}
           </p>
@@ -59,9 +64,11 @@ export default async function CompanyDocumentsPage({
         </Link>
       </div>
 
+      <MonthFilter />
+
       {docs.length === 0 ? (
         <div className="rounded-xl border border-border bg-surface shadow-sm">
-          <EmptyRow text="No licences or agreements recorded yet. Upload an MBJB licence, Halal licence or tenancy agreement and the system will remind you before it expires." />
+          <EmptyRow text={monthLabel ? "No licences or documents expire in this month." : "No licences or agreements recorded yet. Upload an MBJB licence, Halal licence or tenancy agreement and the system will remind you before it expires."} />
         </div>
       ) : (
         <CompanyDocumentList

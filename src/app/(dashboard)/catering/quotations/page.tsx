@@ -10,6 +10,8 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { QuotationActions } from "@/components/catering/QuotationActions";
 import { CateringSubNav } from "@/components/catering/CateringSubNav";
+import { MonthFilter } from "@/components/MonthFilter";
+import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
 
 function quotationTone(status: string): "success" | "warning" | "danger" | "neutral" {
   if (status === "accepted") return "success";
@@ -21,7 +23,7 @@ function quotationTone(status: string): "success" | "warning" | "danger" | "neut
 export default async function QuotationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string }>;
+  searchParams: Promise<{ company?: string; month?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -30,27 +32,31 @@ export default async function QuotationsPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId } = await searchParams;
+  const { company: requestedId, month } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
 
   if (targetCompanyIds.length === 0) {
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const quotations = await listQuotationsForCompanies(supabase, targetCompanyIds);
+  // the month is the event date of the quotation (the date shown on each row)
+  const quotations = filterByMonth(await listQuotationsForCompanies(supabase, targetCompanyIds), month, (q) => q.catering_events?.event_date);
+  const monthLabel = monthLabelOf(month);
 
   return (
     <div className="flex flex-col gap-5">
       <div>
         <h1 className="text-[22px] font-extrabold text-text">Quotations</h1>
-        <p className="mt-0.5 text-[13px] text-text-secondary">Across every catering event you can access.</p>
+        <p className="mt-0.5 text-[13px] text-text-secondary">{quotations.length} quotation{quotations.length === 1 ? "" : "s"} across every catering event you can access{monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}</p>
       </div>
 
       <CateringSubNav />
 
+      <MonthFilter />
+
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {quotations.length === 0 ? (
-          <EmptyRow text="No quotations yet." />
+          <EmptyRow text={monthLabel ? "No quotation in this month." : "No quotations yet."} />
         ) : (
           <div className="divide-y divide-border">
             {quotations.map((q) => (

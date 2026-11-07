@@ -6,11 +6,13 @@ import { CAMPAIGN_STATUS_LABEL } from "@/lib/marketing/constants";
 import { formatCurrency } from "@/lib/format";
 import { SectionCard, EmptyRow, StatRow } from "@/components/dashboard/SectionCard";
 import { MarketingSubNav } from "@/components/marketing/MarketingSubNav";
+import { MonthFilter } from "@/components/MonthFilter";
+import { filterByMonth, monthLabelOf, monthRange } from "@/lib/monthFilter";
 
 export default async function MarketingReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string }>;
+  searchParams: Promise<{ company?: string; month?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -19,23 +21,34 @@ export default async function MarketingReportsPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId } = await searchParams;
+  const { company: requestedId, month } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
 
   if (targetCompanyIds.length === 0) {
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const [{ data: campaigns }, { data: performance }, { data: expenses }, { count: leadsCount }, { count: convertedCount }] = await Promise.all([
+  // with a month chosen, the figures are of that month: the performance reports by their report date, the expenses by their expense date, the leads by the day they were added
+  const range = monthRange(month);
+  const monthLabel = monthLabelOf(month);
+  const leadsQuery = (converted: boolean) => {
+    let q = supabase.from("leads").select("id", { count: "exact", head: true }).in("company_id", targetCompanyIds);
+    if (converted) q = q.eq("status", "converted");
+    if (range) q = q.gte("created_at", `${range.start}T00:00:00+08:00`).lte("created_at", `${range.end}T23:59:59.999+08:00`);
+    return q;
+  };
+  const [{ data: campaigns }, { data: performanceAll }, { data: expensesAll }, { count: leadsCount }, { count: convertedCount }] = await Promise.all([
     supabase.from("campaigns").select("id, name, status, budget").in("company_id", targetCompanyIds),
-    supabase.from("campaign_performance").select("campaign_id, impressions, clicks, leads_generated, conversions, spend").in("company_id", targetCompanyIds),
-    supabase.from("marketing_expenses").select("campaign_id, amount").in("company_id", targetCompanyIds),
-    supabase.from("leads").select("id", { count: "exact", head: true }).in("company_id", targetCompanyIds),
-    supabase.from("leads").select("id", { count: "exact", head: true }).in("company_id", targetCompanyIds).eq("status", "converted"),
+    supabase.from("campaign_performance").select("campaign_id, report_date, impressions, clicks, leads_generated, conversions, spend").in("company_id", targetCompanyIds),
+    supabase.from("marketing_expenses").select("campaign_id, expense_date, amount").in("company_id", targetCompanyIds),
+    leadsQuery(false),
+    leadsQuery(true),
   ]);
+  const performance = filterByMonth(performanceAll ?? [], month, (p) => p.report_date);
+  const expenses = filterByMonth(expensesAll ?? [], month, (e) => e.expense_date);
 
   const perfByCampaign = new Map<string, { impressions: number; clicks: number; leads: number; conversions: number; spend: number }>();
-  for (const p of performance ?? []) {
+  for (const p of performance) {
     const cur = perfByCampaign.get(p.campaign_id) ?? { impressions: 0, clicks: 0, leads: 0, conversions: 0, spend: 0 };
     cur.impressions += p.impressions ?? 0;
     cur.clicks += p.clicks ?? 0;
@@ -47,7 +60,7 @@ export default async function MarketingReportsPage({
 
   const expenseByCampaign = new Map<string, number>();
   let totalExpense = 0;
-  for (const e of expenses ?? []) {
+  for (const e of expenses) {
     totalExpense += Number(e.amount);
     if (e.campaign_id) expenseByCampaign.set(e.campaign_id, (expenseByCampaign.get(e.campaign_id) ?? 0) + Number(e.amount));
   }
@@ -69,10 +82,11 @@ export default async function MarketingReportsPage({
     <div className="flex flex-col gap-5">
       <div>
         <h1 className="text-[22px] font-extrabold text-text">Marketing Reports</h1>
-        <p className="mt-0.5 text-[13px] text-text-secondary">Performance and spend across every campaign.</p>
+        <p className="mt-0.5 text-[13px] text-text-secondary">Performance and spend of every campaign{monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}</p>
       </div>
 
       <MarketingSubNav />
+      <MonthFilter />
 
       <div className="grid grid-cols-4 gap-4">
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">

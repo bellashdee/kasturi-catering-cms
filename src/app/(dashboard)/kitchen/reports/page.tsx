@@ -74,7 +74,7 @@ export default async function KitchenReportsPage({
 
       <SectionCard title={`Production Orders — ${date}`}>
         {report.orders.length === 0 ? (
-          <EmptyRow text="No production orders planned for this date." />
+          <EmptyRow text="No production orders on this date." />
         ) : (
           <div className="-mx-5 -mb-5 divide-y divide-border">
             {report.orders.map((o) => (
@@ -93,9 +93,9 @@ export default async function KitchenReportsPage({
       </SectionCard>
 
       <div className="grid grid-cols-2 gap-5">
-        <SectionCard title="Stock Consumed Today">
+        <SectionCard title="Stock Consumed">
           {report.consumed.length === 0 ? (
-            <EmptyRow text="No stock consumption recorded for this date." />
+            <EmptyRow text="No stock consumed on this date." />
           ) : (
             <div className="-mx-5 -mb-5 divide-y divide-border">
               {report.consumed.map((m) => (
@@ -108,9 +108,9 @@ export default async function KitchenReportsPage({
           )}
         </SectionCard>
 
-        <SectionCard title="Wastage Today">
+        <SectionCard title="Wastage">
           {report.wastage.length === 0 ? (
-            <EmptyRow text="No wastage recorded for this date." />
+            <EmptyRow text="No wastage on this date." />
           ) : (
             <div className="-mx-5 -mb-5 divide-y divide-border">
               {report.wastage.map((m) => (
@@ -126,7 +126,7 @@ export default async function KitchenReportsPage({
 
       <SectionCard title="Purchase Requests Pending">
         {report.pendingPurchaseRequests.length === 0 ? (
-          <EmptyRow text="No purchase requests pending." />
+          <EmptyRow text="No pending purchase requests." />
         ) : (
           <div className="-mx-5 -mb-5 divide-y divide-border">
             {report.pendingPurchaseRequests.map((r) => (
@@ -140,7 +140,7 @@ export default async function KitchenReportsPage({
             ))}
           </div>
         )}
-        <p className="mt-2 text-xs text-text-muted">{PURCHASE_REQUEST_STATUS_LABEL.pending} requests only — see Purchase Requests for the full history.</p>
+        <p className="mt-2 text-xs text-text-muted">{PURCHASE_REQUEST_STATUS_LABEL.pending} requests only. See Purchase Requests for the full history.</p>
       </SectionCard>
     </div>
   );

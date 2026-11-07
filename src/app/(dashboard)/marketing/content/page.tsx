@@ -8,6 +8,8 @@ import { CONTENT_PLATFORM_LABEL, CONTENT_TYPE_LABEL, CONTENT_STATUS_LABEL } from
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { MarketingSubNav } from "@/components/marketing/MarketingSubNav";
+import { MonthFilter } from "@/components/MonthFilter";
+import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
 
 function statusTone(status: string): "success" | "neutral" | "danger" | "info" {
   if (status === "published") return "success";
@@ -19,7 +21,7 @@ function statusTone(status: string): "success" | "neutral" | "danger" | "info" {
 export default async function ContentCalendarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string }>;
+  searchParams: Promise<{ company?: string; month?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -28,7 +30,7 @@ export default async function ContentCalendarPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId } = await searchParams;
+  const { company: requestedId, month } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -36,25 +38,27 @@ export default async function ContentCalendarPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const items = await listContentForCompanies(supabase, targetCompanyIds);
+  const items = filterByMonth(await listContentForCompanies(supabase, targetCompanyIds), month, (i) => i.scheduled_date);
+  const monthLabel = monthLabelOf(month);
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[22px] font-extrabold text-text">Content Calendar</h1>
-          <p className="mt-0.5 text-[13px] text-text-secondary">Social media content planning across all campaigns.</p>
+          <p className="mt-0.5 text-[13px] text-text-secondary">{items.length} post{items.length === 1 ? "" : "s"}{monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}</p>
         </div>
         <Link href={`/marketing/content/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
-          + Add Content
+          + New Content
         </Link>
       </div>
 
       <MarketingSubNav />
+      <MonthFilter />
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {items.length === 0 ? (
-          <EmptyRow text="Nothing planned yet." />
+          <EmptyRow text={monthLabel ? "No content planned in this month." : "No content planned yet."} />
         ) : (
           <div className="divide-y divide-border">
             {items.map((item) => (

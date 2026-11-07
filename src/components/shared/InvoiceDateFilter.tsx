@@ -6,12 +6,13 @@ import { Select } from "@/components/ui/Select";
  * The date filter above an invoice list: pick whether it applies to the invoice date or the due date, then a From and/or a
  * To date (either one alone is fine). A plain GET form, so the filtered list can be bookmarked or shared as a link.
  */
-export function InvoiceDateFilter({ filter, requestedCompanyId, clearHref }: { filter: Filter; requestedCompanyId?: string; clearHref: string }) {
+export function InvoiceDateFilter({ filter, requestedCompanyId, month, clearHref }: { filter: Filter; requestedCompanyId?: string; month?: string; clearHref: string }) {
   const field = "mt-1 h-10 rounded-lg border border-border-strong bg-surface px-2.5 text-[14px] text-text";
   const label = "text-[12.5px] font-semibold text-text-secondary";
   return (
     <form method="get" className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-surface px-4 py-3.5 shadow-sm print:hidden">
       {requestedCompanyId && <input type="hidden" name="company" value={requestedCompanyId} />}
+      {month && <input type="hidden" name="month" value={month} />}
       <div>
         <label className={label} htmlFor="invoice-date-field">Filter by</label>
         <Select id="invoice-date-field" name="dateField" defaultValue={filter.field} className={`${field} block w-40`}>

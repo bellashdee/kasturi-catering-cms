@@ -4,25 +4,29 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listSupplierNotes } from "@/lib/procurement/queries";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatMalaysiaDate } from "@/lib/format";
+import { MonthFilter } from "@/components/MonthFilter";
+import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SupplierProcurementSubNav } from "@/components/procurement/SupplierProcurementSubNav";
 
-export default async function SupplierNotesPage({ searchParams }: { searchParams: Promise<{ company?: string }> }) {
+export default async function SupplierNotesPage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
   const supabase = await createClient();
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
-  const { company: requestedId } = await searchParams;
+  const { company: requestedId, month } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, allCompanies ?? [], requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
   const sep = requestedId ? "&" : "?";
 
   if (targetCompanyIds.length === 0) return <EmptyRow text="You don't have access to any company yet." />;
 
-  const notes = await listSupplierNotes(supabase, targetCompanyIds);
+  // by month: the date of the note
+  const notes = filterByMonth(await listSupplierNotes(supabase, targetCompanyIds), month, (n) => n.note_date);
+  const monthLabel = monthLabelOf(month);
   const credit = notes.filter((n) => n.note_type === "credit").reduce((t, n) => t + Number(n.amount), 0);
   const debit = notes.filter((n) => n.note_type === "debit").reduce((t, n) => t + Number(n.amount), 0);
 
@@ -33,6 +37,7 @@ export default async function SupplierNotesPage({ searchParams }: { searchParams
           <h1 className="text-[22px] font-extrabold text-text">Supplier & Procurement</h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">
             {notes.length} note{notes.length === 1 ? "" : "s"} · credit {formatCurrency(credit)} · debit {formatCurrency(debit)}
+            {monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}
           </p>
         </div>
         <div className="flex gap-2">
@@ -47,8 +52,10 @@ export default async function SupplierNotesPage({ searchParams }: { searchParams
 
       <SupplierProcurementSubNav />
 
+      <MonthFilter />
+
       {notes.length === 0 ? (
-        <EmptyRow text="No credit or debit notes yet. A credit note lowers what you owe a supplier (returned goods, wrong price); a debit note raises it (extra charge)." />
+        <EmptyRow text={monthLabel ? "No credit or debit notes in this month." : "No credit or debit notes yet. A credit note lowers what you owe a supplier (returned goods, wrong price); a debit note raises it (extra charge)."} />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-surface shadow-sm">
           <table className="w-full min-w-[720px] text-[14px]">
@@ -73,7 +80,7 @@ export default async function SupplierNotesPage({ searchParams }: { searchParams
                       {n.note_number}
                     </Link>
                   </td>
-                  <td className="px-3 py-3 text-text-secondary">{n.note_date}</td>
+                  <td className="px-3 py-3 text-text-secondary">{formatMalaysiaDate(n.note_date)}</td>
                   <td className="px-3 py-3 text-text">{n.suppliers?.name}</td>
                   <td className="px-3 py-3 text-text-secondary">{n.supplier_invoices?.invoice_number ?? "—"}</td>
                   <td className="px-5 py-3 text-right font-bold tabular-nums text-text">{Number(n.amount).toFixed(2)}</td>

@@ -29,7 +29,7 @@ export type PostableCompany = { id: string; name: string };
 
 type Draft = { id: string | null; companyId: string; title: string; body: string; category: BulletinCategory; pinned: boolean; expiresOn: string };
 
-export function BulletinBoard({ posts, postable, canPostAll, canPost }: { posts: BoardPost[]; postable: PostableCompany[]; canPostAll: boolean; canPost: boolean }) {
+export function BulletinBoard({ posts, postable, canPostAll, canPost, emptyText = "No announcements yet." }: { posts: BoardPost[]; postable: PostableCompany[]; canPostAll: boolean; canPost: boolean; emptyText?: string }) {
   const router = useRouter();
   const [filter, setFilter] = useState<BulletinCategory | "all">("all");
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -124,7 +124,7 @@ export function BulletinBoard({ posts, postable, canPostAll, canPost }: { posts:
       )}
 
       {shown.length === 0 ? (
-        <div className="rounded-2xl border border-border bg-surface px-5 py-10 text-center text-[14px] text-text-muted">No announcements yet.</div>
+        <div className="rounded-2xl border border-border bg-surface px-5 py-10 text-center text-[14px] text-text-muted">{emptyText}</div>
       ) : (
         shown.map((p) => (
           <article key={p.id} className={`rounded-2xl border bg-surface p-5 shadow-sm ${p.pinned ? "border-[#e3c98a] bg-[#fffdf5]" : "border-border"} ${p.expired ? "opacity-70" : ""}`}>

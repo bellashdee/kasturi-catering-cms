@@ -9,6 +9,8 @@ import { SupplierProcurementSubNav } from "@/components/procurement/SupplierProc
 import { SupplierPriceForm } from "@/components/kitchenPurchase/SupplierPriceForm";
 import { listSuppliersFor } from "@/lib/kitchenPurchase/queries";
 import { untyped } from "@/lib/kitchenPurchase/shared";
+import { MonthFilter } from "@/components/MonthFilter";
+import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
 
 type Quote = { id: string; supplier_id: string; item_key: string; item_name: string; unit: string; price_per_unit: number; note: string | null; quoted_on: string; created_at: string; suppliers: { name: string } | null };
 
@@ -16,12 +18,13 @@ type Quote = { id: string; supplier_id: string; item_key: string; item_name: str
  * Supplier Price Database: the prices suppliers have offered, item by item. The newest offer of each supplier is shown for comparison.
  * Older offers stay in the history; none of them is a confirmed quotation, so enter today's price when you buy.
  */
-export default async function SupplierQuotesPage({ searchParams }: { searchParams: Promise<{ company?: string; q?: string }> }) {
+export default async function SupplierQuotesPage({ searchParams }: { searchParams: Promise<{ company?: string; q?: string; month?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
   const supabase = await createClient();
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
-  const { company: requestedId, q } = await searchParams;
+  const { company: requestedId, q, month } = await searchParams;
+  const monthLabel = monthLabelOf(month);
   const { targetCompanyIds } = resolveCompanyScope(session, allCompanies ?? [], requestedId);
   if (targetCompanyIds.length === 0) return <EmptyRow text="You don't have access to any company yet." />;
 
@@ -30,7 +33,8 @@ export default async function SupplierQuotesPage({ searchParams }: { searchParam
   if (q?.trim()) query = query.ilike("item_name", `%${q.trim().replace(/[%_]/g, " ")}%`);
   const { data, error } = await query;
   if (error) throw error;
-  const quotes = (data ?? []) as unknown as Quote[];
+  // by month: the day the supplier offered the price
+  const quotes = filterByMonth((data ?? []) as unknown as Quote[], month, (x) => x.quoted_on);
   const suppliers = await listSuppliersFor(supabase, targetCompanyIds);
 
   // item -> supplier -> offers (newest first)
@@ -48,13 +52,17 @@ export default async function SupplierQuotesPage({ searchParams }: { searchParam
       <h1 className="text-[22px] font-extrabold text-text">Supplier &amp; Procurement</h1>
       <SupplierProcurementSubNav />
       <div>
-        <h2 className="text-[17px] font-extrabold text-text">Supplier Price Database</h2>
+        <h2 className="text-[17px] font-extrabold text-text">
+          Supplier Price Database
+          {monthLabel ? <span className="text-text-secondary"> · {monthLabel}</span> : null}
+        </h2>
         <p className="text-[13px] text-text-secondary">The price each supplier offered for an item, newest first. Older prices are kept as history and are not confirmed quotations.</p>
       </div>
       <SupplierPriceForm suppliers={suppliers} />
       <SearchBox placeholder="Search an item..." />
+      <MonthFilter />
       {items.length === 0 ? (
-        <EmptyRow text="No supplier price yet. Prices entered in a purchase request, or here, appear in this list." />
+        <EmptyRow text={monthLabel ? "No supplier prices in this month." : "No supplier price yet. Prices entered in a purchase request, or here, appear in this list."} />
       ) : (
         <ul className="flex flex-col gap-3">
           {items.map((it) => {

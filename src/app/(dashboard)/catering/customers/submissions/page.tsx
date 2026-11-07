@@ -6,15 +6,18 @@ import { resolveCompanyScope } from "@/lib/companyScope";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { IntakeReviewActions } from "@/components/catering/IntakeReviewActions";
+import { MonthFilter } from "@/components/MonthFilter";
+import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
 
-export default async function CustomerSubmissionsPage({ searchParams }: { searchParams: Promise<{ company?: string }> }) {
+export default async function CustomerSubmissionsPage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
   const supabase = await createClient();
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
-  const { company: requestedId } = await searchParams;
+  const { company: requestedId, month } = await searchParams;
+  const monthLabel = monthLabelOf(month);
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -24,7 +27,8 @@ export default async function CustomerSubmissionsPage({ searchParams }: { search
     .in("company_id", targetCompanyIds)
     .order("created_at", { ascending: false })
     .limit(200);
-  const submissions = rows ?? [];
+  // the month is the day the details were submitted
+  const submissions = filterByMonth(rows ?? [], month, (s) => s.created_at);
   const pending = submissions.filter((s) => s.status === "pending");
   const reviewed = submissions.filter((s) => s.status !== "pending");
 
@@ -34,14 +38,16 @@ export default async function CustomerSubmissionsPage({ searchParams }: { search
         <Link href={`/catering/customers${query}`} className="text-[12.5px] font-semibold text-text-secondary">← Back to Customer Database</Link>
         <h1 className="mt-1 text-[22px] font-extrabold text-text">Customer Submissions</h1>
         <p className="mt-0.5 text-[13px] text-text-secondary">
-          Details sent by sales agents through the customer form. Approving one adds it to the Customer Database.
+          Details sent by sales agents through the customer form. Approving one adds it to the Customer Database.{monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}
         </p>
       </div>
+
+      <MonthFilter />
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         <div className="border-b border-border px-5 py-3 text-[13px] font-bold text-text">Waiting for review ({pending.length})</div>
         {pending.length === 0 ? (
-          <EmptyRow text="Nothing waiting for review." />
+          <EmptyRow text={monthLabel ? "Nothing waiting for review in this month." : "Nothing waiting for review."} />
         ) : (
           <div className="divide-y divide-border">
             {pending.map((s) => (
@@ -67,7 +73,7 @@ export default async function CustomerSubmissionsPage({ searchParams }: { search
 
       {reviewed.length > 0 && (
         <div className="rounded-xl border border-border bg-surface shadow-sm">
-          <div className="border-b border-border px-5 py-3 text-[13px] font-bold text-text">Reviewed</div>
+          <div className="border-b border-border px-5 py-3 text-[13px] font-bold text-text">Reviewed ({reviewed.length})</div>
           <div className="divide-y divide-border">
             {reviewed.map((s) => (
               <div key={s.id} className="flex items-center justify-between px-5 py-3 text-[13px]">

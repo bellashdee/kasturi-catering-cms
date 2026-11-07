@@ -1,9 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
+import { monthRange } from "@/lib/monthFilter";
 
 type DB = SupabaseClient<Database>;
 
-export async function listEventAttendance(supabase: DB, companyIds: string[], filters: { date?: string; name?: string }) {
+export async function listEventAttendance(supabase: DB, companyIds: string[], filters: { date?: string; name?: string; month?: string }) {
   let query = supabase
     .from("event_attendance")
     .select("*, companies(name), event_sites(source)")
@@ -11,6 +12,8 @@ export async function listEventAttendance(supabase: DB, companyIds: string[], fi
     .order("attendance_date", { ascending: false })
     .order("clock_in_time", { ascending: false })
     .limit(500);
+  const range = monthRange(filters.month);
+  if (range) query = query.gte("attendance_date", range.start).lte("attendance_date", range.end);
   if (filters.date) query = query.eq("attendance_date", filters.date);
   if (filters.name) query = query.ilike("person_name", `%${filters.name.replace(/[\%_]/g, "\$&")}%`);
   const { data, error } = await query;

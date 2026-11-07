@@ -8,6 +8,8 @@ import { PROMOTION_STATUS_LABEL } from "@/lib/marketing/constants";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { MarketingSubNav } from "@/components/marketing/MarketingSubNav";
+import { MonthFilter } from "@/components/MonthFilter";
+import { monthLabelOf, monthRange } from "@/lib/monthFilter";
 
 function statusTone(status: string): "success" | "neutral" | "danger" {
   if (status === "active") return "success";
@@ -18,7 +20,7 @@ function statusTone(status: string): "success" | "neutral" | "danger" {
 export default async function PromotionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string }>;
+  searchParams: Promise<{ company?: string; month?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -27,7 +29,7 @@ export default async function PromotionsPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId } = await searchParams;
+  const { company: requestedId, month } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -35,14 +37,17 @@ export default async function PromotionsPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const promotions = await listPromotionsForCompanies(supabase, targetCompanyIds);
+  // a promotion belongs to the month when its start-to-end dates overlap that month
+  const range = monthRange(month);
+  const promotions = (await listPromotionsForCompanies(supabase, targetCompanyIds)).filter((p) => !range || (p.start_date <= range.end && p.end_date >= range.start));
+  const monthLabel = monthLabelOf(month);
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[22px] font-extrabold text-text">Promotions</h1>
-          <p className="mt-0.5 text-[13px] text-text-secondary">{promotions.length} promotion{promotions.length === 1 ? "" : "s"}</p>
+          <p className="mt-0.5 text-[13px] text-text-secondary">{promotions.length} promotion{promotions.length === 1 ? "" : "s"}{monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}</p>
         </div>
         <Link href={`/marketing/promotions/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
           + New Promotion
@@ -50,10 +55,11 @@ export default async function PromotionsPage({
       </div>
 
       <MarketingSubNav />
+      <MonthFilter />
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {promotions.length === 0 ? (
-          <EmptyRow text="No promotions yet." />
+          <EmptyRow text={monthLabel ? "No promotions running in this month." : "No promotions yet."} />
         ) : (
           <div className="divide-y divide-border">
             {promotions.map((p) => (

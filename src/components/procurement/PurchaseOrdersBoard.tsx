@@ -36,7 +36,7 @@ const qty = (n: number) => String(Math.round(n * 1000) / 1000);
  * Purchase orders by supplier. Each order shows its events (name and date) and the items to order with their quantities; it can be
  * edited (Save / Cancel), deleted (with Undo) and sent to the supplier on WhatsApp, which opens the chat with the list typed in.
  */
-export function PurchaseOrdersBoard({ suppliers, query }: { suppliers: BoardSupplier[]; query: string }) {
+export function PurchaseOrdersBoard({ suppliers, query, emptyText = "No purchase orders to show." }: { suppliers: BoardSupplier[]; query: string; emptyText?: string }) {
   const router = useRouter();
   const { t } = useI18n();
   const [search, setSearch] = useState("");
@@ -105,7 +105,7 @@ export function PurchaseOrdersBoard({ suppliers, query }: { suppliers: BoardSupp
         </Select>
       </div>
 
-      {shown.length === 0 && <div className="rounded-xl border border-border bg-surface px-5 py-8 text-center text-[13.5px] text-text-muted shadow-sm">No purchase orders to show.</div>}
+      {shown.length === 0 && <div className="rounded-xl border border-border bg-surface px-5 py-8 text-center text-[13.5px] text-text-muted shadow-sm">{emptyText}</div>}
 
       {shown.map((s) => (
         <section key={s.id} className="rounded-xl border border-border bg-surface shadow-sm">

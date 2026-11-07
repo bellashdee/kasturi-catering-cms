@@ -11,6 +11,8 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SearchBox } from "@/components/SearchBox";
 import { ExportButtons } from "@/components/shared/ExportButtons";
+import { MonthFilter } from "@/components/MonthFilter";
+import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
 
 const TONE: Record<ProbationStatus, "success" | "warning" | "danger" | "info" | "neutral"> = {
   on_probation: "info",
@@ -21,14 +23,14 @@ const TONE: Record<ProbationStatus, "success" | "warning" | "danger" | "info" | 
 };
 const ORDER: ProbationStatus[] = ["review_required", "pending_confirmation", "probation_extended", "on_probation", "confirmed"];
 
-export default async function ProbationDashboardPage({ searchParams }: { searchParams: Promise<{ company?: string; q?: string; status?: string }> }) {
+export default async function ProbationDashboardPage({ searchParams }: { searchParams: Promise<{ company?: string; q?: string; status?: string; month?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
   const supabase = await createClient();
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
-  const { company: requestedId, q, status: statusFilter } = await searchParams;
+  const { company: requestedId, q, status: statusFilter, month } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   if (targetCompanyIds.length === 0) return <EmptyRow text="You don't have access to any company yet." />;
   const access = await getHrAccess(supabase, session, targetCompanyIds);
@@ -37,7 +39,9 @@ export default async function ProbationDashboardPage({ searchParams }: { searchP
   const today = todayInMalaysia();
   const all = await listProbationDashboard(supabase, targetCompanyIds, today);
   const search = (q ?? "").trim().toLowerCase();
-  const searched = search ? all.filter((r) => r.name.toLowerCase().includes(search)) : all;
+  // the month is the month the current probation ends in
+  const searched = filterByMonth(search ? all.filter((r) => r.name.toLowerCase().includes(search)) : all, month, (r) => r.probation.current_end_date);
+  const monthLabel = monthLabelOf(month);
   const counts = Object.fromEntries(ORDER.map((s) => [s, searched.filter((r) => r.status === s).length])) as Record<ProbationStatus, number>;
   const filter = ORDER.includes(statusFilter as ProbationStatus) ? (statusFilter as ProbationStatus) : null;
   const rows = (filter ? searched.filter((r) => r.status === filter) : searched).sort((a, b) => ORDER.indexOf(a.status) - ORDER.indexOf(b.status) || (a.probation.current_end_date ?? "").localeCompare(b.probation.current_end_date ?? "") || a.name.localeCompare(b.name));
@@ -47,6 +51,7 @@ export default async function ProbationDashboardPage({ searchParams }: { searchP
     const params = new URLSearchParams();
     if (requestedId) params.set("company", requestedId);
     if (q) params.set("q", q);
+    if (month) params.set("month", month);
     if (s) params.set("status", s);
     const qs = params.toString();
     return `/hr/probation${qs ? `?${qs}` : ""}`;
@@ -60,7 +65,7 @@ export default async function ProbationDashboardPage({ searchParams }: { searchP
 
   const exportTable = {
     title: "Probation Tracker",
-    subtitle: `${rows.length} staff${filter ? ` - ${PROBATION_STATUS_LABEL[filter]}` : ""} (as at ${formatShortDate(today)})`,
+    subtitle: `${rows.length} staff${filter ? ` - ${PROBATION_STATUS_LABEL[filter]}` : ""}${monthLabel ? ` - probation ending ${monthLabel}` : ""} (as at ${formatShortDate(today)})`,
     landscape: true,
     columns: ["Employee Name", "Company", "Position", "Employment Start Date", "Probation Period", "Original Probation End", "Current Probation End", "Probation Status", "Confirmation Letter"],
     rows: rows.map((r) => [
@@ -84,6 +89,7 @@ export default async function ProbationDashboardPage({ searchParams }: { searchP
           <h1 className="mt-2 text-[22px] font-extrabold text-text">Probation Tracker</h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">
             Each staff member follows the probation period written in their own offer letter. HR is reminded 30, 14 and 7 days before a probation ends.
+            {monthLabel ? <span className="font-semibold text-text"> Showing probation ending in {monthLabel}.</span> : null}
           </p>
         </div>
         <ExportButtons table={exportTable} />
@@ -100,11 +106,14 @@ export default async function ProbationDashboardPage({ searchParams }: { searchP
         ))}
       </div>
 
-      <SearchBox placeholder="Search staff by name..." />
+      <div className="flex flex-wrap items-center gap-3">
+        <SearchBox placeholder="Search staff by name..." />
+        <MonthFilter />
+      </div>
 
       <div className="overflow-x-auto rounded-xl border border-border bg-surface shadow-sm">
         {rows.length === 0 ? (
-          <EmptyRow text="No staff in this list." />
+          <EmptyRow text={monthLabel ? "No probation ends in this month." : "No staff in this list."} />
         ) : (
           <table className="w-full min-w-[1000px] text-left text-[13.5px]">
             <thead>

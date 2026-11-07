@@ -12,11 +12,13 @@ import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SupplierProcurementSubNav } from "@/components/procurement/SupplierProcurementSubNav";
 import { SupplierPaymentActions } from "@/components/procurement/SupplierPaymentActions";
 import { PaymentExecutionForm } from "@/components/procurement/PaymentExecutionForm";
+import { MonthFilter } from "@/components/MonthFilter";
+import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
 
 export default async function SupplierPaymentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string }>;
+  searchParams: Promise<{ company?: string; month?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -25,23 +27,29 @@ export default async function SupplierPaymentsPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId } = await searchParams;
+  const { company: requestedId, month } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
 
   if (targetCompanyIds.length === 0) {
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const [payments, kpis] = await Promise.all([
+  const [allPayments, kpis] = await Promise.all([
     listSupplierPayments(supabase, targetCompanyIds),
     getSupplierPayments(supabase, targetCompanyIds),
   ]);
+  // by month: the day the payment was requested (the figures above always show the position today)
+  const payments = filterByMonth(allPayments, month, (p) => p.created_at);
+  const monthLabel = monthLabelOf(month);
 
   return (
     <div className="flex flex-col gap-5">
       <div>
         <h1 className="text-[22px] font-extrabold text-text">Supplier & Procurement</h1>
-        <p className="mt-0.5 text-[13px] text-text-secondary">Payment Dashboard</p>
+        <p className="mt-0.5 text-[13px] text-text-secondary">
+          {`${payments.length} payment request${payments.length === 1 ? "" : "s"}`}
+          {monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}
+        </p>
       </div>
 
       <SupplierProcurementSubNav />
@@ -73,10 +81,12 @@ export default async function SupplierPaymentsPage({
         </div>
       </div>
 
+      <MonthFilter />
+
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         <div className="border-b border-border px-5 py-3.5 text-[15px] font-bold text-text">Payment Requests</div>
         {payments.length === 0 ? (
-          <div className="p-5"><EmptyRow text="No payment requests yet — request one from an invoice's page." /></div>
+          <div className="p-5"><EmptyRow text={monthLabel ? "No payment requests in this month." : "No payment requests yet. Request one from an invoice's page."} /></div>
         ) : (
           <div className="divide-y divide-border">
             {payments.map((p) => (

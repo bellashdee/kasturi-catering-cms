@@ -11,31 +11,37 @@ import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { CopyLink } from "@/components/driver/CopyLink";
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { PaymentProofReviewRow, type InvoiceOption } from "@/components/finance/PaymentProofReviewRow";
+import { MonthFilter } from "@/components/MonthFilter";
+import { monthLabelOf, monthRange } from "@/lib/monthFilter";
 
 type InvoiceWithPayments = { id: string; invoice_number: string; company_id: string; amount: number; tax_amount: number | null; customers: { name: string } | null; customer_payments: { amount: number }[] };
 
 const outstandingOf = (i: { amount: number; tax_amount: number | null; customer_payments: { amount: number }[] }) =>
   Math.max(0, Number(i.amount) + Number(i.tax_amount ?? 0) - i.customer_payments.reduce((t, p) => t + Number(p.amount), 0));
 
-export default async function PaymentProofsPage({ searchParams }: { searchParams: Promise<{ company?: string }> }) {
+export default async function PaymentProofsPage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
   const supabase = await createClient();
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
-  const { company: requestedId } = await searchParams;
+  const { company: requestedId, month } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
   if (targetCompanyIds.length === 0) return <EmptyRow text="You don't have access to any company yet." />;
 
+  // the month is the day the customer paid (payment date), filtered in the query so the 200 limit never hides a month
+  const range = monthRange(month);
+  const monthLabel = monthLabelOf(month);
+  let proofQuery = supabase
+    .from("payment_proof_submissions")
+    .select("*, companies(name), customer_invoices(id, invoice_number, amount, tax_amount, customers(name), customer_payments(amount))")
+    .in("company_id", targetCompanyIds);
+  if (range) proofQuery = proofQuery.gte("payment_date", range.start).lte("payment_date", range.end);
+
   const [{ data: rows }, { data: unpaid }] = await Promise.all([
-    supabase
-      .from("payment_proof_submissions")
-      .select("*, companies(name), customer_invoices(id, invoice_number, amount, tax_amount, customers(name), customer_payments(amount))")
-      .in("company_id", targetCompanyIds)
-      .order("created_at", { ascending: false })
-      .limit(200),
+    proofQuery.order("created_at", { ascending: false }).limit(200),
     supabase
       .from("customer_invoices")
       .select("id, invoice_number, company_id, amount, tax_amount, customers(name), customer_payments(amount)")
@@ -58,9 +64,11 @@ export default async function PaymentProofsPage({ searchParams }: { searchParams
     <div className="flex flex-col gap-5">
       <div>
         <h1 className="text-[22px] font-extrabold text-text">Admin &amp; Finance</h1>
-        <p className="mt-0.5 text-[14px] text-text-secondary">Proof of customer payments sent by sales agents. Approving one records the payment on the customer invoice.</p>
+        <p className="mt-0.5 text-[13px] text-text-secondary">Proof of customer payments sent by sales agents. Approving one records the payment on the customer invoice.{monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}</p>
       </div>
       <FinanceAdminSubNav />
+
+      <MonthFilter />
 
       {links.length > 0 && (
         <div className="rounded-xl border border-border bg-surface px-4 py-3 text-[14px] text-text-secondary shadow-sm">
@@ -77,7 +85,7 @@ export default async function PaymentProofsPage({ searchParams }: { searchParams
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         <div className="border-b border-border px-5 py-3 text-[14px] font-bold text-text">Waiting for review ({pending.length})</div>
         {pending.length === 0 ? (
-          <EmptyRow text="Nothing waiting for review." />
+          <EmptyRow text={monthLabel ? "No payment proof waiting for review in this month." : "Nothing waiting for review."} />
         ) : (
           <div className="divide-y divide-border">
             {pending.map((p) => {
@@ -115,7 +123,7 @@ export default async function PaymentProofsPage({ searchParams }: { searchParams
 
       {reviewed.length > 0 && (
         <div className="rounded-xl border border-border bg-surface shadow-sm">
-          <div className="border-b border-border px-5 py-3 text-[14px] font-bold text-text">Reviewed</div>
+          <div className="border-b border-border px-5 py-3 text-[14px] font-bold text-text">Reviewed ({reviewed.length})</div>
           <div className="divide-y divide-border">
             {reviewed.map((p) => {
               const inv = p.customer_invoices as unknown as { id: string; invoice_number: string } | null;

@@ -7,11 +7,13 @@ import { listCustomersForCompanies } from "@/lib/marketing/queries";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SearchBox } from "@/components/SearchBox";
 import { MarketingSubNav } from "@/components/marketing/MarketingSubNav";
+import { MonthFilter } from "@/components/MonthFilter";
+import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
 
 export default async function CustomersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; q?: string }>;
+  searchParams: Promise<{ company?: string; q?: string; month?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -20,7 +22,7 @@ export default async function CustomersPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, q } = await searchParams;
+  const { company: requestedId, q, month } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -28,26 +30,30 @@ export default async function CustomersPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const customers = await listCustomersForCompanies(supabase, targetCompanyIds, q);
+  const customers = filterByMonth(await listCustomersForCompanies(supabase, targetCompanyIds, q), month, (c) => c.created_at);
+  const monthLabel = monthLabelOf(month);
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[22px] font-extrabold text-text">Customers</h1>
-          <p className="mt-0.5 text-[13px] text-text-secondary">{customers.length} customer{customers.length === 1 ? "" : "s"}</p>
+          <p className="mt-0.5 text-[13px] text-text-secondary">{customers.length} customer{customers.length === 1 ? "" : "s"}{monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}</p>
         </div>
         <Link href={`/marketing/customers/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
-          + Add Customer
+          + New Customer
         </Link>
       </div>
 
       <MarketingSubNav />
-      <SearchBox placeholder="Search customers by name..." />
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+        <SearchBox placeholder="Search customers by name..." />
+        <MonthFilter />
+      </div>
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {customers.length === 0 ? (
-          <EmptyRow text="No customers yet. Add one manually, or convert a lead from the Leads tab." />
+          <EmptyRow text={monthLabel ? "No customers added in this month." : q ? "No customer matches the search." : "No customers yet. Add one, or convert a lead from the Leads tab."} />
         ) : (
           <div className="divide-y divide-border">
             {customers.map((c) => (

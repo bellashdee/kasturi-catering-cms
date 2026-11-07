@@ -11,11 +11,13 @@ import { CompanyExpenseTable } from "@/components/finance/CompanyExpenseTable";
 import { ExpenseFilterBar } from "@/components/finance/ExpenseFilterBar";
 import { CompanyExpenseOverview } from "@/components/finance/CompanyExpenseOverview";
 import { SPENDING_CATEGORIES } from "@/lib/finance/spendingCategories";
+import { MonthFilter } from "@/components/MonthFilter";
+import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
 
 export default async function CompanyExpensesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; page?: string; q?: string; category?: string; department?: string; from?: string; to?: string }>;
+  searchParams: Promise<{ company?: string; page?: string; q?: string; category?: string; department?: string; from?: string; to?: string; month?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -24,7 +26,7 @@ export default async function CompanyExpensesPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, page: pageParam, q = "", category = "", department = "", from = "", to = "" } = await searchParams;
+  const { company: requestedId, page: pageParam, q = "", category = "", department = "", from = "", to = "", month = "" } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -49,12 +51,14 @@ export default async function CompanyExpensesPage({
     const hay = `${e.source} ${e.category} ${e.department ?? ""} ${e.notes ?? ""} ${e.companies?.name ?? ""} ${e.expense_date} ${e.amount} ${Number(e.amount).toFixed(2)}`.toUpperCase();
     return words.every((w) => hay.includes(w));
   });
-  const expenses = matching.filter((e) => !(from && e.expense_date < from) && !(to && e.expense_date > to));
+  // the month picker (by expense date) works together with the search, the filters and the date range; the monthly chart below keeps showing every month
+  const monthLabel = monthLabelOf(month);
+  const expenses = filterByMonth(matching.filter((e) => !(from && e.expense_date < from) && !(to && e.expense_date > to)), month, (e) => e.expense_date);
   // the charts: the months up to this month (or to the To date), and the category chart of the list as shown
   const toEntry = (e: (typeof everyExpense)[number]) => ({ date: e.expense_date, amount: Number(e.amount), category: e.category });
   const dayText = (iso: string) => formatMalaysiaDate(`${iso}T12:00:00+08:00`);
   const periodLabel = from && to ? `${dayText(from)} to ${dayText(to)}` : from ? `From ${dayText(from)}` : to ? `Up to ${dayText(to)}` : "All time";
-  const filtered = !!(q.trim() || category || department || from || to);
+  const filtered = !!(q.trim() || category || department || from || to || monthLabel);
   const departments = Array.from(new Set(everyExpense.map((e) => (e.department ?? "").trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
   const categoryNames = Array.from(new Set(everyExpense.map((e) => e.category.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
   const total = expenses.reduce((t, e) => t + Number(e.amount), 0);
@@ -63,7 +67,7 @@ export default async function CompanyExpensesPage({
   const pages = Math.max(1, Math.ceil(expenses.length / PAGE_SIZE));
   const page = Math.min(pages, Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1));
   const shown = expenses.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const keep = { ...(requestedId ? { company: requestedId } : {}), ...(q.trim() ? { q } : {}), ...(category ? { category } : {}), ...(department ? { department } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}) };
+  const keep = { ...(requestedId ? { company: requestedId } : {}), ...(q.trim() ? { q } : {}), ...(category ? { category } : {}), ...(department ? { department } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}), ...(monthLabel ? { month } : {}) };
   const pageHref = (n: number) => `/spending/expenses?${new URLSearchParams({ ...keep, ...(n > 1 ? { page: String(n) } : {}) }).toString()}`;
   const clearHref = `/spending/expenses${query}`;
 
@@ -71,8 +75,8 @@ export default async function CompanyExpensesPage({
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[22px] font-extrabold text-text">Admin &amp; Finance</h1>
-          <p className="mt-0.5 text-[13px] text-text-secondary">{expenses.length} expense{expenses.length === 1 ? "" : "s"}{filtered ? ` found of ${everyExpense.length}` : ""} · {formatCurrency(total)} total</p>
+          <h1 className="text-[22px] font-extrabold text-text">Company Expenses</h1>
+          <p className="mt-0.5 text-[13px] text-text-secondary">{expenses.length} expense{expenses.length === 1 ? "" : "s"}{filtered ? ` found of ${everyExpense.length}` : ""}{monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null} · {formatCurrency(total)} total</p>
         </div>
         <Link href={`/spending/expenses/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
           + New Expense
@@ -80,12 +84,13 @@ export default async function CompanyExpensesPage({
       </div>
 
       <SpendingSubNav />
+      <MonthFilter />
 
       <ExpenseFilterBar
         categories={Array.from(new Set([...SPENDING_CATEGORIES, ...categoryNames])).sort((a, b) => a.localeCompare(b))}
         departments={departments}
         initial={{ q, category, department, from, to }}
-        hidden={{ company: requestedId ?? "" }}
+        hidden={{ company: requestedId ?? "", month: monthLabel ? month : "" }}
         clearHref={clearHref}
         filtered={filtered}
       />
@@ -96,7 +101,7 @@ export default async function CompanyExpensesPage({
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {expenses.length === 0 ? (
-          <EmptyRow text={filtered ? "No expense matches the search. Change the words or the filters." : "No company expenses recorded yet."} />
+          <EmptyRow text={filtered ? "No expense matches the search. Change the words or the filters." : "No company expenses yet."} />
         ) : (
           <CompanyExpenseTable
             categories={SPENDING_CATEGORIES}

@@ -8,11 +8,13 @@ import { EXPENSE_CATEGORY_LABEL } from "@/lib/marketing/constants";
 import { formatCurrency } from "@/lib/format";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { MarketingSubNav } from "@/components/marketing/MarketingSubNav";
+import { MonthFilter } from "@/components/MonthFilter";
+import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
 
 export default async function MarketingExpensesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string }>;
+  searchParams: Promise<{ company?: string; month?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -21,7 +23,7 @@ export default async function MarketingExpensesPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId } = await searchParams;
+  const { company: requestedId, month } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -29,7 +31,8 @@ export default async function MarketingExpensesPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const expenses = await listExpensesForCompanies(supabase, targetCompanyIds);
+  const expenses = filterByMonth(await listExpensesForCompanies(supabase, targetCompanyIds), month, (e) => e.expense_date);
+  const monthLabel = monthLabelOf(month);
   const total = expenses.reduce((t, e) => t + Number(e.amount), 0);
 
   return (
@@ -38,19 +41,20 @@ export default async function MarketingExpensesPage({
         <div>
           <h1 className="text-[22px] font-extrabold text-text">Marketing Expenses</h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">
-            {expenses.length} record{expenses.length === 1 ? "" : "s"} · Total {formatCurrency(total)}
+            {expenses.length} expense{expenses.length === 1 ? "" : "s"}{monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null} · {formatCurrency(total)} total
           </p>
         </div>
         <Link href={`/marketing/expenses/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
-          + Log Expense
+          + New Expense
         </Link>
       </div>
 
       <MarketingSubNav />
+      <MonthFilter />
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {expenses.length === 0 ? (
-          <EmptyRow text="No marketing expenses logged yet." />
+          <EmptyRow text={monthLabel ? "No expenses in this month." : "No marketing expenses yet."} />
         ) : (
           <div className="divide-y divide-border">
             {expenses.map((e) => (

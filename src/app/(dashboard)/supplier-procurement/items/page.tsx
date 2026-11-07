@@ -10,6 +10,8 @@ import { ReportTable } from "@/components/reports/ReportTable";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SupplierProcurementSubNav } from "@/components/procurement/SupplierProcurementSubNav";
 import { ExportListButtons } from "@/components/procurement/ExportListButtons";
+import { MonthFilter } from "@/components/MonthFilter";
+import { monthLabelOf, monthRange } from "@/lib/monthFilter";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const dayLabel = (iso: string) => formatMalaysiaDate(`${iso}T12:00:00+08:00`);
@@ -22,7 +24,7 @@ const inputClass = "h-9 rounded-lg border border-border-strong bg-surface px-2.5
 export default async function SupplierItemsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; view?: string; supplier?: string; q?: string; from?: string; to?: string }>;
+  searchParams: Promise<{ company?: string; view?: string; supplier?: string; q?: string; from?: string; to?: string; month?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -35,8 +37,13 @@ export default async function SupplierItemsPage({
   if (targetCompanyIds.length === 0) return <EmptyRow text="You don't have access to any company yet." />;
 
   const view = sp.view === "lines" ? "lines" : "suppliers";
-  const from = sp.from && DATE_RE.test(sp.from) ? sp.from : undefined;
-  const to = sp.to && DATE_RE.test(sp.to) ? sp.to : undefined;
+  const fromInput = sp.from && DATE_RE.test(sp.from) ? sp.from : undefined;
+  const toInput = sp.to && DATE_RE.test(sp.to) ? sp.to : undefined;
+  // by month: the invoice date of the purchase line; a From / To typed as well narrows it further
+  const range = monthRange(sp.month);
+  const monthLabel = monthLabelOf(sp.month);
+  const from = range && (!fromInput || fromInput < range.start) ? range.start : fromInput;
+  const to = range && (!toInput || toInput > range.end) ? range.end : toInput;
   const supplierQ = (sp.supplier ?? "").trim().toLowerCase();
   const itemQ = (sp.q ?? "").trim().toLowerCase();
 
@@ -53,7 +60,7 @@ export default async function SupplierItemsPage({
 
   const query = new URLSearchParams();
   if (sp.company) query.set("company", sp.company);
-  for (const [k, v] of Object.entries({ supplier: sp.supplier, q: sp.q, from, to })) if (v) query.set(k, v);
+  for (const [k, v] of Object.entries({ supplier: sp.supplier, q: sp.q, from: fromInput, to: toInput, month: range ? sp.month : undefined })) if (v) query.set(k, v);
   const viewHref = (v: string) => `/supplier-procurement/items?${new URLSearchParams({ ...Object.fromEntries(query), view: v }).toString()}`;
   const tab = (active: boolean) => `rounded-full border px-3.5 py-1.5 text-[13px] font-semibold ${active ? "border-primary bg-primary text-white" : "border-border-strong bg-surface text-text hover:bg-surface-alt"}`;
 
@@ -83,13 +90,19 @@ export default async function SupplierItemsPage({
     <div className="flex flex-col gap-5">
       <div>
         <h1 className="text-[22px] font-extrabold text-text">Supplier & Procurement</h1>
-        <p className="mt-0.5 text-[13px] text-text-secondary">Items each supplier sold and the price per unit, from the purchase invoices</p>
+        <p className="mt-0.5 text-[13px] text-text-secondary">
+          Items each supplier sold and the price per unit, from the purchase invoices
+          {monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}
+        </p>
       </div>
 
       <SupplierProcurementSubNav />
 
+      <MonthFilter />
+
       <form method="get" className="flex flex-wrap items-end gap-3">
         {sp.company && <input type="hidden" name="company" value={sp.company} />}
+        {range && <input type="hidden" name="month" value={sp.month} />}
         <input type="hidden" name="view" value={view} />
         <label className="flex flex-col gap-1 text-[12px] font-semibold text-text-secondary">
           Supplier
@@ -101,16 +114,16 @@ export default async function SupplierItemsPage({
         </label>
         <label className="flex flex-col gap-1 text-[12px] font-semibold text-text-secondary">
           From
-          <input type="date" name="from" defaultValue={from ?? ""} className={inputClass} />
+          <input type="date" name="from" defaultValue={fromInput ?? ""} className={inputClass} />
         </label>
         <label className="flex flex-col gap-1 text-[12px] font-semibold text-text-secondary">
           To
-          <input type="date" name="to" defaultValue={to ?? ""} className={inputClass} />
+          <input type="date" name="to" defaultValue={toInput ?? ""} className={inputClass} />
         </label>
         <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">
           Filter
         </button>
-        {(sp.supplier || sp.q || from || to) && (
+        {(sp.supplier || sp.q || fromInput || toInput) && (
           <Link href={`/supplier-procurement/items?view=${view}${sp.company ? `&company=${sp.company}` : ""}`} className="h-9 content-center text-[13px] font-semibold text-text-secondary hover:underline">
             Clear
           </Link>
@@ -130,7 +143,7 @@ export default async function SupplierItemsPage({
       </div>
 
       {all.length === 0 ? (
-        <EmptyRow text="No purchase invoice lines yet." />
+        <EmptyRow text={monthLabel ? "No purchase lines in this month." : "No purchase invoice lines yet."} />
       ) : view === "lines" ? (
         <ReportTable headers={headers} rows={tableRows} filenameBase="purchase-lines" emptyText="No purchase lines for this filter." />
       ) : (

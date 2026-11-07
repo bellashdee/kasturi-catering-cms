@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { menuRows } from "@/lib/catering/days";
+import { monthRange } from "@/lib/monthFilter";
 
 type DB = SupabaseClient<Database>;
 
@@ -71,13 +72,22 @@ export async function listStockMovementsForIngredient(supabase: DB, ingredientId
   return data;
 }
 
-export async function listStockMovementsForCompanies(supabase: DB, companyIds: string[]) {
-  const { data, error } = await supabase
+/** The latest 100 movements, or (with a month, "YYYY-MM") the movements of that Malaysia calendar month. */
+export async function listStockMovementsForCompanies(supabase: DB, companyIds: string[], month?: string | null) {
+  const range = monthRange(month);
+  let q = supabase
     .from("stock_movements")
     .select("*, ingredients(name, unit_of_measure), companies(name)")
     .in("company_id", companyIds)
-    .order("created_at", { ascending: false })
-    .limit(100);
+    .order("created_at", { ascending: false });
+  if (range) {
+    const next = new Date(`${range.end}T00:00:00Z`);
+    next.setUTCDate(next.getUTCDate() + 1);
+    q = q.gte("created_at", `${range.start}T00:00:00+08:00`).lt("created_at", `${next.toISOString().slice(0, 10)}T00:00:00+08:00`).limit(1000);
+  } else {
+    q = q.limit(100);
+  }
+  const { data, error } = await q;
   if (error) throw error;
   return data;
 }

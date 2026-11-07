@@ -10,6 +10,8 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SearchBox } from "@/components/SearchBox";
 import { MarketingSubNav } from "@/components/marketing/MarketingSubNav";
+import { MonthFilter } from "@/components/MonthFilter";
+import { monthLabelOf, monthRange } from "@/lib/monthFilter";
 
 function statusTone(status: string): "success" | "neutral" | "danger" {
   if (status === "active") return "success";
@@ -20,7 +22,7 @@ function statusTone(status: string): "success" | "neutral" | "danger" {
 export default async function MarketingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; q?: string }>;
+  searchParams: Promise<{ company?: string; q?: string; month?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -29,7 +31,7 @@ export default async function MarketingPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, q } = await searchParams;
+  const { company: requestedId, q, month } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -37,7 +39,15 @@ export default async function MarketingPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const campaigns = await listCampaigns(supabase, targetCompanyIds, q);
+  // a campaign belongs to the month when its start-to-end dates overlap that month (one with only one date counts by that date; one with no date is left out)
+  const range = monthRange(month);
+  const campaigns = (await listCampaigns(supabase, targetCompanyIds, q)).filter((c) => {
+    if (!range) return true;
+    const start = c.start_date ?? c.end_date;
+    const end = c.end_date ?? c.start_date;
+    return !!start && !!end && start <= range.end && end >= range.start;
+  });
+  const monthLabel = monthLabelOf(month);
 
   return (
     <div className="flex flex-col gap-5">
@@ -45,7 +55,7 @@ export default async function MarketingPage({
         <div>
           <h1 className="text-[22px] font-extrabold text-text">Marketing</h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">
-            {campaigns.length} campaign{campaigns.length === 1 ? "" : "s"}
+            {campaigns.length} campaign{campaigns.length === 1 ? "" : "s"}{monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}
           </p>
         </div>
         <Link href={`/marketing/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
@@ -54,18 +64,21 @@ export default async function MarketingPage({
       </div>
 
       <MarketingSubNav />
-      <SearchBox placeholder="Search campaigns by name..." />
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+        <SearchBox placeholder="Search campaigns by name..." />
+        <MonthFilter />
+      </div>
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {campaigns.length === 0 ? (
-          <EmptyRow text="No campaigns yet. Create one to start planning content, leads and spend." />
+          <EmptyRow text={monthLabel ? "No campaigns running in this month." : q ? "No campaign matches the search." : "No campaigns yet. Create one to start planning content, leads and spend."} />
         ) : (
           <div>
             <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
               <div>Campaign</div>
               <div>Channel</div>
-              <div>Start</div>
-              <div>End</div>
+              <div>Start Date</div>
+              <div>End Date</div>
               <div>Budget</div>
               <div>Status</div>
             </div>

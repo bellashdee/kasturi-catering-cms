@@ -9,11 +9,13 @@ import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { DriverLogisticsSubNav } from "@/components/driver/DriverLogisticsSubNav";
 import { OperationRowActions } from "@/components/driver/OperationRowActions";
 import { RecordUndoBanner } from "@/components/driver/RecordUndoBanner";
+import { MonthFilter } from "@/components/MonthFilter";
+import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
 
 export default async function MaintenancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string }>;
+  searchParams: Promise<{ company?: string; month?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -22,7 +24,7 @@ export default async function MaintenancePage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId } = await searchParams;
+  const { company: requestedId, month } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -30,14 +32,15 @@ export default async function MaintenancePage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const records = await listMaintenanceForCompanies(supabase, targetCompanyIds);
+  const records = filterByMonth(await listMaintenanceForCompanies(supabase, targetCompanyIds), month, (m) => m.service_date);
+  const monthLabel = monthLabelOf(month);
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[22px] font-extrabold text-text">Operation Management</h1>
-          <p className="mt-0.5 text-[13px] text-text-secondary">{records.length} service record{records.length === 1 ? "" : "s"}</p>
+          <p className="mt-0.5 text-[13px] text-text-secondary">{records.length} service record{records.length === 1 ? "" : "s"}{monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}</p>
         </div>
         <Link href={`/driver-logistics/maintenance/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
           + Log Service
@@ -48,9 +51,11 @@ export default async function MaintenancePage({
 
       <RecordUndoBanner />
 
+      <MonthFilter />
+
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {records.length === 0 ? (
-          <EmptyRow text="No service records yet." />
+          <EmptyRow text={monthLabel ? "No service record in this month." : "No service records yet."} />
         ) : (
           <div>
             <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1.4fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">

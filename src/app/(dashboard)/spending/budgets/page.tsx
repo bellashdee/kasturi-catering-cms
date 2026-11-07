@@ -10,11 +10,13 @@ import { BudgetRowActions } from "@/components/finance/BudgetRowActions";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SpendingSubNav } from "@/components/spending/SpendingSubNav";
+import { MonthFilter } from "@/components/MonthFilter";
+import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
 
 export default async function BudgetsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string }>;
+  searchParams: Promise<{ company?: string; month?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -23,7 +25,7 @@ export default async function BudgetsPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId } = await searchParams;
+  const { company: requestedId, month } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -31,7 +33,9 @@ export default async function BudgetsPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const budgets = await listBudgets(supabase, targetCompanyIds);
+  // a budget belongs to the month it is set for
+  const budgets = filterByMonth(await listBudgets(supabase, targetCompanyIds), month, (b) => `${b.year}-${String(b.month).padStart(2, "0")}-01`);
+  const monthLabel = monthLabelOf(month);
 
   const periods = Array.from(new Set(budgets.map((b) => `${b.year}-${b.month}`))).map((p) => {
     const [year, month] = p.split("-").map(Number);
@@ -64,8 +68,8 @@ export default async function BudgetsPage({
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[22px] font-extrabold text-text">Admin &amp; Finance</h1>
-          <p className="mt-0.5 text-[13px] text-text-secondary">{budgets.length} budget{budgets.length === 1 ? "" : "s"}</p>
+          <h1 className="text-[22px] font-extrabold text-text">Budgets</h1>
+          <p className="mt-0.5 text-[13px] text-text-secondary">{budgets.length} budget{budgets.length === 1 ? "" : "s"}{monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}</p>
         </div>
         <Link href={`/spending/budgets/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
           + New Budget
@@ -73,10 +77,11 @@ export default async function BudgetsPage({
       </div>
 
       <SpendingSubNav />
+      <MonthFilter />
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {budgets.length === 0 ? (
-          <EmptyRow text="No budgets set yet." />
+          <EmptyRow text={monthLabel ? "No budgets set for this month." : "No budgets yet."} />
         ) : (
           <div>
             <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_auto] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
