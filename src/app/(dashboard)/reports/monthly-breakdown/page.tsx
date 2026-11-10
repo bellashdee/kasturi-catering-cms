@@ -13,6 +13,7 @@ import {
 } from "@/lib/monthlyBreakdown/restoranBara";
 import { BreakdownEditor } from "@/components/reports/BreakdownEditor";
 import { MonthlyBreakdownChart } from "@/components/reports/MonthlyBreakdownChart";
+import { Select } from "@/components/ui/Select";
 import { PrintButton } from "@/components/reports/PrintButton";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 import { SoftPage } from "@/components/ui/Soft";
@@ -44,11 +45,11 @@ const Heading = ({ to, children, className = "" }: { to: string; children: React
  * salary, utilities, contribution — in RM and as a % of sales against each limit, then net profit. Every figure is saved in the database and
  * can be edited, saved, cancelled or deleted below; a heading leads to where its figures are saved. Finance / Admin only.
  */
-export default async function MonthlyBreakdownPage({ searchParams }: { searchParams: Promise<{ year?: string; company?: string }> }) {
+export default async function MonthlyBreakdownPage({ searchParams }: { searchParams: Promise<{ year?: string; month?: string; company?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
-  const { year: yearParam, company: requestedId } = await searchParams;
+  const { year: yearParam, month: monthParam, company: requestedId } = await searchParams;
   const back = <Link href={requestedId ? `/reports?company=${requestedId}` : "/reports"} className="text-[12.5px] font-semibold text-text-secondary">← Back to Reports</Link>;
   const supabase = await createClient();
   const { data: companies } = await supabase.from("companies").select("id, name");
@@ -76,6 +77,9 @@ export default async function MonthlyBreakdownPage({ searchParams }: { searchPar
   }
 
   const year = Number(yearParam) || malaysiaYearMonth().year;
+  // one month chosen: the By Month table shows only that month; nothing chosen = every month
+  const month = Math.min(Math.max(Number(monthParam) || 0, 0), 12);
+  const shown = (m: number) => !month || m === month - 1;
 
   const [salesRes, itemsRes, spending] = await Promise.all([
     supabase.from("monthly_sales").select("month, sales_amount").eq("company_id", o2.id).eq("year", year).eq("sales_type", "total"),
@@ -140,6 +144,13 @@ export default async function MonthlyBreakdownPage({ searchParams }: { searchPar
             <label className="text-[12px] font-semibold text-text-secondary">Year</label>
             <input type="number" name="year" defaultValue={year} className="mt-1 h-9 w-24 rounded-lg border border-border-strong px-2 text-[13px]" />
           </div>
+          <div>
+            <label className="text-[12px] font-semibold text-text-secondary">Month</label>
+            <Select name="month" defaultValue={month} className="mt-1 h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
+              <option value={0}>All months</option>
+              {MONTH_LABEL.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+            </Select>
+          </div>
           <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply</button>
         </form>
         <PrintButton />
@@ -188,26 +199,26 @@ export default async function MonthlyBreakdownPage({ searchParams }: { searchPar
               <tr className="border-b border-border text-left text-[11.5px] font-bold uppercase tracking-wider text-text-secondary">
                 <th className="px-2 py-2">Limit</th>
                 <th className="px-2 py-2">Month</th>
-                {MONTH_LABEL.map((m) => <th key={m} className="px-2 py-2 text-right">{m.slice(0, 3)}</th>)}
+                {MONTH_LABEL.map((m, i) => shown(i) && <th key={m} className="px-2 py-2 text-right">{m.slice(0, 3)}</th>)}
               </tr>
             </thead>
             <tbody>
               <tr className="border-b border-border bg-info-bg/40">
                 <td className="px-2 py-2 text-text-secondary">100%</td>
                 <td className="px-2 py-2 font-bold text-text"><Heading to="#sales">Total sales</Heading></td>
-                {sales.map((s, m) => <Cell key={m} amount={s} sales={s} />)}
+                {sales.map((s, m) => shown(m) && <Cell key={m} amount={s} sales={s} />)}
               </tr>
               {lines.map((l) => (
                 <tr key={l.key} className="border-b border-border">
                   <td className="px-2 py-2 text-text-secondary">{pctText(l.limit)}</td>
                   <td className="px-2 py-2 font-semibold text-text"><Heading to={`#${l.key}`}>{l.label}</Heading></td>
-                  {l.values.map((v, m) => <Cell key={m} amount={v} sales={sales[m]} limit={l.limit} />)}
+                  {l.values.map((v, m) => shown(m) && <Cell key={m} amount={v} sales={sales[m]} limit={l.limit} />)}
                 </tr>
               ))}
               <tr className="bg-info-bg/40">
                 <td className="px-2 py-2 text-text-secondary">{pctText(L.net)}</td>
                 <td className="px-2 py-2 font-bold text-text">Net profit</td>
-                {net.map((v, m) => <Cell key={m} amount={v} sales={sales[m]} limit={L.net} profit />)}
+                {net.map((v, m) => shown(m) && <Cell key={m} amount={v} sales={sales[m]} limit={L.net} profit />)}
               </tr>
             </tbody>
           </table>

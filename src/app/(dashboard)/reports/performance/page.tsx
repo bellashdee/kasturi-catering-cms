@@ -9,6 +9,7 @@ import { daysOverdue, invoiceBalance, invoiceTotal, isOpenInvoice } from "@/lib/
 import { listSupplierOwed } from "@/lib/finance/paymentQueries";
 import { SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
 import { formatCurrency, malaysiaYearMonth, todayInMalaysia } from "@/lib/format";
+import { MONTH_LABEL } from "@/lib/finance/constants";
 import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { PrintButton } from "@/components/reports/PrintButton";
 import { RankBars, type RankItem } from "@/components/reports/RankBars";
@@ -32,7 +33,7 @@ const getPayments = cache(async (ids: string, year: number) => {
   return data ?? [];
 });
 const getEvents = cache(async (ids: string, year: number) => {
-  const { data } = await (await createClient()).from("catering_events").select("service_type, total_amount, status").in("company_id", ids.split(",")).gte("event_date", `${year}-01-01`).lte("event_date", `${year}-12-31`);
+  const { data } = await (await createClient()).from("catering_events").select("service_type, total_amount, status, event_date").in("company_id", ids.split(",")).gte("event_date", `${year}-01-01`).lte("event_date", `${year}-12-31`);
   return data ?? [];
 });
 const getMonthlyPurchases = cache(async (ids: string, year: number) => {
@@ -67,10 +68,12 @@ const More = ({ to, children }: { to: string; children: React.ReactNode }) => (
 );
 const Skeleton = ({ height = 260 }: { height?: number }) => <div className="animate-pulse rounded-2xl border border-border bg-surface-alt" style={{ height }} aria-busy="true" />;
 
-type BlockProps = { ids: string; year: number; query: string; requestedId?: string };
+type BlockProps = { ids: string; year: number; /** 0 = the whole year */ month: number; query: string; requestedId?: string };
+const periodOf = (year: number, month: number) => (month ? `${MONTH_LABEL[month - 1]} ${year}` : String(year));
+const inMonth = (date: string, month: number) => !month || Number(date.slice(5, 7)) === month;
 
 /** The cards and the two charts of the money: what came in, what went out, sales against purchases. */
-async function Headline({ ids, year, query }: BlockProps) {
+async function Headline({ ids, year, month, query }: BlockProps) {
   const now = malaysiaYearMonth();
   // the months that have come: a month still to come is left out of the lines instead of dropping to 0
   const lastMonth = year < now.year ? 12 : year > now.year ? 0 : now.month;
@@ -86,20 +89,23 @@ async function Headline({ ids, year, query }: BlockProps) {
     salesByMonth[s.month - 1] += Number(s.sales_amount);
     recordedOnly.add(s.company_id);
   }
-  const invoiced = sum(salesByMonth);
+  // the cards are for the month chosen (the whole year when none); the charts keep the whole year so the month can be seen in its year
+  const pick = (v: number[]) => (month ? v[month - 1] : sum(v));
+  const invoiced = pick(salesByMonth);
+  const invoiceCount = yearInvoices.filter((i) => inMonth(i.invoice_date, month)).length;
 
   const receivedByMonth = Array<number>(12).fill(0);
   for (const p of payments) receivedByMonth[Number(p.payment_date.slice(5, 7)) - 1] += Number(p.amount);
-  const received = sum(receivedByMonth);
+  const received = pick(receivedByMonth);
 
   const expenseByMonth = Array<number>(12).fill(0);
   const cats = new Set<string>();
   for (const c of spending) {
     const m = Number(c.date.slice(5, 7)) - 1;
     if (m >= 0 && m < 12) expenseByMonth[m] += c.amount;
-    cats.add(c.category.toUpperCase().replace(/\s+/g, " ").trim());
+    if (inMonth(c.date, month)) cats.add(c.category.toUpperCase().replace(/\s+/g, " ").trim());
   }
-  const totalExpenses = sum(expenseByMonth);
+  const totalExpenses = pick(expenseByMonth);
 
   const purchasesByMonth = Array<number>(12).fill(0);
   for (const p of monthlyPurchases) purchasesByMonth[p.month - 1] += Number(p.purchase_amount);
@@ -110,8 +116,8 @@ async function Headline({ ids, year, query }: BlockProps) {
   return (
     <>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Sales" value={formatCurrency(invoiced)} sub={recordedOnly.size > 0 ? `${yearInvoices.length} invoices + recorded monthly sales` : `${yearInvoices.length} invoices issued`} />
-        <Stat label="Money received" value={formatCurrency(received)} sub="payments in the year" />
+        <Stat label="Sales" value={formatCurrency(invoiced)} sub={recordedOnly.size > 0 ? `${invoiceCount} invoices + recorded monthly sales` : `${invoiceCount} invoices issued`} />
+        <Stat label="Money received" value={formatCurrency(received)} sub={month ? "payments in the month" : "payments in the year"} />
         <Stat label="Total expenses" value={formatCurrency(totalExpenses)} sub={`${cats.size} categories`} />
         <Stat label="Received less expenses" value={formatCurrency(net)} bad={net < 0} sub={received > 0 ? `${((net / received) * 100).toFixed(1)}% of money received` : undefined} />
       </div>
@@ -129,12 +135,12 @@ async function Headline({ ids, year, query }: BlockProps) {
 }
 
 /** The two rings: revenue by type of serving and the breakdown of expenses. */
-async function Rings({ ids, year, query }: BlockProps) {
+async function Rings({ ids, year, month, query }: BlockProps) {
   const [events, spending] = await Promise.all([getEvents(ids, year), getSpending(ids, year)]);
 
   const productBy = new Map<string, { value: number; count: number }>();
   for (const e of events) {
-    if (e.status === "cancelled") continue;
+    if (e.status === "cancelled" || !inMonth(e.event_date, month)) continue;
     const label = e.service_type ? SERVICE_TYPE_LABEL[e.service_type] ?? e.service_type : "Not stated";
     const c = productBy.get(label) ?? { value: 0, count: 0 };
     c.value += Number(e.total_amount ?? 0);
@@ -149,6 +155,7 @@ async function Rings({ ids, year, query }: BlockProps) {
   // expenses by category (the same names in other capitals count as one): the biggest six, the rest grouped as Other
   const catBy = new Map<string, number>();
   for (const c of spending) {
+    if (!inMonth(c.date, month)) continue;
     const key = c.category.toUpperCase().replace(/\s+/g, " ").trim();
     catBy.set(key, (catBy.get(key) ?? 0) + c.amount);
   }
@@ -158,13 +165,13 @@ async function Rings({ ids, year, query }: BlockProps) {
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <SectionCard title={`Revenue by Type of Serving — ${year}`}>
-        <Note>Share of the year&apos;s event revenue (cancelled events left out).</Note>
+      <SectionCard title={`Revenue by Type of Serving — ${periodOf(year, month)}`}>
+        <Note>Share of the {month ? "month" : "year"}&apos;s event revenue (cancelled events left out).</Note>
         <DonutChart slices={products} centerLabel="Event revenue" empty="No events with revenue this year." />
         <More to={`/reports/catering${query}`}>Catering Report</More>
       </SectionCard>
-      <SectionCard title={`Breakdown of Expenses — ${year}`}>
-        <Note>Every cost recorded in the year: the six biggest categories, the rest grouped as Other.</Note>
+      <SectionCard title={`Breakdown of Expenses — ${periodOf(year, month)}`}>
+        <Note>Every cost recorded in the {month ? "month" : "year"}: the six biggest categories, the rest grouped as Other.</Note>
         <DonutChart slices={expenses} centerLabel="Total expenses" empty="No expenses recorded this year." />
         <More to={`/reports/monthly-costing${query}`}>Monthly Costing Report</More>
       </SectionCard>
@@ -173,8 +180,8 @@ async function Rings({ ids, year, query }: BlockProps) {
 }
 
 /** The key customers by sales volume and the top sales agents. */
-async function People({ ids, year, query, requestedId }: BlockProps) {
-  const yearInvoices = await getYearInvoices(ids, year);
+async function People({ ids, year, month, query, requestedId }: BlockProps) {
+  const yearInvoices = (await getYearInvoices(ids, year)).filter((i) => inMonth(i.invoice_date, month));
   const invoiced = sum(yearInvoices.map((i) => invoiceTotal(i)));
 
   const salesBy = new Map<string, { value: number; count: number }>();
@@ -213,13 +220,13 @@ async function People({ ids, year, query, requestedId }: BlockProps) {
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <SectionCard title={`Key Customers by Sales Volume — ${year}`}>
-        <Note>Invoices issued in the year, tax included. Top {TOP}.</Note>
+      <SectionCard title={`Key Customers by Sales Volume — ${periodOf(year, month)}`}>
+        <Note>Invoices issued in the {month ? "month" : "year"}, tax included. Top {TOP}.</Note>
         <RankBars items={keyCustomers} total={invoiced} empty="No invoices issued this year." />
         <More to={`/reports/revenue?view=invoiced${requestedId ? `&company=${requestedId}` : ""}`}>Revenue Report · Invoices issued</More>
       </SectionCard>
-      <SectionCard title={`Top Sales Agents — ${year}`}>
-        <Note>Invoices of the year credited to the sales agent on the customer&apos;s details (Signature Solution Catering: {SSC_AGENT}). Biggest first.</Note>
+      <SectionCard title={`Top Sales Agents — ${periodOf(year, month)}`}>
+        <Note>Invoices of the {month ? "month" : "year"} credited to the sales agent on the customer&apos;s details (Signature Solution Catering: {SSC_AGENT}). Biggest first.</Note>
         <ColumnChart items={agents} empty="No customer with a sales agent was invoiced this year." />
         {noAgent.count > 0 && (
           <p className="mt-3 text-[12px] text-text-secondary">
@@ -337,7 +344,7 @@ async function OwedByUs({ ids, query }: BlockProps) {
  * Performance Dashboard: the chosen year of the chosen company on one page. Every figure is worked out the same way as on the report it links to,
  * so they tally. The page shows its heading and filters at once and each block follows as soon as its own figures are ready.
  */
-export default async function PerformanceDashboardPage({ searchParams }: { searchParams: Promise<{ company?: string; year?: string }> }) {
+export default async function PerformanceDashboardPage({ searchParams }: { searchParams: Promise<{ company?: string; year?: string; month?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
@@ -345,25 +352,26 @@ export default async function PerformanceDashboardPage({ searchParams }: { searc
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, year: yearParam } = await searchParams;
+  const { company: requestedId, year: yearParam, month: monthParam } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
   if (targetCompanyIds.length === 0) return <EmptyRow text="You don't have access to any company yet." />;
 
   const year = Number(yearParam) || malaysiaYearMonth().year;
+  const month = Math.min(Math.max(Number(monthParam) || 0, 0), 12);
   const selected = companies.find((c) => targetCompanyIds.length === 1 && c.id === targetCompanyIds[0]);
-  const props: BlockProps = { ids: [...targetCompanyIds].sort().join(","), year, query, requestedId };
+  const props: BlockProps = { ids: [...targetCompanyIds].sort().join(","), year, month, query, requestedId };
 
   return (
     <SoftPage>
       <div>
         <Link href={`/reports${query}`} className="text-[12.5px] font-semibold text-text-secondary">← Back to Reports</Link>
         <h1 className="mt-2 text-[22px] font-extrabold text-text">Performance Dashboard — {selected ? selected.name : "All Companies"}</h1>
-        <p className="mt-0.5 text-[13px] text-text-secondary">{year} · sales, expenses and what is still owed, from the recorded figures. Each block links to the report with its detail.</p>
+        <p className="mt-0.5 text-[13px] text-text-secondary">{periodOf(year, month)} · sales, expenses and what is still owed, from the recorded figures. What is owed is as it stands today. Each block links to the report with its detail.</p>
       </div>
 
       <div className="flex flex-wrap items-end justify-between gap-3 print:hidden">
-        <ReportFilterBar requestedCompanyId={requestedId} year={year} showMonth={false} />
+        <ReportFilterBar requestedCompanyId={requestedId} year={year} month={month} monthAll showRange={false} />
         <PrintButton />
       </div>
 

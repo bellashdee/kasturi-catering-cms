@@ -6,7 +6,8 @@ import { resolveCompanyScope } from "@/lib/companyScope";
 import { adminCompanyIds, listSupplierOwed } from "@/lib/finance/paymentQueries";
 import { MONTH_LABEL } from "@/lib/finance/constants";
 import { todayInMalaysia } from "@/lib/driverAttendance/date";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, malaysiaYearMonth } from "@/lib/format";
+import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { buildReportRows } from "@/lib/reports/buildRows";
 import { ReportTable } from "@/components/reports/ReportTable";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
@@ -23,7 +24,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
  * Supplier Outstanding Report: what is still owed to each supplier, month by month — the monthly summary of the supplier's statement of account
  * as it is keyed in Finance when the payment voucher is issued. Not the daily invoices. Red = past its due date. Finance / Admin only.
  */
-export default async function SupplierOutstandingReportPage({ searchParams }: { searchParams: Promise<{ company?: string }> }) {
+export default async function SupplierOutstandingReportPage({ searchParams }: { searchParams: Promise<{ company?: string; year?: string; month?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
@@ -31,7 +32,7 @@ export default async function SupplierOutstandingReportPage({ searchParams }: { 
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId } = await searchParams;
+  const { company: requestedId, year: yearParam, month: monthParam } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
   if (targetCompanyIds.length === 0) return <EmptyRow text="You don't have access to any company yet." />;
@@ -55,7 +56,10 @@ export default async function SupplierOutstandingReportPage({ searchParams }: { 
   }
 
   const today = todayInMalaysia();
-  const owed = await listSupplierOwed(supabase, adminIds);
+  // the month of the supplier's statement (and its year, this year when only a month is chosen); nothing chosen = every month
+  const month = Math.min(Math.max(Number(monthParam) || 0, 0), 12);
+  const year = Number(yearParam) || (month ? malaysiaYearMonth().year : 0);
+  const owed = (await listSupplierOwed(supabase, adminIds)).filter((r) => (!year || Number(r.period_month.slice(0, 4)) === year) && (!month || Number(r.period_month.slice(5, 7)) === month));
   const months = Array.from(new Set(owed.map((r) => monthKey(r.period_month)))).sort();
 
   const bySupplier = new Map<string, Row>();
@@ -108,11 +112,12 @@ export default async function SupplierOutstandingReportPage({ searchParams }: { 
   return (
     <div className="flex flex-col gap-5">
       {header(`${suppliers.length} supplier${suppliers.length === 1 ? "" : "s"} · ${formatCurrency(totalRow.total)} outstanding · ${formatCurrency(totalRow.overdue)} overdue`)}
+      <ReportFilterBar requestedCompanyId={requestedId} year={year || undefined} month={month} monthAll showRange={false} />
       <p className="text-[12.5px] text-text-secondary">
         By month, as keyed in <Link href={`/reports/finance-payments${query}`} className="font-semibold text-primary underline">Finance → Supplier Payment</Link> from the supplier&apos;s statement of account (SOA) when the payment voucher is issued.
         Each figure is the month of the statement; red is past its due date.
       </p>
-      <ReportTable filenameBase="supplier-outstanding-by-month" headers={headers} rows={tableRows} emptyText="No supplier payment is waiting to be paid." />
+      <ReportTable filenameBase={`supplier-outstanding-by-month${month ? `-${year}-${month}` : ""}`} headers={headers} rows={tableRows} emptyText="No supplier payment is waiting to be paid." />
     </div>
   );
 }
