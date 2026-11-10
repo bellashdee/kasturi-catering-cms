@@ -6741,6 +6741,7 @@ export type Database = {
       user_is_leave_editor: { Args: never; Returns: boolean }
       user_is_staff_leave_ot_viewer: { Args: never; Returns: boolean }
       user_can_approve_leave: { Args: never; Returns: boolean }
+      user_can_view_staff_leave: { Args: never; Returns: boolean }
       user_is_local_staff: { Args: never; Returns: boolean }
       user_has_quotation_request_access: { Args: never; Returns: boolean }
       user_can_manage_event_pnl: { Args: { target_company_id: string }; Returns: boolean }

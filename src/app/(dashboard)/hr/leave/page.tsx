@@ -33,7 +33,7 @@ export default async function LeavePage({
   // a leave editor (Ms. Syaza, Ms. Nabilah) keys in and looks after the leave of the other staff too, without being an admin
   const [{ data: editorFlag }, { data: viewerFlag }, { data: approverFlag }] = await Promise.all([
     supabase.rpc("user_is_leave_editor"),
-    supabase.rpc("user_is_staff_leave_ot_viewer"),
+    supabase.rpc("user_can_view_staff_leave"),
     supabase.rpc("user_can_approve_leave"),
   ]);
   const isEditor = editorFlag === true;
