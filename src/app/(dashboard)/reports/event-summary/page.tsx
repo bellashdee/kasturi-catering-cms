@@ -4,41 +4,30 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { adminCompanyIds } from "@/lib/finance/paymentQueries";
-import { formatCurrency } from "@/lib/format";
+import { invoicePaid, invoiceTotal } from "@/lib/finance/outstanding";
+import { EVENT_STATUS_LABEL, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
 import { MONTH_LABEL } from "@/lib/finance/constants";
+import { formatCurrency, malaysiaYearMonth } from "@/lib/format";
 import { buildReportRows } from "@/lib/reports/buildRows";
-import { EVENT_MAY_REVENUE, EVENT_ROWS, type EventCompany, type EventRow, type EventStatus } from "@/lib/invoiceListing/events";
-import { Select } from "@/components/ui/Select";
 import { PrintButton } from "@/components/reports/PrintButton";
+import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { ReportTable } from "@/components/reports/ReportTable";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 import { SoftPage } from "@/components/ui/Soft";
 
-const YEAR = 2026;
-const MONTHS = [6, 7, 8, 9];
-/** Which of the sheet's companies belong to each company of the system: K is Kasturi Indah; SSC (JDT game match) and SS are Signature Solution. */
-const ENTITIES_OF: Record<string, EventCompany[]> = { "Kasturi Indah": ["K"], "Signature Solution": ["SSC", "SS"] };
-const COMPANY_LABEL: Record<EventCompany, string> = { K: "Kasturi Indah Sdn Bhd", SSC: "Signature Solution Catering", SS: "Signature Solution Sdn Bhd" };
-const SERVING_LABEL: Record<string, string> = {
-  B: "Buffet",
-  P: "Pack food",
-  BP: "Buffet pack",
-  "B&D": "Buffet & dome set",
-  "D&B": "Buffet & dome set",
-  PP: "Preplated",
-  "PP+P": "Preplated & pack food",
-  D: "Dome set",
-  "B&P": "Buffet & pack food",
-  "P&D": "Pack food & dome set",
-  C: "Canape",
-};
-const STATUS_LABEL: Record<EventStatus, string> = { PAID: "Paid", UNPAID: "Not paid", PARTIAL: "Part paid", NIL: "No charge" };
-const STATUS_TONE: Record<EventStatus, "success" | "warning" | "danger" | "neutral"> = { PAID: "success", UNPAID: "danger", PARTIAL: "warning", NIL: "neutral" };
+type Entity = "K" | "SSC" | "SS" | "O2";
+const ENTITY_LABEL: Record<Entity, string> = { K: "Kasturi Indah Sdn Bhd", SSC: "Signature Solution Catering", SS: "Signature Solution Sdn Bhd", O2: "O2 Life Sdn Bhd" };
+type Pay = "none" | "unpaid" | "part" | "paid";
+const PAY_LABEL: Record<Pay, string> = { none: "Not invoiced yet", unpaid: "Invoiced, not paid", part: "Part paid", paid: "Paid" };
+const PAY_TONE: Record<Pay, "neutral" | "danger" | "warning" | "success"> = { none: "neutral", unpaid: "danger", part: "warning", paid: "success" };
 
-const revenueOf = (rows: EventRow[]) => rows.reduce((t, r) => t + r[6], 0);
-const outstandingOf = (r: EventRow) => (r[7] === "UNPAID" ? r[6] : r[7] === "PARTIAL" ? r[8] : 0);
-const pct = (now: number, before: number) => (before > 0 ? `${now >= before ? "increased" : "decreased"} by ${Math.abs(((now - before) / before) * 100).toFixed(2)}%` : null);
+/** The company of the sheet: Kasturi Indah is K; Signature Solution is SSC for the JDT game match events and SS for the rest. */
+function entityOf(companyName: string | undefined, eventName: string, customerName: string | undefined): Entity {
+  if (companyName === "Kasturi Indah") return "K";
+  if (companyName === "O2 Life") return "O2";
+  return /\bJDT\b/i.test(`${eventName} ${customerName ?? ""}`) ? "SSC" : "SS";
+}
 
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -70,23 +59,25 @@ function Bars({ items }: { items: { label: string; value: number; note?: string 
 }
 
 /**
- * Event Summary Report: the "Summary Payment - Event" sheet of each month (Jun - Sep 2026) as a report — every event with its company
- * (K / SSC / SS), type of serving, revenue and payment status, plus the month's totals. Finance / Admin only.
+ * Event Summary Report: the events of the Catering module (the events keyed in, with their customer, type of serving, revenue and status) by month,
+ * with whether each one is invoiced and paid, from the invoices linked to the event. Finance / Admin only.
  */
 export default async function EventSummaryReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; company?: string; entity?: string; status?: string }>;
+  searchParams: Promise<{ company?: string; year?: string; month?: string; category?: string; status?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
-  const { month: monthParam, company: requestedId, entity: entityParam, status: statusParam } = await searchParams;
-  const query = requestedId ? `?company=${requestedId}` : "";
-  const back = <Link href={`/reports${query}`} className="text-[12.5px] font-semibold text-text-secondary">← Back to Reports</Link>;
   const supabase = await createClient();
   const { data: companies } = await supabase.from("companies").select("id, name");
-  const admins = await adminCompanyIds(supabase, (companies ?? []).map((c) => c.id));
+  const { company: requestedId, year: yearParam, month: monthParam, category: entityParam, status: statusParam } = await searchParams;
+  const query = requestedId ? `?company=${requestedId}` : "";
+  const back = <Link href={`/reports${query}`} className="text-[12.5px] font-semibold text-text-secondary">← Back to Reports</Link>;
+
+  const { targetCompanyIds } = resolveCompanyScope(session, companies ?? [], requestedId);
+  const admins = await adminCompanyIds(supabase, targetCompanyIds);
   if (admins.length === 0) {
     return (
       <SoftPage>
@@ -96,64 +87,67 @@ export default async function EventSummaryReportPage({
     );
   }
 
-  // the events of the company chosen at the top: Signature Solution has SSC and SS, Kasturi Indah has K, O2 Life none; all companies shows every one
-  const { targetCompanyIds } = resolveCompanyScope(session, companies ?? [], requestedId);
+  const now = malaysiaYearMonth();
+  const year = Number(yearParam) || now.year;
+  const month = monthParam === undefined ? now.month : Math.min(Math.max(Number(monthParam) || 0, 0), 12);
   const nameOf = new Map((companies ?? []).map((c) => [c.id, c.name]));
-  const allowed = new Set<EventCompany>(targetCompanyIds.flatMap((id) => ENTITIES_OF[nameOf.get(id) ?? ""] ?? []));
-  const allEntities = (Object.keys(COMPANY_LABEL) as EventCompany[]).every((e) => allowed.has(e));
-  const scopedRows = EVENT_ROWS.filter((r) => allowed.has(r[4]));
-  if (allowed.size === 0) {
-    return (
-      <SoftPage>
-        {back}
-        <EmptyRow text="There are no events in the Summary Payment sheets for this company. Choose Kasturi Indah or Signature Solution at the top." />
-      </SoftPage>
-    );
-  }
 
-  const month = MONTHS.includes(Number(monthParam)) ? Number(monthParam) : MONTHS[MONTHS.length - 1];
-  const company = entityParam && entityParam in COMPANY_LABEL && allowed.has(entityParam as EventCompany) ? (entityParam as EventCompany) : "";
-  const status = statusParam && statusParam in STATUS_LABEL ? (statusParam as EventStatus) : "";
+  const { data: events, error } = await supabase
+    .from("catering_events")
+    .select("id, company_id, event_name, event_date, pax_count, service_type, total_amount, status, customers(name), customer_invoices(amount, tax_amount, status, customer_payments(amount))")
+    .in("company_id", admins)
+    .gte("event_date", `${year}-01-01`)
+    .lte("event_date", `${year}-12-31`)
+    .order("event_date")
+    .order("event_name");
+  if (error) throw error;
 
-  const monthRows = scopedRows.filter((r) => r[0] === month);
-  const rows = monthRows.filter((r) => (!company || r[4] === company) && (!status || r[7] === status));
-  const monthRevenue = revenueOf(monthRows);
-  // the May figure on the June sheet is for all the companies together, so it is only compared when all of them are shown
-  const previous = month === 6 ? (allEntities ? EVENT_MAY_REVENUE : 0) : revenueOf(scopedRows.filter((r) => r[0] === month - 1));
-  const change = pct(monthRevenue, previous);
-  const unpaid = monthRows.reduce((t, r) => t + outstandingOf(r), 0);
-  const periodLabel = `${MONTH_LABEL[month - 1]} ${YEAR}`;
+  const all = (events ?? [])
+    .filter((e) => e.status !== "cancelled")
+    .map((e) => {
+      const invoices = (e.customer_invoices ?? []).filter((i) => i.status !== "draft" && i.status !== "pending_review");
+      const total = invoices.reduce((t, i) => t + invoiceTotal(i), 0);
+      const paid = invoices.reduce((t, i) => t + invoicePaid(i), 0);
+      const pay: Pay = invoices.length === 0 ? "none" : paid >= total - 0.005 ? "paid" : paid > 0 ? "part" : "unpaid";
+      return { ...e, entity: entityOf(nameOf.get(e.company_id), e.event_name, e.customers?.name), revenue: Number(e.total_amount ?? 0), pay };
+    });
 
-  const byCompany = (Object.keys(COMPANY_LABEL) as EventCompany[]).filter((c) => allowed.has(c)).map((c) => {
-    const list = monthRows.filter((r) => r[4] === c);
-    return { label: COMPANY_LABEL[c], value: revenueOf(list), note: `${list.length} event${list.length === 1 ? "" : "s"}` };
+  const allowed = Array.from(new Set(all.map((e) => e.entity)));
+  const entityFilter = (allowed as string[]).includes(entityParam ?? "") ? (entityParam as Entity) : "";
+  const status = statusParam && statusParam in EVENT_STATUS_LABEL ? statusParam : "";
+  const inMonth = (date: string) => !month || Number(date.slice(5, 7)) === month;
+  const monthRows = all.filter((e) => inMonth(e.event_date) && (!entityFilter || e.entity === entityFilter));
+  const rows = monthRows.filter((e) => !status || e.status === status);
+  const sum = (list: { revenue: number }[]) => list.reduce((t, e) => t + e.revenue, 0);
+  const periodLabel = month ? `${MONTH_LABEL[month - 1]} ${year}` : String(year);
+
+  const byEntity = allowed.map((k) => {
+    const list = monthRows.filter((e) => e.entity === k);
+    return { label: ENTITY_LABEL[k], value: sum(list), note: `${list.length} event${list.length === 1 ? "" : "s"}` };
   });
   const serving = new Map<string, number>();
-  for (const r of rows) {
-    const label = SERVING_LABEL[r[5]] ?? r[5];
-    serving.set(label, (serving.get(label) ?? 0) + r[6]);
+  for (const e of rows) {
+    const label = e.service_type ? SERVICE_TYPE_LABEL[e.service_type] ?? e.service_type : "Not stated";
+    serving.set(label, (serving.get(label) ?? 0) + e.revenue);
   }
-  const byServing = Array.from(serving.entries()).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
+  const byServing = Array.from(serving.entries()).map(([label, value]) => ({ label, value })).filter((x) => x.value > 0).sort((a, b) => b.value - a.value);
+  const byMonth = MONTH_LABEL.map((m, i) => ({ label: `${m} ${year}`, value: sum(all.filter((e) => Number(e.event_date.slice(5, 7)) === i + 1 && (!entityFilter || e.entity === entityFilter))) })).filter((x) => x.value > 0);
+  const notInvoiced = monthRows.filter((e) => e.pay === "none");
 
   const { headers, tableRows } = buildReportRows(
     rows,
     [
-      { key: "date", label: "Date", exportValue: (r: EventRow) => `${String(r[1]).padStart(2, "0")}/${String(r[0]).padStart(2, "0")}/${YEAR}` },
-      { key: "event", label: "Name of Event", exportValue: (r: EventRow) => r[2] },
-      { key: "pax", label: "No of Pax", exportValue: (r: EventRow) => r[3] },
-      { key: "com", label: "Company", exportValue: (r: EventRow) => r[4] },
-      { key: "serving", label: "Type of Serving", exportValue: (r: EventRow) => SERVING_LABEL[r[5]] ?? r[5] },
-      { key: "revenue", label: "Revenue (RM)", exportValue: (r: EventRow) => r[6], display: (r: EventRow) => formatCurrency(r[6]) },
-      {
-        key: "status",
-        label: "Payment",
-        exportValue: (r: EventRow) => (r[7] === "PARTIAL" ? `${STATUS_LABEL[r[7]]} (RM ${r[8].toFixed(2)} owed)` : STATUS_LABEL[r[7]]),
-        display: (r: EventRow) => (
-          <StatusBadge tone={STATUS_TONE[r[7]]}>{r[7] === "PARTIAL" ? `${STATUS_LABEL[r[7]]} · ${formatCurrency(r[8])} owed` : STATUS_LABEL[r[7]]}</StatusBadge>
-        ),
-      },
+      { key: "date", label: "Date", exportValue: (r) => `${r.event_date.slice(8, 10)}/${r.event_date.slice(5, 7)}/${r.event_date.slice(0, 4)}` },
+      { key: "event", label: "Name of Event", exportValue: (r) => r.event_name },
+      { key: "customer", label: "Customer", exportValue: (r) => r.customers?.name ?? "—" },
+      { key: "pax", label: "No of Pax", exportValue: (r) => r.pax_count ?? 0 },
+      { key: "com", label: "Company", exportValue: (r) => r.entity },
+      { key: "serving", label: "Type of Serving", exportValue: (r) => (r.service_type ? SERVICE_TYPE_LABEL[r.service_type] ?? r.service_type : "—") },
+      { key: "revenue", label: "Revenue (RM)", exportValue: (r) => r.revenue, display: (r) => formatCurrency(r.revenue) },
+      { key: "event_status", label: "Event", exportValue: (r) => EVENT_STATUS_LABEL[r.status] ?? r.status },
+      { key: "pay", label: "Payment", exportValue: (r) => PAY_LABEL[r.pay], display: (r) => <StatusBadge tone={PAY_TONE[r.pay]}>{PAY_LABEL[r.pay]}</StatusBadge> },
     ],
-    (r) => `${r[0]}-${r[1]}-${r[2]}-${r[6]}-${r[3]}-${rows.indexOf(r)}`,
+    (r) => r.id,
   );
 
   return (
@@ -162,59 +156,47 @@ export default async function EventSummaryReportPage({
         {back}
         <h1 className="mt-2 text-[22px] font-extrabold text-text">Event Summary — {periodLabel}</h1>
         <p className="mt-0.5 text-[13px] text-text-secondary">
-          From the monthly Summary Payment - Event sheet. K = Kasturi Indah, SSC = Signature Solution Catering, SS = Signature Solution Sdn Bhd.
+          The events keyed in the Catering module. K = Kasturi Indah, SSC = Signature Solution Catering (JDT game match), SS = Signature Solution Sdn Bhd. Payment is from the invoices linked to the event.
         </p>
       </div>
 
       <div className="flex flex-wrap items-end justify-between gap-3 print:hidden">
-        <form method="get" className="flex flex-wrap items-end gap-3">
-          {requestedId && <input type="hidden" name="company" value={requestedId} />}
-          <div>
-            <label className="text-[12px] font-semibold text-text-secondary">Month</label>
-            <Select name="month" defaultValue={month} className="mt-1 h-9 w-40 rounded-lg border border-border-strong px-2 text-[13px]">
-              {MONTHS.map((m) => <option key={m} value={m}>{MONTH_LABEL[m - 1]} {YEAR}</option>)}
-            </Select>
-          </div>
-          <div>
-            <label className="text-[12px] font-semibold text-text-secondary">Company</label>
-            <Select name="entity" defaultValue={company} className="mt-1 h-9 w-56 rounded-lg border border-border-strong px-2 text-[13px]">
-              <option value="">All Companies</option>
-              {(Object.keys(COMPANY_LABEL) as EventCompany[]).filter((c) => allowed.has(c)).map((c) => <option key={c} value={c}>{c} · {COMPANY_LABEL[c]}</option>)}
-            </Select>
-          </div>
-          <div>
-            <label className="text-[12px] font-semibold text-text-secondary">Payment</label>
-            <Select name="status" defaultValue={status} className="mt-1 h-9 w-40 rounded-lg border border-border-strong px-2 text-[13px]">
-              <option value="">All</option>
-              {(Object.keys(STATUS_LABEL) as EventStatus[]).map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
-            </Select>
-          </div>
-          <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply Filters</button>
-        </form>
+        <ReportFilterBar
+          requestedCompanyId={requestedId}
+          year={year}
+          month={month}
+          monthAll
+          showRange={false}
+          category={entityFilter}
+          categoryLabel="Company"
+          categoryOptions={allowed.map((k) => ({ value: k, label: `${k} · ${ENTITY_LABEL[k]}` }))}
+          status={status}
+          statusOptions={Object.entries(EVENT_STATUS_LABEL).filter(([v]) => v !== "cancelled").map(([value, label]) => ({ value, label }))}
+        />
         <PrintButton />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label={`Revenue · ${periodLabel}`} value={formatCurrency(monthRevenue)} sub={change ? `${change} from ${month === 6 ? "May (per the June sheet)" : MONTH_LABEL[month - 2]}` : undefined} />
-        <Stat label="Paid" value={formatCurrency(monthRevenue - unpaid)} />
-        <Stat label="Not yet paid" value={formatCurrency(unpaid)} sub={unpaid > 0 ? "Not paid or part paid events" : "Everything is paid"} />
-        <Stat label="Events · pax" value={`${monthRows.length} · ${monthRows.reduce((t, r) => t + r[3], 0).toLocaleString("en-MY")}`} />
+        <Stat label={`Revenue · ${periodLabel}`} value={formatCurrency(sum(monthRows))} sub="Events keyed in Catering, cancelled left out" />
+        <Stat label="Events · pax" value={`${monthRows.length} · ${monthRows.reduce((t, e) => t + (e.pax_count ?? 0), 0).toLocaleString("en-MY")}`} />
+        <Stat label="Paid" value={formatCurrency(sum(monthRows.filter((e) => e.pay === "paid")))} sub={`${monthRows.filter((e) => e.pay === "paid").length} event${monthRows.filter((e) => e.pay === "paid").length === 1 ? "" : "s"}`} />
+        <Stat label="Not invoiced yet" value={formatCurrency(sum(notInvoiced))} sub={`${notInvoiced.length} event${notInvoiced.length === 1 ? "" : "s"} with no invoice linked`} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <SectionCard title={`Revenue by Company — ${periodLabel}`}>
-          <Bars items={byCompany} />
+          {byEntity.length === 0 ? <EmptyRow text="No events for this period." /> : <Bars items={byEntity} />}
         </SectionCard>
-        <SectionCard title={`Revenue by Type of Serving${company || status ? " (filtered)" : ""}`}>
-          {byServing.length === 0 ? <EmptyRow text="No events for this filter." /> : <Bars items={byServing} />}
+        <SectionCard title={`Revenue by Type of Serving${entityFilter || status ? " (filtered)" : ""}`}>
+          {byServing.length === 0 ? <EmptyRow text="No events with revenue for this filter." /> : <Bars items={byServing} />}
         </SectionCard>
       </div>
 
-      <SectionCard title="Month by Month">
-        <Bars items={MONTHS.map((m) => ({ label: `${MONTH_LABEL[m - 1]} ${YEAR}`, value: revenueOf(scopedRows.filter((r) => r[0] === m)) }))} />
+      <SectionCard title={`Month by Month — ${year}`}>
+        {byMonth.length === 0 ? <EmptyRow text="No events with revenue this year." /> : <Bars items={byMonth} />}
       </SectionCard>
 
-      <ReportTable filenameBase={`event-summary-${YEAR}-${month}`} headers={headers} rows={tableRows} emptyText="No events for this filter." />
+      <ReportTable filenameBase={`event-summary-${year}-${month || "all"}`} headers={headers} rows={tableRows} emptyText="No events for this filter." />
     </SoftPage>
   );
 }
