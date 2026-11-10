@@ -631,7 +631,9 @@ export async function requestLeave(input: LeaveInput) {
   if (!input.employeeId || !input.companyId) throw new Error("Choose the staff member.");
   if (!LEAVE_TYPES.includes(input.leaveType)) throw new Error("Choose the leave type.");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(input.endDate) || input.endDate < input.startDate) throw new Error("The end date must be on or after the start date.");
-  const status = privileged && owns !== true && input.status === "approved" ? "approved" : "pending";
+  // "already approved" can only be keyed in by the person who approves leave (Madam Penny); everybody else's key-in waits for her
+  const { data: leaveApprover } = await supabase.rpc("user_can_approve_leave");
+  const status = privileged && owns !== true && input.status === "approved" && leaveApprover === true ? "approved" : "pending";
 
   const { data: leave, error: leaveError } = await supabase
     .from("leave_requests")
@@ -690,7 +692,9 @@ export async function decideLeave(leaveRequestId: string, decision: "approved" |
     .eq("id", leaveRequestId)
     .single();
   if (fetchError) throw fetchError;
-  await requireHrAdmin(supabase, leave.company_id, "Only an admin of the company can approve or reject leave.");
+  // leave is approved or rejected by Madam Penny only (the database enforces it too)
+  const { data: approver } = await supabase.rpc("user_can_approve_leave");
+  if (approver !== true) throw new Error("Only Madam Penny can approve or reject leave.");
 
   const { error: updateError } = await supabase
     .from("leave_requests")

@@ -31,13 +31,19 @@ export default async function LeavePage({
 
   const access = await getHrAccess(supabase, session, targetCompanyIds);
   // a leave editor (Ms. Syaza, Ms. Nabilah) keys in and looks after the leave of the other staff too, without being an admin
-  const { data: editorFlag } = await supabase.rpc("user_is_leave_editor");
+  const [{ data: editorFlag }, { data: viewerFlag }, { data: approverFlag }] = await Promise.all([
+    supabase.rpc("user_is_leave_editor"),
+    supabase.rpc("user_is_staff_leave_ot_viewer"),
+    supabase.rpc("user_can_approve_leave"),
+  ]);
   const isEditor = editorFlag === true;
+  const isViewer = viewerFlag === true;
+  const canApprove = approverFlag === true;
   const canKeyIn = access.adminAnywhere || isEditor;
-  // an admin or a leave editor sees the leave of every employee; anyone else only their own
+  // only the people who may look at staff leave see it (the database enforces the same); anyone else only their own
   // the month is the month the leave starts in
   const requests = filterByMonth(
-    (await listLeaveForCompanies(supabase, targetCompanyIds)).filter((r) => access.isAdminOf(r.company_id) || isEditor || access.ownEmployeeIds.has(r.employee_id)),
+    (await listLeaveForCompanies(supabase, targetCompanyIds)).filter((r) => access.isAdminOf(r.company_id) || isEditor || isViewer || access.ownEmployeeIds.has(r.employee_id)),
     month,
     (r) => r.start_date,
   );
@@ -49,7 +55,7 @@ export default async function LeavePage({
         <div>
           <h1 className="text-[22px] font-extrabold text-text">Leave Requests</h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">
-            {requests.length} leave request{requests.length === 1 ? "" : "s"} · {canKeyIn ? "all employees you can access" : "your own"}
+            {requests.length} leave request{requests.length === 1 ? "" : "s"} · {canKeyIn || isViewer ? "all employees you can access" : "your own"}
             {monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}
           </p>
         </div>
@@ -72,8 +78,8 @@ export default async function LeavePage({
               return (
                 <LeaveItem
                   key={r.id}
-                  canDecide={admin}
-                  canChange={admin || isEditor || r.status === "pending"}
+                  canDecide={canApprove}
+                  canChange={admin || isEditor || (access.ownEmployeeIds.has(r.employee_id) && r.status === "pending")}
                   leave={{
                     id: r.id,
                     employeeId: r.employee_id,

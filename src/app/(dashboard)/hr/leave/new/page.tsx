@@ -12,6 +12,7 @@ export default async function KeyInLeavePage({ searchParams }: { searchParams: P
   const supabase = await createClient();
   const [{ data: isSuper }, { data: isEditor }] = await Promise.all([supabase.rpc("current_user_is_super_admin"), supabase.rpc("user_is_leave_editor")]);
   if (isSuper !== true && isEditor !== true) redirect("/hr/leave");
+  const { data: approver } = await supabase.rpc("user_can_approve_leave");
 
   // the staff of the company that is open (the company chosen at the top left); with "All companies" every company's staff, with the company named
   const { company } = await searchParams;
@@ -32,7 +33,7 @@ export default async function KeyInLeavePage({ searchParams }: { searchParams: P
         {openCompany ? `Staff of ${openCompany.name}. Choose the staff member and type in their leave.` : "Choose the staff member and type in their leave. A person who works in several companies is listed once for each: pick the company the leave belongs to."}
       </p>
       <div className="mt-5 rounded-xl border border-border bg-surface p-6 shadow-sm">
-        <LeaveKeyIn staff={options} />
+        <LeaveKeyIn staff={options} canApprove={approver === true} />
       </div>
     </div>
   );

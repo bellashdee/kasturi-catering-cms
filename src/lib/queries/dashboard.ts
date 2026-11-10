@@ -419,7 +419,10 @@ export async function getPromotionsEndingSoon(supabase: DB, companyIds: string[]
 export async function getPendingApprovals(supabase: DB, companyIds: string[], allowedModules: string[] | null = null) {
   const { data } = await supabase.from("approvals").select("module, related_table").in("company_id", companyIds).eq("status", "pending");
 
+  // leave is approved by Madam Penny only: only she is counted for leave approvals
+  const { data: leaveApprover } = await supabase.rpc("user_can_approve_leave");
   const pendingCount = (data ?? []).filter((a) => {
+    if (a.related_table === "leave_requests") return leaveApprover === true && canAccessModule(allowedModules, a.module as ModuleKey);
     if (a.related_table === "overtime_records") return canAccessModule(allowedModules, "hr") || canAccessModule(allowedModules, "overtime");
     return canAccessModule(allowedModules, a.module as ModuleKey);
   }).length;

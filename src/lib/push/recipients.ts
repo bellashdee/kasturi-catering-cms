@@ -56,6 +56,8 @@ export async function planPush(event: PushEvent): Promise<Plan> {
         const { data } = await admin.from("leave_requests").select("leave_type, start_date, end_date, employees(full_name)").eq("id", relatedId).maybeSingle();
         const name = ((data as { employees?: { full_name?: string } } | null)?.employees?.full_name ?? "").trim();
         if (data) what = `Leave request${name ? `: ${name}` : ""} (${str((data as Row).start_date)} to ${str((data as Row).end_date)})`;
+        // leave is approved by Madam Penny only: she alone is told
+        return { userIds: without(await listUserIds(admin, "leave_approvers"), r.requested_by), payload: { title: "Approval waiting", body: what, url: "/priority-centre#approvals", tag: `approval-${str(r.id)}` } };
       } else if (str(r.related_table) === "overtime_records" && relatedId) {
         const { data } = await admin.from("overtime_records").select("hours, work_date, employees(full_name)").eq("id", relatedId).maybeSingle();
         const name = ((data as { employees?: { full_name?: string } } | null)?.employees?.full_name ?? "").trim();

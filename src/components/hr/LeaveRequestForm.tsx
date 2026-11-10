@@ -22,7 +22,7 @@ function daysBetween(start: string, end: string): number {
  * `keyIn`: an admin or leave editor types in the leave of another staff member (a paper form or a message): the status can be set to
  * "already approved", and after saving the person goes back to the leave list (they cannot open another staff member's profile).
  */
-export function LeaveRequestForm({ employeeId, companyId, keyIn = false }: { employeeId: string; companyId: string; keyIn?: boolean }) {
+export function LeaveRequestForm({ employeeId, companyId, keyIn = false, canApprove = false }: { employeeId: string; companyId: string; keyIn?: boolean; canApprove?: boolean }) {
   const router = useRouter();
   const [leaveType, setLeaveType] = useState("annual");
   const [otherType, setOtherType] = useState("");
@@ -50,7 +50,7 @@ export function LeaveRequestForm({ employeeId, companyId, keyIn = false }: { emp
         const doc = await uploadDocument({ companyId, module: "hr", fileType: fileTypeFromMime(file), file });
         documentId = doc.id;
       }
-      await requestLeave({ employeeId, companyId, leaveType, leaveTypeOther: leaveType === "other" ? otherType.trim() : undefined, startDate, endDate, days, reason, documentId, status: keyIn ? status : undefined });
+      await requestLeave({ employeeId, companyId, leaveType, leaveTypeOther: leaveType === "other" ? otherType.trim() : undefined, startDate, endDate, days, reason, documentId, status: keyIn && canApprove ? status : undefined });
       router.push(keyIn ? "/hr/leave" : `/hr/${employeeId}`);
       router.refresh();
     } catch (err) {
@@ -109,7 +109,7 @@ export function LeaveRequestForm({ employeeId, companyId, keyIn = false }: { emp
         <p className="mt-1 text-[11px] text-text-muted">PDF, Excel, CSV, screenshot or photo. Kept with this leave request.</p>
       </div>
 
-      {keyIn && (
+      {keyIn && canApprove && (
         <div>
           <label className={labelClass}>Status</label>
           <Select value={status} onChange={(e) => setStatus(e.target.value as "pending" | "approved")} className={inputClass}>
@@ -124,7 +124,7 @@ export function LeaveRequestForm({ employeeId, companyId, keyIn = false }: { emp
           Cancel
         </button>
         <button type="submit" disabled={saving} className="rounded-lg bg-primary px-5 py-2.5 text-[13.5px] font-semibold text-white disabled:opacity-60">
-          {saving ? "Saving..." : keyIn ? (status === "approved" ? "Save leave" : "Save & send for approval") : "Submit for Approval"}
+          {saving ? "Saving..." : keyIn ? (canApprove && status === "approved" ? "Save leave" : "Save & send to Madam Penny") : "Submit for Approval"}
         </button>
       </div>
     </form>
