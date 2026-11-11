@@ -75,6 +75,7 @@ export default async function CompanySummaryReportPage({
         revenueByMonth={series.revenue}
         costByMonth={series.cost}
         revenue={summary.revenue}
+        received={summary.received}
         totalCost={summary.totalCost}
         net={summary.net}
         bySource={summary.bySource}

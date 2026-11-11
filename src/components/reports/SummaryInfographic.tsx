@@ -21,6 +21,8 @@ export type SummaryPictureProps = {
   /** the month shown below (1..12) */
   month: number;
   revenue: number;
+  /** the payments received in the period (the revenue above is the sales keyed in) */
+  received?: number;
   totalCost: number;
   net: number;
   bySource: { source: string; amount: number }[];
@@ -114,7 +116,8 @@ export function SummaryInfographic(p: SummaryPictureProps) {
       {/* the main figures */}
       <div className="grid gap-px text-white md:grid-cols-[1.1fr_1.5fr_1.1fr]" style={{ background: ROSE_DARK }}>
         <div className="px-6 py-3" style={{ background: ROSE }}>
-          <Tile value={formatCurrency(p.revenue)} label={`Revenue · ${p.periodLabel}`} />
+          <Tile value={formatCurrency(p.revenue)} label={`Sales · ${p.periodLabel}`} />
+          {p.received !== undefined && <Tile value={formatCurrency(p.received)} label={`Money received · ${p.periodLabel}`} />}
           <Tile value={formatCurrency(p.totalCost)} label={`Total cost · ${p.periodLabel}`} />
           <Tile value={formatCurrency(p.net)} label={`Net · ${p.periodLabel}`} tone={p.net < 0 ? "bad" : undefined} />
           <Tile value={margin === null ? "—" : `${margin.toFixed(1)}%`} label="Net margin" />

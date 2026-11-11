@@ -3,7 +3,7 @@ import { MONTH_LABEL } from "@/lib/finance/constants";
 import { SectionCard } from "@/components/dashboard/SectionCard";
 import { TrendLines, type Series } from "@/components/reports/Charts";
 
-/** Sales (customer payments received) month by month: the chosen year against the year before. Recorded figures only. */
+/** Sales (the monthly sales keyed in; payments received for a month with none keyed) month by month: the chosen year against the year before. Recorded figures only. */
 export function SalesByMonthComparison({ year, current, previous }: { year: number; current: number[]; previous: number[] }) {
   const totalCurrent = current.reduce((t, v) => t + v, 0);
   const totalPrevious = previous.reduce((t, v) => t + v, 0);

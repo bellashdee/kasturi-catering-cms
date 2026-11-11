@@ -79,13 +79,16 @@ async function Headline({ ids, year, month, query }: BlockProps) {
   const lastMonth = year < now.year ? 12 : year > now.year ? 0 : now.month;
   const [yearInvoices, payments, spending, monthlyPurchases, monthlySales] = await Promise.all([getYearInvoices(ids, year), getPayments(ids, year), getSpending(ids, year), getMonthlyPurchases(ids, year), getMonthlySales(ids, year)]);
 
+  // sales of a month = the monthly sales keyed in for the company (the figure Monthly Costing and the Admin dashboard use); a month with none
+  // keyed counts the invoices issued in it
   const salesByMonth = Array<number>(12).fill(0);
-  for (const i of yearInvoices) salesByMonth[Number(i.invoice_date.slice(5, 7)) - 1] += invoiceTotal(i);
-  // a company that keeps no invoices in the system (O2 Life) has its sales as the monthly total recorded for it (the figure Monthly Costing uses)
-  const invoicedCompanies = new Set(yearInvoices.map((i) => i.company_id));
+  const keyed = new Set(monthlySales.map((s) => `${s.company_id}|${s.month}`));
+  for (const i of yearInvoices) {
+    const m = Number(i.invoice_date.slice(5, 7));
+    if (!keyed.has(`${i.company_id}|${m}`)) salesByMonth[m - 1] += invoiceTotal(i);
+  }
   const recordedOnly = new Set<string>();
   for (const s of monthlySales) {
-    if (invoicedCompanies.has(s.company_id)) continue;
     salesByMonth[s.month - 1] += Number(s.sales_amount);
     recordedOnly.add(s.company_id);
   }
