@@ -4,6 +4,8 @@ import { getSessionContext, ROLE_LABEL } from "@/lib/auth";
 import { listMembers } from "@/lib/users/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ASSIGNABLE_MODULES } from "@/lib/modules";
+import { mergeAllowedSections, sectionSummary } from "@/lib/sections";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { SectionCard, EmptyRow } from "@/components/dashboard/SectionCard";
 import { AddMemberForm } from "@/components/settings/AddMemberForm";
 import { MemberActions } from "@/components/settings/MemberActions";
@@ -78,6 +80,14 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
   // The password given when the account was made is shown only until the person signs in for the first time (and only if nobody has changed it since).
   const initialPasswords = await loadInitialPasswords(members);
+  // the sub-categories (tabs) each member is limited to (null = no limit)
+  const sectionsOf = new Map<string, string[] | null>();
+  {
+    const { data: sectionRows } = await (createAdminClient() as unknown as SupabaseClient).from("user_company_access").select("user_id, allowed_sections");
+    const byUser = new Map<string, (string[] | null)[]>();
+    for (const r of (sectionRows ?? []) as { user_id: string; allowed_sections: string[] | null }[]) byUser.set(r.user_id, [...(byUser.get(r.user_id) ?? []), r.allowed_sections]);
+    for (const [id, list] of byUser) sectionsOf.set(id, mergeAllowedSections(list));
+  }
   const withEmail = members.filter((m) => !!m.email && !m.email.endsWith(NO_EMAIL_DOMAIN)).length;
   const withoutEmail = members.length - withEmail;
 
@@ -164,6 +174,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                         {access?.allowed_modules && (
                           <div className="mt-0.5 text-[11.5px] text-text-muted">Modules: {access.allowed_modules.map((k) => ASSIGNABLE_MODULES.find((m) => m.key === k)?.label ?? k).join(", ")}</div>
                         )}
+                        {sectionSummary(sectionsOf.get(m.id)).map((x) => (
+                          <div key={x.module} className="mt-0.5 text-[11.5px] text-text-muted">
+                            Only in {ASSIGNABLE_MODULES.find((a) => a.key === x.module)?.label ?? x.module}: {x.labels.join(", ")}
+                          </div>
+                        ))}
                       </div>
                       <MemberActions
                         userId={m.id}
@@ -176,6 +191,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                           allCompanies: hasAll,
                           companyIds: rows.map((r) => r.company_id).filter((id): id is string => id !== null),
                           allowedModules: access?.allowed_modules ?? null,
+                          allowedSections: sectionsOf.get(m.id) ?? null,
                           canViewMainDashboard: m.can_view_main_dashboard,
                         }}
                       />

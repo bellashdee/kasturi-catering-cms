@@ -23,7 +23,7 @@ export function MemberActions({
 }: {
   userId: string;
   companies: Company[];
-  initial: { fullName: string; username: string; email: string; role: UserRole; allCompanies: boolean; companyIds: string[]; allowedModules: string[] | null; canViewMainDashboard: boolean };
+  initial: { fullName: string; username: string; email: string; role: UserRole; allCompanies: boolean; companyIds: string[]; allowedModules: string[] | null; allowedSections: string[] | null; canViewMainDashboard: boolean };
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -34,6 +34,7 @@ export function MemberActions({
   const [allCompanies, setAllCompanies] = useState(initial.allCompanies);
   const [companyIds, setCompanyIds] = useState<string[]>(initial.companyIds);
   const [modules, setModules] = useState<string[] | null>(initial.allowedModules);
+  const [sections, setSections] = useState<string[] | null>(initial.allowedSections);
   const [dashboard, setDashboard] = useState(initial.canViewMainDashboard);
   const [newPassword, setNewPassword] = useState("");
   const [saving, setSaving] = useState(false);
@@ -57,6 +58,7 @@ export function MemberActions({
         allCompanies,
         companyIds,
         allowedModules: modules,
+        allowedSections: sections,
         canViewMainDashboard: role === "super_admin" || dashboard,
         newPassword: newPassword || undefined,
       });
@@ -146,7 +148,7 @@ export function MemberActions({
           }}
         />
       </div>
-      <ModulePicker value={modules} onChange={setModules} />
+      <ModulePicker value={modules} onChange={setModules} sections={sections} onSectionsChange={setSections} />
       <label className="mt-2 flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2.5 text-[12.5px] text-text">
         <input type="checkbox" checked={role === "super_admin" || dashboard} disabled={role === "super_admin"} onChange={(e) => setDashboard(e.target.checked)} />
         Can view the Main Dashboard (the company figures)

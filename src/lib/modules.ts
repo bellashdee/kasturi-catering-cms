@@ -1,4 +1,5 @@
 import { MODULES, type ModuleKey } from "@/lib/constants";
+import { canOpenSection, sectionForPath } from "@/lib/sections";
 
 /** Which module a page belongs to, by URL prefix. Pages not listed here (dashboard, settings, login) are not module-restricted. */
 const PATH_MODULE: [string, ModuleKey][] = [
@@ -27,12 +28,15 @@ export function moduleForPath(pathname: string): ModuleKey | null {
  * Whether the user may open this page. The OT pages (/hr/overtime) are open to members with the full HR module
  * or with the separate "overtime" permission; every other page follows its module.
  */
-export function canAccessPath(allowed: string[] | null | undefined, pathname: string): boolean {
+export function canAccessPath(allowed: string[] | null | undefined, pathname: string, sections?: string[] | null): boolean {
   if (pathname === "/hr/overtime" || pathname.startsWith("/hr/overtime/")) {
     return canAccessModule(allowed, "hr") || canAccessModule(allowed, "overtime");
   }
   const key = moduleForPath(pathname);
-  return key === null || canAccessModule(allowed, key);
+  if (key !== null && !canAccessModule(allowed, key)) return false;
+  // a member limited to some sections of a module cannot open the other sections of it, whatever address is typed
+  const section = sectionForPath(pathname);
+  return !section || canOpenSection(sections, section.key);
 }
 
 /** allowed = null means every module. */

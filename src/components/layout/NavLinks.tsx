@@ -4,6 +4,8 @@ import { createContext, useContext, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { MODULES } from "@/lib/constants";
+import { moduleHref } from "@/lib/sections";
+import { useAllowedSections } from "@/components/layout/SectionAccess";
 
 const ICONS: Record<string, React.ReactNode> = {
   profile: (
@@ -223,9 +225,10 @@ export function TopLinks({ taskLabel = "Priority Centre" }: { taskLabel?: string
  */
 export function ModuleLinks({ allowedModules, badges = {}, showPayroll = false }: { allowedModules: string[] | null; badges?: Record<string, number>; showPayroll?: boolean }) {
   const show = (key: string) => !allowedModules || allowedModules.includes(key);
+  const allowedSections = useAllowedSections();
   const moduleLink = (key: string) => {
     const m = MODULES.find((x) => x.key === key);
-    return m && show(key) ? <NavItem key={key} href={m.href} icon={key} label={m.label} matchPrefixes={m.matchPrefixes} badge={badges[key]} /> : null;
+    return m && show(key) ? <NavItem key={key} href={moduleHref(key, m.href, allowedSections)} icon={key} label={m.label} matchPrefixes={m.matchPrefixes} badge={badges[key]} /> : null;
   };
   return (
     <>

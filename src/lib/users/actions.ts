@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionContext } from "@/lib/auth";
 import { runAction, type ActionResult } from "@/lib/actionResult";
+import { MODULE_SECTIONS } from "@/lib/sections";
 import type { Database } from "@/lib/supabase/types";
 
 type UserRole = Database["public"]["Enums"]["user_role"];
@@ -35,9 +36,19 @@ export type CreateMemberInput = {
   companyIds: string[];
   /** null = every module. */
   allowedModules?: string[] | null;
+  /** null = every sub-category of the modules the member has; a list = only those sub-categories inside the modules it names (see lib/sections). */
+  allowedSections?: string[] | null;
   /** may open the Main Dashboard (a Super Admin always may) */
   canViewMainDashboard?: boolean;
 };
+
+/** The sub-categories kept for a member: only those of known modules the member has, and null when nothing is limited. */
+function cleanSections(sections: string[] | null | undefined, modules: string[] | null): string[] | null {
+  if (!sections?.length) return null;
+  const known = new Set(Object.values(MODULE_SECTIONS).flat().map((s) => s.key));
+  const kept = Array.from(new Set(sections)).filter((k) => known.has(k) && (modules === null || modules.includes(k.split(":")[0])));
+  return kept.length > 0 ? kept : null;
+}
 
 export async function createMember(input: CreateMemberInput) {
   await requireSuperAdmin();
@@ -67,7 +78,8 @@ export async function createMember(input: CreateMemberInput) {
       company_id: companyId,
       role: input.role,
       allowed_modules: input.allowedModules ?? null,
-    })),
+      allowed_sections: cleanSections(input.allowedSections, input.allowedModules ?? null),
+    })) as never,
   );
   if (accessError) throw accessError;
 
@@ -85,6 +97,8 @@ export type UpdateMemberInput = {
   companyIds?: string[];
   /** null = every module; a list = only those modules. */
   allowedModules?: string[] | null;
+  /** null = no limit inside a module; a list = only those sub-categories. Left out = unchanged. */
+  allowedSections?: string[] | null;
   canViewMainDashboard?: boolean;
   newPassword?: string;
 };
@@ -142,14 +156,17 @@ async function applyMemberUpdate(userId: string, input: UpdateMemberInput) {
   if (input.role !== undefined && grants) {
     // keep the current module choice when the form did not send one
     let modules = input.allowedModules;
-    if (modules === undefined) {
-      const { data: current } = await admin.from("user_company_access").select("allowed_modules").eq("user_id", userId).limit(1).maybeSingle();
-      modules = current?.allowed_modules ?? null;
+    let sections = input.allowedSections;
+    if (modules === undefined || sections === undefined) {
+      const { data: current } = await admin.from("user_company_access").select("*").eq("user_id", userId).limit(1).maybeSingle();
+      if (modules === undefined) modules = current?.allowed_modules ?? null;
+      if (sections === undefined) sections = (current as { allowed_sections?: string[] | null } | null)?.allowed_sections ?? null;
     }
+    const sectionList = cleanSections(sections, modules);
     const { error: deleteError } = await admin.from("user_company_access").delete().eq("user_id", userId);
     if (deleteError) throw deleteError;
     const { error } = await admin.from("user_company_access").insert(
-      grants.map((companyId) => ({ user_id: userId, company_id: companyId, role: input.role!, allowed_modules: modules })),
+      grants.map((companyId) => ({ user_id: userId, company_id: companyId, role: input.role!, allowed_modules: modules, allowed_sections: sectionList })) as never,
     );
     if (error) throw error;
   }

@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { canAccessPath, mergeAllowedModules, moduleForPath } from "@/lib/modules";
+import { mergeAllowedSections, sectionForPath } from "@/lib/sections";
 
 const PUBLIC_PATHS = ["/login", "/signup", "/auth"];
 // open to anyone, signed in or not (sales agents send customer details here without an account)
@@ -60,10 +61,11 @@ export async function proxy(request: NextRequest) {
   // Members restricted to certain modules cannot open the pages of the others, whatever URL they type.
   if (user) {
     const moduleKey = moduleForPath(request.nextUrl.pathname);
-    if (moduleKey) {
-      const { data: grants } = await supabase.from("user_company_access").select("allowed_modules").eq("user_id", user.id);
+    if (moduleKey || sectionForPath(request.nextUrl.pathname)) {
+      const { data: grants } = await supabase.from("user_company_access").select("*").eq("user_id", user.id);
       const allowed = mergeAllowedModules((grants ?? []).map((g) => g.allowed_modules));
-      if (!canAccessPath(allowed, request.nextUrl.pathname)) {
+      const sections = mergeAllowedSections((grants ?? []).map((g) => (g as { allowed_sections?: string[] | null }).allowed_sections ?? null));
+      if (!canAccessPath(allowed, request.nextUrl.pathname, sections)) {
         const url = request.nextUrl.clone();
         url.pathname = "/";
         url.search = "?denied=1";

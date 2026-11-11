@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useTabVisible } from "@/components/layout/SectionAccess";
 
 const TABS = [
   { href: "/catering", label: "Events", match: (p: string) => p === "/catering" || p === "/catering/new" || /^\/catering\/[0-9a-f-]{36}/.test(p) },
@@ -14,12 +15,13 @@ const TABS = [
 
 export function CateringSubNav() {
   const pathname = usePathname();
+  const visible = useTabVisible();
   const searchParams = useSearchParams();
   const company = searchParams.get("company");
 
   return (
     <div className="flex flex-wrap gap-1 border-b border-border">
-      {TABS.map((tab) => {
+      {TABS.filter((tab) => visible(tab.href)).map((tab) => {
         const active = tab.match(pathname);
         const href = company ? `${tab.href}?company=${company}` : tab.href;
         return (

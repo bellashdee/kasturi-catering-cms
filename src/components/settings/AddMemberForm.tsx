@@ -35,6 +35,7 @@ export function AddMemberForm({ companies, defaultCompanyId }: { companies: Comp
   const [allCompanies, setAllCompanies] = useState(false);
   const [companyIds, setCompanyIds] = useState<string[]>(defaultCompanyId ? [defaultCompanyId] : []);
   const [modules, setModules] = useState<string[] | null>(null);
+  const [sections, setSections] = useState<string[] | null>(null);
   const [dashboard, setDashboard] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +55,7 @@ export function AddMemberForm({ companies, defaultCompanyId }: { companies: Comp
         allCompanies,
         companyIds,
         allowedModules: modules,
+        allowedSections: sections,
         canViewMainDashboard: role === "super_admin" || dashboard,
       });
       setCreated({ fullName, username, email, password });
@@ -147,7 +149,7 @@ export function AddMemberForm({ companies, defaultCompanyId }: { companies: Comp
         }}
       />
 
-      <ModulePicker value={modules} onChange={setModules} />
+      <ModulePicker value={modules} onChange={setModules} sections={sections} onSectionsChange={setSections} />
       <label className="mt-2 flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2.5 text-[12.5px] text-text">
         <input type="checkbox" checked={role === "super_admin" || dashboard} disabled={role === "super_admin"} onChange={(e) => setDashboard(e.target.checked)} />
         Can view the Main Dashboard (the company figures)

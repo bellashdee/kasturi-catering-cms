@@ -4365,6 +4365,10 @@ const dictionary: Record<string, string> = {
  "Choose or search a category": "Pilih atau cari kategori",
  "Choose a category from the list.": "Pilih kategori daripada senarai.",
  "Choose the category from the list.": "Pilih kategori daripada senarai.",
+ "In Edit, the list of modules follows the side menu: each module with its sub-categories (its tabs). Choose Only selected modules, tick the modules, then press Choose the sub-categories to give only some tabs, for example only Recipes and Stock of Kitchen. A tab that is not ticked is hidden and blocked.": "Dalam Edit, senarai modul mengikut menu sisi: setiap modul dengan sub-kategorinya (tab). Pilih Only selected modules, tandakan modul, kemudian tekan Choose the sub-categories untuk memberi beberapa tab sahaja, contohnya Recipes dan Stock sahaja dalam Kitchen. Tab yang tidak ditandakan akan disembunyikan dan disekat.",
+ "Modules and sub-categories this member can view and edit": "Modul dan sub-kategori yang boleh dilihat dan diedit oleh ahli ini",
+ "Choose the sub-categories": "Pilih sub-kategori",
+ "A sub-category that is not ticked is hidden from the tabs and blocked if opened by link. My Profile, Main Dashboard, Priority Centre, Bulletin Board, Company Spending and the AI Assistant are in the menu of everyone.": "Sub-kategori yang tidak ditandakan disembunyikan daripada tab dan disekat jika dibuka melalui pautan. My Profile, Main Dashboard, Priority Centre, Bulletin Board, Company Spending dan AI Assistant ada dalam menu semua orang.",
 };
 
 export default dictionary;

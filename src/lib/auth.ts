@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { mergeAllowedModules } from "@/lib/modules";
+import { mergeAllowedSections } from "@/lib/sections";
 import type { Database } from "@/lib/supabase/types";
 
 type AccessRow = Database["public"]["Tables"]["user_company_access"]["Row"];
@@ -17,6 +18,8 @@ export type SessionContext = {
   companyIds: string[];
   /** Modules the user may open; null = every module. */
   allowedModules: string[] | null;
+  /** The sub-categories (tabs) the user may open inside a module; null = no limit. */
+  allowedSections: string[] | null;
   /** The Main Dashboard (the company figures) is for the bosses and the staff whose job needs it: a Super Admin always, others when switched on. */
   canViewMainDashboard: boolean;
 };
@@ -63,6 +66,7 @@ export const getSessionContext = cache(async (): Promise<SessionContext | null> 
     hasAllCompaniesAccess,
     companyIds,
     allowedModules: mergeAllowedModules(rows.map((r) => r.allowed_modules)),
+    allowedSections: mergeAllowedSections(rows.map((r) => (r as { allowed_sections?: string[] | null }).allowed_sections ?? null)),
     canViewMainDashboard: role === "super_admin" || profile?.can_view_main_dashboard === true,
   };
 });

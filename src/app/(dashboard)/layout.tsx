@@ -13,6 +13,7 @@ import { SessionGuard } from "@/components/auth/SessionGuard";
 import { CompanyTheme, CompanyThemeScript } from "@/components/layout/CompanyTheme";
 import { PageTools } from "@/components/layout/PageTools";
 import { Suspense } from "react";
+import { SectionAccessProvider } from "@/components/layout/SectionAccess";
 
 export default async function DashboardLayout({
   children,
@@ -38,6 +39,7 @@ export default async function DashboardLayout({
 
   return (
     <MobileNavProvider>
+      <SectionAccessProvider allowedSections={session.allowedSections}>
       <LanguageBootstrap profileLanguage={profile?.language ?? null} />
       <SessionGuard />
       <CompanyThemeScript companies={companies ?? []} />
@@ -57,6 +59,7 @@ export default async function DashboardLayout({
         </div>
         <AssistantWidget />
       </div>
+      </SectionAccessProvider>
     </MobileNavProvider>
   );
 }

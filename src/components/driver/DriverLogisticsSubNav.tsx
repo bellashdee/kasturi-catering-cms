@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useTabVisible } from "@/components/layout/SectionAccess";
 
 type Tab = { href: string; label: string; match: (p: string) => boolean };
 
@@ -24,15 +25,16 @@ const GROUPS: { title: string; tabs: Tab[] }[] = [
 
 export function DriverLogisticsSubNav() {
   const pathname = usePathname();
+  const visible = useTabVisible();
   const searchParams = useSearchParams();
   const company = searchParams.get("company");
   return (
     <div className="flex flex-wrap gap-x-8 gap-y-2 border-b border-border">
-      {GROUPS.map((group) => (
+      {GROUPS.filter((group) => group.tabs.some((t) => visible(t.href))).map((group) => (
         <div key={group.title}>
           <div className="px-3.5 pt-1 text-[10.5px] font-bold uppercase tracking-wider text-text-muted">{group.title}</div>
           <div className="flex flex-wrap gap-1">
-            {group.tabs.map((tab) => {
+            {group.tabs.filter((tab) => visible(tab.href)).map((tab) => {
               const active = tab.match(pathname);
               const href = company ? `${tab.href}?company=${company}` : tab.href;
               return (
