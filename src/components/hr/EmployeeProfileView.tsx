@@ -200,7 +200,7 @@ export async function EmployeeProfileView({
           </SectionCard>
         </div>
 
-        <SectionCard title="Permanent Address">
+        <SectionCard noPrint title="Permanent Address">
           <Fields>
             <Field label="Address" value={employee.perm_address_line} wide />
             <Field label="City" value={employee.perm_city} />
@@ -227,7 +227,7 @@ export async function EmployeeProfileView({
           </Fields>
         </SectionCard>
 
-        <SectionCard title="Payroll Information">
+        <SectionCard noPrint title="Payroll Information">
           <Fields>
             <Field label="Branch" value={employee.branch} />
             <Field label="Department" value={employee.department} />
@@ -263,11 +263,11 @@ export async function EmployeeProfileView({
           </Fields>
         </SectionCard>
 
-        <SectionCard title="Education Background">
+        <SectionCard noPrint title="Education Background">
           {employee.education_background ? <p className="whitespace-pre-line text-[14px] text-text">{employee.education_background}</p> : <EmptyRow text="Not filled in yet." />}
         </SectionCard>
 
-        <SectionCard title="Working Experience">
+        <SectionCard noPrint title="Working Experience">
           {employee.working_experience ? <p className="whitespace-pre-line text-[14px] text-text">{employee.working_experience}</p> : <EmptyRow text="Not filled in yet." />}
         </SectionCard>
 
@@ -319,7 +319,7 @@ export async function EmployeeProfileView({
           {letters.length === 0 ? <EmptyRow text="No warning letter or notice on file." /> : <CertificateList canEdit={isAdmin} items={letters.map(toItem)} />}
         </SectionCard>
 
-        <SectionCard title="All Company Information">
+        <SectionCard noPrint title="All Company Information">
           <div className="-mx-5 -mb-5 divide-y divide-border">
             {records.map((r) => (
               <div key={r.id} className="px-5 py-3.5 text-[13.5px]">
