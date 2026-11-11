@@ -4359,7 +4359,12 @@ const dictionary: Record<string, string> = {
  "Show": "Papar",
   "Previous month": "Bulan sebelumnya",
   "Next month": "Bulan seterusnya",
-  "No catering event in this month.": "Tiada acara katering pada bulan ini."
+  "No catering event in this month.": "Tiada acara katering pada bulan ini.",
+ "In an event, the direct costs are shown one category at a time, A to Z (Bakery, Chicken, Dry Goods & Groceries, Equipment Rental, Event Set-up, Fruits, Ice, Meat, Packaging, Seafood, Staff Serving / Event Labour & Overtime, Transportation and Vegetables), and the cost entries are grouped under their category. No category is combined with another.": "Dalam satu acara, kos langsung dipaparkan satu kategori demi satu kategori, ikut abjad A hingga Z (Bakery, Chicken, Dry Goods & Groceries, Equipment Rental, Event Set-up, Fruits, Ice, Meat, Packaging, Seafood, Staff Serving / Event Labour & Overtime, Transportation dan Vegetables), dan catatan kos dikumpulkan di bawah kategorinya. Tiada kategori yang digabungkan dengan kategori lain.",
+ "To add a cost, press + Add a cost, then click the Category box and choose a category, or type part of its name to search.": "Untuk menambah kos, tekan + Add a cost, kemudian klik kotak Category dan pilih satu kategori, atau taip sebahagian namanya untuk mencari.",
+ "Choose or search a category": "Pilih atau cari kategori",
+ "Choose a category from the list.": "Pilih kategori daripada senarai.",
+ "Choose the category from the list.": "Pilih kategori daripada senarai.",
 };
 
 export default dictionary;

@@ -6,10 +6,10 @@ import { resolveCompanyScope } from "@/lib/companyScope";
 import { eventPnlCompanyIds, eventPnlCompanies, eventPnlReviewItems, getEventPnlDetail, listEventPnl } from "@/lib/finance/eventPnlQueries";
 import {
   ADDITIONAL_COST_TYPE_LABEL,
+  ANY_DIRECT_COST_TYPE_LABEL,
   COST_BASIS_LABEL,
-  COST_GROUPS,
+  directLinesOf,
   DATA_FLAG_LABEL,
-  DIRECT_COST_TYPE_LABEL,
   formatMargin,
   PAYMENT_STATUS_LABEL,
   REVENUE_TYPE_LABEL,
@@ -69,7 +69,7 @@ export async function GET(request: Request) {
       ["Gross event revenue", pnl.grossRevenue],
       ["Less discounts, refunds, credit notes", pnl.deductions],
       ["Net event revenue", pnl.netRevenue],
-      ...COST_GROUPS.map((g): Cell[] => [`Direct cost - ${g}`, pnl.directByGroup[g]]),
+      ...directLinesOf(pnl).map(([label, amount]): Cell[] => [`Direct cost - ${label}`, amount]),
       ["Total direct costs", pnl.directCosts],
       ["Gross profit", pnl.grossProfit],
       ["Additional event-specific expenses", pnl.additionalExpenses],
@@ -84,7 +84,9 @@ export async function GET(request: Request) {
       [],
       ["COST ENTRIES"],
       ["Date", "Kind", "Category", "Basis", "Supplier", "Invoice / receipt", "Description", "Quantity", "Unit", "Unit cost", "Total (RM)", "Payment", "Remarks"],
-      ...detail.costs.map((c): Cell[] => [c.cost_date, c.cost_class === "direct" ? "Direct" : "Additional", DIRECT_COST_TYPE_LABEL[c.cost_type] ?? ADDITIONAL_COST_TYPE_LABEL[c.cost_type], COST_BASIS_LABEL[c.cost_basis], c.supplier_name, c.reference_no, c.description, c.quantity === null ? null : Number(c.quantity), c.unit, c.unit_cost === null ? null : Number(c.unit_cost), Number(c.amount), PAYMENT_STATUS_LABEL[c.payment_status], c.notes]),
+      ...[...detail.costs]
+        .sort((a, b) => (ANY_DIRECT_COST_TYPE_LABEL[a.cost_type] ?? ADDITIONAL_COST_TYPE_LABEL[a.cost_type] ?? "").localeCompare(ANY_DIRECT_COST_TYPE_LABEL[b.cost_type] ?? ADDITIONAL_COST_TYPE_LABEL[b.cost_type] ?? "") || a.cost_date.localeCompare(b.cost_date))
+        .map((c): Cell[] => [c.cost_date, c.cost_class === "direct" ? "Direct" : "Additional", ANY_DIRECT_COST_TYPE_LABEL[c.cost_type] ?? ADDITIONAL_COST_TYPE_LABEL[c.cost_type], COST_BASIS_LABEL[c.cost_basis], c.supplier_name, c.reference_no, c.description, c.quantity === null ? null : Number(c.quantity), c.unit, c.unit_cost === null ? null : Number(c.unit_cost), Number(c.amount), PAYMENT_STATUS_LABEL[c.payment_status], c.notes]),
     ];
     if (detail.flags.length) rows.splice(9, 0, ["Warnings", detail.flags.map((f) => DATA_FLAG_LABEL[f]).join("; ")]);
     return respond(rows, format, `event-pnl-${event.event_reference ?? event.id}`, "Event P&L");

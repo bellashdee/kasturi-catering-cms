@@ -13,7 +13,8 @@ import {
   updateCostEntry,
   updateRevenueEntry,
 } from "@/lib/finance/eventPnlActions";
-import { ADDITIONAL_COST_TYPE_LABEL, COST_BASIS_LABEL, DIRECT_COST_TYPE_LABEL, DUPLICATE_ENTRY_MESSAGE, PAYMENT_STATUS_LABEL, REVENUE_TYPE_LABEL } from "@/lib/finance/eventPnl";
+import { ADDITIONAL_COST_TYPE_LABEL, ANY_DIRECT_COST_TYPE_LABEL, COST_BASIS_LABEL, directCostOptions, DUPLICATE_ENTRY_MESSAGE, PAYMENT_STATUS_LABEL, REVENUE_TYPE_LABEL } from "@/lib/finance/eventPnl";
+import { SearchSelect } from "@/components/ui/SearchSelect";
 import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/documents/upload";
 import { requestExtraction } from "@/lib/importFlow/extractClient";
 import type { ExtractionReport } from "@/lib/extraction/types";
@@ -179,7 +180,9 @@ type SupplierDoc = { supplier_name?: string | null; invoice_number?: string | nu
 export function CostForm({ eventId, companyId, entry, supplierInvoices = [], onDone }: { eventId: string; companyId: string; entry?: CostRowData; supplierInvoices?: SupplierInvoiceOption[]; onDone?: () => void }) {
   const router = useRouter();
   const [costClass, setCostClass] = useState<"direct" | "additional">((entry?.cost_class as "direct" | "additional") ?? "direct");
-  const [costType, setCostType] = useState(entry?.cost_type ?? "food_ingredients");
+  const [costType, setCostType] = useState(entry?.cost_type ?? "");
+  // the category is chosen from the list (A to Z) or found by typing part of its name
+  const [categoryText, setCategoryText] = useState(entry ? (ANY_DIRECT_COST_TYPE_LABEL[entry.cost_type] ?? ADDITIONAL_COST_TYPE_LABEL[entry.cost_type] ?? "") : "");
   const [costBasis, setCostBasis] = useState<"actual" | "estimated">((entry?.cost_basis as "actual" | "estimated") ?? "actual");
   const [description, setDescription] = useState(entry?.description ?? "");
   const [supplierName, setSupplierName] = useState(entry?.supplier_name ?? "");
@@ -202,10 +205,16 @@ export function CostForm({ eventId, companyId, entry, supplierInvoices = [], onD
   const [ok, setOk] = useState<string | null>(null);
   const [duplicate, setDuplicate] = useState(false);
 
-  const types = costClass === "direct" ? DIRECT_COST_TYPE_LABEL : ADDITIONAL_COST_TYPE_LABEL;
+  const typeOptions: [string, string][] = costClass === "direct" ? directCostOptions(entry?.cost_type) : Object.entries(ADDITIONAL_COST_TYPE_LABEL).sort((a, b) => a[1].localeCompare(b[1]));
+  function changeCategoryText(text: string) {
+    setCategoryText(text);
+    const hit = typeOptions.find(([, label]) => label.toLowerCase() === text.trim().toLowerCase());
+    setCostType(hit ? hit[0] : "");
+  }
   function changeClass(next: "direct" | "additional") {
     setCostClass(next);
-    setCostType(next === "direct" ? "food_ingredients" : "permit");
+    setCostType("");
+    setCategoryText("");
   }
   function recalc(q: string, uc: string) {
     const a = num(q), b = num(uc);
@@ -257,6 +266,7 @@ export function CostForm({ eventId, companyId, entry, supplierInvoices = [], onD
     setError(null);
     setOk(null);
     try {
+      if (!costType) throw new Error("Choose the category from the list.");
       const base = { costClass, costType, costBasis, description, supplierName, referenceNo, quantity: num(quantity), unit, unitCost: num(unitCost), amount: Number(amount), costDate, paymentStatus, notes };
       if (entry) {
         await updateCostEntry(entry.id, { ...base, documentId });
@@ -314,9 +324,8 @@ export function CostForm({ eventId, companyId, entry, supplierInvoices = [], onD
         </div>
         <div>
           <label className={label}>Category *</label>
-          <Select value={costType} onChange={(e) => setCostType(e.target.value)} className={input}>
-            {Object.entries(types).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </Select>
+          <SearchSelect value={categoryText} onChange={changeCategoryText} options={typeOptions.map(([, label]) => label)} placeholder="Choose or search a category" className={input} />
+          {categoryText.trim() !== "" && costType === "" && <p className="mt-1 text-[11.5px] text-danger">Choose a category from the list.</p>}
         </div>
         <div>
           <label className={label}>Actual or estimated *</label>

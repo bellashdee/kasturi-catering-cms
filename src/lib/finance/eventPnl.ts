@@ -16,36 +16,65 @@ export const REVENUE_TYPE_LABEL: Record<string, string> = {
 export const REVENUE_ADDITIONS = ["sales", "package", "additional_service", "other_revenue"] as const;
 export const REVENUE_DEDUCTIONS = ["discount", "refund", "credit_note"] as const;
 
+/**
+ * The categories of a direct cost, each kept apart (none is combined with another). These are the only ones offered for a new cost.
+ * The keys `packaging`, `labour_overtime` and `transport_delivery` are the older keys of the same categories.
+ */
 export const DIRECT_COST_TYPE_LABEL: Record<string, string> = {
-  food_ingredients: "Food ingredients & raw materials",
-  meat_seafood_vegetables: "Chicken, meat, seafood, vegetables & other food supplies",
-  packaging: "Packaging, containers, cups & disposables",
-  labour_overtime: "Event labour & overtime",
-  transport_delivery: "Event transportation & delivery",
-  equipment_setup: "Equipment rental & event setup",
-  subcontractor: "External catering / subcontractor",
-  other_direct: "Other approved event-specific costs",
+  bakery: "Bakery",
+  chicken: "Chicken",
+  dry_goods_groceries: "Dry Goods & Groceries",
+  equipment_rental: "Equipment Rental",
+  event_setup: "Event Set-up",
+  fruits: "Fruits",
+  ice: "Ice",
+  meat: "Meat",
+  packaging: "Packaging",
+  seafood: "Seafood",
+  labour_overtime: "Staff Serving / Event Labour & Overtime",
+  transport_delivery: "Transportation",
+  vegetables: "Vegetables",
 };
+/** Costs saved before the categories were separated. They keep their figures and are shown as they were; they are not offered for a new cost. */
+export const LEGACY_DIRECT_COST_TYPE_LABEL: Record<string, string> = {
+  food_ingredients: "Food ingredients & raw materials (earlier entry)",
+  meat_seafood_vegetables: "Chicken, meat, seafood, vegetables & other food supplies (earlier entry)",
+  equipment_setup: "Equipment rental & event set-up (earlier entry)",
+  subcontractor: "External catering / subcontractor (earlier entry)",
+  other_direct: "Other approved event-specific costs (earlier entry)",
+};
+/** The category (or an earlier combined category) of a direct cost, for showing it. */
+export const ANY_DIRECT_COST_TYPE_LABEL: Record<string, string> = { ...DIRECT_COST_TYPE_LABEL, ...LEGACY_DIRECT_COST_TYPE_LABEL };
+/** The categories offered for a new cost, A to Z. `keep` is the category of the entry being edited, so an earlier entry can still be edited. */
+export function directCostOptions(keep?: string): [string, string][] {
+  const all: Record<string, string> = keep && LEGACY_DIRECT_COST_TYPE_LABEL[keep] ? { ...DIRECT_COST_TYPE_LABEL, [keep]: LEGACY_DIRECT_COST_TYPE_LABEL[keep] } : DIRECT_COST_TYPE_LABEL;
+  return Object.entries(all).sort((a, b) => a[1].localeCompare(b[1]));
+}
 export const ADDITIONAL_COST_TYPE_LABEL: Record<string, string> = {
   permit: "Event-specific permits",
   venue: "Venue-related charges",
   other_additional: "Other event-specific expenses",
 };
-export const COST_TYPE_LABEL: Record<string, string> = { ...DIRECT_COST_TYPE_LABEL, ...ADDITIONAL_COST_TYPE_LABEL };
+export const COST_TYPE_LABEL: Record<string, string> = { ...ANY_DIRECT_COST_TYPE_LABEL, ...ADDITIONAL_COST_TYPE_LABEL };
 
-/** The six cost groups the event costing screen shows (each detailed type rolls up into one). */
-export const COST_GROUPS = ["Food & Beverage", "Packaging & Disposable", "Labour", "Transportation & Logistics", "Equipment / Rental", "Other Event Expenses"] as const;
-export type CostGroup = (typeof COST_GROUPS)[number];
-export const COST_GROUP_OF_TYPE: Record<string, CostGroup> = {
-  food_ingredients: "Food & Beverage",
-  meat_seafood_vegetables: "Food & Beverage",
-  packaging: "Packaging & Disposable",
-  labour_overtime: "Labour",
-  transport_delivery: "Transportation & Logistics",
-  equipment_setup: "Equipment / Rental",
-  subcontractor: "Other Event Expenses",
-  other_direct: "Other Event Expenses",
-};
+/** The Catering event costing sheet is not split into these categories, so each of its lines is shown as its own line (never mixed into a category). */
+export const SHEET_LINE_LABEL = {
+  food: "Catering costing sheet: food & ingredients",
+  staff: "Catering costing sheet: staff",
+  transport: "Catering costing sheet: transport",
+  equipment: "Catering costing sheet: equipment",
+  other: "Catering costing sheet: other",
+} as const;
+
+/** The lines of the direct costs, in order: every category A to Z (even at 0), then the earlier combined categories and the costing sheet lines when they have an amount. */
+const DIRECT_LINE_ORDER: { label: string; always: boolean }[] = [
+  ...Object.values(DIRECT_COST_TYPE_LABEL).sort((a, b) => a.localeCompare(b)).map((label) => ({ label, always: true })),
+  ...Object.values(LEGACY_DIRECT_COST_TYPE_LABEL).sort((a, b) => a.localeCompare(b)).map((label) => ({ label, always: false })),
+  ...Object.values(SHEET_LINE_LABEL).map((label) => ({ label, always: false })),
+];
+export function directLinesOf(pnl: { directByGroup: Record<string, number> }): [string, number][] {
+  return DIRECT_LINE_ORDER.filter((l) => l.always || (pnl.directByGroup[l.label] ?? 0) !== 0).map((l) => [l.label, pnl.directByGroup[l.label] ?? 0]);
+}
 
 /** The message an action throws when the same entry already exists; the form then asks "save anyway?". */
 export const DUPLICATE_ENTRY_MESSAGE = "DUPLICATE_ENTRY";
@@ -74,8 +103,8 @@ export type EventPnl = {
   directCosts: number;
   /** The part of direct costs that comes from the Catering event costing sheet (shown so nothing is hidden). */
   fromCostingSheet: number;
-  /** Direct costs by the six display groups (actual costs + the costing sheet). */
-  directByGroup: Record<CostGroup, number>;
+  /** Direct costs by category (actual costs), and the lines of the costing sheet, each under its own label. */
+  directByGroup: Record<string, number>;
   grossProfit: number;
   additionalExpenses: number;
   netProfit: number;
@@ -109,19 +138,22 @@ export function computeEventPnl(revenue: RevenueEntry[], costs: CostEntry[], she
   const actual = costs.filter((c) => (c.cost_basis ?? "actual") === "actual");
   const estimatedCosts = round2(costs.filter((c) => c.cost_basis === "estimated").reduce((t, c) => t + num(c.amount), 0));
 
-  const directByGroup = Object.fromEntries(COST_GROUPS.map((g) => [g, 0])) as Record<CostGroup, number>;
-  for (const c of actual.filter((x) => x.cost_class === "direct")) directByGroup[COST_GROUP_OF_TYPE[c.cost_type] ?? "Other Event Expenses"] += num(c.amount);
+  const directByGroup: Record<string, number> = {};
+  const addTo = (label: string, amount: number) => {
+    directByGroup[label] = (directByGroup[label] ?? 0) + amount;
+  };
+  for (const c of actual.filter((x) => x.cost_class === "direct")) addTo(ANY_DIRECT_COST_TYPE_LABEL[c.cost_type] ?? LEGACY_DIRECT_COST_TYPE_LABEL.other_direct, num(c.amount));
   if (sheet) {
-    directByGroup["Food & Beverage"] += num(sheet.food_cost) + num(sheet.ingredient_cost);
-    directByGroup["Labour"] += num(sheet.staff_cost);
-    directByGroup["Transportation & Logistics"] += num(sheet.transport_cost);
-    directByGroup["Equipment / Rental"] += num(sheet.equipment_cost);
-    directByGroup["Other Event Expenses"] += num(sheet.other_cost);
+    addTo(SHEET_LINE_LABEL.food, num(sheet.food_cost) + num(sheet.ingredient_cost));
+    addTo(SHEET_LINE_LABEL.staff, num(sheet.staff_cost));
+    addTo(SHEET_LINE_LABEL.transport, num(sheet.transport_cost));
+    addTo(SHEET_LINE_LABEL.equipment, num(sheet.equipment_cost));
+    addTo(SHEET_LINE_LABEL.other, num(sheet.other_cost));
   }
-  for (const g of COST_GROUPS) directByGroup[g] = round2(directByGroup[g]);
+  for (const g of Object.keys(directByGroup)) directByGroup[g] = round2(directByGroup[g]);
 
   const fromCostingSheet = sheetTotal(sheet);
-  const directCosts = round2(COST_GROUPS.reduce((t, g) => t + directByGroup[g], 0));
+  const directCosts = round2(Object.values(directByGroup).reduce((t, v) => t + v, 0));
   const additionalExpenses = round2(actual.filter((c) => c.cost_class === "additional").reduce((t, c) => t + num(c.amount), 0));
   const grossProfit = round2(netRevenue - directCosts);
   const netProfit = round2(grossProfit - additionalExpenses);

@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -5,10 +6,10 @@ import { getSessionContext } from "@/lib/auth";
 import { eventPnlCompanyIds, getEventPnlDetail } from "@/lib/finance/eventPnlQueries";
 import {
   ADDITIONAL_COST_TYPE_LABEL,
+  ANY_DIRECT_COST_TYPE_LABEL,
   COST_BASIS_LABEL,
-  COST_GROUPS,
   DATA_FLAG_LABEL,
-  DIRECT_COST_TYPE_LABEL,
+  directLinesOf,
   formatChange,
   formatMargin,
   PAYMENT_STATUS_LABEL,
@@ -81,6 +82,17 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
     </div>
   );
 
+  // the cost entries by category (never combined), A to Z; each category shows the total of its actual costs
+  const costGroups = Array.from(
+    detail.costs.reduce((m, c) => {
+      const label = ANY_DIRECT_COST_TYPE_LABEL[c.cost_type] ?? ADDITIONAL_COST_TYPE_LABEL[c.cost_type] ?? c.cost_type;
+      m.set(label, [...(m.get(label) ?? []), c]);
+      return m;
+    }, new Map<string, typeof detail.costs>()),
+  )
+    .map(([label, rows]) => ({ label, rows, actualTotal: rows.filter((c) => c.cost_basis === "actual").reduce((t, c) => t + Number(c.amount), 0) }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
   return (
     <div className="flex flex-col gap-5">
       <div className="print:hidden"><FinanceAdminSubNav /></div>
@@ -124,7 +136,7 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
             </div>
             <div className="py-2">
               <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Direct costs (actual)</div>
-              {COST_GROUPS.map((g) => <div key={g}>{line(g, pnl.directByGroup[g])}</div>)}
+              {directLinesOf(pnl).map(([label, amount]) => <div key={label}>{line(label, amount)}</div>)}
               {line("Total direct costs", pnl.directCosts, { bold: true })}
               {pnl.fromCostingSheet > 0 && <p className="text-[11.5px] text-text-muted">Includes {money(pnl.fromCostingSheet)} from the Catering event costing sheet. Do not also enter those costs here.</p>}
             </div>
@@ -211,10 +223,17 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
             <table className="w-full min-w-[900px] text-left text-[12.5px]">
               <thead><tr className="text-[10.5px] font-bold uppercase tracking-wide text-text-muted"><th className="py-2">Date</th><th className="py-2">Category</th><th className="py-2">Supplier / reference</th><th className="py-2">Basis</th><th className="py-2 text-right">Qty × unit cost</th><th className="py-2 text-right">Total</th><th className="py-2">Payment</th><th className="py-2 print:hidden" /></tr></thead>
               <tbody>
-                {detail.costs.map((c) => (
+                {costGroups.map((group) => (
+                  <Fragment key={group.label}>
+                    <tr className="border-t-2 border-border-strong bg-surface-alt">
+                      <td colSpan={5} className="py-2 pl-2 text-[12.5px] font-extrabold text-text">{group.label} <span className="font-semibold text-text-muted">· {group.rows.length} {group.rows.length === 1 ? "entry" : "entries"}</span></td>
+                      <td className="py-2 text-right text-[12.5px] font-extrabold text-text">{money(group.actualTotal)}</td>
+                      <td colSpan={2} />
+                    </tr>
+                {group.rows.map((c) => (
                   <tr key={c.id} className={`border-t border-border align-top ${c.cost_basis === "estimated" ? "bg-surface-alt text-text-muted" : ""}`}>
                     <td className="py-2">{date(c.cost_date)}</td>
-                    <td className="py-2 font-semibold text-text">{DIRECT_COST_TYPE_LABEL[c.cost_type] ?? ADDITIONAL_COST_TYPE_LABEL[c.cost_type]}<div className="text-[11px] font-normal text-text-muted">{c.cost_class === "direct" ? "Direct" : "Additional"}</div></td>
+                    <td className="py-2 font-semibold text-text">{group.label}<div className="text-[11px] font-normal text-text-muted">{c.cost_class === "direct" ? "Direct" : "Additional"}</div></td>
                     <td className="py-2">{c.supplier_name ?? "—"}{c.reference_no ? <div className="text-[11.5px]">{c.reference_no}</div> : null}{c.description ? <div className="text-[11.5px] text-text-muted">{c.description}</div> : null}{c.document_id && <div><DocumentViewLink documentId={c.document_id} label="📎 Document" /></div>}{c.supplier_invoice_id && <div className="text-[11px] text-text-muted">Linked supplier invoice</div>}</td>
                     <td className="py-2"><StatusBadge tone={c.cost_basis === "actual" ? "info" : "warning"}>{COST_BASIS_LABEL[c.cost_basis]}</StatusBadge></td>
                     <td className="py-2 text-right">{c.quantity != null && c.unit_cost != null ? `${Number(c.quantity)}${c.unit ? ` ${c.unit}` : ""} × ${money(Number(c.unit_cost))}` : "—"}</td>
@@ -222,6 +241,8 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
                     <td className="py-2">{PAYMENT_STATUS_LABEL[c.payment_status]}</td>
                     <td className="py-2 text-right"><EntryActions kind="cost" entry={c} eventId={id} companyId={event.company_id} /></td>
                   </tr>
+                ))}
+                  </Fragment>
                 ))}
               </tbody>
             </table>

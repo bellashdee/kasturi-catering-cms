@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { logTaskAudit } from "@/lib/taskProofs/actions";
-import { ADDITIONAL_COST_TYPE_LABEL, DIRECT_COST_TYPE_LABEL, DUPLICATE_ENTRY_MESSAGE, EVENT_PNL_COMPANY_NAMES, REVENUE_TYPE_LABEL } from "@/lib/finance/eventPnl";
+import { ADDITIONAL_COST_TYPE_LABEL, ANY_DIRECT_COST_TYPE_LABEL, DUPLICATE_ENTRY_MESSAGE, EVENT_PNL_COMPANY_NAMES, REVENUE_TYPE_LABEL } from "@/lib/finance/eventPnl";
 
 type DB = Awaited<ReturnType<typeof createClient>>;
 
@@ -175,8 +175,8 @@ export type CostEntryInput = {
 };
 
 function validateCost(input: CostEntryInput) {
-  const labels = input.costClass === "direct" ? DIRECT_COST_TYPE_LABEL : ADDITIONAL_COST_TYPE_LABEL;
-  if (!labels[input.costType]) throw new Error("Select the cost type.");
+  const labels = input.costClass === "direct" ? ANY_DIRECT_COST_TYPE_LABEL : ADDITIONAL_COST_TYPE_LABEL;
+  if (!labels[input.costType]) throw new Error("Select the category.");
   if (input.costBasis !== "actual" && input.costBasis !== "estimated") throw new Error("Choose whether this is an actual or estimated cost.");
   if (!isAmount(input.amount)) throw new Error("Enter the total cost (it must be more than 0).");
   if (!isDate(input.costDate)) throw new Error("Enter the cost date.");
@@ -266,7 +266,7 @@ export async function updateCostEntry(entryId: string, input: Omit<CostEntryInpu
     relatedTable: "event_pnl",
     relatedId: event.id,
     action: "cost_edited",
-    previousValue: `${before.cost_basis} · ${DIRECT_COST_TYPE_LABEL[before.cost_type] ?? ADDITIONAL_COST_TYPE_LABEL[before.cost_type]} · ${rm(Number(before.amount))} · ${before.cost_date}`,
+    previousValue: `${before.cost_basis} · ${ANY_DIRECT_COST_TYPE_LABEL[before.cost_type] ?? ADDITIONAL_COST_TYPE_LABEL[before.cost_type]} · ${rm(Number(before.amount))} · ${before.cost_date}`,
     newValue: `${input.costBasis} · ${labels[input.costType]} · ${rm(input.amount)} · ${input.costDate}`,
   });
   paths(before.catering_event_id);
@@ -280,7 +280,7 @@ export async function deleteCostEntry(entryId: string, reason: string) {
   if (!reason.trim()) throw new Error("Enter the reason for removing this entry.");
   const { error } = await supabase.from("event_cost_entries").delete().eq("id", entryId);
   if (error) throw error;
-  const label = DIRECT_COST_TYPE_LABEL[entry.cost_type] ?? ADDITIONAL_COST_TYPE_LABEL[entry.cost_type] ?? entry.cost_type;
+  const label = ANY_DIRECT_COST_TYPE_LABEL[entry.cost_type] ?? ADDITIONAL_COST_TYPE_LABEL[entry.cost_type] ?? entry.cost_type;
   await logTaskAudit({ companyId: event.company_id, relatedTable: "event_pnl", relatedId: event.id, action: "cost_removed", previousValue: `${label} · ${rm(Number(entry.amount))}${entry.description ? ` · ${entry.description}` : ""}`, reason: reason.trim() });
   paths(entry.catering_event_id);
 }
