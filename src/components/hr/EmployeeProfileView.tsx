@@ -200,7 +200,7 @@ export async function EmployeeProfileView({
           </SectionCard>
         </div>
 
-        <SectionCard noPrint title="Permanent Address">
+        <SectionCard title="Permanent Address">
           <Fields>
             <Field label="Address" value={employee.perm_address_line} wide />
             <Field label="City" value={employee.perm_city} />
