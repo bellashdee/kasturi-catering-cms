@@ -18,13 +18,42 @@ function withCompany(href: string, query: string): string {
 }
 
 /** The bell: a count of reminders that need attention and a list of them, built from the real records (see lib/notifications). */
-export function NotificationBell() {
+export function NotificationBell({ userId }: { userId: string }) {
   const company = useSearchParams().get("company");
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Reminder[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [seen, setSeen] = useState<string[]>([]);
   const box = useRef<HTMLDivElement>(null);
+  const openRef = useRef(false);
+  const seenKey = `reminders-seen:${userId}`;
+
+  // the reminders this person has already looked at on this device (kept so the red number stays away after a reload)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      try {
+        const raw = JSON.parse(localStorage.getItem(seenKey) ?? "[]");
+        if (Array.isArray(raw)) setSeen(raw.filter((s): s is string => typeof s === "string"));
+      } catch {
+        /* no storage: the number simply comes back after a reload */
+      }
+    }, 0);
+    return () => clearTimeout(t);
+  }, [seenKey]);
+
+  const markSeen = useCallback(
+    (list: Reminder[]) => {
+      const keys = list.map((r) => r.title);
+      setSeen(keys);
+      try {
+        localStorage.setItem(seenKey, JSON.stringify(keys));
+      } catch {
+        /* ignore */
+      }
+    },
+    [seenKey],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -32,11 +61,13 @@ export function NotificationBell() {
     if (result.ok) {
       setItems(result.items);
       setError(null);
+      // while the list is open, what it shows has been seen
+      if (openRef.current) markSeen(result.items);
     } else {
       setError(result.error);
     }
     setLoading(false);
-  }, [company]);
+  }, [company, markSeen]);
 
   // load when the page opens or the company changes, then every few minutes
   useEffect(() => {
@@ -47,6 +78,10 @@ export function NotificationBell() {
       clearInterval(every);
     };
   }, [load]);
+
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -62,7 +97,8 @@ export function NotificationBell() {
     };
   }, [open]);
 
-  const attention = (items ?? []).filter((i) => i.severity !== "info").length;
+  // the red number counts only the reminders not yet looked at (a reminder whose wording changes, e.g. 38 becomes 39, counts again)
+  const attention = (items ?? []).filter((i) => i.severity !== "info" && !seen.includes(i.title)).length;
   const query = company ? `?company=${company}` : "";
 
   return (
@@ -72,8 +108,14 @@ export function NotificationBell() {
         aria-label={attention > 0 ? `Notifications: ${attention} need attention` : "Notifications"}
         aria-expanded={open}
         onClick={() => {
-          setOpen((v) => !v);
-          if (!open) void load();
+          const next = !open;
+          openRef.current = next;
+          setOpen(next);
+          if (next) {
+            // opening the bell is looking at the list: the red number goes away at once
+            if (items) markSeen(items);
+            void load();
+          }
         }}
         className="relative flex h-10 w-10 items-center justify-center rounded-lg border border-border-strong text-text hover:bg-bg"
       >

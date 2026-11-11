@@ -22,7 +22,7 @@ export function Topbar({ session, companies, priorityTitle }: { session: Session
       <div className="hidden h-8 w-px bg-border sm:block" />
       <PageTutorialButton />
       <LanguageSwitcher />
-      <NotificationBell />
+      <NotificationBell userId={session.userId} />
       <ProfileMenu fullName={session.fullName} email={session.email} roleLabel={ROLE_LABEL[session.role]} />
     </header>
   );
