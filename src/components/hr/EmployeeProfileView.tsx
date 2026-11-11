@@ -33,18 +33,19 @@ import { ProbationPanel } from "@/components/hr/ProbationPanel";
 import { StaffFilesCard, type StaffFileRow } from "@/components/hr/StaffFilesCard";
 import { getProbationsForPerson } from "@/lib/hr/probationQueries";
 import { todayInMalaysia } from "@/lib/format";
+import { PrintButton } from "@/components/reports/PrintButton";
 
 const emptyField = (v: React.ReactNode) => v === null || v === undefined || v === "" || (typeof v === "string" && v.startsWith("Restricted"));
 
 /** The details of a card laid out in a tidy grid: a small label over the value, the same on every card of the page. */
 function Fields({ cols = 2, children }: { cols?: 2 | 3; children: React.ReactNode }) {
-  return <dl className={`grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 ${cols === 3 ? "lg:grid-cols-3" : ""}`}>{children}</dl>;
+  return <dl className={`grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 ${cols === 3 ? "lg:grid-cols-3 print:grid-cols-3" : "print:grid-cols-2"} print:gap-y-2.5`}>{children}</dl>;
 }
 
 function Field({ label, value, wide, wide2 }: { label: string; value: React.ReactNode; wide?: boolean; wide2?: boolean }) {
   const empty = emptyField(value);
   return (
-    <div className={wide ? "col-span-full" : wide2 ? "sm:col-span-2" : ""}>
+    <div className={wide ? "col-span-full" : wide2 ? "sm:col-span-2 print:col-span-2" : ""}>
       <dt className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">{label}</dt>
       <dd className={`mt-0.5 break-words text-[14px] leading-snug ${empty ? "text-text-muted" : "font-semibold text-text"}`}>{empty ? (typeof value === "string" && value ? value : "—") : value}</dd>
     </div>
@@ -78,6 +79,9 @@ export async function EmployeeProfileView({
   const canSeePrivate = canManageStaffPrivateDetails(session.role);
   const canSeePayroll = await canUsePayrollCentre(supabase);
   const isAdmin = access.isAdminOf(employee.company_id);
+  // a person sees (and changes) their own bank, KWSP, SOCSO and tax numbers; the salary stays with the admins
+  const isOwn = access.ownEmployeeIds.has(employee.id);
+  const canSeeOwnPrivate = canSeePrivate || isOwn;
   // the same person can have a staff record in each company he or she works for: all of them are shown together
   const { data: sameName } = await supabase.from("employees").select("*, companies(name)").ilike("full_name", likeExact(employee.full_name)).order("created_at");
   const records = (sameName ?? []).filter((r) => r.id === employee.id || access.canSee(r));
@@ -103,13 +107,13 @@ export async function EmployeeProfileView({
     listLeaveForEmployee(supabase, id),
     listOvertimeForEmployee(supabase, id),
     canSeePayroll ? listPayrollForEmployee(supabase, id) : Promise.resolve([]),
-    canSeePrivate ? getEmployeePrivateDetails(supabase, id) : Promise.resolve(null),
+    canSeeOwnPrivate ? getEmployeePrivateDetails(supabase, id) : Promise.resolve(null),
   ]);
 
   const restricted = "Restricted (Admin only)";
   // the date of birth written on the staff record; for a Malaysian IC number it is also known from the number itself
   const dobText = employee.date_of_birth || dobFromIc(employee.ic_passport_no) || "—";
-  const kwspValue = !canSeePrivate ? restricted : privateDetails?.epf_no || "—";
+  const kwspValue = !canSeeOwnPrivate ? restricted : privateDetails?.epf_no || "—";
   const toItem = (c: NonNullable<typeof allCertificates>[number]) => ({
     id: c.id,
     companyId: c.company_id,
@@ -125,11 +129,15 @@ export async function EmployeeProfileView({
   const documents = (allCertificates ?? []).filter((c) => !STAFF_LETTER_TYPES.includes(c.cert_type));
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5 print:gap-3">
+      <div className="hidden items-end justify-between border-b border-border pb-2 print:flex">
+        <div className="text-[15px] font-extrabold uppercase tracking-wide text-text">Staff Information</div>
+        <div className="text-[12px] text-text-secondary">{`${employee.companies?.name ?? ""} · Printed ${today}`}</div>
+      </div>
       <div className="flex items-start justify-between">
         <div>
           {backHref && (
-            <Link href={backHref} className="text-[12.5px] font-semibold text-text-secondary">
+            <Link href={backHref} className="text-[12.5px] font-semibold text-text-secondary print:hidden">
               ← Back to Employee Database
             </Link>
           )}
@@ -149,16 +157,24 @@ export async function EmployeeProfileView({
           <StatusBadge tone={employee.status === "active" ? "success" : employee.status === "terminated" ? "danger" : "neutral"}>
             {EMPLOYEE_STATUS_LABEL[employee.status] ?? employee.status}
           </StatusBadge>
-          {isAdmin && (
-            <Link href={`/hr/${id}/edit${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2 text-[13px] font-semibold text-text">
-              Edit
-            </Link>
-          )}
+          <div className="flex items-center gap-2 print:hidden">
+            <PrintButton />
+            {isAdmin && (
+              <Link href={`/hr/${id}/edit${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2 text-[13px] font-semibold text-text">
+                Edit
+              </Link>
+            )}
+            {!isAdmin && isOwn && (
+              <Link href={`/profile/edit?record=${id}`} className="rounded-lg bg-primary px-4 py-2 text-[13px] font-semibold text-white">
+                Edit my details
+              </Link>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
-        <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 items-start gap-5 print:grid-cols-2 print:gap-3 lg:grid-cols-2">
+        <div className="lg:col-span-2 print:col-span-2">
           <SectionCard title="General">
             <Fields cols={3}>
               <Field label="Employee No." value={employee.employee_no} />
@@ -232,18 +248,18 @@ export async function EmployeeProfileView({
         <SectionCard title="Accounts Related">
           <Fields>
             <Field label="EPF (KWSP) No." value={kwspValue === "—" ? null : kwspValue} />
-            <Field label="SOCSO No." value={!canSeePrivate ? restricted : privateDetails?.socso_no} />
-            <Field label="Tax No." value={!canSeePrivate ? restricted : privateDetails?.tax_no} />
-            <Field label="Tax Branch" value={!canSeePrivate ? restricted : privateDetails?.tax_branch} />
+            <Field label="SOCSO No." value={!canSeeOwnPrivate ? restricted : privateDetails?.socso_no} />
+            <Field label="Tax No." value={!canSeeOwnPrivate ? restricted : privateDetails?.tax_no} />
+            <Field label="Tax Branch" value={!canSeeOwnPrivate ? restricted : privateDetails?.tax_branch} />
           </Fields>
         </SectionCard>
 
         <SectionCard title="Bank">
           <Fields>
-            <Field label="Bank Name" value={!canSeePrivate ? restricted : privateDetails?.bank_name} />
-            <Field label="A/C No." value={!canSeePrivate ? restricted : privateDetails?.bank_account_no} />
-            <Field label="Bank ID" value={!canSeePrivate ? restricted : privateDetails?.bank_id} />
-            <Field label="Branch Code" value={!canSeePrivate ? restricted : privateDetails?.bank_branch_code} />
+            <Field label="Bank Name" value={!canSeeOwnPrivate ? restricted : privateDetails?.bank_name} />
+            <Field label="A/C No." value={!canSeeOwnPrivate ? restricted : privateDetails?.bank_account_no} />
+            <Field label="Bank ID" value={!canSeeOwnPrivate ? restricted : privateDetails?.bank_id} />
+            <Field label="Branch Code" value={!canSeeOwnPrivate ? restricted : privateDetails?.bank_branch_code} />
           </Fields>
         </SectionCard>
 
@@ -260,7 +276,7 @@ export async function EmployeeProfileView({
             const companyId = item?.probation.company_id ?? employee.company_id;
             const company = companyOf(companyId);
             return (
-              <div key={item?.probation.id ?? "new"} className="lg:col-span-2">
+              <div key={item?.probation.id ?? "new"} className="lg:col-span-2 print:hidden">
                 <SectionCard title={probations.length > 1 ? `Probation - ${company?.name ?? ""}` : "Probation"}>
                   <ProbationPanel
                     employeeId={item?.probation.employee_id ?? id}
@@ -280,7 +296,7 @@ export async function EmployeeProfileView({
           })}
 
         {(isAdmin || staffFiles.length > 0) && (
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 print:hidden">
             <SectionCard title="Letters & Documents (HR Record)">
               <StaffFilesCard employeeId={id} files={staffFiles} canManage={isAdmin} />
             </SectionCard>
@@ -288,6 +304,7 @@ export async function EmployeeProfileView({
         )}
 
         <SectionCard
+          noPrint
           title="Staff Documents & Certificates"
           action={isAdmin ? <Link href={`/hr/${id}/certificates/new${query}`} className="text-[12.5px] font-semibold text-primary">+ Upload</Link> : undefined}
         >
@@ -295,6 +312,7 @@ export async function EmployeeProfileView({
         </SectionCard>
 
         <SectionCard
+          noPrint
           title="Warning Letters & Notices"
           action={isAdmin ? <Link href={`/hr/${id}/certificates/new${query}`} className="text-[12.5px] font-semibold text-primary">+ Add letter</Link> : undefined}
         >
@@ -310,7 +328,7 @@ export async function EmployeeProfileView({
                   <div className="flex items-center gap-2">
                     <StatusBadge tone={r.status === "active" ? "success" : r.status === "terminated" ? "danger" : "neutral"}>{EMPLOYEE_STATUS_LABEL[r.status] ?? r.status}</StatusBadge>
                     {r.id !== employee.id && access.canSee(r) && (
-                      <Link href={`/hr/${r.id}${query}`} className="text-[12.5px] font-semibold text-primary hover:underline">Open record →</Link>
+                      <Link href={`/hr/${r.id}${query}`} className="text-[12.5px] font-semibold text-primary hover:underline print:hidden">Open record →</Link>
                     )}
                   </div>
                 </div>
@@ -325,7 +343,7 @@ export async function EmployeeProfileView({
           </div>
         </SectionCard>
 
-        <SectionCard title="Leave" action={<Link href={`/hr/${id}/leave/new${query}`} className="text-[12.5px] font-semibold text-primary">+ Request</Link>}>
+        <SectionCard noPrint title="Leave" action={<Link href={`/hr/${id}/leave/new${query}`} className="text-[12.5px] font-semibold text-primary">+ Request</Link>}>
           {leave.length === 0 ? (
             <EmptyRow text="No leave requests yet." />
           ) : (
@@ -343,7 +361,7 @@ export async function EmployeeProfileView({
           )}
         </SectionCard>
 
-        <SectionCard title="Overtime" action={<Link href={`/hr/overtime/new?employee=${id}`} className="text-[12.5px] font-semibold text-primary">+ OT Form</Link>}>
+        <SectionCard noPrint title="Overtime" action={<Link href={`/hr/overtime/new?employee=${id}`} className="text-[12.5px] font-semibold text-primary">+ OT Form</Link>}>
           {overtime.length === 0 ? (
             <EmptyRow text="No overtime logged yet." />
           ) : (
@@ -362,13 +380,13 @@ export async function EmployeeProfileView({
         </SectionCard>
 
         {isAdmin && showHistory && (
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 print:hidden">
             <EditHistoryCard employeeIds={recordIds} />
           </div>
         )}
 
         {canSeePayroll && (
-        <SectionCard title="Payroll" action={<Link href={`/hr/${id}/payroll/new${query}`} className="text-[12.5px] font-semibold text-primary">+ Add Record</Link>}>
+        <SectionCard noPrint title="Payroll" action={<Link href={`/hr/${id}/payroll/new${query}`} className="text-[12.5px] font-semibold text-primary">+ Add Record</Link>}>
           {payroll.length === 0 ? (
             <EmptyRow text="No payroll records yet." />
           ) : (

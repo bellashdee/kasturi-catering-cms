@@ -2,13 +2,16 @@ export function SectionCard({
   title,
   action,
   children,
+  noPrint = false,
 }: {
   title: string;
   action?: React.ReactNode;
   children: React.ReactNode;
+  /** left out of the printed page (cards that only make sense on screen) */
+  noPrint?: boolean;
 }) {
   return (
-    <div className="rounded-3xl border border-border bg-surface shadow-sm">
+    <div className={`break-inside-avoid rounded-3xl border border-border bg-surface shadow-sm print:shadow-none ${noPrint ? "print:hidden" : ""}`}>
       <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
         <div className="text-[15px] font-bold text-text">{title}</div>
         {action}

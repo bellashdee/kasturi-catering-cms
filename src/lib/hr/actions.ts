@@ -338,6 +338,117 @@ async function applyEmployeeUpdate(employeeId: string, input: Partial<EmployeeIn
   revalidatePath(`/hr/${employeeId}`);
 }
 
+/** The details a staff member may change on their own record (My Profile > Edit my details). The database enforces the same list. */
+export type OwnProfileInput = Pick<
+  EmployeeInput,
+  | "phone" | "homePhone" | "passportNo" | "oldIcNo" | "dateOfBirth" | "gender" | "nationality" | "race" | "religion" | "maritalStatus" | "shortName"
+  | "addressLine" | "addressCity" | "addressState" | "addressPostcode" | "permAddressLine" | "permCity" | "permState" | "permPostcode"
+  | "spouseName" | "spouseIcNo" | "spouseWorking" | "childrenCount" | "childRelief" | "emergencyName" | "emergencyPhone" | "emergencyRelationship"
+  | "educationBackground" | "workingExperience"
+  | "bankName" | "bankAccountNo" | "epfNo" | "socsoNo" | "taxNo" | "taxBranch" | "bankId" | "bankBranchCode"
+>;
+
+function ownProfileColumns(input: OwnProfileInput) {
+  const text = (v: string | undefined) => v?.trim() || null;
+  const gender = text(input.gender);
+  if (gender && gender !== "Male" && gender !== "Female") throw new Error("Select Male or Female.");
+  const dob = text(input.dateOfBirth);
+  if (dob && !/^\d{4}-\d{2}-\d{2}$/.test(dob)) throw new Error("Enter a valid date of birth.");
+  const children = numberOrNull(input.childrenCount, "number of children");
+  if (children !== null && !Number.isInteger(children)) throw new Error("Enter a valid number of children.");
+  return {
+    phone: text(input.phone),
+    home_phone: text(input.homePhone),
+    passport_no: text(input.passportNo),
+    old_ic_no: text(input.oldIcNo),
+    date_of_birth: dob,
+    gender,
+    nationality: text(input.nationality),
+    race: text(input.race),
+    religion: text(input.religion),
+    marital_status: text(input.maritalStatus),
+    short_name: text(input.shortName)?.toUpperCase() ?? null,
+    address_line: text(input.addressLine),
+    address_city: text(input.addressCity),
+    address_state: text(input.addressState),
+    address_postcode: text(input.addressPostcode),
+    perm_address_line: text(input.permAddressLine),
+    perm_city: text(input.permCity),
+    perm_state: text(input.permState),
+    perm_postcode: text(input.permPostcode),
+    spouse_name: text(input.spouseName),
+    spouse_ic_no: text(input.spouseIcNo),
+    spouse_working: input.spouseWorking === "Yes" ? true : input.spouseWorking === "No" ? false : null,
+    children_count: children,
+    child_relief: numberOrNull(input.childRelief, "child relief"),
+    emergency_name: text(input.emergencyName),
+    emergency_phone: text(input.emergencyPhone),
+    emergency_relationship: text(input.emergencyRelationship),
+    education_background: text(input.educationBackground),
+    working_experience: text(input.workingExperience),
+  };
+}
+
+/**
+ * A staff member changes their own personal details (contact, address, emergency contact, spouse, education, and their bank, KWSP,
+ * SOCSO and tax numbers). The same person can have a staff record in each company they work for: the details are the same person's,
+ * so they are saved on every record linked to their login. Name, IC number, email, job details and salary stay with HR (the database
+ * refuses them too). Every change is written in the edit history with who made it.
+ */
+export async function updateOwnProfile(input: OwnProfileInput): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase, userId } = await requireUser();
+    const { data: records } = await supabase.from("employees").select("*").eq("user_id", userId);
+    if (!records || records.length === 0) throw new Error("Your staff record is not linked to your login yet. Ask HR to link it.");
+    const columns = ownProfileColumns(input);
+    const text = (v: string | undefined) => v?.trim() || null;
+
+    for (const target of records) {
+      const { data: privateBefore } = await supabase.from("employee_private_details").select("*").eq("employee_id", target.id).maybeSingle();
+      // a blank date of birth follows the IC number, as it does when HR edits the record
+      const { error } = await supabase
+        .from("employees")
+        .update({ ...columns, date_of_birth: columns.date_of_birth ?? dobFromIc(target.ic_passport_no) })
+        .eq("id", target.id);
+      if (error) throw new Error(error.message.startsWith("You can change") ? error.message : "Your details could not be saved. Please try again or ask HR.");
+
+      // only the bank / KWSP / SOCSO / tax columns are sent: the salary columns of the same row are never touched
+      const { error: privateError } = await supabase.from("employee_private_details").upsert({
+        employee_id: target.id,
+        company_id: target.company_id,
+        bank_name: text(input.bankName),
+        bank_account_no: text(input.bankAccountNo),
+        epf_no: text(input.epfNo),
+        socso_no: text(input.socsoNo),
+        tax_no: text(input.taxNo),
+        tax_branch: text(input.taxBranch),
+        bank_id: text(input.bankId),
+        bank_branch_code: text(input.bankBranchCode),
+        updated_at: new Date().toISOString(),
+      });
+      if (privateError) throw new Error("Your bank, KWSP, SOCSO and tax details could not be saved. Please try again or ask HR.");
+
+      const [{ data: after }, { data: privateAfter }] = await Promise.all([
+        supabase.from("employees").select("*").eq("id", target.id).maybeSingle(),
+        supabase.from("employee_private_details").select("*").eq("employee_id", target.id).maybeSingle(),
+      ]);
+      await recordEditHistory({
+        employeeId: target.id,
+        companyId: target.company_id,
+        editorId: userId,
+        changes: [
+          ...diffChanges(target as Record<string, unknown>, after as Record<string, unknown> | null, TRACKED_EMPLOYEE_COLUMNS),
+          ...diffChanges(privateBefore as Record<string, unknown> | null, privateAfter as Record<string, unknown> | null, TRACKED_PRIVATE_COLUMNS),
+        ],
+      });
+      revalidatePath(`/hr/${target.id}`);
+    }
+    revalidatePath("/profile");
+    revalidatePath("/hr");
+    return {};
+  });
+}
+
 export type BulkEmployeeRow = {
   fullName: string;
   department?: string;
