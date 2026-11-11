@@ -4369,6 +4369,7 @@ const dictionary: Record<string, string> = {
  "Modules and sub-categories this member can view and edit": "Modul dan sub-kategori yang boleh dilihat dan diedit oleh ahli ini",
  "Choose the sub-categories": "Pilih sub-kategori",
  "A sub-category that is not ticked is hidden from the tabs and blocked if opened by link. My Profile, Main Dashboard, Priority Centre, Bulletin Board, Company Spending and the AI Assistant are in the menu of everyone.": "Sub-kategori yang tidak ditandakan disembunyikan daripada tab dan disekat jika dibuka melalui pautan. My Profile, Main Dashboard, Priority Centre, Bulletin Board, Company Spending dan AI Assistant ada dalam menu semua orang.",
+ "Everyone can open the Birthday Calendar, Leave Requests and Overtime & OT Form from the buttons at the top, unless Madam Penny or Nabilah has limited the HR sub-categories of that person in Settings: then only the buttons of the sub-categories they have are shown.": "Semua orang boleh membuka Birthday Calendar, Leave Requests dan Overtime & OT Form daripada butang di atas, kecuali Madam Penny atau Nabilah telah menghadkan sub-kategori HR orang itu di Settings: maka hanya butang bagi sub-kategori yang mereka ada dipaparkan.",
 };
 
 export default dictionary;

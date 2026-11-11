@@ -30,7 +30,11 @@ export function moduleForPath(pathname: string): ModuleKey | null {
  */
 export function canAccessPath(allowed: string[] | null | undefined, pathname: string, sections?: string[] | null): boolean {
   if (pathname === "/hr/overtime" || pathname.startsWith("/hr/overtime/")) {
-    return canAccessModule(allowed, "hr") || canAccessModule(allowed, "overtime");
+    if (!(canAccessModule(allowed, "hr") || canAccessModule(allowed, "overtime"))) return false;
+    // the separate overtime permission (approvers) is not a part of the HR sub-categories
+    if (!canAccessModule(allowed, "hr")) return true;
+    const overtimeSection = sectionForPath(pathname);
+    return !overtimeSection || canOpenSection(sections, overtimeSection.key);
   }
   const key = moduleForPath(pathname);
   if (key !== null && !canAccessModule(allowed, key)) return false;

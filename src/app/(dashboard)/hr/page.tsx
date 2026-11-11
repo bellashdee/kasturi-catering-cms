@@ -11,6 +11,7 @@ import { SearchBox } from "@/components/SearchBox";
 import { ExportButtons } from "@/components/shared/ExportButtons";
 import { getHrAccess } from "@/lib/hr/access";
 import { canUsePayrollCentre } from "@/lib/hr/payrollAccess";
+import { canOpenSection } from "@/lib/sections";
 
 function statusTone(status: string): "success" | "danger" | "neutral" {
   if (status === "active") return "success";
@@ -40,6 +41,8 @@ export default async function HRPage({
   }
 
   const access = await getHrAccess(supabase, session, targetCompanyIds);
+  // the buttons of the sub-categories this member has (all of them unless Settings limits the member)
+  const can = (key: string) => canOpenSection(session.allowedSections, key);
   // the Payroll Centre belongs to HR; only the Director of Finance and her personal assistant see its button
   const showPayroll = await canUsePayrollCentre(supabase);
   // an admin sees every employee of the company; anyone else only the staff record linked to their own login
@@ -125,28 +128,36 @@ export default async function HRPage({
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Link href={`/birthdays${query}`} className={linkClass}>
-          🎂 Birthday Calendar
-        </Link>
+        {can("hr:birthdays") && (
+          <Link href={`/birthdays${query}`} className={linkClass}>
+            🎂 Birthday Calendar
+          </Link>
+        )}
         {showPayroll && (
           <Link href={`/payroll-centre${query}`} className={linkClass}>
             Payroll Centre
           </Link>
         )}
-        <Link href={`/hr/leave${query}`} className={linkClass}>
-          Leave Requests
-        </Link>
-        <Link href={`/hr/overtime${query}`} className={linkClass}>
-          Overtime &amp; OT Form
-        </Link>
+        {can("hr:leave") && (
+          <Link href={`/hr/leave${query}`} className={linkClass}>
+            Leave Requests
+          </Link>
+        )}
+        {can("hr:overtime") && (
+          <Link href={`/hr/overtime${query}`} className={linkClass}>
+            Overtime &amp; OT Form
+          </Link>
+        )}
         {access.adminAnywhere && (
           <>
             <Link href={`/hr/probation${query}`} className={linkClass}>
               Probation Tracker
             </Link>
-            <Link href={`/hr/documents${query}`} className={linkClass}>
-              Licences &amp; Documents
-            </Link>
+            {can("hr:documents") && (
+              <Link href={`/hr/documents${query}`} className={linkClass}>
+                Licences &amp; Documents
+              </Link>
+            )}
           </>
         )}
       </div>

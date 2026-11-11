@@ -12,6 +12,8 @@ const MODULE_ROOTS: Record<string, string[]> = {
   "supplier-procurement": ["/supplier-procurement"],
   "driver-logistics": ["/driver-logistics"],
   "finance-admin": ["/admin", "/finance"],
+  // the Birthday Calendar is opened from the HR page (it has no module of its own)
+  hr: ["/hr", "/birthdays"],
 };
 
 export const MODULE_SECTIONS: Record<string, Section[]> = {
@@ -51,6 +53,13 @@ export const MODULE_SECTIONS: Record<string, Section[]> = {
     { key: "driver-logistics:maintenance", label: "Maintenance", href: "/driver-logistics/maintenance", prefixes: ["/driver-logistics/maintenance"] },
     { key: "driver-logistics:attendance", label: "Attendance (Clock In / Out)", href: "/driver-logistics/attendance", prefixes: ["/driver-logistics/attendance"] },
   ],
+  hr: [
+    { key: "hr:database", label: "Employee Database", href: "/hr", prefixes: [] },
+    { key: "hr:birthdays", label: "Birthday Calendar", href: "/birthdays", prefixes: ["/birthdays"] },
+    { key: "hr:leave", label: "Leave Requests", href: "/hr/leave", prefixes: ["/hr/leave"] },
+    { key: "hr:overtime", label: "Overtime & OT Form", href: "/hr/overtime", prefixes: ["/hr/overtime"] },
+    { key: "hr:documents", label: "Licences & Documents", href: "/hr/documents", prefixes: ["/hr/documents"] },
+  ],
   "finance-admin": [
     { key: "finance-admin:monthly-costing", label: "Monthly Costing", href: "/admin", prefixes: [] },
     { key: "finance-admin:event-pnl", label: "Event P&L", href: "/finance/event-pnl", prefixes: ["/finance/event-pnl"] },
@@ -72,6 +81,11 @@ export function sectionForPath(pathname: string): Section | null {
   for (const [module, roots] of Object.entries(MODULE_ROOTS)) {
     if (!roots.some((r) => pathname === r || pathname.startsWith(`${r}/`))) continue;
     const sections = MODULE_SECTIONS[module];
+    // the leave and overtime forms of one staff record: /hr/<id>/leave/new and /hr/<id>/overtime/new
+    if (module === "hr") {
+      const own = /^\/hr\/[0-9a-f-]{36}\/(leave|overtime)(\/|$)/.exec(pathname);
+      if (own) return sections.find((s) => s.key === `hr:${own[1]}`) ?? sections[0];
+    }
     let best: Section | null = null;
     let bestLen = -1;
     for (const s of sections) {
