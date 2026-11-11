@@ -4,6 +4,7 @@ import { todayInMalaysia } from "@/lib/format";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  addCostEntriesByCategory,
   addCostEntry,
   addInvoiceAsRevenue,
   addRevenueEntry,
@@ -13,14 +14,18 @@ import {
   updateCostEntry,
   updateRevenueEntry,
 } from "@/lib/finance/eventPnlActions";
-import { ADDITIONAL_COST_TYPE_LABEL, ANY_DIRECT_COST_TYPE_LABEL, COST_BASIS_LABEL, directCostOptions, DUPLICATE_ENTRY_MESSAGE, PAYMENT_STATUS_LABEL, REVENUE_TYPE_LABEL } from "@/lib/finance/eventPnl";
+import { ADDITIONAL_COST_TYPE_LABEL, ANY_DIRECT_COST_TYPE_LABEL, COST_BASIS_LABEL, directCostOptions, DUPLICATE_ENTRY_MESSAGE, REVENUE_TYPE_LABEL, round2, suggestItemCostType } from "@/lib/finance/eventPnl";
 import { SearchSelect } from "@/components/ui/SearchSelect";
+import { MultiChoiceSelect } from "@/components/ui/MultiChoiceSelect";
+import { SplitAmountBox, SplitChoice } from "@/components/shared/SplitAmountBox";
+import { splitAddsUp, splitCells } from "@/lib/categorySplit";
 import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/documents/upload";
 import { requestExtraction } from "@/lib/importFlow/extractClient";
 import type { ExtractionReport } from "@/lib/extraction/types";
 import { ExtractionReportPanel } from "@/components/shared/import/ExtractionReportPanel";
 import { DescriptionInput } from "@/components/DescriptionInput";
 import { Select } from "@/components/ui/Select";
+import { GoogleDrivePickButton } from "@/components/shared/GoogleDrivePickButton";
 
 const input = "mt-1 h-10 w-full rounded-lg border border-border-strong px-3 text-[13px] outline-none focus:border-primary";
 const label = "text-[12px] font-semibold text-text-secondary";
@@ -173,9 +178,130 @@ export type CostRowData = {
   notes: string | null;
 };
 
-type SupplierInvoiceOption = { id: string; invoice_number: string; amount: number | string; invoice_date: string; supplierName: string };
+type InvoiceItem = { item_name: string; uom: string | null; quantity: number | null; line_total: number | null };
+type SupplierInvoiceOption = { id: string; invoice_number: string; amount: number | string; invoice_date: string; supplierName: string; items?: InvoiceItem[] };
 
-type SupplierDoc = { supplier_name?: string | null; invoice_number?: string | null; invoice_date?: string | null; amount?: number | null };
+type SupplierDoc = {
+  supplier_name?: string | null;
+  invoice_number?: string | null;
+  invoice_date?: string | null;
+  amount?: number | null;
+  items?: { item_name?: string | null; uom?: string | null; quantity?: number | null; unit_price?: number | null; line_total?: number | null }[] | null;
+};
+
+/** One printed line of the invoice and the category it is counted under. */
+type ItemLine = { name: string; quantity: number | null; uom: string | null; amount: number; costType: string };
+
+function toItemLines(items: InvoiceItem[]): ItemLine[] {
+  return items
+    .filter((i) => i.item_name?.trim())
+    .map((i) => ({ name: i.item_name.trim(), quantity: i.quantity, uom: i.uom, amount: Number(i.line_total ?? 0), costType: suggestItemCostType(i.item_name) }));
+}
+
+/**
+ * The items of a supplier invoice, each with its category (proposed from its name, changed by the user), and the total of each category.
+ * Saving records one direct cost per category; any difference to the printed invoice total (tax, discount, rounding) goes to the category chosen for it.
+ */
+function ItemsByCategory({
+  lines,
+  setLines,
+  invoiceTotal,
+  onSave,
+  saving,
+  onCancel,
+}: {
+  lines: ItemLine[];
+  setLines: (lines: ItemLine[]) => void;
+  invoiceTotal: number | null;
+  onSave: (groups: { costType: string; amount: number; description: string }[]) => void;
+  saving: boolean;
+  onCancel: () => void;
+}) {
+  const options = directCostOptions();
+  const itemsTotal = round2(lines.reduce((t, l) => t + l.amount, 0));
+  const difference = invoiceTotal === null ? 0 : round2(invoiceTotal - itemsTotal);
+  const [differenceType, setDifferenceType] = useState("");
+
+  const byType = new Map<string, { amount: number; names: string[] }>();
+  for (const l of lines) {
+    if (!l.costType) continue;
+    const g = byType.get(l.costType) ?? { amount: 0, names: [] };
+    g.amount += l.amount;
+    g.names.push(l.name);
+    byType.set(l.costType, g);
+  }
+  if (difference !== 0 && differenceType) {
+    const g = byType.get(differenceType) ?? { amount: 0, names: [] };
+    g.amount += difference;
+    g.names.push(`difference to invoice total ${difference > 0 ? "+" : ""}${difference.toFixed(2)}`);
+    byType.set(differenceType, g);
+  }
+  const groups = Array.from(byType.entries())
+    .map(([costType, g]) => ({ costType, amount: round2(g.amount), description: g.names.join("; ").slice(0, 500) }))
+    .sort((a, b) => (ANY_DIRECT_COST_TYPE_LABEL[a.costType] ?? "").localeCompare(ANY_DIRECT_COST_TYPE_LABEL[b.costType] ?? ""));
+  const unassigned = lines.filter((l) => !l.costType).length;
+  const ready = unassigned === 0 && (difference === 0 || !!differenceType) && groups.length > 0;
+  const setType = (i: number, costType: string) => setLines(lines.map((l, j) => (j === i ? { ...l, costType } : l)));
+
+  return (
+    <div className="rounded-lg border border-border bg-surface p-3">
+      <div className="text-[12.5px] font-bold text-text">Items by category</div>
+      <p className="mt-0.5 text-[12px] text-text-secondary">Each item has a proposed category. Check them (change any that is wrong); one cost is saved for each category with the total of its items.</p>
+      <div className="mt-2 max-h-80 overflow-auto">
+        <table className="w-full text-[12.5px]">
+          <thead className="sticky top-0 bg-surface text-left text-[11px] uppercase text-text-muted">
+            <tr><th className="py-1.5 pr-2">Item</th><th className="py-1.5 pr-2 text-right">Qty</th><th className="py-1.5 pr-2 text-right">Amount (RM)</th><th className="py-1.5">Category</th></tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {lines.map((l, i) => (
+              <tr key={i}>
+                <td className="py-1.5 pr-2 text-text">{l.name}</td>
+                <td className="py-1.5 pr-2 text-right text-text-secondary">{l.quantity ?? "—"}{l.uom ? ` ${l.uom}` : ""}</td>
+                <td className="py-1.5 pr-2 text-right font-semibold text-text">{l.amount.toFixed(2)}</td>
+                <td className="py-1.5">
+                  <Select value={l.costType} onChange={(e) => setType(i, e.target.value)} className={`h-8 w-full rounded-lg border px-2 text-[12.5px] ${l.costType ? "border-border-strong" : "border-danger"}`}>
+                    <option value="">— choose —</option>
+                    {options.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  </Select>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {difference !== 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-warning-bg px-3 py-2 text-[12.5px] text-text">
+          <span>The items add up to RM {itemsTotal.toFixed(2)}; the invoice total is RM {invoiceTotal?.toFixed(2)}. Count the difference (RM {difference.toFixed(2)}: tax, discount or rounding) under</span>
+          <Select value={differenceType} onChange={(e) => setDifferenceType(e.target.value)} className="h-8 rounded-lg border border-border-strong px-2 text-[12.5px]">
+            <option value="">— choose —</option>
+            {options.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </Select>
+        </div>
+      )}
+      {groups.length > 0 && (
+        <div className="mt-2 divide-y divide-border rounded-lg border border-border">
+          {groups.map((g) => (
+            <div key={g.costType} className="flex justify-between px-3 py-1.5 text-[12.5px]">
+              <span className="font-semibold text-text">{ANY_DIRECT_COST_TYPE_LABEL[g.costType]}</span>
+              <span className="font-bold text-text">RM {g.amount.toFixed(2)}</span>
+            </div>
+          ))}
+          <div className="flex justify-between bg-surface-alt px-3 py-1.5 text-[12.5px]">
+            <span className="font-semibold text-text-secondary">Total</span>
+            <span className="font-bold text-text">RM {round2(groups.reduce((t, g) => t + g.amount, 0)).toFixed(2)}</span>
+          </div>
+        </div>
+      )}
+      {unassigned > 0 && <p className="mt-2 text-[12px] text-danger">{unassigned} item{unassigned > 1 ? "s have" : " has"} no category yet.</p>}
+      <div className="mt-3 flex flex-wrap justify-end gap-2">
+        <button type="button" onClick={onCancel} className="rounded-lg border border-border-strong px-3 py-2 text-[12.5px] font-semibold text-text">Record as one cost instead</button>
+        <button type="button" disabled={!ready || saving} onClick={() => onSave(groups)} className="rounded-lg bg-primary px-4 py-2 text-[13px] font-bold text-white disabled:opacity-50">
+          {saving ? "Saving..." : `Add ${groups.length} cost${groups.length === 1 ? "" : "s"} by category`}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function CostForm({ eventId, companyId, entry, supplierInvoices = [], onDone }: { eventId: string; companyId: string; entry?: CostRowData; supplierInvoices?: SupplierInvoiceOption[]; onDone?: () => void }) {
   const router = useRouter();
@@ -187,13 +313,13 @@ export function CostForm({ eventId, companyId, entry, supplierInvoices = [], onD
   const [description, setDescription] = useState(entry?.description ?? "");
   const [supplierName, setSupplierName] = useState(entry?.supplier_name ?? "");
   const [referenceNo, setReferenceNo] = useState(entry?.reference_no ?? "");
-  const [quantity, setQuantity] = useState(entry?.quantity != null ? String(entry.quantity) : "");
-  const [unit, setUnit] = useState(entry?.unit ?? "");
-  const [unitCost, setUnitCost] = useState(entry?.unit_cost != null ? String(entry.unit_cost) : "");
   const [amount, setAmount] = useState(entry ? String(entry.amount) : "");
   const [costDate, setCostDate] = useState(entry?.cost_date ?? todayIso());
-  const [paymentStatus, setPaymentStatus] = useState<"unpaid" | "paid">((entry?.payment_status as "unpaid" | "paid") ?? "unpaid");
   const [notes, setNotes] = useState(entry?.notes ?? "");
+  // a new cost can be for more than one category: split the amount between them, or keep it as one cost
+  const [cats, setCats] = useState<string[]>([]);
+  const [splitOn, setSplitOn] = useState(true);
+  const [shareText, setShareText] = useState<Record<string, string>>({});
   const [supplierInvoiceId, setSupplierInvoiceId] = useState("");
   const [documentId, setDocumentId] = useState<string | undefined>(undefined);
   const [file, setFile] = useState<File | null>(null);
@@ -204,6 +330,10 @@ export function CostForm({ eventId, companyId, entry, supplierInvoices = [], onD
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const [duplicate, setDuplicate] = useState(false);
+  // the invoice's items with their categories, when the invoice is recorded by category (null: one cost, typed below)
+  const [itemLines, setItemLines] = useState<ItemLine[] | null>(null);
+  const [invoiceTotal, setInvoiceTotal] = useState<number | null>(null);
+  const split = itemLines !== null;
 
   const typeOptions: [string, string][] = costClass === "direct" ? directCostOptions(entry?.cost_type) : Object.entries(ADDITIONAL_COST_TYPE_LABEL).sort((a, b) => a[1].localeCompare(b[1]));
   function changeCategoryText(text: string) {
@@ -215,11 +345,12 @@ export function CostForm({ eventId, companyId, entry, supplierInvoices = [], onD
     setCostClass(next);
     setCostType("");
     setCategoryText("");
+    setCats([]);
+    setShareText({});
   }
-  function recalc(q: string, uc: string) {
-    const a = num(q), b = num(uc);
-    if (a !== undefined && b !== undefined && a > 0) setAmount((Math.round(a * b * 100) / 100).toString());
-  }
+  const catKey = (categoryLabel: string) => typeOptions.find(([, l]) => l === categoryLabel)?.[0] ?? "";
+  const byCategory = !entry && !split && cats.length > 1 && splitOn;
+  const cells = splitCells(amount, byCategory ? cats : [], [], shareText);
 
   /** Attach a supplier document: the existing reader proposes the fields, the user checks and edits before anything is saved. */
   async function readDocument() {
@@ -228,6 +359,7 @@ export function CostForm({ eventId, companyId, entry, supplierInvoices = [], onD
     setError(null);
     setReadNotice(null);
     setReport(null);
+    setItemLines(null);
     try {
       const doc = await uploadDocument({ companyId, module: "finance", fileType: fileTypeFromMime(file), file });
       setDocumentId(doc.id);
@@ -241,6 +373,12 @@ export function CostForm({ eventId, companyId, entry, supplierInvoices = [], onD
       if (x.invoice_number) setReferenceNo(x.invoice_number);
       if (x.invoice_date) setCostDate(x.invoice_date);
       if (typeof x.amount === "number") setAmount(String(x.amount));
+      const items = (x.items ?? []).map((i) => ({ item_name: i.item_name ?? "", uom: i.uom ?? null, quantity: i.quantity ?? null, line_total: i.line_total ?? (i.quantity != null && i.unit_price != null ? round2(i.quantity * i.unit_price) : null) }));
+      if (items.length > 0) {
+        changeClass("direct");
+        setItemLines(toItemLines(items));
+        setInvoiceTotal(typeof x.amount === "number" ? x.amount : null);
+      }
       setReport(result.report ?? null);
       setReadNotice("These details were read from the document. Check every field below before saving; nothing is saved until you press the button.");
     } catch (err) {
@@ -258,7 +396,31 @@ export function CostForm({ eventId, companyId, entry, supplierInvoices = [], onD
       setReferenceNo(s.invoice_number);
       setAmount(String(s.amount));
       setCostDate(s.invoice_date);
+      if (s.items && s.items.length > 0) {
+        changeClass("direct");
+        setItemLines(toItemLines(s.items));
+        setInvoiceTotal(Number(s.amount));
+      } else setItemLines(null);
+    } else setItemLines(null);
+  }
+
+  function resetAfterSave() {
+    setAmount(""); setDescription(""); setReferenceNo(""); setCats([]); setShareText({}); setNotes(""); setDocumentId(undefined); setFile(null); setReport(null); setReadNotice(null); setSupplierInvoiceId(""); setDuplicate(false); setItemLines(null); setInvoiceTotal(null);
+  }
+
+  async function saveByCategory(groups: { costType: string; amount: number; description: string }[]) {
+    setSaving(true);
+    setError(null);
+    setOk(null);
+    const res = await addCostEntriesByCategory({ eventId, costBasis, supplierName, referenceNo, costDate, supplierInvoiceId: supplierInvoiceId || undefined, documentId, notes, groups });
+    setSaving(false);
+    if (!res.ok) {
+      setError(res.error);
+      return;
     }
+    setOk(`${res.count} cost${res.count === 1 ? "" : "s"} recorded by category${costBasis === "estimated" ? " (estimated: not counted in the P&L)" : ""}.`);
+    resetAfterSave();
+    router.refresh();
   }
 
   async function submit(confirmDuplicate: boolean) {
@@ -266,16 +428,31 @@ export function CostForm({ eventId, companyId, entry, supplierInvoices = [], onD
     setError(null);
     setOk(null);
     try {
-      if (!costType) throw new Error("Choose the category from the list.");
-      const base = { costClass, costType, costBasis, description, supplierName, referenceNo, quantity: num(quantity), unit, unitCost: num(unitCost), amount: Number(amount), costDate, paymentStatus, notes };
+      const base = { costClass, costType, costBasis, description, supplierName, referenceNo, amount: Number(amount), costDate, notes };
       if (entry) {
+        if (!costType) throw new Error("Choose the category from the list.");
         await updateCostEntry(entry.id, { ...base, documentId });
         setOk("Cost updated.");
         onDone?.();
       } else {
-        await addCostEntry({ eventId, ...base, supplierInvoiceId: supplierInvoiceId || undefined, documentId, confirmDuplicate });
-        setOk(costBasis === "estimated" ? "Estimated cost recorded (not counted in the P&L)." : "Cost recorded.");
-        setAmount(""); setDescription(""); setReferenceNo(""); setQuantity(""); setUnitCost(""); setNotes(""); setDocumentId(undefined); setFile(null); setReport(null); setReadNotice(null); setSupplierInvoiceId(""); setDuplicate(false);
+        if (cats.length === 0) throw new Error("Choose at least one category.");
+        const sorted = [...cats].sort((a, b) => a.localeCompare(b));
+        if (byCategory) {
+          if (!splitAddsUp(amount, cells) || cells.some((c) => c.amount <= 0)) throw new Error("The parts must add up to the total cost, each more than 0.");
+          const res = await addCostEntriesByCategory({
+            eventId, costClass, costBasis, supplierName, referenceNo, costDate, notes, documentId,
+            supplierInvoiceId: supplierInvoiceId || undefined,
+            groups: cells.map((c) => ({ costType: catKey(c.category), amount: c.amount, description })),
+          });
+          if (!res.ok) throw new Error(res.error);
+          setOk(`${res.count} costs recorded, one for each category${costBasis === "estimated" ? " (estimated: not counted in the P&L)" : ""}.`);
+        } else {
+          // not split: one cost with the whole amount, counted under the first category (A to Z); the other categories are written in its description
+          const written = sorted.length > 1 ? [description.trim(), `Categories: ${sorted.join(", ")}`].filter(Boolean).join(" · ") : description;
+          await addCostEntry({ eventId, ...base, costType: catKey(sorted[0]), description: written, supplierInvoiceId: supplierInvoiceId || undefined, documentId, confirmDuplicate });
+          setOk(costBasis === "estimated" ? "Estimated cost recorded (not counted in the P&L)." : "Cost recorded.");
+        }
+        resetAfterSave();
       }
       router.refresh();
     } catch (err) {
@@ -297,6 +474,8 @@ export function CostForm({ eventId, companyId, entry, supplierInvoices = [], onD
           <p className="mt-0.5 text-[12px] text-text-secondary">Upload a PDF or photo and the system proposes the details for you to check, or key everything in below.</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <input type="file" accept={ANY_UPLOAD_ACCEPT} onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="text-[12px]" />
+            <GoogleDrivePickButton accept={ANY_UPLOAD_ACCEPT} onPick={setFile} />
+            {file && <span className="text-[12px] font-semibold text-text">{file.name}</span>}
             <button type="button" disabled={!file || reading} onClick={readDocument} className="rounded-lg bg-primary px-3 py-1.5 text-[12.5px] font-bold text-white disabled:opacity-50">{reading ? "Reading..." : "Upload & read"}</button>
           </div>
           {readNotice && <div className="mt-2 rounded-lg border border-[#CFE1F2] bg-info-bg px-3 py-2 text-[12.5px] text-[#0F3A63]">{readNotice}</div>}
@@ -315,6 +494,7 @@ export function CostForm({ eventId, companyId, entry, supplierInvoices = [], onD
       )}
 
       <div className="grid gap-3 sm:grid-cols-3">
+        {!split && (<>
         <div>
           <label className={label}>Cost kind *</label>
           <Select value={costClass} onChange={(e) => changeClass(e.target.value as "direct" | "additional")} className={input}>
@@ -323,10 +503,17 @@ export function CostForm({ eventId, companyId, entry, supplierInvoices = [], onD
           </Select>
         </div>
         <div>
-          <label className={label}>Category *</label>
-          <SearchSelect value={categoryText} onChange={changeCategoryText} options={typeOptions.map(([, label]) => label)} placeholder="Choose or search a category" className={input} />
-          {categoryText.trim() !== "" && costType === "" && <p className="mt-1 text-[11.5px] text-danger">Choose a category from the list.</p>}
+          <label className={label}>{entry ? "Category *" : "Category (one or more) *"}</label>
+          {entry ? (
+            <>
+              <SearchSelect value={categoryText} onChange={changeCategoryText} options={typeOptions.map(([, label]) => label)} placeholder="Choose or search a category" className={input} />
+              {categoryText.trim() !== "" && costType === "" && <p className="mt-1 text-[11.5px] text-danger">Choose a category from the list.</p>}
+            </>
+          ) : (
+            <MultiChoiceSelect options={typeOptions.map(([, label]) => label)} value={cats} onChange={(list) => { setCats(list); setShareText({}); }} placeholder="Select category" searchPlaceholder="Search category" />
+          )}
         </div>
+        </>)}
         <div>
           <label className={label}>Actual or estimated *</label>
           <Select value={costBasis} onChange={(e) => setCostBasis(e.target.value as "actual" | "estimated")} className={input}>
@@ -345,45 +532,46 @@ export function CostForm({ eventId, companyId, entry, supplierInvoices = [], onD
           <label className={label}>Cost date *</label>
           <input type="date" value={costDate} onChange={(e) => setCostDate(e.target.value)} className={input} />
         </div>
-        <div>
-          <label className={label}>Quantity</label>
-          <input type="number" step="0.001" min="0" value={quantity} onChange={(e) => { setQuantity(e.target.value); recalc(e.target.value, unitCost); }} className={input} />
-        </div>
-        <div>
-          <label className={label}>Unit</label>
-          <input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="kg, pax, trip..." className={input} />
-        </div>
-        <div>
-          <label className={label}>Unit cost (RM)</label>
-          <input type="number" step="0.0001" min="0" value={unitCost} onChange={(e) => { setUnitCost(e.target.value); recalc(quantity, e.target.value); }} className={input} />
-        </div>
+        {!split && (
         <div>
           <label className={label}>Total cost (RM) *</label>
           <input type="number" step="0.01" min="0" value={amount} onChange={(e) => { setAmount(e.target.value); setDuplicate(false); }} className={input} />
         </div>
-        <div>
-          <label className={label}>Payment status</label>
-          <Select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value as "unpaid" | "paid")} className={input}>
-            {Object.entries(PAYMENT_STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </Select>
-        </div>
-        <div>
-          <label className={label}>Description</label>
-          <DescriptionInput value={description} onChange={setDescription} companyId={companyId} className={input} />
-        </div>
+        )}
+        {!split && (
+          <div>
+            <label className={label}>Description</label>
+            <DescriptionInput value={description} onChange={setDescription} companyId={companyId} className={input} />
+          </div>
+        )}
       </div>
+      {!entry && !split && cats.length > 1 && (
+        <SplitChoice
+          label="Split the amount by category"
+          checked={splitOn}
+          onChange={(on) => { setSplitOn(on); setShareText({}); }}
+          on="Each category gets its own part of the amount."
+          off="Not split: one cost with the whole amount, counted under the first category (A to Z); the other categories are written in the description."
+        />
+      )}
+      {byCategory && (
+        <SplitAmountBox title="Split the amount by category (RM) *" total={amount} cells={cells} onType={(key, text) => setShareText((p) => ({ ...p, [key]: text }))} onEqual={() => setShareText({})} />
+      )}
       <div>
         <label className={label}>Remarks</label>
         <input value={notes} onChange={(e) => setNotes(e.target.value)} className={input} />
       </div>
-      <p className="text-[11.5px] text-text-muted">Payment status is for follow-up only: an unpaid supplier cost is still a cost of the event, and paying it later does not add another cost.</p>
       <Message error={error} ok={ok} />
-      <div className="flex justify-end gap-2">
-        {onDone && <button type="button" onClick={onDone} className="rounded-lg border border-border-strong px-4 py-2 text-[13px] font-semibold text-text">Cancel</button>}
-        <button type="button" disabled={saving} onClick={() => submit(duplicate)} className={`rounded-lg px-4 py-2 text-[13px] font-bold text-white disabled:opacity-60 ${duplicate ? "bg-danger" : "bg-primary"}`}>
-          {saving ? "Saving..." : duplicate ? "Save anyway" : entry ? "Save changes" : "Add cost"}
-        </button>
-      </div>
+      {split ? (
+        <ItemsByCategory lines={itemLines} setLines={setItemLines} invoiceTotal={invoiceTotal} onSave={saveByCategory} saving={saving} onCancel={() => setItemLines(null)} />
+      ) : (
+        <div className="flex justify-end gap-2">
+          {onDone && <button type="button" onClick={onDone} className="rounded-lg border border-border-strong px-4 py-2 text-[13px] font-semibold text-text">Cancel</button>}
+          <button type="button" disabled={saving} onClick={() => submit(duplicate)} className={`rounded-lg px-4 py-2 text-[13px] font-bold text-white disabled:opacity-60 ${duplicate ? "bg-danger" : "bg-primary"}`}>
+            {saving ? "Saving..." : duplicate ? "Save anyway" : entry ? "Save changes" : "Add cost"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

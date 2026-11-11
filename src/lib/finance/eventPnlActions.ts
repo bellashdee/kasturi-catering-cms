@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { logTaskAudit } from "@/lib/taskProofs/actions";
-import { ADDITIONAL_COST_TYPE_LABEL, ANY_DIRECT_COST_TYPE_LABEL, DUPLICATE_ENTRY_MESSAGE, EVENT_PNL_COMPANY_NAMES, REVENUE_TYPE_LABEL } from "@/lib/finance/eventPnl";
+import { ADDITIONAL_COST_TYPE_LABEL, ANY_DIRECT_COST_TYPE_LABEL, DUPLICATE_ENTRY_MESSAGE, EVENT_PNL_COMPANY_NAMES, REVENUE_TYPE_LABEL, round2 } from "@/lib/finance/eventPnl";
+import { runAction, type ActionResult } from "@/lib/actionResult";
 
 type DB = Awaited<ReturnType<typeof createClient>>;
 
@@ -167,7 +168,8 @@ export type CostEntryInput = {
   /** Total cost. When quantity and unit cost are both given and no total is typed, the total is quantity × unit cost. */
   amount: number;
   costDate: string;
-  paymentStatus: "unpaid" | "paid";
+  /** Not asked on the form any more: a new cost is "unpaid", an edited cost keeps the status it has. */
+  paymentStatus?: "unpaid" | "paid";
   supplierInvoiceId?: string;
   documentId?: string;
   notes?: string;
@@ -218,7 +220,7 @@ export async function addCostEntry(input: CostEntryInput) {
       unit_cost: input.unitCost ?? null,
       amount: input.amount,
       cost_date: input.costDate,
-      payment_status: input.paymentStatus,
+      payment_status: input.paymentStatus ?? "unpaid",
       supplier_invoice_id: input.supplierInvoiceId || null,
       document_id: input.documentId || null,
       notes: input.notes?.trim() || null,
@@ -230,6 +232,82 @@ export async function addCostEntry(input: CostEntryInput) {
   await logTaskAudit({ companyId: event.company_id, relatedTable: "event_pnl", relatedId: event.id, action: "cost_added", newValue: `${event.event_name} · ${input.costBasis} · ${labels[input.costType]} · ${rm(input.amount)}` });
   paths(input.eventId);
   return { id: data.id };
+}
+
+export type CategoryCostInput = {
+  eventId: string;
+  /** "direct" when left out. */
+  costClass?: "direct" | "additional";
+  costBasis: "actual" | "estimated";
+  supplierName?: string;
+  referenceNo?: string;
+  costDate: string;
+  paymentStatus?: "unpaid" | "paid";
+  supplierInvoiceId?: string;
+  documentId?: string;
+  notes?: string;
+  /** One cost per category: the items of the invoice in that category and their total. */
+  groups: { costType: string; amount: number; description: string }[];
+};
+
+/** A supplier invoice recorded as several direct costs, one per category, all saved together. */
+export async function addCostEntriesByCategory(input: CategoryCostInput): Promise<ActionResult<{ count: number }>> {
+  return runAction(async () => {
+    const { supabase, userId } = await requireUser();
+    const event = await loadEventForFinance(supabase, input.eventId);
+    if (input.costBasis !== "actual" && input.costBasis !== "estimated") throw new Error("Choose whether this is an actual or estimated cost.");
+    if (!isDate(input.costDate)) throw new Error("Enter the cost date.");
+    const groups = input.groups.filter((g) => g.amount !== 0);
+    if (groups.length === 0) throw new Error("There is no item with an amount to record.");
+    const costClass = input.costClass ?? "direct";
+    const labelsOf = costClass === "direct" ? ANY_DIRECT_COST_TYPE_LABEL : ADDITIONAL_COST_TYPE_LABEL;
+    for (const g of groups) {
+      if (!labelsOf[g.costType]) throw new Error("Choose the category of every item.");
+      if (!isAmount(g.amount)) throw new Error(`The total for ${labelsOf[g.costType]} must be more than 0.`);
+    }
+    if (new Set(groups.map((g) => g.costType)).size !== groups.length) throw new Error("Each category can be listed once.");
+
+    if (input.supplierInvoiceId) {
+      const { data: used } = await supabase.from("event_cost_entries").select("id").eq("supplier_invoice_id", input.supplierInvoiceId).limit(1);
+      if ((used ?? []).length > 0) throw new Error("This supplier invoice is already counted as an event cost.");
+    }
+    if (input.referenceNo?.trim()) {
+      let q = supabase.from("event_cost_entries").select("id").eq("catering_event_id", input.eventId).eq("reference_no", input.referenceNo.trim());
+      if (input.supplierName?.trim()) q = q.ilike("supplier_name", input.supplierName.trim());
+      const { data: same } = await q.limit(1);
+      if ((same ?? []).length > 0) throw new Error(`Invoice ${input.referenceNo.trim()} is already recorded as a cost of this event. Remove the earlier entry first if it should be split by category.`);
+    }
+
+    const { error } = await supabase.from("event_cost_entries").insert(
+      groups.map((g) => ({
+        company_id: event.company_id,
+        catering_event_id: input.eventId,
+        cost_class: costClass,
+        cost_type: g.costType,
+        cost_basis: input.costBasis,
+        description: g.description.trim() || null,
+        supplier_name: input.supplierName?.trim() || null,
+        reference_no: input.referenceNo?.trim() || null,
+        amount: round2(g.amount),
+        cost_date: input.costDate,
+        payment_status: input.paymentStatus ?? "unpaid",
+        supplier_invoice_id: input.supplierInvoiceId || null,
+        document_id: input.documentId || null,
+        notes: input.notes?.trim() || null,
+        created_by: userId,
+      })),
+    );
+    if (error) throw error;
+    await logTaskAudit({
+      companyId: event.company_id,
+      relatedTable: "event_pnl",
+      relatedId: event.id,
+      action: "cost_added",
+      newValue: `${event.event_name} · ${input.costBasis} · ${input.referenceNo?.trim() || "invoice"} by category: ${groups.map((g) => `${labelsOf[g.costType]} ${rm(g.amount)}`).join(", ")}`,
+    });
+    paths(input.eventId);
+    return { count: groups.length };
+  }, "Could not save the costs.");
 }
 
 export async function updateCostEntry(entryId: string, input: Omit<CostEntryInput, "eventId" | "supplierInvoiceId" | "confirmDuplicate">) {
@@ -253,7 +331,7 @@ export async function updateCostEntry(entryId: string, input: Omit<CostEntryInpu
       unit_cost: input.unitCost ?? null,
       amount: input.amount,
       cost_date: input.costDate,
-      payment_status: input.paymentStatus,
+      payment_status: input.paymentStatus ?? before.payment_status,
       document_id: input.documentId ?? before.document_id,
       notes: input.notes?.trim() || null,
       updated_by: userId,

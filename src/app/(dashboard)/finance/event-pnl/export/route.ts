@@ -11,7 +11,6 @@ import {
   directLinesOf,
   DATA_FLAG_LABEL,
   formatMargin,
-  PAYMENT_STATUS_LABEL,
   REVENUE_TYPE_LABEL,
   totalEventPnl,
   VERDICT_LABEL,
@@ -83,10 +82,10 @@ export async function GET(request: Request) {
       ...detail.revenue.map((r): Cell[] => [r.entry_date, REVENUE_TYPE_LABEL[r.entry_type], r.description, Number(r.amount), r.notes]),
       [],
       ["COST ENTRIES"],
-      ["Date", "Kind", "Category", "Basis", "Supplier", "Invoice / receipt", "Description", "Quantity", "Unit", "Unit cost", "Total (RM)", "Payment", "Remarks"],
+      ["Date", "Kind", "Category", "Basis", "Supplier", "Invoice / receipt", "Description", "Total (RM)", "Remarks"],
       ...[...detail.costs]
         .sort((a, b) => (ANY_DIRECT_COST_TYPE_LABEL[a.cost_type] ?? ADDITIONAL_COST_TYPE_LABEL[a.cost_type] ?? "").localeCompare(ANY_DIRECT_COST_TYPE_LABEL[b.cost_type] ?? ADDITIONAL_COST_TYPE_LABEL[b.cost_type] ?? "") || a.cost_date.localeCompare(b.cost_date))
-        .map((c): Cell[] => [c.cost_date, c.cost_class === "direct" ? "Direct" : "Additional", ANY_DIRECT_COST_TYPE_LABEL[c.cost_type] ?? ADDITIONAL_COST_TYPE_LABEL[c.cost_type], COST_BASIS_LABEL[c.cost_basis], c.supplier_name, c.reference_no, c.description, c.quantity === null ? null : Number(c.quantity), c.unit, c.unit_cost === null ? null : Number(c.unit_cost), Number(c.amount), PAYMENT_STATUS_LABEL[c.payment_status], c.notes]),
+        .map((c): Cell[] => [c.cost_date, c.cost_class === "direct" ? "Direct" : "Additional", ANY_DIRECT_COST_TYPE_LABEL[c.cost_type] ?? ADDITIONAL_COST_TYPE_LABEL[c.cost_type], COST_BASIS_LABEL[c.cost_basis], c.supplier_name, c.reference_no, c.description, Number(c.amount), c.notes]),
     ];
     if (detail.flags.length) rows.splice(9, 0, ["Warnings", detail.flags.map((f) => DATA_FLAG_LABEL[f]).join("; ")]);
     return respond(rows, format, `event-pnl-${event.event_reference ?? event.id}`, "Event P&L");

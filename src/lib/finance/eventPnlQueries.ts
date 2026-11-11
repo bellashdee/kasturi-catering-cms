@@ -204,7 +204,7 @@ export async function getEventPnlDetail(supabase: DB, eventId: string) {
     supabase.from("event_costing").select("food_cost, ingredient_cost, staff_cost, transport_cost, equipment_cost, other_cost").eq("catering_event_id", eventId),
     supabase.from("customer_invoices").select("id, invoice_number, invoice_date, amount, tax_amount, status, description").eq("catering_event_id", eventId).order("invoice_date"),
     supabase.from("event_budgets").select("*").eq("catering_event_id", eventId).maybeSingle(),
-    supabase.from("supplier_invoices").select("id, invoice_number, invoice_date, amount, status, suppliers(name)").eq("company_id", event.company_id).order("invoice_date", { ascending: false }).limit(60),
+    supabase.from("supplier_invoices").select("id, invoice_number, invoice_date, amount, status, suppliers(name), supplier_invoice_items(item_name, uom, quantity, line_total)").eq("company_id", event.company_id).order("invoice_date", { ascending: false }).limit(60),
   ]);
   for (const r of [revenue, costs, sheets, invoices, budget, supplierInvoices]) if (r.error) throw r.error;
 

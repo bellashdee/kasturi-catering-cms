@@ -4,6 +4,7 @@ import type { ImportTab } from "@/lib/importFlow/useDocumentUpload";
 import type { DuplicateMatch } from "@/lib/importFlow/types";
 import type { ExtractionReport } from "@/lib/extraction/types";
 import { ExtractionReportPanel } from "@/components/shared/import/ExtractionReportPanel";
+import { GoogleDrivePickButton } from "@/components/shared/GoogleDrivePickButton";
 
 /**
  * The shared visual chrome every Upload/OCR flow in the system uses, so a
@@ -53,14 +54,18 @@ export function FileDropZone({
   onChange: (file: File | null) => void;
 }) {
   return (
-    <label className="flex w-full max-w-md cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border-strong bg-surface-alt py-10">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M7 18a4 4 0 0 1-1-7.9 5 5 0 0 1 9.6-2A4.5 4.5 0 0 1 17 18H7z" />
-        <path d="M12 11v6M9.5 13.5L12 11l2.5 2.5" />
-      </svg>
-      <span className="text-[14px] font-bold text-text">{file ? file.name : prompt}</span>
-      <input type="file" accept={accept} className="hidden" onChange={(e) => onChange(e.target.files?.[0] ?? null)} />
-    </label>
+    <div className="flex w-full max-w-md flex-col items-center gap-2">
+      <label className="flex w-full cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border-strong bg-surface-alt py-10">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M7 18a4 4 0 0 1-1-7.9 5 5 0 0 1 9.6-2A4.5 4.5 0 0 1 17 18H7z" />
+          <path d="M12 11v6M9.5 13.5L12 11l2.5 2.5" />
+        </svg>
+        <span className="text-[14px] font-bold text-text">{file ? file.name : prompt}</span>
+        <input type="file" accept={accept} className="hidden" onChange={(e) => onChange(e.target.files?.[0] ?? null)} />
+      </label>
+      <span className="text-[11.5px] text-text-muted">or</span>
+      <GoogleDrivePickButton accept={accept} onPick={onChange} />
+    </div>
   );
 }
 

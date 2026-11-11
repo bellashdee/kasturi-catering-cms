@@ -12,7 +12,6 @@ import {
   directLinesOf,
   formatChange,
   formatMargin,
-  PAYMENT_STATUS_LABEL,
   REVENUE_ADDITIONS,
   REVENUE_DEDUCTIONS,
   REVENUE_TYPE_LABEL,
@@ -70,7 +69,14 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
   }
 
   const countedInvoiceIds = new Set(detail.revenue.map((r) => r.customer_invoice_id).filter(Boolean));
-  const supplierOptions = detail.availableSupplierInvoices.map((s) => ({ id: s.id, invoice_number: s.invoice_number, amount: s.amount, invoice_date: s.invoice_date, supplierName: (s as unknown as { suppliers?: { name?: string } | null }).suppliers?.name ?? "Supplier" }));
+  const supplierOptions = detail.availableSupplierInvoices.map((s) => ({
+    id: s.id,
+    invoice_number: s.invoice_number,
+    amount: s.amount,
+    invoice_date: s.invoice_date,
+    supplierName: s.suppliers?.name ?? "Supplier",
+    items: s.supplier_invoice_items.map((i) => ({ item_name: i.item_name, uom: i.uom, quantity: Number(i.quantity), line_total: Number(i.line_total) })),
+  }));
   const estimated = detail.costs.filter((c) => c.cost_basis === "estimated");
   const b = detail.budgetComparison;
   const na = <span className="text-text-muted">Budget not set</span>;
@@ -221,14 +227,14 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
         {detail.costs.length === 0 ? <EmptyRow text="No costs recorded for this event yet." /> : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] text-left text-[12.5px]">
-              <thead><tr className="text-[10.5px] font-bold uppercase tracking-wide text-text-muted"><th className="py-2">Date</th><th className="py-2">Category</th><th className="py-2">Supplier / reference</th><th className="py-2">Basis</th><th className="py-2 text-right">Qty × unit cost</th><th className="py-2 text-right">Total</th><th className="py-2">Payment</th><th className="py-2 print:hidden" /></tr></thead>
+              <thead><tr className="text-[10.5px] font-bold uppercase tracking-wide text-text-muted"><th className="py-2">Date</th><th className="py-2">Category</th><th className="py-2">Supplier / reference</th><th className="py-2">Basis</th><th className="py-2 text-right">Total</th><th className="py-2 print:hidden" /></tr></thead>
               <tbody>
                 {costGroups.map((group) => (
                   <Fragment key={group.label}>
                     <tr className="border-t-2 border-border-strong bg-surface-alt">
-                      <td colSpan={5} className="py-2 pl-2 text-[12.5px] font-extrabold text-text">{group.label} <span className="font-semibold text-text-muted">· {group.rows.length} {group.rows.length === 1 ? "entry" : "entries"}</span></td>
+                      <td colSpan={4} className="py-2 pl-2 text-[12.5px] font-extrabold text-text">{group.label} <span className="font-semibold text-text-muted">· {group.rows.length} {group.rows.length === 1 ? "entry" : "entries"}</span></td>
                       <td className="py-2 text-right text-[12.5px] font-extrabold text-text">{money(group.actualTotal)}</td>
-                      <td colSpan={2} />
+                      <td />
                     </tr>
                 {group.rows.map((c) => (
                   <tr key={c.id} className={`border-t border-border align-top ${c.cost_basis === "estimated" ? "bg-surface-alt text-text-muted" : ""}`}>
@@ -236,9 +242,7 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
                     <td className="py-2 font-semibold text-text">{group.label}<div className="text-[11px] font-normal text-text-muted">{c.cost_class === "direct" ? "Direct" : "Additional"}</div></td>
                     <td className="py-2">{c.supplier_name ?? "—"}{c.reference_no ? <div className="text-[11.5px]">{c.reference_no}</div> : null}{c.description ? <div className="text-[11.5px] text-text-muted">{c.description}</div> : null}{c.document_id && <div><DocumentViewLink documentId={c.document_id} label="📎 Document" /></div>}{c.supplier_invoice_id && <div className="text-[11px] text-text-muted">Linked supplier invoice</div>}</td>
                     <td className="py-2"><StatusBadge tone={c.cost_basis === "actual" ? "info" : "warning"}>{COST_BASIS_LABEL[c.cost_basis]}</StatusBadge></td>
-                    <td className="py-2 text-right">{c.quantity != null && c.unit_cost != null ? `${Number(c.quantity)}${c.unit ? ` ${c.unit}` : ""} × ${money(Number(c.unit_cost))}` : "—"}</td>
                     <td className="py-2 text-right font-semibold">{money(Number(c.amount))}</td>
-                    <td className="py-2">{PAYMENT_STATUS_LABEL[c.payment_status]}</td>
                     <td className="py-2 text-right"><EntryActions kind="cost" entry={c} eventId={id} companyId={event.company_id} /></td>
                   </tr>
                 ))}

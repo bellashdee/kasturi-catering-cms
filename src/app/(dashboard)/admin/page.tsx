@@ -61,7 +61,13 @@ export default async function AdminPage({
   const pct = (value: number) => (revenue > 0 ? `${((value / revenue) * 100).toFixed(2)}%` : "—");
   const profitPct = revenue > 0 ? (net / revenue) * 100 : null;
   const singleCompanyId = targetCompanyIds.length === 1 ? targetCompanyIds[0] : null;
-  const isSplitSalesCompany = companies.some((c) => c.id === singleCompanyId && c.name.startsWith(SPLIT_SALES_COMPANY_NAME));
+
+  // one sales box per company: the company picked, or every company when viewing them all
+  const salesCompanies = companies.filter((c) => targetCompanyIds.includes(c.id)).sort((a, b) => a.name.localeCompare(b.name));
+  const salesByCompany = singleCompanyId
+    ? [sales]
+    : await Promise.all(salesCompanies.map((c) => getMonthlySales(supabase, [c.id], year, month)));
+  const monthLabel = MONTH_LABEL[month - 1];
 
   const bySource = new Map<string, number>();
   const byCategory = new Map<string, { source: string; amount: number }>();
@@ -113,27 +119,33 @@ export default async function AdminPage({
         <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply Filters</button>
       </form>
 
-      {singleCompanyId && isSplitSalesCompany && (
-        <SplitSalesForm
-          key={`${singleCompanyId}-${year}-${month}-${sales.split ? "split" : "single"}`}
-          companyId={singleCompanyId}
-          year={year}
-          month={month}
-          monthLabel={MONTH_LABEL[month - 1]}
-          current={sales.split}
-          earlierTotal={sales.recorded && !sales.split ? revenue : null}
-        />
+      {!singleCompanyId && (
+        <p className="-mb-2 text-[12px] font-semibold text-text-secondary">Sales for {monthLabel} {year} (RM)</p>
       )}
-      {singleCompanyId && !isSplitSalesCompany && (
-        <MonthlySalesForm
-          key={`${singleCompanyId}-${year}-${month}`}
-          companyId={singleCompanyId}
-          year={year}
-          month={month}
-          monthLabel={MONTH_LABEL[month - 1]}
-          currentAmount={sales.recorded ? revenue : null}
-        />
-      )}
+      {salesCompanies.map((c, i) => {
+        const s = salesByCompany[i];
+        return c.name.startsWith(SPLIT_SALES_COMPANY_NAME) ? (
+          <SplitSalesForm
+            key={`${c.id}-${year}-${month}-${s.split ? "split" : "single"}`}
+            companyId={c.id}
+            year={year}
+            month={month}
+            monthLabel={monthLabel}
+            current={s.split}
+            earlierTotal={s.recorded && !s.split ? s.amount : null}
+          />
+        ) : (
+          <MonthlySalesForm
+            key={`${c.id}-${year}-${month}`}
+            companyId={c.id}
+            year={year}
+            month={month}
+            monthLabel={monthLabel}
+            currentAmount={s.recorded ? s.amount : null}
+            label={singleCompanyId ? undefined : c.name}
+          />
+        );
+      })}
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">

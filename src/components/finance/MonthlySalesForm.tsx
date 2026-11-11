@@ -10,12 +10,15 @@ export function MonthlySalesForm({
   month,
   monthLabel,
   currentAmount,
+  label,
 }: {
   companyId: string;
   year: number;
   month: number;
   monthLabel: string;
   currentAmount: number | null;
+  /** Shown instead of "Total sales for <month> <year> (RM)", e.g. the company name when several companies are listed. */
+  label?: string;
 }) {
   const router = useRouter();
   const [amount, setAmount] = useState(currentAmount === null ? "" : String(currentAmount));
@@ -42,7 +45,7 @@ export function MonthlySalesForm({
   return (
     <form onSubmit={handleSave} className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl border border-border bg-surface p-4 shadow-sm">
       <div className="flex items-center gap-2.5">
-        <label className="whitespace-nowrap text-[12px] font-semibold text-text-secondary">Total sales for {monthLabel} {year} (RM)</label>
+        <label className="whitespace-nowrap text-[12px] font-semibold text-text-secondary">{label ?? `Total sales for ${monthLabel} ${year} (RM)`}</label>
         <input
           type="number"
           step="0.01"
