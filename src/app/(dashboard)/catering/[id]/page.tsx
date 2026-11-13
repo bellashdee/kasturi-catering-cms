@@ -439,7 +439,7 @@ export default async function EventDetailPage({
           </div>
         )}
       </SectionCard>
-      <SectionCard title="Edit history">
+      <SectionCard title="Edit history" collapsed={{ count: (auditRows ?? []).length }}>
         {(auditRows ?? []).length === 0 ? (
           <EmptyRow text="No changes recorded yet." />
         ) : (

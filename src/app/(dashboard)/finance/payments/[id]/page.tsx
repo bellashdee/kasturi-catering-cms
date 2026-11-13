@@ -233,7 +233,7 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
         <VoucherUpload paymentId={id} companyId={payment.company_id} companyName={payment.companies?.name ?? ""} currentVoucherNo={payment.voucher_number} />
       </SectionCard>
 
-      <SectionCard title="Audit Trail">
+      <SectionCard title="Audit Trail" collapsed={{ count: audit.length }}>
         {audit.length === 0 ? (
           <p className="text-[13px] text-text-muted">No history yet.</p>
         ) : (

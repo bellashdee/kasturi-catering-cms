@@ -44,12 +44,12 @@ function ChosenChips({ items, onRemove, onClear }: { items: { id: string; label:
   );
 }
 
-export function PurchasePlanner({ companyId, companyName, events, recipeOptions, supplierItems, savedMatches, query }: { companyId: string; companyName: string; events: PlannerEvent[]; recipeOptions: RecipeRef[]; supplierItems: SupplierItemOption[]; savedMatches: Record<string, string>; query: string }) {
+export function PurchasePlanner({ companyId, companyName, events, recipeOptions, supplierItems, savedMatches, query, initialMode = "event" }: { companyId: string; companyName: string; events: PlannerEvent[]; recipeOptions: RecipeRef[]; supplierItems: SupplierItemOption[]; savedMatches: Record<string, string>; query: string; initialMode?: "event" | "recipes" }) {
   const router = useRouter();
   const [eventSearch, setEventSearch] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   // where the purchase starts: the menu of an event, or recipes chosen by hand
-  const [mode, setMode] = useState<"event" | "recipes">("event");
+  const [mode, setMode] = useState<"event" | "recipes">(initialMode);
   const [recipeSearch, setRecipeSearch] = useState("");
   // the supplier item each ingredient was bought as before (saved by a person); a new pick is saved too
   const [saved, setSaved] = useState<Map<string, string>>(() => new Map(Object.entries(savedMatches)));
@@ -65,10 +65,14 @@ export function PurchasePlanner({ companyId, companyName, events, recipeOptions,
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<Created | null>(null);
 
+  // the events of one month (this month first), sorted by date or by customer
+  const [eventMonth, setEventMonth] = useState(() => new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 7));
+  const [eventSort, setEventSort] = useState<"date" | "customer">("date");
   const shownEvents = useMemo(() => {
     const words = norm(eventSearch).split(" ").filter(Boolean);
-    return events.filter((e) => words.every((w) => norm(`${e.name} ${e.date}`).includes(w)));
-  }, [events, eventSearch]);
+    const list = events.filter((e) => (!eventMonth || e.date.startsWith(eventMonth)) && words.every((w) => norm(`${e.name} ${e.customer ?? ""} ${e.date}`).includes(w)));
+    return [...list].sort((a, b) => (eventSort === "customer" ? (a.customer ?? a.name).localeCompare(b.customer ?? b.name) || a.date.localeCompare(b.date) : a.date.localeCompare(b.date) || a.name.localeCompare(b.name)));
+  }, [events, eventSearch, eventMonth, eventSort]);
 
   const shownRecipes = useMemo(() => {
     const words = norm(recipeSearch).split(" ").filter(Boolean);
@@ -267,15 +271,31 @@ export function PurchasePlanner({ companyId, companyName, events, recipeOptions,
           <>
             <div className="mt-4 text-[14.5px] font-extrabold text-text">1. Choose the event(s)</div>
             <p className="mt-0.5 text-[12.5px] text-text-secondary">Search, then tick the events to buy for. Their menus and pax come from the event order.</p>
-            <input value={eventSearch} onChange={(e) => setEventSearch(e.target.value)} placeholder="Search event name or date..." className={`${inputClass} mt-3 max-w-md`} />
+            <div className="mt-3 flex flex-wrap items-end gap-3">
+              <label className="text-[12px] font-semibold text-text-secondary">
+                Month
+                <input type="month" value={eventMonth} onChange={(e) => setEventMonth(e.target.value)} className={`${inputClass} mt-1 block w-44`} />
+              </label>
+              <label className="text-[12px] font-semibold text-text-secondary">
+                Sort by
+                <select value={eventSort} onChange={(e) => setEventSort(e.target.value as "date" | "customer")} className={`${inputClass} mt-1 block w-44`}>
+                  <option value="date">Event date</option>
+                  <option value="customer">Customer name</option>
+                </select>
+              </label>
+              <label className="min-w-[14rem] flex-1 text-[12px] font-semibold text-text-secondary">
+                Search
+                <input value={eventSearch} onChange={(e) => setEventSearch(e.target.value)} placeholder="Event, customer or date" className={`${inputClass} mt-1 block max-w-md`} />
+              </label>
+            </div>
             <ChosenChips items={picked.map((id) => ({ id, label: events.find((e) => e.id === id)?.name ?? id }))} onRemove={(id) => setPicked((p) => p.filter((x) => x !== id))} onClear={() => setPicked([])} />
             <div className="mt-2 max-h-56 overflow-y-auto rounded-lg border border-border">
-              {shownEvents.length === 0 && <div className="px-4 py-3 text-[13px] text-text-muted">No event found.</div>}
+              {shownEvents.length === 0 && <div className="px-4 py-3 text-[13px] text-text-muted">No event in this month. Choose another month.</div>}
               {shownEvents.map((e) => (
                 <label key={e.id} className="flex cursor-pointer items-center gap-3 border-b border-border px-4 py-2 text-[13px] last:border-b-0 hover:bg-surface-alt">
                   <input type="checkbox" checked={picked.includes(e.id)} onChange={(ev) => setPicked((p) => (ev.target.checked ? [...p, e.id] : p.filter((x) => x !== e.id)))} />
                   <span className="font-semibold text-text">{e.name}</span>
-                  <span className="text-text-muted">{`${e.date}${e.pax ? ` · ${e.pax} pax` : ""} · ${e.status}`}</span>
+                  <span className="text-text-muted">{`${e.date}${e.customer && e.customer !== e.name ? ` · ${e.customer}` : ""}${e.pax ? ` · ${e.pax} pax` : ""} · ${e.status}`}</span>
                 </label>
               ))}
             </div>

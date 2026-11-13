@@ -60,23 +60,19 @@ export default async function EventReportPage({ searchParams }: { searchParams: 
     );
   }
 
-  // the period: a week (Monday to Sunday), a month or a year (Malaysia time)
+  // the period: a week of the month (Week 1 = days 1-7 ... Week 4 = day 22 to the end of the month), a month or a year (Malaysia time)
   const today = todayInMalaysia();
-  const [nowY, nowM] = today.split("-").map(Number);
+  const [nowY, nowM, nowD] = today.split("-").map(Number);
   const period = sp.period === "week" || sp.period === "year" ? sp.period : "month";
   const year = Number(sp.year) >= 2000 && Number(sp.year) <= 2100 ? Number(sp.year) : nowY;
   const month = Math.min(12, Math.max(1, Number(sp.month) || nowM));
-  const weekDay = sp.week && /^\d{4}-\d{2}-\d{2}$/.test(sp.week) ? sp.week : today;
-  const weekStart = new Date(`${weekDay}T00:00:00Z`);
-  weekStart.setUTCDate(weekStart.getUTCDate() - ((weekStart.getUTCDay() + 6) % 7));
-  const weekEnd = new Date(weekStart);
-  weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
-  const dayLabel = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  const week = Math.min(4, Math.max(1, Number(sp.week) || (year === nowY && month === nowM ? Math.min(4, Math.ceil(nowD / 7)) : 1)));
   const [fromM, toM] = period === "year" ? [1, 12] : [month, month];
-  const start = period === "week" ? iso(weekStart) : `${year}-${pad(fromM)}-01`;
-  const end = period === "week" ? iso(weekEnd) : `${year}-${pad(toM)}-${pad(lastDay(year, toM))}`;
-  const periodLabel = period === "year" ? String(year) : period === "week" ? `Week ${dayLabel(weekStart)} – ${dayLabel(weekEnd)}` : `${MONTH_LABEL[month - 1]} ${year}`;
+  const weekFrom = (week - 1) * 7 + 1;
+  const weekTo = week === 4 ? lastDay(year, month) : week * 7;
+  const start = period === "week" ? `${year}-${pad(month)}-${pad(weekFrom)}` : `${year}-${pad(fromM)}-01`;
+  const end = period === "week" ? `${year}-${pad(month)}-${pad(weekTo)}` : `${year}-${pad(toM)}-${pad(lastDay(year, toM))}`;
+  const periodLabel = period === "year" ? String(year) : period === "week" ? `Week ${week}, ${MONTH_LABEL[month - 1]} ${year} (${weekFrom}–${weekTo})` : `${MONTH_LABEL[month - 1]} ${year}`;
 
   const status = sp.status && EVENT_STATUS_LABEL[sp.status] ? sp.status : undefined;
   const agent = sp.agent && SALES_AGENTS.includes(sp.agent) ? sp.agent : undefined;
@@ -121,14 +117,16 @@ export default async function EventReportPage({ searchParams }: { searchParams: 
           </Select>
         </label>
         <label className="text-[12px] font-semibold text-text-secondary">
-          Month <span className="font-normal text-text-muted">(monthly)</span>
+          Month
           <Select name="month" defaultValue={String(month)} className={`${inputClass} block w-36`}>
             {MONTH_LABEL.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
           </Select>
         </label>
         <label className="text-[12px] font-semibold text-text-secondary">
-          Week of <span className="font-normal text-text-muted">(weekly)</span>
-          <input type="date" name="week" defaultValue={weekDay} className={`${inputClass} block w-40`} />
+          Week
+          <Select name="week" defaultValue={String(week)} className={`${inputClass} block w-32`}>
+            {[1, 2, 3, 4].map((w) => <option key={w} value={w}>Week {w}</option>)}
+          </Select>
         </label>
         <label className="text-[12px] font-semibold text-text-secondary">
           Year

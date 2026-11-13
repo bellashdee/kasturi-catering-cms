@@ -259,15 +259,9 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
         </details>
       </SectionCard>
 
-      <SectionCard title="Audit trail">
+      <SectionCard title="Audit trail" collapsed={{ count: (auditRows ?? []).length }}>
         {(auditRows ?? []).length === 0 ? <EmptyRow text="No changes recorded yet." /> : (
-          // the details stay closed until the button is pressed
-          <details className="group">
-          <summary className="inline-flex cursor-pointer list-none rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-[12.5px] font-semibold text-text [&::-webkit-details-marker]:hidden">
-            <span className="group-open:hidden">Show audit trail ({(auditRows ?? []).length})</span>
-            <span className="hidden group-open:inline">Hide audit trail</span>
-          </summary>
-          <ul className="mt-2 divide-y divide-border text-[12.5px]">
+          <ul className="divide-y divide-border text-[12.5px]">
             {(auditRows ?? []).map((a) => (
               <li key={a.id} className="py-2">
                 <div className="flex justify-between gap-3"><span className="font-semibold text-text">{AUDIT_LABEL[a.action] ?? a.action}</span><span className="text-text-muted">{formatMalaysiaDateTime(a.created_at)}</span></div>
@@ -275,7 +269,6 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
               </li>
             ))}
           </ul>
-          </details>
         )}
       </SectionCard>
     </div>

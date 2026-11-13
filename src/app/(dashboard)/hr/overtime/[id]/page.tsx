@@ -154,7 +154,7 @@ export default async function OvertimeDetailPage({ params }: { params: Promise<{
         </div>
       )}
 
-      <SectionCard title="Audit Trail">
+      <SectionCard title="Audit Trail" collapsed={{ count: auditLog.length }}>
         {auditLog.length === 0 ? (
           <p className="text-[13px] text-text-muted">No history yet.</p>
         ) : (

@@ -13,7 +13,7 @@ export async function EditHistoryCard({ employeeIds }: { employeeIds: string[] }
   const { data } = await createAdminClient().from("employee_edit_history").select("*").in("employee_id", employeeIds.length > 0 ? employeeIds : ["00000000-0000-0000-0000-000000000000"]).order("created_at", { ascending: false }).limit(100);
   const rows = data ?? [];
   return (
-    <SectionCard title="Edit History (who changed what)">
+    <SectionCard title="Edit History" collapsed={{ count: rows.length }}>
       {rows.length === 0 ? (
         <EmptyRow text="No detail has been changed yet." />
       ) : (

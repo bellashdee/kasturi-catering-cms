@@ -69,8 +69,11 @@ export default async function PurchaseRequestsPage({
           <p className="mt-0.5 text-[13px] text-text-secondary">{kitchenRequests.length} purchase request{kitchenRequests.length === 1 ? "" : "s"}{monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}</p>
         </div>
         <div className="flex flex-wrap gap-2.5">
-          <Link href={`/kitchen/purchase-requests/event${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
+          <Link href={`/kitchen/purchase-requests/from-menu${query ? `${query}&` : "?"}mode=event`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
             + New Purchase Request (event menu)
+          </Link>
+          <Link href={`/kitchen/purchase-requests/from-menu${query ? `${query}&` : "?"}mode=manual`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
+            + New Purchase Request (key in menu)
           </Link>
           <Link href={`/kitchen/purchase-requests/new${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text">
             + Single item
@@ -85,17 +88,10 @@ export default async function PurchaseRequestsPage({
       <section className="flex flex-col gap-3">
         <div>
           <h2 className="text-[17px] font-extrabold text-text">Purchase Request History</h2>
-          <p className="text-[13px] text-text-secondary">Choose the event menu, check the ingredient list, write the quantities and submit the request to the Purchaser. The Purchaser adds the supplier prices.</p>
+          <p className="text-[13px] text-text-secondary">Choose the event (or key in the menu) and the pax: the ingredients and quantities are worked out from the recipes, and one purchase order is made for each supplier at its latest price.</p>
         </div>
-        <RequestList rows={kitchenRequests} hrefBase="/kitchen/purchase-requests" query={query} kitchenActions={canAccessModule(session.allowedModules, "kitchen")} empty={monthLabel ? "No purchase requests in this month." : "No purchase requests yet. Press + New Purchase Request (event menu) to make one."} />
+        <RequestList rows={kitchenRequests} hrefBase="/kitchen/purchase-requests" query={query} kitchenActions={canAccessModule(session.allowedModules, "kitchen")} empty={monthLabel ? "No purchase requests in this month." : "No purchase requests yet."} />
       </section>
-
-      <div className="rounded-xl border border-border bg-surface px-4 py-3 text-[14px] text-text-secondary shadow-sm">
-        <b className="text-text">From an event menu or from recipes (older way, quantities worked out from the pax):</b> 1. Choose the event(s), or choose the recipes and their pax · 2. The menu gives the ingredients and quantities (from the recipes and the pax) · 3. Choose the supplier item of each ingredient, at the latest price of that supplier · 4. One purchase order is made for each supplier.{" "}
-        <Link href={`/kitchen/purchase-requests/from-menu${query}`} className="font-semibold text-primary underline">
-          Open the older planner
-        </Link>
-      </div>
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         <div className="border-b border-border px-5 py-3 text-[13px] font-bold text-text">Purchase Orders Made from Event Menus</div>
