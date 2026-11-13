@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { SALES_AGENTS } from "@/lib/catering/constants";
+import { ACTIVE_SALES_AGENTS } from "@/lib/catering/constants";
 import { INTAKE_COMPANIES, INTAKE_HOURLY_LIMIT, type CustomerIntakeInput } from "@/lib/catering/intake";
 
 const clean = (s: string | undefined, max = 500) => {
@@ -32,7 +32,7 @@ async function saveCustomerIntake(companySlug: string, input: CustomerIntakeInpu
   // a bot fills the hidden field; pretend it worked so it learns nothing
   if (input.website?.trim()) return { ok: true };
 
-  if (!SALES_AGENTS.includes(input.salesAgent)) throw new Error("Select your name from the sales agent list.");
+  if (!ACTIVE_SALES_AGENTS.includes(input.salesAgent)) throw new Error("Select your name from the sales agent list.");
   const name = clean(input.name, 200);
   if (!name) throw new Error("Enter the customer / company name.");
   const phone = clean(input.phone, 50);

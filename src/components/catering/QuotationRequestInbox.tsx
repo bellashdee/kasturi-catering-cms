@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Select } from "@/components/ui/Select";
 import { TRACKING_STATUS_LABEL, type TrackingInput } from "@/lib/catering/quotationRequest";
-import { addRequestNote, deleteRequestNote, updateRequestTracking } from "@/lib/catering/quotationRequestInboxActions";
+import { addRequestNote, deleteQuotationRequest, deleteRequestNote, updateRequestDetails, updateRequestTracking, type RequestDetailsInput } from "@/lib/catering/quotationRequestInboxActions";
+import { ACTIVE_SALES_AGENTS, eventTypeOptions } from "@/lib/catering/constants";
 import { formatMalaysiaDateTime } from "@/lib/format";
 
 const inputClass =
@@ -64,9 +65,6 @@ export function RequestTrackingForm({ requestId, initial, handlers }: { requestI
           <input maxLength={50} value={form.autocountInvoiceNo} onChange={(e) => set("autocountInvoiceNo", e.target.value)} className={inputClass} placeholder="As in AutoCount" />
         </label>
         {date("quotationPreparedOn", "Quotation prepared on")}
-        {date("sentToCustomerOn", "Sent to customer on")}
-        {date("customerResponseOn", "Customer response on")}
-        {date("followUpOn", "Follow-up date")}
       </div>
       <p className="text-[11.5px] text-text-muted">Customer Confirmed does not create an event: add the confirmed event through the Excel import or New Event.</p>
       {message && <div className={`text-[12.5px] ${message.ok ? "text-success" : "text-danger"}`}>{message.text}</div>}
@@ -124,6 +122,104 @@ export function RequestNotes({ requestId, notes, currentUserId }: { requestId: s
       <button type="button" disabled={busy || !text.trim()} onClick={() => void run(() => addRequestNote(requestId, text), () => setText(""))} className="self-start rounded-lg border border-border-strong bg-surface px-4 py-2 text-[13px] font-semibold text-text disabled:opacity-60">
         Add note
       </button>
+    </div>
+  );
+}
+
+const DETAIL_FIELDS: { key: keyof RequestDetailsInput; label: string; long?: boolean }[] = [
+  { key: "customerName", label: "Customer / company *" },
+  { key: "picName", label: "Contact person (PIC)" },
+  { key: "picPhone", label: "Contact number" },
+  { key: "contactEmail", label: "E-mail" },
+  { key: "companyAddress", label: "Company address", long: true },
+  { key: "eventName", label: "Event name *", long: true },
+  { key: "location", label: "Venue" },
+  { key: "eventAddress", label: "Event address", long: true },
+  { key: "kitchenSetup", label: "Kitchen set-up", long: true },
+  { key: "cateringSetup", label: "Catering set-up", long: true },
+  { key: "remarks", label: "Remarks", long: true },
+];
+
+/**
+ * The customer and event details of a request with Edit (then Save or Cancel) and Delete. Every saved change goes to the history; Delete
+ * removes the request with its notes, history and attachments after a confirmation.
+ */
+export function RequestDetailsEditor({ requestId, initial, backHref, children }: { requestId: string; initial: RequestDetailsInput; backHref: string; children: React.ReactNode }) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState<RequestDetailsInput>(initial);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const set = (key: keyof RequestDetailsInput, value: string) => setForm((f) => ({ ...f, [key]: value }));
+  const agents = [...ACTIVE_SALES_AGENTS, ...(initial.salesAgent && !ACTIVE_SALES_AGENTS.includes(initial.salesAgent) ? [initial.salesAgent] : [])];
+
+  async function save() {
+    setBusy(true);
+    setError(null);
+    const r = await updateRequestDetails(requestId, form);
+    setBusy(false);
+    if (!r.ok) return setError(r.error);
+    setEditing(false);
+    router.refresh();
+  }
+
+  async function remove() {
+    if (!window.confirm("Delete this quotation request? Its notes, history and attachments are deleted too. This cannot be undone.")) return;
+    setBusy(true);
+    setError(null);
+    const r = await deleteQuotationRequest(requestId);
+    setBusy(false);
+    if (!r.ok) return setError(r.error);
+    router.push(backHref);
+    router.refresh();
+  }
+
+  const btn = "rounded-lg border px-3.5 py-1.5 text-[12.5px] font-semibold disabled:opacity-60";
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap justify-end gap-2">
+        {editing ? (
+          <>
+            <button type="button" disabled={busy} onClick={() => void save()} className={`${btn} border-primary bg-primary text-white`}>{busy ? "Saving..." : "Save"}</button>
+            <button type="button" disabled={busy} onClick={() => { setForm(initial); setEditing(false); setError(null); }} className={`${btn} border-border-strong bg-surface text-text`}>Cancel</button>
+          </>
+        ) : (
+          <>
+            <button type="button" disabled={busy} onClick={() => setEditing(true)} className={`${btn} border-border-strong bg-surface text-text`}>Edit</button>
+            <button type="button" disabled={busy} onClick={() => void remove()} className={`${btn} border-danger/40 bg-surface text-danger`}>Delete</button>
+          </>
+        )}
+      </div>
+      {error && <div className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-[12.5px] text-danger">{error}</div>}
+      {!editing ? (
+        children
+      ) : (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {DETAIL_FIELDS.map((f) => (
+            <label key={f.key} className={`block ${f.long ? "sm:col-span-2" : ""}`}>
+              <span className={labelClass}>{f.label}</span>
+              {f.long ? (
+                <textarea value={form[f.key]} onChange={(e) => set(f.key, e.target.value)} rows={2} className="mt-1 w-full resize-y rounded-lg border border-border-strong bg-surface px-2.5 py-2 text-[13px] outline-none focus:border-primary" />
+              ) : (
+                <input value={form[f.key]} onChange={(e) => set(f.key, e.target.value)} className={inputClass} />
+              )}
+            </label>
+          ))}
+          <label className="block">
+            <span className={labelClass}>Event type *</span>
+            <Select value={form.eventType} onChange={(e) => set("eventType", e.target.value)} className={inputClass}>
+              {eventTypeOptions(initial.eventType).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+            </Select>
+          </label>
+          <label className="block">
+            <span className={labelClass}>Sales agent</span>
+            <Select value={form.salesAgent} onChange={(e) => set("salesAgent", e.target.value)} className={inputClass}>
+              <option value="">None</option>
+              {agents.map((a) => <option key={a} value={a}>{a}</option>)}
+            </Select>
+          </label>
+        </div>
+      )}
     </div>
   );
 }

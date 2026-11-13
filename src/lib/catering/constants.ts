@@ -145,7 +145,12 @@ export function mealTypeOptions(selected: string[] = []): [string, string][] {
   return keys.map((k) => [k, MEAL_TYPE_LABEL[k]]);
 }
 
+/** Every sales agent who has had events (old events keep their agent, and the reports can still filter by them). */
 export const SALES_AGENTS = ["Ms. Fadilah", "Ms. Hannah", "Ms. Zainab", "Mr. Ismaizal", "Mr. Hao", "Mr. Faidz", "Mr. Mard"];
+/** Agents who have left: not offered on the forms any more (Mr. Mard left in November 2026). */
+export const FORMER_SALES_AGENTS = ["Mr. Mard"];
+/** The agents offered when choosing a name on a form or a new booking. */
+export const ACTIVE_SALES_AGENTS = SALES_AGENTS.filter((a) => !FORMER_SALES_AGENTS.includes(a));
 
 /** A multi-day event (e.g. a 3-5 day conference) is one booking with one row per day. */
 export const MAX_EVENT_DAYS = 14;

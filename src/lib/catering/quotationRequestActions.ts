@@ -2,7 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/types";
-import { EVENT_TYPE_LABEL, MAX_EVENT_DAYS, MEAL_TYPE_LABEL, SALES_AGENTS, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
+import { EVENT_TYPE_LABEL, MAX_EVENT_DAYS, MEAL_TYPE_LABEL, ACTIVE_SALES_AGENTS, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
 import { normalizeMenu, type EventDay } from "@/lib/catering/days";
 import { INTAKE_COMPANIES, INTAKE_HOURLY_LIMIT } from "@/lib/catering/intake";
 import {
@@ -231,7 +231,7 @@ async function saveQuotationRequest(companySlug: string, input: QuotationRequest
   // a bot fills the hidden field; pretend it worked so it learns nothing
   if (input.website?.trim()) return { ok: true };
 
-  if (!SALES_AGENTS.includes(input.salesAgent)) throw new Error("Select your name from the sales agent list.");
+  if (!ACTIVE_SALES_AGENTS.includes(input.salesAgent)) throw new Error("Select your name from the sales agent list.");
   const customerName = clean(input.customerName, 200);
   if (!customerName) throw new Error("Enter the customer name.");
   const eventName = clean(input.eventName, 200);

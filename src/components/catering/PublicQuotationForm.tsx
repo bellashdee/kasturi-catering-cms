@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { requestAttachmentUpload, submitQuotationRequest } from "@/lib/catering/quotationRequestActions";
-import { EVENT_TYPE_OPTIONS, SALES_AGENTS } from "@/lib/catering/constants";
+import { EVENT_TYPE_OPTIONS, ACTIVE_SALES_AGENTS } from "@/lib/catering/constants";
 import { dayAmount, type EventDay } from "@/lib/catering/days";
 import {
   ATTACHMENT_ACCEPT,
@@ -26,7 +26,7 @@ import { AdditionalServicesEditor, ExtraItemsEditor, type ExtraRow } from "@/com
 import { ChoiceSelect } from "@/components/ui/ChoiceSelect";
 import { formatPrice } from "@/lib/format";
 
-const AGENT_OPTIONS = SALES_AGENTS.map((a) => ({ value: a, label: a }));
+const AGENT_OPTIONS = ACTIVE_SALES_AGENTS.map((a) => ({ value: a, label: a }));
 const TYPE_OPTIONS = EVENT_TYPE_OPTIONS.map(([value, label]) => ({ value, label }));
 
 const inputClass =

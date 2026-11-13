@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { submitCustomerIntake } from "@/lib/catering/intakeActions";
-import { SALES_AGENTS } from "@/lib/catering/constants";
+import { ACTIVE_SALES_AGENTS } from "@/lib/catering/constants";
 import type { CustomerIntakeInput } from "@/lib/catering/intake";
 import { ChoiceSelect } from "@/components/ui/ChoiceSelect";
 
-const AGENT_OPTIONS = SALES_AGENTS.map((a) => ({ value: a, label: a }));
+const AGENT_OPTIONS = ACTIVE_SALES_AGENTS.map((a) => ({ value: a, label: a }));
 
 const inputClass =
   "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";

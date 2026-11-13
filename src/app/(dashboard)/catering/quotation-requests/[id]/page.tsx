@@ -17,7 +17,7 @@ import {
   type RequestRequirements,
 } from "@/lib/catering/quotationRequest";
 import { formatCurrency, formatMalaysiaDate, formatMalaysiaDateTime, formatPrice, formatTime12 } from "@/lib/format";
-import { RequestNotes, RequestTrackingForm } from "@/components/catering/QuotationRequestInbox";
+import { RequestDetailsEditor, RequestNotes, RequestTrackingForm } from "@/components/catering/QuotationRequestInbox";
 
 const card = "rounded-xl border border-border bg-surface p-5 shadow-sm";
 const heading = "mb-3 text-[13px] font-extrabold uppercase tracking-wide text-text-muted";
@@ -84,6 +84,25 @@ export default async function QuotationRequestPage({ params, searchParams }: { p
         <div className="flex flex-col gap-5">
           <section className={card}>
             <div className={heading}>Customer &amp; event</div>
+            <RequestDetailsEditor
+              requestId={r.id}
+              backHref={`/catering/quotation-requests${query}`}
+              initial={{
+                customerName: r.customer_name ?? "",
+                picName: r.pic_name ?? "",
+                picPhone: r.pic_phone ?? "",
+                contactEmail: r.contact_email ?? "",
+                companyAddress: r.company_address ?? "",
+                eventName: r.event_name ?? "",
+                eventType: r.event_type ?? "",
+                location: r.location ?? "",
+                eventAddress: r.event_address ?? "",
+                salesAgent: r.sales_agent ?? "",
+                kitchenSetup: r.kitchen_setup ?? "",
+                cateringSetup: r.catering_setup ?? "",
+                remarks: r.remarks ?? "",
+              }}
+            >
             <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-[13px]">
               {[
                 ["Customer / company", r.customer_name],
@@ -100,10 +119,11 @@ export default async function QuotationRequestPage({ params, searchParams }: { p
               ].map(([label, value]) => (
                 <div key={label}>
                   <dt className="text-[11.5px] font-semibold text-text-muted">{label}</dt>
-                  <dd className="font-semibold text-text">{value || "—"}</dd>
+                  <dd className="whitespace-pre-line font-semibold text-text">{value || "—"}</dd>
                 </div>
               ))}
             </dl>
+            </RequestDetailsEditor>
           </section>
 
           <section className={card}>
@@ -236,12 +256,19 @@ export default async function QuotationRequestPage({ params, searchParams }: { p
             />
           </section>
 
-          <section className={card}>
-            <div className={heading}>History</div>
+          {/* the audit trail stays closed until the History button is pressed */}
+          <details className={`${card} group`}>
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
+              <span className={heading}>History</span>
+              <span className="rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-[12.5px] font-semibold text-text">
+                <span className="group-open:hidden">Show history ({(history ?? []).length})</span>
+                <span className="hidden group-open:inline">Hide history</span>
+              </span>
+            </summary>
             {(history ?? []).length === 0 ? (
-              <p className="text-[12.5px] text-text-muted">No changes yet.</p>
+              <p className="mt-3 text-[12.5px] text-text-muted">No changes yet.</p>
             ) : (
-              <ul className="flex flex-col gap-2 text-[12.5px]">
+              <ul className="mt-3 flex flex-col gap-2 text-[12.5px]">
                 {(history ?? []).map((h) => (
                   <li key={h.id} className="border-l-2 border-border pl-3">
                     <div className="text-text">
@@ -252,7 +279,7 @@ export default async function QuotationRequestPage({ params, searchParams }: { p
                 ))}
               </ul>
             )}
-          </section>
+          </details>
         </div>
       </div>
     </div>

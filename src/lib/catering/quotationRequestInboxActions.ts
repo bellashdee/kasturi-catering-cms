@@ -125,3 +125,92 @@ export async function deleteRequestNote(noteId: string): Promise<ActionResult> {
     return {};
   }, "Could not delete the note. Please try again.");
 }
+
+/** The details of a request that the inbox people can correct (the event days and menu stay as the agent sent them). */
+export type RequestDetailsInput = {
+  customerName: string;
+  picName: string;
+  picPhone: string;
+  contactEmail: string;
+  companyAddress: string;
+  eventName: string;
+  eventType: string;
+  location: string;
+  eventAddress: string;
+  salesAgent: string;
+  kitchenSetup: string;
+  cateringSetup: string;
+  remarks: string;
+};
+
+const DETAIL_COLUMNS: { key: keyof RequestDetailsInput; column: string; label: string; max: number; required?: boolean }[] = [
+  { key: "customerName", column: "customer_name", label: "Customer / company", max: 200, required: true },
+  { key: "picName", column: "pic_name", label: "Contact person (PIC)", max: 200 },
+  { key: "picPhone", column: "pic_phone", label: "Contact number", max: 50 },
+  { key: "contactEmail", column: "contact_email", label: "E-mail", max: 200 },
+  { key: "companyAddress", column: "company_address", label: "Company address", max: 500 },
+  { key: "eventName", column: "event_name", label: "Event name", max: 500, required: true },
+  { key: "eventType", column: "event_type", label: "Event type", max: 50, required: true },
+  { key: "location", column: "location", label: "Venue", max: 300 },
+  { key: "eventAddress", column: "event_address", label: "Event address", max: 500 },
+  { key: "salesAgent", column: "sales_agent", label: "Sales agent", max: 100 },
+  { key: "kitchenSetup", column: "kitchen_setup", label: "Kitchen set-up", max: 4000 },
+  { key: "cateringSetup", column: "catering_setup", label: "Catering set-up", max: 4000 },
+  { key: "remarks", column: "remarks", label: "Remarks", max: 4000 },
+];
+
+/** Saves corrections to a request's customer and event details; every change goes to its history. */
+export async function updateRequestDetails(requestId: string, input: RequestDetailsInput): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase, userId } = await requireInboxAccess();
+    const { data: before } = await supabase.from("quotation_requests").select("*").eq("id", requestId).maybeSingle();
+    if (!before) throw new Error("This request was not found.");
+    const row = before as unknown as Record<string, string | null>;
+
+    const next: Record<string, string | null> = {};
+    for (const f of DETAIL_COLUMNS) {
+      const value = String(input[f.key] ?? "").trim();
+      if (f.required && !value) throw new Error(`${f.label} cannot be empty.`);
+      if (value.length > f.max) throw new Error(`${f.label}: at most ${f.max} characters.`);
+      next[f.column] = value || null;
+    }
+    const changed = DETAIL_COLUMNS.filter((f) => (row[f.column] ?? null) !== next[f.column]);
+    if (changed.length === 0) return {};
+
+    const patch = Object.fromEntries(changed.map((f) => [f.column, next[f.column]]));
+    const { data: updated, error } = await supabase
+      .from("quotation_requests")
+      .update({ ...patch, updated_at: new Date().toISOString(), updated_by: userId } as never)
+      .eq("id", requestId)
+      .select("id");
+    if (error) throw error;
+    if (!updated?.length) throw new Error("You do not have permission to do this.");
+    const cut = (v: string | null) => (v && v.length > 300 ? `${v.slice(0, 300)}…` : v);
+    const { error: historyError } = await supabase
+      .from("quotation_request_history")
+      .insert(changed.map((f) => ({ request_id: requestId, changed_by: userId, field: f.label, old_value: cut(row[f.column] ?? null), new_value: cut(next[f.column]) })));
+    if (historyError) throw historyError;
+
+    revalidatePath("/catering/quotation-requests");
+    revalidatePath(`/catering/quotation-requests/${requestId}`);
+    return {};
+  }, "Could not save. Please try again.");
+}
+
+/** Deletes a request with its notes, history and attachments (the inbox people only; asked to confirm first on the page). */
+export async function deleteQuotationRequest(requestId: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireInboxAccess();
+    const { data: files } = await supabase.from("quotation_request_files").select("storage_path").eq("request_id", requestId);
+    const { data: deleted, error } = await supabase.from("quotation_requests").delete().eq("id", requestId).select("id");
+    if (error) throw error;
+    if (!deleted?.length) throw new Error("This request was not found, or you do not have permission to delete it.");
+    const paths = (files ?? []).map((f) => f.storage_path).filter(Boolean);
+    if (paths.length > 0) {
+      const { error: storageError } = await supabase.storage.from("quotation-request-files").remove(paths);
+      if (storageError) console.warn("Request deleted; its files could not be removed:", storageError.message);
+    }
+    revalidatePath("/catering/quotation-requests");
+    return {};
+  }, "Could not delete the request. Please try again.");
+}

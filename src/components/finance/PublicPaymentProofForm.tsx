@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { SALES_AGENTS } from "@/lib/catering/constants";
+import { ACTIVE_SALES_AGENTS } from "@/lib/catering/constants";
 import { requestProofUpload, submitPaymentProof } from "@/lib/finance/paymentProofActions";
 import { PAYMENT_REMARK_LABEL, PAYMENT_REMARK_OPTIONS, PROOF_ACCEPT, PROOF_MAX_BYTES, PUBLIC_PAYMENT_METHODS } from "@/lib/finance/paymentProof";
 import { todayInMalaysia } from "@/lib/format";
@@ -97,7 +97,7 @@ export function PublicPaymentProofForm({ companySlug }: { companySlug: string })
         <label className={labelClass} htmlFor="pp-agent">Sales agent *</label>
         <Select id="pp-agent" required value={salesAgent} onChange={(e) => setSalesAgent(e.target.value)} className={inputClass}>
           <option value="">Select your name</option>
-          {SALES_AGENTS.map((a) => <option key={a} value={a}>{a}</option>)}
+          {ACTIVE_SALES_AGENTS.map((a) => <option key={a} value={a}>{a}</option>)}
         </Select>
       </div>
 

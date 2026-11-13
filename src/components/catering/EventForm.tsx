@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createEvent, updateEvent, type EventInput } from "@/lib/catering/actions";
-import { SALES_AGENTS, eventTypeOptions } from "@/lib/catering/constants";
+import { ACTIVE_SALES_AGENTS, eventTypeOptions } from "@/lib/catering/constants";
 import { dayAmount, dayPax, normalizeMenu, type EventDay } from "@/lib/catering/days";
 import { additionalRows, additionalServiceLines, noAdditionalServices, withSecondMenusInRemarks, type AdditionalServices } from "@/lib/catering/quotationRequest";
 import { hasPackagePrice } from "@/lib/kitchen/packages/format";
@@ -24,7 +24,8 @@ const areaClass =
   "mt-1.5 h-20 w-full resize-none rounded-lg border border-border-strong px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
 const labelClass = "text-[12.5px] font-semibold text-text-secondary";
 
-const AGENT_OPTIONS = [{ value: "", label: "None" }, ...SALES_AGENTS.map((a) => ({ value: a, label: a }))];
+/** the agents to choose from; an event that already has an agent who has left keeps showing that name */
+const agentOptions = (current?: string | null) => [{ value: "", label: "None" }, ...[...ACTIVE_SALES_AGENTS, ...(current && !ACTIVE_SALES_AGENTS.includes(current) ? [current] : [])].map((a) => ({ value: a, label: a }))];
 
 /** The menu a package gives a day: the package name, then one menu item on each line. */
 function packageMenuText(pkg: PackageMenu): string {
@@ -202,7 +203,7 @@ export function EventForm({
       <div className={`grid gap-4 ${eventId ? "grid-cols-1" : "grid-cols-2"}`}>
         <div>
           <label className={labelClass}>Sales agent</label>
-          <ChoiceSelect value={form.salesAgent ?? ""} onChange={(v) => set("salesAgent", v)} options={AGENT_OPTIONS} placeholder="Search and choose the sales agent" className={inputClass} />
+          <ChoiceSelect value={form.salesAgent ?? ""} onChange={(v) => set("salesAgent", v)} options={agentOptions(form.salesAgent)} placeholder="Search and choose the sales agent" className={inputClass} />
         </div>
         {!eventId && (
           <div>

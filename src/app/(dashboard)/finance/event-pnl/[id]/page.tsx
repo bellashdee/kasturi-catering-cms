@@ -240,7 +240,7 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
                   <tr key={c.id} className={`border-t border-border align-top ${c.cost_basis === "estimated" ? "bg-surface-alt text-text-muted" : ""}`}>
                     <td className="py-2">{date(c.cost_date)}</td>
                     <td className="py-2 font-semibold text-text">{group.label}<div className="text-[11px] font-normal text-text-muted">{c.cost_class === "direct" ? "Direct" : "Additional"}</div></td>
-                    <td className="py-2">{c.supplier_name ?? "—"}{c.reference_no ? <div className="text-[11.5px]">{c.reference_no}</div> : null}{c.description ? <div className="text-[11.5px] text-text-muted">{c.description}</div> : null}{c.document_id && <div><DocumentViewLink documentId={c.document_id} label="📎 Document" /></div>}{c.supplier_invoice_id && <div className="text-[11px] text-text-muted">Linked supplier invoice</div>}</td>
+                    <td className="py-2">{c.supplier_name ?? "—"}{c.reference_no ? <div className="text-[11.5px]">{c.reference_no}</div> : null}{c.description ? <div className="text-[11.5px] text-text-muted">{c.description}</div> : null}{c.document_id && <div><DocumentViewLink documentId={c.document_id} label="📎 Document" /></div>}{c.supplier_invoice_id && <div><Link href={`/supplier-procurement/invoices/${c.supplier_invoice_id}`} className="text-[11px] font-semibold text-primary hover:underline">Linked supplier invoice →</Link></div>}</td>
                     <td className="py-2"><StatusBadge tone={c.cost_basis === "actual" ? "info" : "warning"}>{COST_BASIS_LABEL[c.cost_basis]}</StatusBadge></td>
                     <td className="py-2 text-right font-semibold">{money(Number(c.amount))}</td>
                     <td className="py-2 text-right"><EntryActions kind="cost" entry={c} eventId={id} companyId={event.company_id} /></td>
@@ -261,7 +261,13 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
 
       <SectionCard title="Audit trail">
         {(auditRows ?? []).length === 0 ? <EmptyRow text="No changes recorded yet." /> : (
-          <ul className="divide-y divide-border text-[12.5px]">
+          // the details stay closed until the button is pressed
+          <details className="group">
+          <summary className="inline-flex cursor-pointer list-none rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-[12.5px] font-semibold text-text [&::-webkit-details-marker]:hidden">
+            <span className="group-open:hidden">Show audit trail ({(auditRows ?? []).length})</span>
+            <span className="hidden group-open:inline">Hide audit trail</span>
+          </summary>
+          <ul className="mt-2 divide-y divide-border text-[12.5px]">
             {(auditRows ?? []).map((a) => (
               <li key={a.id} className="py-2">
                 <div className="flex justify-between gap-3"><span className="font-semibold text-text">{AUDIT_LABEL[a.action] ?? a.action}</span><span className="text-text-muted">{formatMalaysiaDateTime(a.created_at)}</span></div>
@@ -269,6 +275,7 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
               </li>
             ))}
           </ul>
+          </details>
         )}
       </SectionCard>
     </div>

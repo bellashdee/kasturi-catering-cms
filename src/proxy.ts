@@ -11,6 +11,45 @@ const PUBLIC_PATHS = ["/login", "/signup", "/auth"];
 // /supabase is the forwarder to Supabase for the browser (Supabase checks the session itself)
 const OPEN_PATHS = ["/customer-form", "/quotation-form", "/payment-proof-form", "/event-clock", "/api/convert_to_markdown", "/api/resolve-login", "/api/push/notify", "/sw.js", "/manifest.webmanifest", "/supabase"];
 
+/** The lists with the month filter (MonthFilter): opened without a month, they open on this month (Malaysia), not on all months. */
+const MONTH_FILTER_PAGES = new Set([
+  "/bulletin",
+  "/catering/customers/submissions",
+  "/catering",
+  "/catering/quotation-requests",
+  "/catering/quotations",
+  "/driver-logistics/attendance",
+  "/driver-logistics/maintenance",
+  "/driver-logistics",
+  "/finance/invoices",
+  "/finance/payment-proofs",
+  "/hr/documents",
+  "/hr/leave",
+  "/hr/payroll",
+  "/hr/probation",
+  "/kitchen",
+  "/kitchen/plan",
+  "/kitchen/purchase-requests",
+  "/kitchen/stock",
+  "/marketing/content",
+  "/marketing/customers",
+  "/marketing/expenses",
+  "/marketing/leads",
+  "/marketing",
+  "/marketing/promotions",
+  "/marketing/reports",
+  "/spending/budgets",
+  "/spending/expenses",
+  "/supplier-procurement/invoices",
+  "/supplier-procurement/items",
+  "/supplier-procurement/kitchen-requests",
+  "/supplier-procurement/notes",
+  "/supplier-procurement/orders",
+  "/supplier-procurement/payments",
+  "/supplier-procurement/price-quotes",
+]);
+const thisMonthInMalaysia = () => new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 7);
+
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -71,6 +110,14 @@ export async function proxy(request: NextRequest) {
         url.search = "?denied=1";
         return NextResponse.redirect(url);
       }
+    }
+    // a month list opened without a month shows this month; a date range the person chose (From / To) is kept as it is
+    const params = request.nextUrl.searchParams;
+    const hasRange = Array.from(params.keys()).some((k) => k !== "month" && /(from|to)$/i.test(k) && params.get(k));
+    if (MONTH_FILTER_PAGES.has(request.nextUrl.pathname) && !params.has("month") && !hasRange) {
+      const url = request.nextUrl.clone();
+      url.searchParams.set("month", thisMonthInMalaysia());
+      return NextResponse.redirect(url);
     }
   }
 

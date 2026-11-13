@@ -14,7 +14,7 @@ import { MONTH_LABEL } from "@/lib/finance/constants";
 import { formatRM } from "@/lib/finance/payments";
 import { todayInMalaysia } from "@/lib/format";
 
-type Search = { company?: string; period?: string; year?: string; month?: string; quarter?: string; customer?: string; agent?: string; status?: string };
+type Search = { company?: string; period?: string; year?: string; month?: string; week?: string; customer?: string; agent?: string; status?: string };
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const lastDay = (y: number, m: number) => new Date(Date.UTC(y, m, 0)).getUTCDate();
@@ -24,7 +24,7 @@ const inputClass = "mt-1 h-9 rounded-lg border border-border-strong bg-surface p
 const CONFIRMED = ["confirmed", "in_production", "delivered"];
 
 /**
- * Event Management report: the events of a month, a quarter or a year with their actual Profit & Loss (only the revenue and costs saved
+ * Event Management report: the events of a week, a month or a year with their actual Profit & Loss (only the revenue and costs saved
  * on each event's P&L; nothing is estimated). Finance / Admin and the Quotation Request Inbox people can open it.
  */
 export default async function EventReportPage({ searchParams }: { searchParams: Promise<Search> }) {
@@ -60,17 +60,23 @@ export default async function EventReportPage({ searchParams }: { searchParams: 
     );
   }
 
-  // the period: a month, a quarter or a year (Malaysia time)
+  // the period: a week (Monday to Sunday), a month or a year (Malaysia time)
   const today = todayInMalaysia();
   const [nowY, nowM] = today.split("-").map(Number);
-  const period = sp.period === "quarter" || sp.period === "year" ? sp.period : "month";
+  const period = sp.period === "week" || sp.period === "year" ? sp.period : "month";
   const year = Number(sp.year) >= 2000 && Number(sp.year) <= 2100 ? Number(sp.year) : nowY;
   const month = Math.min(12, Math.max(1, Number(sp.month) || nowM));
-  const quarter = Math.min(4, Math.max(1, Number(sp.quarter) || Math.ceil(nowM / 3)));
-  const [fromM, toM] = period === "year" ? [1, 12] : period === "quarter" ? [quarter * 3 - 2, quarter * 3] : [month, month];
-  const start = `${year}-${pad(fromM)}-01`;
-  const end = `${year}-${pad(toM)}-${pad(lastDay(year, toM))}`;
-  const periodLabel = period === "year" ? String(year) : period === "quarter" ? `Q${quarter} ${year}` : `${MONTH_LABEL[month - 1]} ${year}`;
+  const weekDay = sp.week && /^\d{4}-\d{2}-\d{2}$/.test(sp.week) ? sp.week : today;
+  const weekStart = new Date(`${weekDay}T00:00:00Z`);
+  weekStart.setUTCDate(weekStart.getUTCDate() - ((weekStart.getUTCDay() + 6) % 7));
+  const weekEnd = new Date(weekStart);
+  weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const dayLabel = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  const [fromM, toM] = period === "year" ? [1, 12] : [month, month];
+  const start = period === "week" ? iso(weekStart) : `${year}-${pad(fromM)}-01`;
+  const end = period === "week" ? iso(weekEnd) : `${year}-${pad(toM)}-${pad(lastDay(year, toM))}`;
+  const periodLabel = period === "year" ? String(year) : period === "week" ? `Week ${dayLabel(weekStart)} – ${dayLabel(weekEnd)}` : `${MONTH_LABEL[month - 1]} ${year}`;
 
   const status = sp.status && EVENT_STATUS_LABEL[sp.status] ? sp.status : undefined;
   const agent = sp.agent && SALES_AGENTS.includes(sp.agent) ? sp.agent : undefined;
@@ -109,8 +115,8 @@ export default async function EventReportPage({ searchParams }: { searchParams: 
         <label className="text-[12px] font-semibold text-text-secondary">
           Period
           <Select name="period" defaultValue={period} className={`${inputClass} block w-32`}>
+            <option value="week">Weekly</option>
             <option value="month">Monthly</option>
-            <option value="quarter">Quarterly</option>
             <option value="year">Yearly</option>
           </Select>
         </label>
@@ -121,10 +127,8 @@ export default async function EventReportPage({ searchParams }: { searchParams: 
           </Select>
         </label>
         <label className="text-[12px] font-semibold text-text-secondary">
-          Quarter <span className="font-normal text-text-muted">(quarterly)</span>
-          <Select name="quarter" defaultValue={String(quarter)} className={`${inputClass} block w-24`}>
-            {[1, 2, 3, 4].map((q) => <option key={q} value={q}>Q{q}</option>)}
-          </Select>
+          Week of <span className="font-normal text-text-muted">(weekly)</span>
+          <input type="date" name="week" defaultValue={weekDay} className={`${inputClass} block w-40`} />
         </label>
         <label className="text-[12px] font-semibold text-text-secondary">
           Year

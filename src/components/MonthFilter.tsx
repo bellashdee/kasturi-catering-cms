@@ -2,7 +2,10 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-/** Filter of a list by month: a month picker (the list shows what falls in that month) and All months to remove it. The company and the search stay. */
+/**
+ * Filter of a list by month: a month picker with the month before and after (the list shows what falls in that month). A page opened
+ * without a month opens on this month (the proxy adds it, see MONTH_FILTER_PAGES). The company and the search stay.
+ */
 export function MonthFilter({ param = "month" }: { param?: string }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -39,13 +42,6 @@ export function MonthFilter({ param = "month" }: { param?: string }) {
       />
       <button type="button" aria-label="Next month" onClick={() => step(1)} className={btn}>
         ›
-      </button>
-      <button
-        type="button"
-        onClick={() => change("")}
-        className={`h-10 rounded-lg border px-3.5 text-[13px] font-semibold ${value ? "border-border-strong bg-surface text-text" : "border-primary bg-primary text-white"}`}
-      >
-        All months
       </button>
     </div>
   );
