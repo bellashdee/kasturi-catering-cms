@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatMalaysiaDate, formatMalaysiaDateTime, formatPrice } from "@/lib/format";
@@ -18,7 +18,7 @@ import {
   startReview,
   submitRequest,
 } from "@/lib/kitchenPurchase/actions";
-import { itemKey, KITCHEN_EDITABLE, lineTotal, STATUS_LABEL, statusTone, UNITS, type Quote, type RequestItem, type RequestStatus } from "@/lib/kitchenPurchase/shared";
+import { itemKey, KITCHEN_EDITABLE, lineTotal, pastAmount, STATUS_LABEL, statusTone, UNITS, type PastPrice, type Quote, type RequestItem, type RequestStatus } from "@/lib/kitchenPurchase/shared";
 import type { RequestRow, TrailEntry } from "@/lib/kitchenPurchase/queries";
 
 const input = "h-11 w-full rounded-lg border border-border-strong bg-white px-3 text-[14px] outline-none focus:border-primary";
@@ -26,6 +26,7 @@ const btn = "h-11 rounded-lg px-4 text-[14px] font-bold disabled:opacity-60";
 const primary = `${btn} bg-primary text-white hover:bg-primary-hover`;
 const outline = `${btn} border border-border-strong bg-white text-text hover:border-primary hover:text-primary`;
 const danger = `${btn} border border-danger text-danger hover:bg-danger-bg`;
+const cellInput = "h-9 w-full rounded-lg border border-border-strong bg-white px-2.5 text-[14px] outline-none focus:border-primary";
 
 type Draft = { key: string; id?: string; itemName: string; unit: string; quantity: string; menus: string[]; remark: string };
 
@@ -51,6 +52,7 @@ export function RequestWorkspace({
   quotes,
   trail,
   suppliers,
+  pastPrices = {},
   isKitchen,
   isPurchaser,
   canApprove,
@@ -61,6 +63,8 @@ export function RequestWorkspace({
   quotes: Quote[];
   trail: TrailEntry[];
   suppliers: { id: string; name: string }[];
+  /** the last purchase cost of each item (by item key), for the price shown as soon as the quantity is written */
+  pastPrices?: Record<string, PastPrice>;
   isKitchen: boolean;
   isPurchaser: boolean;
   canApprove: boolean;
@@ -117,6 +121,9 @@ export function RequestWorkspace({
     items: rows.map((r) => ({ id: r.id, itemName: r.itemName, unit: r.unit, quantity: r.quantity.trim() === "" ? null : Number(r.quantity), menus: r.menus, remark: r.remark })),
   });
 
+  // the price of every row at the last purchase price, as the quantities are written
+  const pastTotal = rows.reduce((t, r) => t + (pastAmount(r.quantity.trim() === "" ? null : Number(r.quantity), r.unit, pastPrices[itemKey(r.itemName)])?.amount ?? 0), 0);
+
   const grand = items.reduce((t, i) => {
     const q = i.selectedQuoteId ? quoteById.get(i.selectedQuoteId) : undefined;
     return t + (lineTotal(i.quantity, q?.pricePerUnit ?? null) ?? 0);
@@ -147,53 +154,84 @@ export function RequestWorkspace({
       )}
       {message && <div className="rounded-lg bg-success-bg px-4 py-3 text-[14px] text-success">{message}</div>}
 
-      <div className="flex flex-col gap-3">
-        {rows.map((r, i) => {
-          const item = r.id ? itemById.get(r.id) : undefined;
-          const key = itemKey(r.itemName);
-          const options = item ? latestBySupplier(quotes, key) : [];
-          const selected = item?.selectedQuoteId ? quoteById.get(item.selectedQuoteId) : undefined;
-          const total = item ? lineTotal(item.quantity, selected?.pricePerUnit ?? null) : null;
-          const cheapest = options.length > 1 ? Math.min(...options.map((o) => o.pricePerUnit)) : null;
-          const draft = item ? (priceDraft[item.id] ?? { supplierId: "", price: "", note: "" }) : { supplierId: "", price: "", note: "" };
-          const lastFromSupplier = draft.supplierId ? options.find((o) => o.supplierId === draft.supplierId) : undefined;
-          return (
-            <div key={r.key} className="rounded-xl border border-border bg-surface p-4">
-              {kitchenEdit ? (
-                <div className="grid gap-3 sm:grid-cols-[1fr_9rem_9rem_auto]">
-                  <label className="text-[12px] font-semibold text-text-secondary">
-                    Item name
-                    <input value={r.itemName} onChange={(e) => setRows((x) => x.map((y, j) => (j === i ? { ...y, itemName: e.target.value } : y)))} className={`${input} mt-1`} />
-                  </label>
-                  <label className="text-[12px] font-semibold text-text-secondary">
-                    Unit
-                    <select value={r.unit} onChange={(e) => setRows((x) => x.map((y, j) => (j === i ? { ...y, unit: e.target.value } : y)))} className={`${input} mt-1`}>
-                      {UNITS.map((u) => (
-                        <option key={u} value={u}>
-                          {u}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="text-[12px] font-semibold text-text-secondary">
-                    Required quantity
-                    <input inputMode="decimal" value={r.quantity} onChange={(e) => setRows((x) => x.map((y, j) => (j === i ? { ...y, quantity: e.target.value.replace(/[^\d.]/g, "") } : y)))} placeholder="Write it" className={`${input} mt-1`} />
-                  </label>
-                  <button type="button" onClick={() => setRows((x) => x.filter((_, j) => j !== i))} className={`${danger} self-end`} aria-label={`Delete ${r.itemName}`}>
-                    Delete
-                  </button>
-                </div>
-              ) : (
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <div className="text-[16px] font-bold text-text">{r.itemName}</div>
-                  <div className="text-[15px] font-semibold text-text">{r.quantity ? `${r.quantity} ${r.unit}` : `— ${r.unit}`}</div>
-                </div>
-              )}
-              {r.menus.length > 0 && <div className="mt-2 text-[12.5px] text-text-muted">From: {r.menus.join(", ")}</div>}
-              {r.remark && <div className="mt-1 text-[12.5px] text-warning">{r.remark}</div>}
-
-              {item && showPrices && (
-                <div className="mt-3 border-t border-border pt-3">
+      {/* every item in one list: item, required quantity, unit and its price at the last purchase price */}
+      <div className="overflow-x-auto rounded-xl border border-border bg-surface">
+        <table className="w-full min-w-[640px] text-left text-[14px]">
+          <thead className="bg-surface-alt text-[11.5px] font-bold uppercase tracking-wide text-text-muted">
+            <tr>
+              <th className="w-10 px-3 py-2.5">#</th>
+              <th className="px-3 py-2.5">Item</th>
+              <th className="w-32 px-3 py-2.5">Required qty</th>
+              <th className="w-32 px-3 py-2.5">Unit</th>
+              <th className="w-40 px-3 py-2.5 text-right">Price (RM)</th>
+              {kitchenEdit && <th className="w-12 px-2 py-2.5" />}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((r, i) => {
+              const item = r.id ? itemById.get(r.id) : undefined;
+              const key = itemKey(r.itemName);
+              const options = item ? latestBySupplier(quotes, key) : [];
+              const selected = item?.selectedQuoteId ? quoteById.get(item.selectedQuoteId) : undefined;
+              const total = item ? lineTotal(item.quantity, selected?.pricePerUnit ?? null) : null;
+              const cheapest = options.length > 1 ? Math.min(...options.map((o) => o.pricePerUnit)) : null;
+              const draft = item ? (priceDraft[item.id] ?? { supplierId: "", price: "", note: "" }) : { supplierId: "", price: "", note: "" };
+              const lastFromSupplier = draft.supplierId ? options.find((o) => o.supplierId === draft.supplierId) : undefined;
+              const past = pastAmount(r.quantity.trim() === "" ? null : Number(r.quantity), r.unit, pastPrices[key]);
+              return (
+                <Fragment key={r.key}>
+                  <tr>
+                    <td className="px-3 py-2 align-top font-semibold text-text-muted">{i + 1}</td>
+                    <td className="px-3 py-2 align-top">
+                      {kitchenEdit ? (
+                        <input value={r.itemName} onChange={(e) => setRows((x) => x.map((y, j) => (j === i ? { ...y, itemName: e.target.value } : y)))} className={cellInput} aria-label="Item" />
+                      ) : (
+                        <div className="font-bold text-text">{r.itemName}</div>
+                      )}
+                      {r.menus.length > 0 && <div className="mt-0.5 text-[11.5px] text-text-muted">{r.menus.join(", ")}</div>}
+                      {r.remark && <div className="mt-0.5 text-[11.5px] text-warning">{r.remark}</div>}
+                    </td>
+                    <td className="px-3 py-2 align-top">
+                      {kitchenEdit ? (
+                        <input inputMode="decimal" value={r.quantity} onChange={(e) => setRows((x) => x.map((y, j) => (j === i ? { ...y, quantity: e.target.value.replace(/[^\d.]/g, "") } : y)))} placeholder="Qty" className={cellInput} aria-label={`Required quantity of ${r.itemName}`} />
+                      ) : (
+                        <span className="font-semibold text-text">{r.quantity || "—"}</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 align-top">
+                      {kitchenEdit ? (
+                        <select value={r.unit} onChange={(e) => setRows((x) => x.map((y, j) => (j === i ? { ...y, unit: e.target.value } : y)))} className={cellInput} aria-label="Unit">
+                          {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+                        </select>
+                      ) : (
+                        <span className="text-text-secondary">{r.unit}</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 align-top text-right">
+                      {past ? (
+                        <>
+                          <div className="font-bold text-text">{past.approx ? "≈ " : ""}{formatPrice(past.amount)}</div>
+                          <div className="text-[11px] text-text-muted">
+                            {r.unit === "GRAM" ? `${formatPrice(past.perUnit * 1000)} / KG` : r.unit === "ML" ? `${formatPrice(past.perUnit * 1000)} / LITRE` : `${formatPrice(past.perUnit)} / ${r.unit}`}
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-[12px] text-text-muted">{pastPrices[key] ? "Write the qty" : "No past price"}</span>
+                      )}
+                    </td>
+                    {kitchenEdit && (
+                      <td className="px-2 py-2 align-top">
+                        <button type="button" onClick={() => setRows((x) => x.filter((_, j) => j !== i))} className="h-9 w-9 rounded-lg border border-danger/40 text-danger hover:bg-danger-bg" aria-label={`Delete ${r.itemName}`} title="Delete">
+                          ✕
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                  {item && showPrices && (
+                    <tr className="bg-surface-alt/40">
+                      <td />
+                      <td colSpan={kitchenEdit ? 5 : 4} className="px-3 pb-3 pt-1">
+                <div>
                   {options.length > 0 ? (
                     <ul className="flex flex-col gap-1.5">
                       {options.map((o) => (
@@ -259,10 +297,25 @@ export function RequestWorkspace({
                     </div>
                   )}
                 </div>
-              )}
-            </div>
-          );
-        })}
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            <tr className="border-t border-border bg-surface-alt">
+              <td />
+              <td colSpan={3} className="px-3 py-2.5 text-[13px] font-bold text-text">
+                Estimated cost at the last purchase prices
+                <div className="text-[11px] font-normal text-text-muted">From the supplier purchases recorded before. Items without a past price are not counted.</div>
+              </td>
+              <td className="px-3 py-2.5 text-right text-[15px] font-extrabold text-text">{formatPrice(pastTotal)}</td>
+              {kitchenEdit && <td />}
+            </tr>
+          </tfoot>
+        </table>
       </div>
 
       {kitchenEdit && (

@@ -106,3 +106,40 @@ export function consolidateIngredients(menus: MenuIngredients[]): { itemName: st
     remark: x.units.size > 1 ? `The menus use different units (${[...x.units].join(" / ")}). Kitchen: confirm the unit.` : null,
   }));
 }
+
+/** The last purchase cost of an item (from the stock list, worked out from the supplier purchases): RM per one of its unit. */
+export type PastPrice = { unit: string; cost: number };
+
+/** A unit as its base (grams, millilitres or pieces) and how many of the base one unit is. */
+function baseOf(unit: string): [string, number] | null {
+  const u = unit.trim().toUpperCase().replace(/\./g, "");
+  if (["G", "GM", "GRAM", "GRAMS"].includes(u)) return ["G", 1];
+  if (["KG", "KGS", "KILO"].includes(u)) return ["G", 1000];
+  if (["ML", "MILLILITRE"].includes(u)) return ["ML", 1];
+  if (["L", "LTR", "LITRE", "LITER"].includes(u)) return ["ML", 1000];
+  if (["PCS", "PC", "NOS", "NO", "BIJI", "EA", "UNIT"].includes(u)) return ["PCS", 1];
+  return null;
+}
+
+/**
+ * What a quantity costs at the last purchase price: 5 KG of rice bought at RM 0.0074 a gram is RM 37. Grams and millilitres are taken as
+ * the same (santan, oil: marked approximate); a unit that cannot be turned into the price's unit gives no price.
+ */
+export function pastAmount(quantity: number | null, unit: string, past: PastPrice | undefined): { amount: number; perUnit: number; approx: boolean } | null {
+  if (!past || !(past.cost > 0) || quantity === null || !(quantity > 0)) return null;
+  if (unit.trim().toUpperCase() === past.unit.trim().toUpperCase()) return { amount: quantity * past.cost, perUnit: past.cost, approx: false };
+  const from = baseOf(unit);
+  const to = baseOf(past.unit);
+  if (!from || !to) return null;
+  const sameBase = from[0] === to[0];
+  if (!sameBase && !(["G", "ML"].includes(from[0]) && ["G", "ML"].includes(to[0]))) return null;
+  const perUnit = (past.cost / to[1]) * from[1];
+  return { amount: quantity * perUnit, perUnit, approx: !sameBase };
+}
+
+/**
+ * Dishes the company buys ready-made from outside (fruit, kuih, cakes, mineral water, ice): they need no recipe and no ingredients, so
+ * they are not matched to a recipe and never go into an ingredient list.
+ */
+const BOUGHT_IN = /\b(buah|buah-buahan|buahan|fruits?|kuih|kueh|kuih-muih|kek|cakes?|air mineral|mineral water|ais|ice)\b/i;
+export const isBoughtIn = (menu: string): boolean => BOUGHT_IN.test(menu.replace(/\s+/g, " "));

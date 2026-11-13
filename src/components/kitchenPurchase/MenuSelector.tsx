@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createRequestFromMenus } from "@/lib/kitchenPurchase/actions";
 
-type Dish = { menu: string; recipeId: string | null };
+type Dish = { menu: string; recipeId: string | null; boughtIn?: boolean };
 type Recipe = { id: string; name: string };
 
 const input = "h-11 w-full rounded-lg border border-border-strong bg-white px-3 text-[14px] outline-none focus:border-primary";
@@ -15,7 +15,9 @@ const input = "h-11 w-full rounded-lg border border-border-strong bg-white px-3 
  */
 export function MenuSelector({ eventId, dayId, dishes, recipes }: { eventId: string; dayId: string | null; dishes: Dish[]; recipes: Recipe[] }) {
   const router = useRouter();
-  const [rows, setRows] = useState(() => dishes.map((d) => ({ ...d, on: !!d.recipeId })));
+  // fruit, kuih and the like are bought ready-made: listed apart, never matched to a recipe
+  const boughtIn = dishes.filter((d) => d.boughtIn).map((d) => d.menu);
+  const [rows, setRows] = useState(() => dishes.filter((d) => !d.boughtIn).map((d) => ({ ...d, on: !!d.recipeId })));
   const [extra, setExtra] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,8 +70,14 @@ export function MenuSelector({ eventId, dayId, dishes, recipes }: { eventId: str
             </label>
           </li>
         ))}
-        {rows.length === 0 && <li className="rounded-xl bg-surface-alt px-4 py-3 text-[14px] text-text-secondary">This event has no menu written. Add a menu below.</li>}
+        {rows.length === 0 && <li className="rounded-xl bg-surface-alt px-4 py-3 text-[14px] text-text-secondary">This event has no menu to cook. Add a menu below.</li>}
       </ul>
+
+      {boughtIn.length > 0 && (
+        <div className="rounded-xl border border-border bg-surface-alt px-4 py-3 text-[13.5px] text-text-secondary">
+          <b className="text-text">Bought ready (outsourced), no recipe or ingredients needed:</b> {boughtIn.join(", ")}
+        </div>
+      )}
 
       <div className="flex gap-2">
         <select value={extra} onChange={(e) => setExtra(e.target.value)} className={input} aria-label="Add a menu from the recipe database">

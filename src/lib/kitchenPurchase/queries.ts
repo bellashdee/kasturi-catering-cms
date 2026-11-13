@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { untyped, type Quote, type RequestItem } from "./shared";
+import { itemKey, untyped, type PastPrice, type Quote, type RequestItem } from "./shared";
 
 export type RequestRow = {
   id: string;
@@ -109,4 +109,16 @@ export async function listSuppliersFor(client: SupabaseClient, companyIds: strin
   const { data, error } = await untyped(client).from("suppliers").select("id, name").in("company_id", companyIds).order("name").limit(1000);
   if (error) throw error;
   return (data ?? []) as { id: string; name: string }[];
+}
+
+/** The last purchase cost of each item of a request, by item key (the stock list keeps it from the supplier purchases). */
+export async function pastPricesFor(client: SupabaseClient, companyId: string): Promise<Record<string, PastPrice>> {
+  const { data, error } = await untyped(client).from("ingredients").select("name, unit_of_measure, unit_cost").eq("company_id", companyId).gt("unit_cost", 0).limit(5000);
+  if (error) throw error;
+  const out: Record<string, PastPrice> = {};
+  for (const r of (data ?? []) as { name: string; unit_of_measure: string | null; unit_cost: number | string }[]) {
+    const key = itemKey(r.name);
+    if (!out[key]) out[key] = { unit: r.unit_of_measure ?? "", cost: Number(r.unit_cost) };
+  }
+  return out;
 }

@@ -10,7 +10,7 @@ import { getPlanEvent, listPlanEvents } from "@/lib/kitchenPlan/queries";
 import { dayText, myMoment } from "@/lib/kitchenPlan/schedule";
 import { loadRecipeRefs } from "@/lib/kitchenAi/data";
 import { autoMatch } from "@/lib/kitchenAi/match";
-import { untyped } from "@/lib/kitchenPurchase/shared";
+import { isBoughtIn, untyped } from "@/lib/kitchenPurchase/shared";
 
 /** Step 1: choose the event. Step 2: choose its menus (matched to approved recipes) and make the ingredient list. */
 export default async function PurchaseRequestEventPage({ searchParams }: { searchParams: Promise<{ company?: string; event?: string; day?: string }> }) {
@@ -31,7 +31,8 @@ export default async function PurchaseRequestEventPage({ searchParams }: { searc
     const { data: approved } = await untyped(supabase).from("recipes").select("id, name").eq("company_id", event.companyId).neq("status", "draft").order("name").limit(2000);
     const approvedRefs = (approved ?? []) as { id: string; name: string }[];
     const refs = (await loadRecipeRefs(supabase, event.companyId)).filter((r) => approvedRefs.some((a) => a.id === r.id));
-    const dishes = event.dishes.map((menu) => ({ menu, recipeId: autoMatch(menu, refs)?.recipeId ?? null }));
+    // fruit, kuih and other dishes bought ready-made need no recipe and no ingredients
+    const dishes = event.dishes.map((menu) => (isBoughtIn(menu) ? { menu, recipeId: null, boughtIn: true } : { menu, recipeId: autoMatch(menu, refs)?.recipeId ?? null, boughtIn: false }));
     body = (
       <div className="flex flex-col gap-4">
         <div>

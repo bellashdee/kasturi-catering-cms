@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { canAccessModule } from "@/lib/modules";
-import { getKitchenRequest, listSuppliersFor, requestTrail } from "@/lib/kitchenPurchase/queries";
+import { getKitchenRequest, listSuppliersFor, pastPricesFor, requestTrail } from "@/lib/kitchenPurchase/queries";
 import { RequestWorkspace } from "./RequestWorkspace";
 
 /** One purchase request, opened from the Kitchen tab or from the Purchaser's Supplier & Procurement tab. */
@@ -13,7 +13,7 @@ export async function RequestPageBody({ id, backHref, backLabel, startEditing = 
   const supabase = await createClient();
   const detail = await getKitchenRequest(supabase, id);
   if (!detail) notFound();
-  const [trail, suppliers] = await Promise.all([requestTrail(supabase, id), listSuppliersFor(supabase, [detail.request.company_id])]);
+  const [trail, suppliers, pastPrices] = await Promise.all([requestTrail(supabase, id), listSuppliersFor(supabase, [detail.request.company_id]), pastPricesFor(supabase, detail.request.company_id)]);
   const key = `${detail.request.status}:${detail.request.updated_at ?? ""}:${detail.items.map((i) => `${i.id}${i.quantity}${i.selectedQuoteId ?? ""}`).join("|")}:${detail.quotes.length}`;
   return (
     <div className="flex flex-col gap-4">
@@ -27,6 +27,7 @@ export async function RequestPageBody({ id, backHref, backLabel, startEditing = 
         quotes={detail.quotes}
         trail={trail}
         suppliers={suppliers}
+        pastPrices={pastPrices}
         isKitchen={canAccessModule(session.allowedModules, "kitchen")}
         isPurchaser={canAccessModule(session.allowedModules, "supplier-procurement")}
         canApprove={session.role !== "staff"}
