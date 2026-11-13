@@ -44,7 +44,7 @@ function ChosenChips({ items, onRemove, onClear }: { items: { id: string; label:
   );
 }
 
-export function PurchasePlanner({ companyId, companyName, events, recipeOptions, supplierItems, savedMatches, query, initialMode = "event" }: { companyId: string; companyName: string; events: PlannerEvent[]; recipeOptions: RecipeRef[]; supplierItems: SupplierItemOption[]; savedMatches: Record<string, string>; query: string; initialMode?: "event" | "recipes" }) {
+export function PurchasePlanner({ companyId, companyName, events, recipeOptions, supplierItems, savedMatches, query, initialMode = "event", setMenus = [] }: { companyId: string; companyName: string; events: PlannerEvent[]; recipeOptions: RecipeRef[]; supplierItems: SupplierItemOption[]; savedMatches: Record<string, string>; query: string; initialMode?: "event" | "recipes"; setMenus?: { id: string; name: string; recipeIds: string[] }[] }) {
   const router = useRouter();
   const [eventSearch, setEventSearch] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
@@ -317,6 +317,22 @@ export function PurchasePlanner({ companyId, companyName, events, recipeOptions,
                 </button>
               ))}
             </div>
+            {setMenus.length > 0 && (
+              <label className="mt-3 block text-[12px] font-semibold text-text-secondary">
+                Fixed menu of the day (adds all its recipes)
+                <select
+                  value=""
+                  onChange={(e) => {
+                    const menu = setMenus.find((m) => m.id === e.target.value);
+                    if (menu) setPickedRecipes((p) => Array.from(new Set([...p, ...menu.recipeIds])));
+                  }}
+                  className={`${inputClass} mt-1 block max-w-md`}
+                >
+                  <option value="">Choose a menu (e.g. JDT 3 - Menu 5)...</option>
+                  {setMenus.map((m) => <option key={m.id} value={m.id}>{`${m.name} (${m.recipeIds.length} recipes)`}</option>)}
+                </select>
+              </label>
+            )}
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <input value={recipeSearch} onChange={(e) => setRecipeSearch(e.target.value)} placeholder="Search recipe..." className={`${inputClass} max-w-md`} />
               <button type="button" disabled={shownRecipes.length === 0} onClick={() => setPickedRecipes((p) => Array.from(new Set([...p, ...shownRecipes.map((r) => r.id)])))} className="h-9 rounded-lg border border-border-strong bg-white px-3 text-[12.5px] font-semibold text-text hover:border-primary disabled:opacity-50">

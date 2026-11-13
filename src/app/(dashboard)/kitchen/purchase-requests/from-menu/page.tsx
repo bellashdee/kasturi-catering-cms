@@ -11,6 +11,22 @@ import { listPlannerEvents, loadSupplierItemOptions } from "@/lib/purchasePlanne
 import { loadRecipeRefs } from "@/lib/kitchenAi/data";
 import { loadSavedMatches } from "@/lib/purchasePlanner/matches";
 
+/** The fixed daily menus of the company (Signature Solution: JDT 2 / 3 / 4 / UTM) with the recipes of their dishes. */
+async function loadSetMenus(supabase: Awaited<ReturnType<typeof createClient>>, companyId: string) {
+  const { data } = await (supabase as unknown as { from: (t: string) => any }) // eslint-disable-line @typescript-eslint/no-explicit-any
+    .from("package_menus")
+    .select("id, name, menu_set, sort_order, package_menu_items(recipe_id)")
+    .eq("company_id", companyId)
+    .not("menu_set", "is", null)
+    .order("menu_set")
+    .order("sort_order");
+  return ((data ?? []) as { id: string; name: string; package_menu_items: { recipe_id: string | null }[] }[]).map((m) => ({
+    id: m.id,
+    name: m.name,
+    recipeIds: Array.from(new Set(m.package_menu_items.map((i) => i.recipe_id).filter((x): x is string => !!x))),
+  }));
+}
+
 /**
  * Purchase Request from the menu of an event: choose the event(s), the menu gives the ingredients and their quantities (from the
  * recipes), and the ingredients are ordered from the suppliers who sell them, at their latest price. One purchase order per supplier.
@@ -63,6 +79,7 @@ export default async function PurchaseFromMenuPage({ searchParams }: { searchPar
           savedMatches={Object.fromEntries(await loadSavedMatches(supabase, company.id))}
           query={query}
           initialMode={mode === "manual" ? "recipes" : "event"}
+          setMenus={await loadSetMenus(supabase, company.id)}
         />
       )}
     </div>
