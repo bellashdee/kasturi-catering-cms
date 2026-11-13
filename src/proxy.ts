@@ -9,7 +9,7 @@ const PUBLIC_PATHS = ["/login", "/signup", "/auth"];
 // /api/push/notify is called by the database (a trigger) with a secret; /sw.js and /manifest.webmanifest make the system installable and its notifications work
 // /api/resolve-login turns a username into the email of the account for the sign-in page (before anybody is signed in)
 // /supabase is the forwarder to Supabase for the browser (Supabase checks the session itself)
-const OPEN_PATHS = ["/customer-form", "/quotation-form", "/payment-proof-form", "/event-clock", "/api/convert_to_markdown", "/api/resolve-login", "/api/push/notify", "/sw.js", "/manifest.webmanifest", "/supabase"];
+const OPEN_PATHS = ["/privacy", "/customer-form", "/quotation-form", "/payment-proof-form", "/event-clock", "/api/convert_to_markdown", "/api/resolve-login", "/api/push/notify", "/sw.js", "/manifest.webmanifest", "/supabase"];
 
 /** The lists with the month filter (MonthFilter): opened without a month, they open on this month (Malaysia), not on all months. */
 const MONTH_FILTER_PAGES = new Set([
