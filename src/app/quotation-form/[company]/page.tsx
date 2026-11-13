@@ -23,7 +23,7 @@ export default async function QuotationFormPage({ params }: { params: Promise<{ 
         <QuotationFormTutorial />
       </div>
       <div className="mt-5 rounded-xl border border-border bg-surface p-6 shadow-sm">
-        <PublicQuotationForm companySlug={slug} />
+        <PublicQuotationForm companySlug={slug} fixedCustomer={company.fixedCustomer} fixedAgent={company.fixedAgent} />
       </div>
     </div>
   );

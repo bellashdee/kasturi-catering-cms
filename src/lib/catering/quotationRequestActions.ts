@@ -231,20 +231,33 @@ async function saveQuotationRequest(companySlug: string, input: QuotationRequest
   // a bot fills the hidden field; pretend it worked so it learns nothing
   if (input.website?.trim()) return { ok: true };
 
-  if (!ACTIVE_SALES_AGENTS.includes(input.salesAgent)) throw new Error("Select your name from the sales agent list.");
-  const customerName = clean(input.customerName, 200);
+  // a company with one customer and one agent (Signature Solution: JDT FC, Mr. Ismaizal) fixes both; nothing the browser sends changes them
+  const salesAgent = company.fixedAgent ?? input.salesAgent;
+  if (!company.fixedAgent && !ACTIVE_SALES_AGENTS.includes(salesAgent)) throw new Error("Select your name from the sales agent list.");
+  const customerName = company.fixedCustomer ?? clean(input.customerName, 200);
   if (!customerName) throw new Error("Enter the customer name.");
-  const eventName = clean(input.eventName, 200);
+  const eventName = clean(input.eventName, 500);
   if (!eventName) throw new Error("Enter the event name.");
   if (!EVENT_TYPE_LABEL[input.eventType]) throw new Error("Select the event type.");
-  // the location and the person in charge (name and contact number) are compulsory on this form
   if (!clean(input.location, 300)) throw new Error("Enter the event location.");
-  if (!clean(input.picName, 200)) throw new Error("Enter the PIC (person in charge).");
-  const picPhone = clean(input.picPhone, 50);
-  if (!picPhone) throw new Error("Enter the PIC contact number.");
-  const phoneDigits = picPhone.replace(/\D/g, "").length;
-  if (phoneDigits < 7 || phoneDigits > 15 || !/^[+\d][\d\s()+-]*$/.test(picPhone)) throw new Error("The PIC contact number is not valid.");
-  const contactEmail = clean(input.contactEmail, 200);
+
+  // a saved customer chosen from the list: what the agent left empty comes from the customer's saved contact (read here, never sent to the browser)
+  const adminForCustomer = createAdminClient();
+  const savedCustomer = input.customerId && /^[0-9a-f-]{36}$/i.test(input.customerId)
+    ? (await adminForCustomer.from("customers").select("name, contact_person, phone, email, billing_address").eq("id", input.customerId).eq("company_id", company.id).maybeSingle()).data
+    : null;
+  const picName = clean(input.picName, 200) ?? savedCustomer?.contact_person ?? null;
+  const picPhone = clean(input.picPhone, 50) ?? savedCustomer?.phone ?? null;
+  // the person in charge (name and contact number) is compulsory, except for the fixed customer of Signature Solution
+  if (!company.fixedCustomer) {
+    if (!picName) throw new Error("Enter the PIC (person in charge).");
+    if (!picPhone) throw new Error("Enter the PIC contact number.");
+  }
+  if (picPhone) {
+    const phoneDigits = picPhone.replace(/\D/g, "").length;
+    if (phoneDigits < 7 || phoneDigits > 15 || !/^[+\d][\d\s()+-]*$/.test(picPhone)) throw new Error("The PIC contact number is not valid.");
+  }
+  const contactEmail = clean(input.contactEmail, 200) ?? savedCustomer?.email ?? null;
   if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) throw new Error("The e-mail address is not valid.");
   const requirements = sanitizeRequirements(input.requirements);
 
@@ -273,15 +286,15 @@ async function saveQuotationRequest(companySlug: string, input: QuotationRequest
 
   const { data: saved, error } = await admin.from("quotation_requests").insert({
     company_id: company.id,
-    sales_agent: input.salesAgent,
+    sales_agent: salesAgent,
     customer_name: customerName,
     event_name: eventName,
     event_type: input.eventType,
     location: clean(input.location, 300),
-    pic_name: clean(input.picName, 200),
-    pic_phone: clean(input.picPhone, 50),
+    pic_name: picName,
+    pic_phone: picPhone,
     contact_email: contactEmail,
-    company_address: clean(input.companyAddress, 500),
+    company_address: clean(input.companyAddress, 500) ?? savedCustomer?.billing_address ?? null,
     event_address: clean(input.eventAddress, 500),
     requirements: requirements as unknown as Json,
     kitchen_setup: clean(input.kitchenSetup, 2000),
@@ -309,7 +322,7 @@ async function saveQuotationRequest(companySlug: string, input: QuotationRequest
     const result = await notifyNewQuotationRequest({
       requestCode,
       companyName: company.name,
-      salesAgent: input.salesAgent,
+      salesAgent,
       customerName,
       eventName,
       days,
@@ -358,3 +371,19 @@ async function notifyNewQuotationRequest(r: { requestCode?: string; companyName:
   return sendNotificationEmail({ to, subject: `New quotation request ${r.requestCode ?? ""}: ${r.eventName} (${r.salesAgent})`, text, html });
 }
 
+
+/**
+ * Public (no login): the saved customers of the form's company whose name has the words typed (at least 2 letters), for the agent to
+ * choose one. Only the names go to the browser: the contact details stay on the server and fill the request when it is sent.
+ */
+export async function searchFormCustomers(companySlug: string, text: string): Promise<{ id: string; name: string }[]> {
+  try {
+    const company = INTAKE_COMPANIES[companySlug];
+    const q = (text ?? "").trim().replace(/[%_\\]/g, " ").replace(/\s+/g, " ");
+    if (!company || company.fixedCustomer || q.length < 2 || q.length > 100) return [];
+    const { data } = await createAdminClient().from("customers").select("id, name").eq("company_id", company.id).ilike("name", `%${q}%`).order("name").limit(8);
+    return (data ?? []).map((c) => ({ id: c.id, name: c.name }));
+  } catch {
+    return [];
+  }
+}

@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { requestAttachmentUpload, submitQuotationRequest } from "@/lib/catering/quotationRequestActions";
+import { requestAttachmentUpload, searchFormCustomers, submitQuotationRequest } from "@/lib/catering/quotationRequestActions";
+import { submitCustomerIntake } from "@/lib/catering/intakeActions";
 import { EVENT_TYPE_OPTIONS, ACTIVE_SALES_AGENTS } from "@/lib/catering/constants";
 import { dayAmount, type EventDay } from "@/lib/catering/days";
 import {
@@ -41,6 +42,7 @@ type Header = Omit<QuotationRequestInput, "days" | "extraItems" | "additional" |
 const emptyHeader: Header = {
   salesAgent: "",
   customerName: "",
+  customerId: "",
   eventName: "",
   eventType: "",
   location: "",
@@ -57,8 +59,66 @@ const emptyHeader: Header = {
 
 const sizeText = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
 
-export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
+type NewCustomer = { name: string; contactPerson: string; phone: string; email: string; address: string };
+const emptyCustomer: NewCustomer = { name: "", contactPerson: "", phone: "", email: "", address: "" };
+
+/**
+ * The quotation request form of one company. Signature Solution has one customer (JDT FC) and one agent, so its form asks for neither and
+ * has no PIC; the other companies search the saved customers by name, or add a new customer (sent to the office to check) first.
+ */
+export function PublicQuotationForm({ companySlug, fixedCustomer, fixedAgent }: { companySlug: string; fixedCustomer?: string; fixedAgent?: string }) {
   const [form, setForm] = useState<Header>(emptyHeader);
+  // the saved customers whose name has the words typed (names only: the contact details stay on the server)
+  const [matches, setMatches] = useState<{ id: string; name: string }[]>([]);
+  const [showMatches, setShowMatches] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [newCustomer, setNewCustomer] = useState<NewCustomer>(emptyCustomer);
+  const [customerBusy, setCustomerBusy] = useState(false);
+  const [customerMessage, setCustomerMessage] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    if (fixedCustomer || form.customerId) return;
+    const text = form.customerName.trim();
+    if (text.length < 2) return;
+    let live = true;
+    const timer = setTimeout(() => {
+      void searchFormCustomers(companySlug, text).then((list) => {
+        if (live) setMatches(list);
+      });
+    }, 250);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [companySlug, fixedCustomer, form.customerName, form.customerId]);
+
+  async function saveNewCustomer() {
+    if (!form.salesAgent) {
+      setCustomerMessage({ ok: false, text: "Choose your name (sales agent) first." });
+      return;
+    }
+    setCustomerBusy(true);
+    setCustomerMessage(null);
+    const r = await submitCustomerIntake(companySlug, {
+      salesAgent: form.salesAgent,
+      name: newCustomer.name,
+      contactPerson: newCustomer.contactPerson,
+      phone: newCustomer.phone,
+      email: newCustomer.email,
+      billingAddress: newCustomer.address,
+    });
+    setCustomerBusy(false);
+    if (!r.ok) {
+      setCustomerMessage({ ok: false, text: r.error ?? "Could not save the customer." });
+      return;
+    }
+    // the new customer's details fill the request; the office adds the customer after checking it
+    setForm((f) => ({ ...f, customerId: "", customerName: newCustomer.name.trim(), picName: newCustomer.contactPerson.trim(), picPhone: newCustomer.phone.trim(), contactEmail: newCustomer.email.trim(), companyAddress: newCustomer.address.trim() }));
+    setNewCustomer(emptyCustomer);
+    setAdding(false);
+    setMatches([]);
+    setCustomerMessage({ ok: true, text: "Customer saved and sent to the office. Continue with the request below." });
+  }
   const [days, setDays] = useState<EventDay[]>([emptyDay()]);
   const [extras, setExtras] = useState<ExtraRow[]>([]);
   const [additional, setAdditional] = useState<AdditionalServices>(unansweredAdditionalServices());
@@ -117,13 +177,14 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
 
       setStep("saving");
       const extraItems: ExtraItem[] = extras.map((r) => ({ itemName: r.itemName, quantity: Number(r.quantity) || 0, unitPrice: Number(r.unitPrice) || 0 }));
-      const result = await submitQuotationRequest(companySlug, { ...form, days, extraItems, additional, requirements, attachments });
+      const result = await submitQuotationRequest(companySlug, { ...form, customerId: form.customerId || undefined, days, extraItems, additional, requirements, attachments });
       if (!result.ok) {
         setError(result.error ?? "Something went wrong.");
       } else {
         setSent({ name: form.eventName, code: result.requestCode, warning: result.warning });
         // keep the sales agent selected so several requests can be sent one after another
         setForm({ ...emptyHeader, salesAgent: form.salesAgent });
+        setCustomerMessage(null);
         setDays([emptyDay()]);
         setExtras([]);
         setAdditional(unansweredAdditionalServices());
@@ -148,42 +209,114 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
       )}
       {error && <div className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">{error}</div>}
 
-      <div>
-        <label className={labelClass}>Sales agent *</label>
-        <ChoiceSelect required value={form.salesAgent} onChange={(v) => set("salesAgent", v)} options={AGENT_OPTIONS} placeholder="Search and choose your name" className={inputClass} />
-      </div>
+      {!fixedAgent && (
+        <div>
+          <label className={labelClass}>Sales agent *</label>
+          <ChoiceSelect required value={form.salesAgent} onChange={(v) => set("salesAgent", v)} options={AGENT_OPTIONS} placeholder="Search and choose your name" className={inputClass} />
+        </div>
+      )}
 
-      <div className={sectionTitle}>Customer information</div>
-      <div>
-        <label className={labelClass}>Customer / company name *</label>
-        <input required maxLength={200} value={form.customerName} onChange={(e) => set("customerName", e.target.value)} className={inputClass} />
-      </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      {fixedCustomer ? (
         <div>
-          <label className={labelClass}>Contact person (PIC) *</label>
-          <input required maxLength={200} value={form.picName} onChange={(e) => set("picName", e.target.value)} className={inputClass} placeholder="Person in charge" />
+          <div className={sectionTitle}>Customer</div>
+          <div className="mt-1.5 rounded-lg border border-border bg-surface-alt px-3 py-2.5 text-sm font-bold text-text">{fixedCustomer}</div>
         </div>
-        <div>
-          <label className={labelClass}>Contact number *</label>
-          <input required type="tel" inputMode="tel" maxLength={50} value={form.picPhone} onChange={(e) => set("picPhone", e.target.value)} className={inputClass} placeholder="e.g. 012-3456789" />
-        </div>
-      </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label className={labelClass}>E-mail address</label>
-          <input type="email" maxLength={200} value={form.contactEmail} onChange={(e) => set("contactEmail", e.target.value)} className={inputClass} placeholder="name@company.com" />
-        </div>
-        <div>
-          <label className={labelClass}>Company address</label>
-          <input maxLength={500} value={form.companyAddress} onChange={(e) => set("companyAddress", e.target.value)} className={inputClass} />
-        </div>
-      </div>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className={sectionTitle}>Customer information</div>
+            <button type="button" onClick={() => { setAdding((a) => !a); setCustomerMessage(null); }} className="rounded-lg border border-primary px-3 py-1.5 text-[12.5px] font-semibold text-primary">
+              {adding ? "Close" : "+ New customer (not in the list)"}
+            </button>
+          </div>
+          {customerMessage && <div className={`rounded-lg px-3 py-2 text-[12.5px] ${customerMessage.ok ? "bg-success-bg text-success" : "bg-danger-bg text-danger"}`}>{customerMessage.text}</div>}
+          {adding && (
+            <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface-alt p-3">
+              <p className="text-xs text-text-muted">Fill in the new customer once. It is sent to the office to add, and its details fill this request.</p>
+              <div>
+                <label className={labelClass}>Customer / company name *</label>
+                <input maxLength={200} value={newCustomer.name} onChange={(e) => setNewCustomer((c) => ({ ...c, name: e.target.value }))} className={inputClass} />
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className={labelClass}>Contact person (PIC) *</label>
+                  <input maxLength={200} value={newCustomer.contactPerson} onChange={(e) => setNewCustomer((c) => ({ ...c, contactPerson: e.target.value }))} className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Contact number *</label>
+                  <input type="tel" inputMode="tel" maxLength={50} value={newCustomer.phone} onChange={(e) => setNewCustomer((c) => ({ ...c, phone: e.target.value }))} className={inputClass} placeholder="e.g. 012-3456789" />
+                </div>
+                <div>
+                  <label className={labelClass}>E-mail address</label>
+                  <input type="email" maxLength={200} value={newCustomer.email} onChange={(e) => setNewCustomer((c) => ({ ...c, email: e.target.value }))} className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Company address</label>
+                  <input maxLength={500} value={newCustomer.address} onChange={(e) => setNewCustomer((c) => ({ ...c, address: e.target.value }))} className={inputClass} />
+                </div>
+              </div>
+              <button type="button" disabled={customerBusy || !newCustomer.name.trim() || !newCustomer.contactPerson.trim() || !newCustomer.phone.trim()} onClick={() => void saveNewCustomer()} className="self-start rounded-lg bg-primary px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-60">
+                {customerBusy ? "Saving..." : "Save customer"}
+              </button>
+            </div>
+          )}
+          <div className="relative">
+            <label className={labelClass}>Customer / company name * <span className="font-normal text-text-muted">(type to search the saved customers)</span></label>
+            <input
+              required
+              maxLength={200}
+              value={form.customerName}
+              onChange={(e) => { setForm((f) => ({ ...f, customerName: e.target.value, customerId: "" })); setShowMatches(true); }}
+              onFocus={() => setShowMatches(true)}
+              onBlur={() => setTimeout(() => setShowMatches(false), 150)}
+              autoComplete="off"
+              className={inputClass}
+            />
+            {showMatches && !form.customerId && form.customerName.trim().length >= 2 && matches.length > 0 && (
+              <ul className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-border bg-surface shadow-lg">
+                {matches.map((m) => (
+                  <li key={m.id}>
+                    <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setForm((f) => ({ ...f, customerName: m.name, customerId: m.id })); setShowMatches(false); }} className="block w-full px-3 py-2 text-left text-sm text-text hover:bg-surface-alt">
+                      {m.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {form.customerId ? (
+              <p className="mt-1 text-xs text-success">Saved customer chosen: the contact details left empty below are filled from the customer record.</p>
+            ) : form.customerName.trim().length >= 2 && matches.length === 0 ? (
+              <p className="mt-1 text-xs text-text-muted">Not in the list? Use &quot;+ New customer&quot; above.</p>
+            ) : null}
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>Contact person (PIC) {form.customerId ? "" : "*"}</label>
+              <input required={!form.customerId} maxLength={200} value={form.picName} onChange={(e) => set("picName", e.target.value)} className={inputClass} placeholder={form.customerId ? "Leave empty to use the saved contact" : "Person in charge"} />
+            </div>
+            <div>
+              <label className={labelClass}>Contact number {form.customerId ? "" : "*"}</label>
+              <input required={!form.customerId} type="tel" inputMode="tel" maxLength={50} value={form.picPhone} onChange={(e) => set("picPhone", e.target.value)} className={inputClass} placeholder={form.customerId ? "Leave empty to use the saved number" : "e.g. 012-3456789"} />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>E-mail address</label>
+              <input type="email" maxLength={200} value={form.contactEmail} onChange={(e) => set("contactEmail", e.target.value)} className={inputClass} placeholder="name@company.com" />
+            </div>
+            <div>
+              <label className={labelClass}>Company address</label>
+              <input maxLength={500} value={form.companyAddress} onChange={(e) => set("companyAddress", e.target.value)} className={inputClass} />
+            </div>
+          </div>
+        </>
+      )}
 
       <div className={sectionTitle}>Event information</div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-[2fr_1fr]">
         <div>
           <label className={labelClass}>Event name *</label>
-          <input required maxLength={200} value={form.eventName} onChange={(e) => set("eventName", e.target.value)} className={inputClass} placeholder="e.g. Annual Conference 2026" />
+          <textarea required maxLength={500} rows={2} value={form.eventName} onChange={(e) => set("eventName", e.target.value)} className="mt-1.5 w-full resize-y rounded-lg border border-border-strong px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" placeholder="e.g. Annual Conference 2026 (press Enter for a new line)" />
         </div>
         <div>
           <label className={labelClass}>Event type *</label>
@@ -208,8 +341,8 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
       </div>
 
       <div>
-        <div className={sectionTitle}>Menu &amp; catering requirements</div>
-        <p className="mb-2 text-xs text-text-muted">Optional: write what the customer asked for, in their words.</p>
+        <div className={sectionTitle}>Menu, set-up &amp; other requirements (optional)</div>
+        <p className="mb-2 text-xs text-text-muted">Write what the customer asked for, in their words: the menu, the kitchen and catering set-up, anything else to quote and remarks.</p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className={labelClass}>Number of menu options</label>
@@ -230,6 +363,23 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
               <textarea maxLength={1000} value={requirements[f.key] ?? ""} onChange={(e) => setRequirements((r) => ({ ...r, [f.key]: e.target.value }))} className={areaClass} placeholder={f.placeholder} />
             </div>
           ))}
+          <div>
+            <label className={labelClass}>Kitchen set-up</label>
+            <textarea maxLength={2000} value={form.kitchenSetup} onChange={(e) => set("kitchenSetup", e.target.value)} className={areaClass} placeholder="What the kitchen must prepare / set up" />
+          </div>
+          <div>
+            <label className={labelClass}>Catering set-up</label>
+            <textarea maxLength={2000} value={form.cateringSetup} onChange={(e) => set("cateringSetup", e.target.value)} className={areaClass} placeholder="Buffet line, staff on site" />
+          </div>
+          <div className="sm:col-span-2">
+            <label className={labelClass}>Other extra items to quote</label>
+            <p className="mb-1 text-xs text-text-muted">e.g. equipment hire, service charge.</p>
+            <ExtraItemsEditor rows={extras} onChange={setExtras} />
+          </div>
+          <div className="sm:col-span-2">
+            <label className={labelClass}>Additional remarks</label>
+            <textarea maxLength={2000} value={form.remarks} onChange={(e) => set("remarks", e.target.value)} className={areaClass} />
+          </div>
         </div>
       </div>
 
@@ -260,27 +410,6 @@ export function PublicQuotationForm({ companySlug }: { companySlug: string }) {
         <AdditionalServicesEditor value={additional} onChange={setAdditional} />
       </div>
 
-      <div>
-        <div className={sectionTitle}>Other extra items (optional)</div>
-        <p className="mb-2 text-xs text-text-muted">Anything else to quote, e.g. equipment hire, service charge.</p>
-        <ExtraItemsEditor rows={extras} onChange={setExtras} />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label className={labelClass}>Kitchen set-up</label>
-          <textarea maxLength={2000} value={form.kitchenSetup} onChange={(e) => set("kitchenSetup", e.target.value)} className={areaClass} placeholder="What the kitchen must prepare / set up" />
-        </div>
-        <div>
-          <label className={labelClass}>Catering set-up</label>
-          <textarea maxLength={2000} value={form.cateringSetup} onChange={(e) => set("cateringSetup", e.target.value)} className={areaClass} placeholder="Tables, buffet line, equipment, staff on site" />
-        </div>
-      </div>
-
-      <div>
-        <label className={labelClass}>Additional remarks</label>
-        <textarea maxLength={2000} value={form.remarks} onChange={(e) => set("remarks", e.target.value)} className={areaClass} />
-      </div>
 
       <div className="rounded-lg border border-border bg-surface-alt px-4 py-3 text-[13px] text-text-secondary">
         Estimated total: <span className="text-[15px] font-extrabold text-text">{formatPrice(daysTotal + extrasTotal + additionalTotal)}</span>

@@ -9,6 +9,8 @@ export type ExtraItem = { itemName: string; quantity: number; unitPrice: number 
 export type QuotationRequestInput = {
   salesAgent: string;
   customerName: string;
+  /** a saved customer chosen from the list: its saved contact fills the PIC, number, e-mail and address left empty */
+  customerId?: string;
   eventName: string;
   eventType: string;
   location?: string;
