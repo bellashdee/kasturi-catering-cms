@@ -69,14 +69,9 @@ export default async function PurchaseRequestsPage({
           <p className="mt-0.5 text-[13px] text-text-secondary">{kitchenRequests.length} purchase request{kitchenRequests.length === 1 ? "" : "s"}{monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}</p>
         </div>
         <div className="flex flex-wrap gap-2.5">
-          <Link href={`/kitchen/purchase-requests/from-menu${query ? `${query}&` : "?"}mode=event`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
-            + New Purchase Request (event menu)
-          </Link>
-          <Link href={`/kitchen/purchase-requests/from-menu${query ? `${query}&` : "?"}mode=manual`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
-            + New Purchase Request (key in menu)
-          </Link>
-          <Link href={`/kitchen/purchase-requests/new${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text">
-            + Single item
+          {/* one button: the next page offers the event menu or keying in the menu */}
+          <Link href={`/kitchen/purchase-requests/from-menu${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
+            + New Purchase Request
           </Link>
         </div>
       </div>
