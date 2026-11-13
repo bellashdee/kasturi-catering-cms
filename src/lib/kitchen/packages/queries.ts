@@ -8,6 +8,7 @@ export async function listPackageMenus(supabase: DB, companyIds: string[]) {
     .from("package_menus")
     .select("*, package_menu_items(id), companies(name)")
     .in("company_id", companyIds)
+    .order("sort_order")
     .order("name");
   if (error) throw error;
   return data;

@@ -37,7 +37,9 @@ export default async function PackageMenuDetailPage({
     notFound();
   }
 
-  const itemsByMeal = new Map<string, { item_name: string; sort_order: number }[]>();
+  // a fixed daily menu (Signature Solution: JDT 2 / 3 / 4 / UTM) has no price: its recipes are for this many pax
+  const menuSet = (pkg as { menu_set?: string | null }).menu_set ?? null;
+  const itemsByMeal = new Map<string, { item_name: string; sort_order: number; recipe_id?: string | null }[]>();
   for (const item of pkg.package_menu_items) {
     const list = itemsByMeal.get(item.meal_type) ?? [];
     list.push(item);
@@ -50,8 +52,11 @@ export default async function PackageMenuDetailPage({
   for (const meal of Object.keys(PACKAGE_MEAL_TYPE_LABEL).filter((m) => itemsByMeal.has(m))) {
     itemsByMeal.get(meal)!.forEach((item, li) => {
       menuChoices(item.item_name).forEach((c, ci) => {
-        const best = autoMatch(c.name, refs);
-        dishes.push({ id: `${meal}:${li}:${ci}`, mealLabel: PACKAGE_MEAL_TYPE_LABEL[meal], section: c.section, name: c.name, side: sideOf(c.name, c.section), recipeId: best?.recipeId ?? null, candidates: candidatesFor(c.name, refs) });
+        // a dish loaded from a menu file keeps its exact recipe (several recipes can share the dish name); otherwise the closest match
+        const best = item.recipe_id ?? autoMatch(c.name, refs)?.recipeId ?? null;
+        const candidates = candidatesFor(c.name, refs);
+        const fixed = item.recipe_id && !candidates.some((x) => x.recipeId === item.recipe_id) ? refs.filter((r) => r.id === item.recipe_id).map((r) => ({ recipeId: r.id, name: r.name, score: 1 })) : [];
+        dishes.push({ id: `${meal}:${li}:${ci}`, mealLabel: PACKAGE_MEAL_TYPE_LABEL[meal], section: c.section, name: c.name, side: sideOf(c.name, c.section), recipeId: best, candidates: [...fixed, ...candidates] as typeof candidates });
       });
     });
   }
@@ -88,12 +93,12 @@ export default async function PackageMenuDetailPage({
 
       <div className="grid grid-cols-2 gap-4">
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
-          <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Price per Pax</div>
-          <div className="mt-1 text-xl font-extrabold text-text">{packagePriceLabel(pkg.price_per_pax)}</div>
+          <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">{menuSet ? "Menu" : "Price per pax"}</div>
+          <div className="mt-1 text-xl font-extrabold text-text">{menuSet ?? packagePriceLabel(pkg.price_per_pax)}</div>
         </div>
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
-          <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Minimum Pax</div>
-          <div className="mt-1 text-xl font-extrabold text-text">{pkg.minimum_pax}</div>
+          <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">{menuSet ? "Recipe pax" : "Minimum pax"}</div>
+          <div className="mt-1 text-xl font-extrabold text-text">{pkg.minimum_pax}{menuSet ? " pax" : ""}</div>
         </div>
       </div>
 
