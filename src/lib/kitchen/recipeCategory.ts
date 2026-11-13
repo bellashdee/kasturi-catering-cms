@@ -62,3 +62,10 @@ export function recipeCategory(rawName: string): RecipeCategoryKey {
   if (has(name, ["KOBIS", "SAYUR", "SAWI", "ACAR", "PACERI", "NENAS", "VEGETABLE", "VEGETABLES", "DALCHA", "SERUNDING", "PENCUK", "LEMAK LABU", "SALAD", "KERABU", "ULAM", "POTATO", "POTATOES", "KENTANG", "CORN", "JAGUNG", "BROKOLI", "BROCCOLI", "CARROT", "TERUNG", "BENDI", "LABU", "KACANG", "MUSHROOM", "CENDAWAN", "BROCOLLI", "PUMPKIN", "ZUCHINI", "ZUCCHINI", "VEGE", "KELEDEK", "ONION", "LETTUCE", "LOLLO", "COLESLAW", "CUCUMBER", "TOMATO", "TOMATOES", "LEMON WEDGES", "CABBAGE", "RAITA", "DHAL", "PAKORA", "ALOO", "GOBHI", "BAYAM", "PETOLA", "TAUHU", "TAUFU", "TOFU", "UBI", "SPINACH", "BEANS", "PORIYAL", "KARELA", "CHAP CHAI"])) return "sayur";
   return "lain";
 }
+
+/**
+ * Desserts, kuih, bakery and fruit are bought ready from outside: they are not offered when choosing recipes to cook for a purchase request.
+ */
+const BOUGHT_READY = /\b(BUAH|BUAH-BUAHAN|FRUITS?|TART|TARTS|CAKES?|KEK|BAKERY|PASTRY|PASTRIES|MUFFINS?|BROWNIES?|COOKIES?|DONUTS?|DOUGHNUTS?|CROISSANTS?|PUDDING|PUDING|JELLY|AGAR)\b/;
+export const isBoughtReadyRecipe = (name: string): boolean =>
+  ["dessert", "kuih", "pencuci", "roti"].includes(recipeCategory(name)) || BOUGHT_READY.test(name.trim().toUpperCase());

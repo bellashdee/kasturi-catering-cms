@@ -10,6 +10,7 @@ import type { KItem, KSession, KState, RecipeData } from "@/lib/kitchenAi/types"
 import { loadEventPlan, loadRecipePlan, loadRecipes, createPlannedPurchaseOrders, type EventPlan } from "@/lib/purchasePlanner/actions";
 import type { RecipeRef } from "@/lib/kitchenAi/match";
 import { SIDE_LABEL, sideOf, type KitchenSide } from "@/lib/kitchen/side";
+import { isBoughtReadyRecipe } from "@/lib/kitchen/recipeCategory";
 import { bestSupplierItem, ingredientKey, quantityInUom, rankSupplierItems, type SupplierItemOption } from "@/lib/purchasePlanner/shared";
 import { saveIngredientMatch } from "@/lib/purchasePlanner/matchActions";
 import { SupplierItemPicker } from "@/components/procurement/SupplierItemPicker";
@@ -76,7 +77,8 @@ export function PurchasePlanner({ companyId, companyName, events, recipeOptions,
 
   const shownRecipes = useMemo(() => {
     const words = norm(recipeSearch).split(" ").filter(Boolean);
-    return recipeOptions.filter((r) => r.hasIngredients && (recipeSide === "all" || sideOf(r.name) === recipeSide) && words.every((w) => norm(r.name).includes(w)));
+    // desserts, kuih, bakery and fruit are bought ready: not offered here
+    return recipeOptions.filter((r) => r.hasIngredients && !isBoughtReadyRecipe(r.name) && (recipeSide === "all" || sideOf(r.name) === recipeSide) && words.every((w) => norm(r.name).includes(w)));
   }, [recipeOptions, recipeSearch, recipeSide]);
 
   function startPlan(r: EventPlan) {
@@ -324,7 +326,7 @@ export function PurchasePlanner({ companyId, companyName, events, recipeOptions,
                   value=""
                   onChange={(e) => {
                     const menu = setMenus.find((m) => m.id === e.target.value);
-                    if (menu) setPickedRecipes((p) => Array.from(new Set([...p, ...menu.recipeIds])));
+                    if (menu) setPickedRecipes((p) => Array.from(new Set([...p, ...menu.recipeIds.filter((id) => !isBoughtReadyRecipe(recipeOptions.find((r) => r.id === id)?.name ?? ""))])));
                   }}
                   className={`${inputClass} mt-1 block max-w-md`}
                 >
