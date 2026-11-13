@@ -25,3 +25,6 @@ export const BULLETIN_CATEGORY_TONE: Record<BulletinCategory, "info" | "success"
 export function canPostBulletin(role: string): boolean {
   return role === "super_admin" || role === "company_admin";
 }
+
+/** The reactions everybody can give an announcement (foreign staff too: they read and react). */
+export const BULLETIN_REACTIONS = ["👍", "❤️", "😂", "😮", "🙏", "👏"] as const;

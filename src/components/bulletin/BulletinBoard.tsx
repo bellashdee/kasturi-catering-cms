@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AREA, BTN, BTN_GHOST, BTN_SM_GHOST, Dialog, FIELD, LABEL, Pill } from "@/components/priority/ui";
-import { BULLETIN_CATEGORIES, BULLETIN_CATEGORY_LABEL, BULLETIN_CATEGORY_TONE, type BulletinCategory } from "@/lib/bulletin/constants";
-import { createBulletinPost, deleteBulletinPost, restoreBulletinPost, setBulletinPinned, updateBulletinPost, type BulletinRow } from "@/lib/bulletin/actions";
+import { BULLETIN_CATEGORIES, BULLETIN_CATEGORY_LABEL, BULLETIN_CATEGORY_TONE, BULLETIN_REACTIONS, type BulletinCategory } from "@/lib/bulletin/constants";
+import { createBulletinPost, deleteBulletinPost, restoreBulletinPost, setBulletinPinned, toggleBulletinReaction, updateBulletinPost, type BulletinRow } from "@/lib/bulletin/actions";
 import type { ActionResult } from "@/lib/actionResult";
 import { Select } from "@/components/ui/Select";
 
@@ -23,13 +23,20 @@ export type BoardPost = {
   postedLabel: string;
   /** The signed-in person may change or delete this announcement. */
   editable: boolean;
+  /** the people mentioned */
+  mentions: { id: string; name: string }[];
+  /** the reactions given, by emoji: how many, and whether the signed-in person gave it */
+  reactions: Record<string, { count: number; mine: boolean }>;
 };
+
+export type MentionPerson = { id: string; name: string };
 
 export type PostableCompany = { id: string; name: string };
 
-type Draft = { id: string | null; companyId: string; title: string; body: string; category: BulletinCategory; pinned: boolean; expiresOn: string };
+type Draft = { id: string | null; companyId: string; title: string; body: string; category: BulletinCategory; pinned: boolean; expiresOn: string; mentions: string[] };
 
-export function BulletinBoard({ posts, postable, canPostAll, canPost, emptyText = "No announcements yet." }: { posts: BoardPost[]; postable: PostableCompany[]; canPostAll: boolean; canPost: boolean; emptyText?: string }) {
+export function BulletinBoard({ posts, people = [], postable, canPostAll, canPost, emptyText = "No announcements yet." }: { posts: BoardPost[]; people?: MentionPerson[]; postable: PostableCompany[]; canPostAll: boolean; canPost: boolean; emptyText?: string }) {
+  const [mentionSearch, setMentionSearch] = useState("");
   const router = useRouter();
   const [filter, setFilter] = useState<BulletinCategory | "all">("all");
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -77,7 +84,8 @@ export function BulletinBoard({ posts, postable, canPostAll, canPost, emptyText 
 
   function edit(p: BoardPost) {
     setError(null);
-    setDraft({ id: p.id, companyId: p.companyId ?? "", title: p.title, body: p.body, category: p.category, pinned: p.pinned, expiresOn: p.expiresOn ?? "" });
+    setMentionSearch("");
+    setDraft({ id: p.id, companyId: p.companyId ?? "", title: p.title, body: p.body, category: p.category, pinned: p.pinned, expiresOn: p.expiresOn ?? "", mentions: p.mentions.map((m) => m.id) });
   }
 
   return (
@@ -99,7 +107,8 @@ export function BulletinBoard({ posts, postable, canPostAll, canPost, emptyText 
             className={`${BTN} ml-auto`}
             onClick={() => {
               setError(null);
-              setDraft({ id: null, companyId: defaultCompany, title: "", body: "", category: "company", pinned: false, expiresOn: "" });
+              setMentionSearch("");
+              setDraft({ id: null, companyId: defaultCompany, title: "", body: "", category: "company", pinned: false, expiresOn: "", mentions: [] });
             }}
           >
             + New announcement
@@ -137,6 +146,31 @@ export function BulletinBoard({ posts, postable, canPostAll, canPost, emptyText 
             </div>
             <h2 className="mt-2.5 text-[18px] font-extrabold text-text">{p.title}</h2>
             <p className="mt-2 whitespace-pre-wrap text-[14.5px] leading-relaxed text-text">{p.body}</p>
+            {p.mentions.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5 text-[12.5px]">
+                {p.mentions.map((m) => (
+                  <span key={m.id} className="rounded-full bg-info-bg px-2.5 py-0.5 font-semibold text-info">@{m.name}</span>
+                ))}
+              </div>
+            )}
+            {/* everybody who reads the announcement can react (foreign staff too) */}
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {BULLETIN_REACTIONS.map((emoji) => {
+                const r = p.reactions[emoji];
+                return (
+                  <button
+                    key={emoji}
+                    type="button"
+                    disabled={pending}
+                    onClick={() => run(() => toggleBulletinReaction(p.id, emoji))}
+                    className={`rounded-full border px-2.5 py-0.5 text-[13px] ${r?.mine ? "border-primary bg-primary/10" : "border-border bg-surface hover:bg-surface-alt"} ${r ? "" : "opacity-60 hover:opacity-100"}`}
+                    aria-label={`React ${emoji}`}
+                  >
+                    {emoji}{r ? <span className="ml-1 font-semibold text-text">{r.count}</span> : null}
+                  </button>
+                );
+              })}
+            </div>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[12.5px] text-text-muted">
               <span>{`${p.author ? `${p.author} · ` : ""}${p.postedLabel}${p.expiresOn ? ` · until ${p.expiresOn}` : ""}`}</span>
               {p.editable && (
@@ -168,7 +202,7 @@ export function BulletinBoard({ posts, postable, canPostAll, canPost, emptyText 
             className="flex flex-col gap-4"
             onSubmit={(e) => {
               e.preventDefault();
-              const input = { companyId: draft.companyId || null, title: draft.title, body: draft.body, category: draft.category, pinned: draft.pinned, expiresOn: draft.expiresOn || null };
+              const input = { companyId: draft.companyId || null, title: draft.title, body: draft.body, category: draft.category, pinned: draft.pinned, expiresOn: draft.expiresOn || null, mentions: draft.mentions };
               run(() => (draft.id ? updateBulletinPost(draft.id, input) : createBulletinPost(input)), () => setDraft(null));
             }}
           >
@@ -203,6 +237,34 @@ export function BulletinBoard({ posts, postable, canPostAll, canPost, emptyText 
             <div>
               <label className={LABEL}>Announcement *</label>
               <textarea required maxLength={4000} rows={7} className={AREA} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} />
+            </div>
+            <div>
+              <label className={LABEL}>Mention (optional, one or more people)</label>
+              {draft.mentions.length > 0 && (
+                <div className="mb-1.5 flex flex-wrap gap-1.5">
+                  {draft.mentions.map((id) => (
+                    <button key={id} type="button" onClick={() => setDraft({ ...draft, mentions: draft.mentions.filter((x) => x !== id) })} className="rounded-full bg-info-bg px-2.5 py-0.5 text-[12.5px] font-semibold text-info">
+                      @{people.find((x) => x.id === id)?.name ?? "Staff"} ✕
+                    </button>
+                  ))}
+                </div>
+              )}
+              <input className={FIELD} value={mentionSearch} onChange={(e) => setMentionSearch(e.target.value)} placeholder="Type a name to find the person" />
+              {mentionSearch.trim().length > 0 && (
+                <ul className="mt-1 max-h-48 overflow-auto rounded-lg border border-border bg-surface">
+                  {people
+                    .filter((x) => !draft.mentions.includes(x.id) && x.name.toLowerCase().includes(mentionSearch.trim().toLowerCase()))
+                    .slice(0, 12)
+                    .map((x) => (
+                      <li key={x.id}>
+                        <button type="button" onClick={() => { setDraft({ ...draft, mentions: [...draft.mentions, x.id] }); setMentionSearch(""); }} className="block w-full px-3 py-1.5 text-left text-[13.5px] text-text hover:bg-surface-alt">
+                          {x.name}
+                        </button>
+                      </li>
+                    ))}
+                </ul>
+              )}
+              <p className="mt-1 text-[11.5px] text-text-muted">Each person mentioned gets a notification on the bell.</p>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>

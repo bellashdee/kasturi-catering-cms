@@ -49,6 +49,24 @@ export default async function BulletinPage({ searchParams }: { searchParams: Pro
   const leaveLater = onLeave.filter((l) => !(l.start_date <= today && l.end_date >= today));
   const dates = (l: OnLeave) => (l.start_date === l.end_date ? formatMalaysiaDate(l.start_date) : `${formatMalaysiaDate(l.start_date)} – ${formatMalaysiaDate(l.end_date)}`);
 
+  // the people who can be mentioned, and the reactions of the announcements shown
+  const loose = supabase as unknown as { rpc: (fn: string) => Promise<{ data: { id: string; full_name: string }[] | null }>; from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const [{ data: peopleRows }, { data: reactionRows }] = await Promise.all([
+    loose.rpc("bulletin_people"),
+    rows.length ? loose.from("bulletin_reactions").select("post_id, user_id, emoji").in("post_id", rows.map((p) => p.id)) : Promise.resolve({ data: [] }),
+  ]);
+  const people = (peopleRows ?? []).map((x) => ({ id: x.id, name: x.full_name }));
+  const nameOf = new Map(people.map((x) => [x.id, x.name]));
+  const reactionsOf = (postId: string) => {
+    const list = ((reactionRows ?? []) as { post_id: string; user_id: string; emoji: string }[]).filter((r) => r.post_id === postId);
+    const byEmoji = new Map<string, { count: number; mine: boolean }>();
+    for (const r of list) {
+      const e = byEmoji.get(r.emoji) ?? { count: 0, mine: false };
+      byEmoji.set(r.emoji, { count: e.count + 1, mine: e.mine || r.user_id === session.userId });
+    }
+    return Object.fromEntries(byEmoji);
+  };
+
   const posts: BoardPost[] = rows.map((p) => ({
     id: p.id,
     companyId: p.company_id,
@@ -63,6 +81,8 @@ export default async function BulletinPage({ searchParams }: { searchParams: Pro
     author: p.created_by_name,
     postedLabel: formatMalaysiaDateTime(p.created_at),
     editable: isLocal || (p.company_id ? adminIds.includes(p.company_id) : session.role === "super_admin"),
+    mentions: (((p as unknown as { mentions?: string[] }).mentions) ?? []).map((id) => ({ id, name: nameOf.get(id) ?? "Staff" })),
+    reactions: reactionsOf(p.id),
   }));
 
   return (
@@ -99,6 +119,7 @@ export default async function BulletinPage({ searchParams }: { searchParams: Pro
       <BulletinBoard
         emptyText={monthLabel ? "No announcements in this month." : undefined}
         posts={posts}
+        people={people}
         postable={companies.filter((c) => postableIds.includes(c.id)).map((c) => ({ id: c.id, name: c.name }))}
         canPostAll={isSuper}
         canPost={canPost && (isSuper || postableIds.length > 0)}
