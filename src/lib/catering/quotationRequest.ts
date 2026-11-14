@@ -49,14 +49,27 @@ export type RequestRequirements = {
   serving?: string;
 };
 
-/** The written requirements, in the order the form and the inbox show them. */
-export const REQUIREMENT_FIELDS: { key: Exclude<keyof RequestRequirements, "menuOptions">; label: string; placeholder: string }[] = [
-  { key: "foodPreferences", label: "Food preferences", placeholder: "e.g. less spicy, more chicken dishes, local favourites" },
-  { key: "dietary", label: "Special dietary requirements", placeholder: "e.g. no seafood, nut allergy, diabetic-friendly" },
-  { key: "vegetarian", label: "Vegetarian requirements", placeholder: "e.g. 10 pax vegetarian, 2 pax vegan" },
-  { key: "equipment", label: "Equipment requirements", placeholder: "e.g. chafing dishes, PA system, warmers" },
-  { key: "tableChair", label: "Table and chair requirements", placeholder: "e.g. 10 round tables, 100 chairs with covers" },
-  { key: "serving", label: "Serving requirements", placeholder: "e.g. waiters to serve VIP table, buffet line refill" },
+type RequirementKey = Exclude<keyof RequestRequirements, "menuOptions">;
+
+/**
+ * The boxes of the request form: one box per kind of need, so nothing is asked twice
+ * (diets include vegetarian; equipment includes tables and chairs; serving includes the set-up at the venue).
+ */
+export const FORM_REQUIREMENT_FIELDS: { key: RequirementKey; label: string; placeholder: string }[] = [
+  { key: "foodPreferences", label: "Food the customer wants", placeholder: "e.g. less spicy, more chicken dishes, local favourites" },
+  { key: "dietary", label: "Allergies and special diets (incl. vegetarian)", placeholder: "e.g. 10 pax vegetarian, no seafood, nut allergy" },
+  { key: "equipment", label: "Equipment, tables and chairs", placeholder: "e.g. 10 round tables, 100 chairs with covers, PA system" },
+  { key: "serving", label: "Serving and set-up at the venue", placeholder: "e.g. buffet line, 4 waiters, serve the VIP table" },
+];
+
+/** Every written requirement, in the order the inbox shows them (older requests can still have the vegetarian / table and chair boxes). */
+export const REQUIREMENT_FIELDS: { key: RequirementKey; label: string; placeholder: string }[] = [
+  FORM_REQUIREMENT_FIELDS[0],
+  FORM_REQUIREMENT_FIELDS[1],
+  { key: "vegetarian", label: "Vegetarian", placeholder: "" },
+  FORM_REQUIREMENT_FIELDS[2],
+  { key: "tableChair", label: "Tables and chairs", placeholder: "" },
+  FORM_REQUIREMENT_FIELDS[3],
 ];
 
 /** One file attached to a request: where it was uploaded and what it is. */

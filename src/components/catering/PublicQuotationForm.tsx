@@ -12,7 +12,7 @@ import {
   ATTACHMENT_EXTENSIONS,
   ATTACHMENT_MAX_BYTES,
   MAX_ATTACHMENTS,
-  REQUIREMENT_FIELDS,
+  FORM_REQUIREMENT_FIELDS,
   additionalServiceLines,
   attachmentExtension,
   unansweredAdditionalServices,
@@ -341,11 +341,11 @@ export function PublicQuotationForm({ companySlug, fixedCustomer, fixedAgent }: 
       </div>
 
       <div>
-        <div className={sectionTitle}>Menu, set-up &amp; other requirements (optional)</div>
-        <p className="mb-2 text-xs text-text-muted">Write what the customer asked for, in their words: the menu, the kitchen and catering set-up, anything else to quote and remarks.</p>
+        <div className={sectionTitle}>What the customer needs (optional)</div>
+        <p className="mb-2 text-xs text-text-muted">Fill in only what the customer asked for. Leave the rest empty.</p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className={labelClass}>Number of menu options</label>
+            <label className={labelClass}>How many menu choices to quote</label>
             <input
               type="number"
               min="1"
@@ -357,27 +357,19 @@ export function PublicQuotationForm({ companySlug, fixedCustomer, fixedAgent }: 
               placeholder="e.g. 2"
             />
           </div>
-          {REQUIREMENT_FIELDS.map((f) => (
+          {FORM_REQUIREMENT_FIELDS.map((f) => (
             <div key={f.key}>
               <label className={labelClass}>{f.label}</label>
               <textarea maxLength={1000} value={requirements[f.key] ?? ""} onChange={(e) => setRequirements((r) => ({ ...r, [f.key]: e.target.value }))} className={areaClass} placeholder={f.placeholder} />
             </div>
           ))}
-          <div>
-            <label className={labelClass}>Kitchen set-up</label>
-            <textarea maxLength={2000} value={form.kitchenSetup} onChange={(e) => set("kitchenSetup", e.target.value)} className={areaClass} placeholder="What the kitchen must prepare / set up" />
-          </div>
-          <div>
-            <label className={labelClass}>Catering set-up</label>
-            <textarea maxLength={2000} value={form.cateringSetup} onChange={(e) => set("cateringSetup", e.target.value)} className={areaClass} placeholder="Buffet line, staff on site" />
-          </div>
           <div className="sm:col-span-2">
-            <label className={labelClass}>Other extra items to quote</label>
-            <p className="mb-1 text-xs text-text-muted">e.g. equipment hire, service charge.</p>
+            <label className={labelClass}>Extra items to add to the quotation</label>
+            <p className="mb-1 text-xs text-text-muted">e.g. canopy hire, transport, service charge.</p>
             <ExtraItemsEditor rows={extras} onChange={setExtras} />
           </div>
           <div className="sm:col-span-2">
-            <label className={labelClass}>Additional remarks</label>
+            <label className={labelClass}>Anything else (remarks)</label>
             <textarea maxLength={2000} value={form.remarks} onChange={(e) => set("remarks", e.target.value)} className={areaClass} />
           </div>
         </div>
