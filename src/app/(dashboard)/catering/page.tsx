@@ -61,6 +61,12 @@ export default async function CateringPage({
     .select("id", { count: "exact", head: true })
     .in("company_id", targetCompanyIds)
     .eq("tracking_status", "new_request");
+  // customer details sent by sales agents through the public form, waiting for the office (also counted in the Catering menu badge)
+  const { count: pendingCustomers } = await supabase
+    .from("customer_intake_submissions")
+    .select("id", { count: "exact", head: true })
+    .in("company_id", targetCompanyIds)
+    .eq("status", "pending");
 
   return (
     <div className="flex flex-col gap-5">
@@ -91,6 +97,12 @@ export default async function CateringPage({
       {pendingRequests ? (
         <Link href={`/catering/quotation-requests${query}`} className="rounded-xl border border-info bg-info-bg px-4 py-3 text-[13px] font-semibold text-text hover:opacity-90">
           {`New quotation requests in the inbox: ${pendingRequests}. They are not events: a confirmed event comes in through the Excel import or New Event.`}
+        </Link>
+      ) : null}
+
+      {pendingCustomers ? (
+        <Link href={`/catering/customers/submissions${query}`} className="rounded-xl border border-info bg-info-bg px-4 py-3 text-[13px] font-semibold text-text hover:opacity-90">
+          {`New customer details from sales agents waiting for review: ${pendingCustomers}. Open to check and approve →`}
         </Link>
       ) : null}
 
