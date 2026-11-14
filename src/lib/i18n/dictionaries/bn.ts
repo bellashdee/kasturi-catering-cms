@@ -791,6 +791,7 @@ const dictionary: Record<string, string> = {
  "Clocked out. The event location could not be checked, so the office will review it.": "ক্লক আউট হয়েছে। অনুষ্ঠানের স্থান যাচাই করা যায়নি, তাই অফিস পর্যালোচনা করবে।",
  "Clocked out. You are {0} m from the event location.": "ক্লক আউট হয়েছে। আপনি অনুষ্ঠানের স্থান থেকে {0} মিটার দূরে আছেন।",
  "Close": "বন্ধ করুন",
+ "No match.": "কোনো মিল নেই।",
  "Close menu": "মেনু বন্ধ করুন",
  "Cocktail / Canapé": "ককটেল / ক্যানাপে",
  "Cocktail Reception": "ককটেল রিসেপশন",

@@ -792,6 +792,7 @@ const dictionary: Record<string, string> = {
  "Clocked out. The event location could not be checked, so the office will review it.": "已下班打卡。无法核对活动地点，办公室会进行审核。",
  "Clocked out. You are {0} m from the event location.": "已下班打卡。您距离活动地点 {0} 米。",
  "Close": "关闭",
+ "No match.": "没有匹配项。",
  "Close menu": "关闭菜单",
  "Cocktail / Canapé": "鸡尾酒会 / 小点",
  "Cocktail Reception": "鸡尾酒会",

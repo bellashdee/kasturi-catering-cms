@@ -789,6 +789,7 @@ const dictionary: Record<string, string> = {
  "Clocked out. The event location could not be checked, so the office will review it.": "Clock out ပြီးပါပြီ။ ပွဲတည်နေရာကို စစ်ဆေး၍ မရသဖြင့် ရုံးမှ ပြန်လည်စစ်ဆေးပါမည်။",
  "Clocked out. You are {0} m from the event location.": "Clock out ပြီးပါပြီ။ သင်သည် ပွဲတည်နေရာမှ {0} မီတာ အကွာတွင် ရှိသည်။",
  "Close": "ပိတ်မည်",
+ "No match.": "ကိုက်ညီသည် မရှိပါ။",
  "Close menu": "မီနူး ပိတ်မည်",
  "Cocktail / Canapé": "ကော့တေးလ် / ကနပေး",
  "Cocktail Reception": "ကော့တေးလ် ဧည့်ခံပွဲ",

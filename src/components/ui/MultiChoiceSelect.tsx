@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/components/i18n/I18nProvider";
+import { useTouchScreen } from "@/lib/useTouchScreen";
 
 /**
  * A choice box in which one or more options can be ticked: open the list, type to search, tick the ones you want. The chosen ones
@@ -26,6 +27,8 @@ export function MultiChoiceSelect({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
+  // on a phone the keyboard does not pop up by itself (it would cover the list): tap the search box to search
+  const touch = useTouchScreen();
 
   useEffect(() => {
     if (!open) return;
@@ -93,15 +96,15 @@ export function MultiChoiceSelect({
         </span>
       </div>
       {open && (
-        <div role="listbox" aria-multiselectable="true" className="absolute left-0 right-0 z-30 mt-1 max-h-72 overflow-y-auto rounded-lg border border-border-strong bg-surface py-1 shadow-lg">
+        <div role="listbox" aria-multiselectable="true" className="absolute left-0 right-0 z-30 mt-1 max-h-72 overflow-y-auto overscroll-contain rounded-lg border border-border-strong bg-surface py-1 shadow-lg">
           <div className="sticky top-0 border-b border-border bg-surface px-2 pb-1.5 pt-1">
             <input
-              autoFocus
+              autoFocus={!touch}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={searchPlaceholder}
               aria-label={searchPlaceholder}
-              className="h-8 w-full rounded-md border border-border-strong px-2 text-[13px] outline-none focus:border-primary"
+              className="h-8 w-full rounded-md border border-border-strong px-2 text-[13px] outline-none focus:border-primary pointer-coarse:h-10 pointer-coarse:text-[16px]"
             />
           </div>
           {all
@@ -109,8 +112,8 @@ export function MultiChoiceSelect({
             .map((o) => {
               const on = value.includes(o);
               return (
-                <label key={o} role="option" aria-selected={on} className={`flex cursor-pointer items-center gap-2.5 px-3 py-2 text-[13.5px] font-semibold hover:bg-surface-alt ${on ? "text-primary" : "text-text"}`}>
-                  <input type="checkbox" checked={on} onChange={() => toggle(o)} className="accent-[var(--color-primary)]" />
+                <label key={o} role="option" aria-selected={on} className={`flex cursor-pointer items-center gap-2.5 px-3 py-2 text-[13.5px] font-semibold hover:bg-surface-alt pointer-coarse:min-h-12 pointer-coarse:py-3 pointer-coarse:text-[15px] ${on ? "text-primary" : "text-text"}`}>
+                  <input type="checkbox" checked={on} onChange={() => toggle(o)} className="accent-[var(--color-primary)] pointer-coarse:h-5 pointer-coarse:w-5" />
                   {o}
                 </label>
               );

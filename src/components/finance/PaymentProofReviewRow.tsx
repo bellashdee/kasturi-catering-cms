@@ -1,5 +1,6 @@
 "use client";
 
+import { reserveTab } from "@/lib/openTab";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { approvePaymentProof, getPaymentProofUrl, rejectPaymentProof } from "@/lib/finance/paymentProofActions";
@@ -41,12 +42,16 @@ export function PaymentProofReviewRow({
   }
 
   async function view() {
+    const tab = reserveTab();
     setBusy("view");
     setError(null);
     const r = await getPaymentProofUrl(proofId);
     setBusy(null);
-    if (r.ok && r.url) window.open(r.url, "_blank", "noopener");
-    else setError(r.error ?? "Could not open the proof file.");
+    if (r.ok && r.url) tab.go(r.url);
+    else {
+      tab.cancel();
+      setError(r.error ?? "Could not open the proof file.");
+    }
   }
 
   async function approve() {

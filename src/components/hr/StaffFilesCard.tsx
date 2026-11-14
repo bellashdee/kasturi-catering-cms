@@ -1,5 +1,6 @@
 "use client";
 
+import { reserveTab } from "@/lib/openTab";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Select } from "@/components/ui/Select";
@@ -25,13 +26,17 @@ export function StaffFileLink({ fileId, download = false, label }: { fileId: str
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   async function open() {
+    const tab = download ? null : reserveTab();
     setBusy(true);
     setError(false);
     const result = await getStaffFileUrl(fileId, download);
     setBusy(false);
-    if (!result.ok) return setError(true);
-    if (download) window.location.assign(result.url);
-    else window.open(result.url, "_blank", "noopener,noreferrer");
+    if (!result.ok) {
+      tab?.cancel();
+      return setError(true);
+    }
+    if (tab) tab.go(result.url);
+    else window.location.assign(result.url);
   }
   return (
     <button type="button" onClick={open} disabled={busy} className={btn}>

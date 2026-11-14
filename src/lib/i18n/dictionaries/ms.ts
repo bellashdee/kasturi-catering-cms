@@ -778,6 +778,7 @@ const dictionary: Record<string, string> = {
  "Clocked out. The event location could not be checked, so the office will review it.": "Clock out berjaya. Lokasi acara tidak dapat disemak, jadi pejabat akan menilainya.",
  "Clocked out. You are {0} m from the event location.": "Clock out berjaya. Anda berada {0} m dari lokasi acara.",
  "Close": "Tutup",
+ "No match.": "Tiada padanan.",
  "Close menu": "Tutup menu",
  "Cocktail / Canapé": "Koktel / Kanape",
  "Cocktail Reception": "Resepsi Koktel",

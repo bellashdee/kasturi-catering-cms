@@ -118,7 +118,7 @@ export function SearchSelect({
                 pick(o);
               }}
               onMouseEnter={() => setActive(i)}
-              className={`cursor-pointer px-3 py-1.5 text-[13px] font-semibold text-text ${i === active ? "bg-info-bg" : ""}`}
+              className={`cursor-pointer px-3 py-1.5 text-[13px] font-semibold text-text pointer-coarse:min-h-12 pointer-coarse:border-b pointer-coarse:border-border pointer-coarse:py-3 pointer-coarse:text-[15px] ${i === active ? "bg-info-bg" : ""}`}
             >
               {o}
             </li>

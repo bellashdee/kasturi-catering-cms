@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { getDocumentSignedUrl } from "@/lib/documents/actions";
+import { reserveTab } from "@/lib/openTab";
 
 /**
  * Opens a private "documents" bucket file in a new tab via a freshly
@@ -24,13 +25,16 @@ export function DocumentViewLink({
   const [error, setError] = useState(false);
 
   async function open() {
+    // the new tab is opened at the tap itself (phones block one opened after the wait for the link)
+    const tab = download ? null : reserveTab();
     setLoading(true);
     setError(false);
     try {
       const url = await getDocumentSignedUrl(documentId, download);
-      if (download) window.location.assign(url);
-      else window.open(url, "_blank", "noopener,noreferrer");
+      if (tab) tab.go(url);
+      else window.location.assign(url);
     } catch {
+      tab?.cancel();
       setError(true);
     } finally {
       setLoading(false);

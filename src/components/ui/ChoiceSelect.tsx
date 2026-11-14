@@ -3,6 +3,7 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useI18n } from "@/components/i18n/I18nProvider";
+import { useTouchScreen } from "@/lib/useTouchScreen";
 
 export type Choice = { value: string; label: string };
 
@@ -51,6 +52,15 @@ export function ChoiceSelect({
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // on a phone the list opens as a big list from the bottom of the screen (rows easy to tap, no keyboard unless searching)
+  const touch = useTouchScreen();
+  const [sheet, setSheet] = useState(false);
+  const [sheetSearch, setSheetSearch] = useState("");
+  function openSheet() {
+    if (disabled) return;
+    setSheetSearch("");
+    setSheet(true);
+  }
 
   const exact = (s: string) => options.find((o) => norm(o.label) === norm(s));
   const valid = !!exact(text) && exact(text)?.value === value;
@@ -93,7 +103,11 @@ export function ChoiceSelect({
     onChange(o.value);
     setOpen(false);
     setActive(-1);
+    setSheet(false);
   }
+
+  const sheetWords = norm(sheetSearch).split(" ").filter(Boolean);
+  const sheetMatches = options.filter((o) => sheetWords.every((w) => norm(o.label).includes(w)));
 
   return (
     <div className={`relative ${className?.includes("w-full") ? "block w-full" : "inline-block"}`}>
@@ -113,7 +127,12 @@ export function ChoiceSelect({
           if (hit) onChange(hit.value);
           else if (value !== "" || selected) onChange("");
         }}
-        onFocus={() => {
+        onFocus={(e) => {
+          if (touch) {
+            e.currentTarget.blur();
+            openSheet();
+            return;
+          }
           if (closeTimer.current) clearTimeout(closeTimer.current);
           setOpen(true);
         }}
@@ -144,6 +163,7 @@ export function ChoiceSelect({
         }}
         placeholder={placeholder}
         autoComplete="off"
+        inputMode={touch ? "none" : undefined}
         role="combobox"
         aria-expanded={showList}
         aria-controls={listId}
@@ -157,6 +177,7 @@ export function ChoiceSelect({
         aria-label="Show the list"
         onMouseDown={(e) => {
           e.preventDefault();
+          if (touch) return openSheet();
           setOpen((o) => !o);
           inputRef.current?.focus();
         }}
@@ -166,7 +187,52 @@ export function ChoiceSelect({
           <path d="M5 8l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
-      {showList &&
+      {touch &&
+        sheet &&
+        createPortal(
+          <div className="fixed inset-0 z-[80] flex flex-col justify-end bg-black/40" onClick={() => setSheet(false)}>
+            <div
+              role="dialog"
+              aria-modal="true"
+              onClick={(e) => e.stopPropagation()}
+              className="flex max-h-[80vh] flex-col rounded-t-2xl bg-surface pb-[env(safe-area-inset-bottom)] shadow-2xl"
+            >
+              <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+                <input
+                  value={sheetSearch}
+                  onChange={(e) => setSheetSearch(e.target.value)}
+                  placeholder={t("Search")}
+                  aria-label={t("Search")}
+                  className="h-11 min-w-0 flex-1 rounded-lg border border-border-strong px-3 text-[16px] outline-none focus:border-primary"
+                />
+                <button type="button" onClick={() => setSheet(false)} className="h-11 shrink-0 rounded-lg px-3 text-[15px] font-semibold text-text-secondary">
+                  {t("Close")}
+                </button>
+              </div>
+              <ul role="listbox" className="overflow-y-auto overscroll-contain py-1">
+                {sheetMatches.length === 0 ? (
+                  <li className="px-4 py-4 text-[15px] text-text-muted">{t("No match.")}</li>
+                ) : (
+                  sheetMatches.map((o) => (
+                    <li key={o.value || "__empty"} role="option" aria-selected={o.value === value}>
+                      <button
+                        type="button"
+                        onClick={() => pick(o)}
+                        className={`flex min-h-12 w-full items-center justify-between gap-3 border-b border-border px-4 py-3 text-left text-[15px] font-semibold active:bg-surface-alt ${o.value === value ? "bg-info-bg text-primary" : "text-text"}`}
+                      >
+                        <span>{o.label}</span>
+                        {o.value === value && <span aria-hidden="true">✓</span>}
+                      </button>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+          </div>,
+          document.body,
+        )}
+      {!touch &&
+        showList &&
         box &&
         createPortal(
           <ul
