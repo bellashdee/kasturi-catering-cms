@@ -14,6 +14,7 @@ import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { ReportTable } from "@/components/reports/ReportTable";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
+import { DonutChart, MonthColumns, RED } from "@/components/reports/Charts";
 import { SoftPage } from "@/components/ui/Soft";
 import { readSort, sortBy } from "@/lib/listSort";
 
@@ -24,6 +25,8 @@ const ENTITY_LABEL: Record<Entity, string> = { K: "Kasturi Indah Sdn Bhd", SSC: 
 type Pay = "none" | "unpaid" | "part" | "paid";
 const PAY_LABEL: Record<Pay, string> = { none: "Not invoiced yet", unpaid: "Invoiced, not paid", part: "Part paid", paid: "Paid" };
 const PAY_TONE: Record<Pay, "neutral" | "danger" | "warning" | "success"> = { none: "neutral", unpaid: "danger", part: "warning", paid: "success" };
+const PAY_ORDER: Pay[] = ["paid", "part", "unpaid", "none"];
+const PAY_COLOR: Record<Pay, string> = { paid: "#2e9e6b", part: "#e0a030", unpaid: RED, none: "#8a8f98" };
 
 /** The company of the sheet: Kasturi Indah is K; Signature Solution is SSC for the JDT game match events and SS for the rest. */
 function entityOf(companyName: string | undefined, eventName: string, customerName: string | undefined): Entity {
@@ -142,7 +145,17 @@ export default async function EventSummaryReportPage({
     serving.set(label, (serving.get(label) ?? 0) + e.revenue);
   }
   const byServing = Array.from(serving.entries()).map(([label, value]) => ({ label, value })).filter((x) => x.value > 0).sort((a, b) => b.value - a.value);
-  const byMonth = MONTH_LABEL.map((m, i) => ({ label: `${m} ${year}`, value: sum(all.filter((e) => Number(e.event_date.slice(5, 7)) === i + 1 && (!entityFilter || e.entity === entityFilter))) })).filter((x) => x.value > 0);
+  // the year month by month, each month split by payment status (the company filter applies, the month and event status do not)
+  const yearRows = all.filter((e) => !entityFilter || e.entity === entityFilter);
+  const byMonth = PAY_ORDER.map((p) => ({
+    label: PAY_LABEL[p],
+    color: PAY_COLOR[p],
+    values: MONTH_LABEL.map((_, i) => sum(yearRows.filter((e) => e.pay === p && Number(e.event_date.slice(5, 7)) === i + 1))),
+  }));
+  const byPay = PAY_ORDER.map((p) => {
+    const list = monthRows.filter((e) => e.pay === p);
+    return { label: PAY_LABEL[p], value: sum(list), color: PAY_COLOR[p], note: `${list.length} event${list.length === 1 ? "" : "s"}` };
+  });
   const notInvoiced = monthRows.filter((e) => e.pay === "none");
 
   const { headers, tableRows } = buildReportRows(
@@ -199,6 +212,10 @@ export default async function EventSummaryReportPage({
         <Stat label="Not invoiced yet" value={formatCurrency(sum(notInvoiced))} sub={`${notInvoiced.length} event${notInvoiced.length === 1 ? "" : "s"} with no invoice linked`} />
       </div>
 
+      <SectionCard title={`Payment Status — ${periodLabel}`}>
+        <DonutChart slices={byPay} centerLabel="Revenue" empty="No events with revenue for this period." />
+      </SectionCard>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <SectionCard title={`Revenue by Company — ${periodLabel}`}>
           {byEntity.length === 0 ? <EmptyRow text="No events for this period." /> : <Bars items={byEntity} />}
@@ -209,7 +226,8 @@ export default async function EventSummaryReportPage({
       </div>
 
       <SectionCard title={`Month by Month — ${year}`}>
-        {byMonth.length === 0 ? <EmptyRow text="No events with revenue this year." /> : <Bars items={byMonth} />}
+        <p className="mb-3 text-[12.5px] text-text-secondary">The revenue of the events of each month, split by whether the invoice is paid.</p>
+        <MonthColumns series={byMonth} empty="No events with revenue this year." />
       </SectionCard>
 
       <ReportTable filenameBase={`event-summary-${year}-${month || "all"}`} headers={headers} rows={tableRows} emptyText="No events for this filter." />
