@@ -12,6 +12,8 @@ import { ReportTable } from "@/components/reports/ReportTable";
 import { buildReportRows } from "@/lib/reports/buildRows";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
+import { CHART_COLORS, DonutChart, RED } from "@/components/reports/Charts";
+import { RankBars } from "@/components/reports/RankBars";
 import { readSort, sortBy } from "@/lib/listSort";
 
 const SORTS = { date: "Date", event: "Event", driver: "Driver", vehicle: "Vehicle", status: "Status" };
@@ -67,6 +69,18 @@ export default async function DriverReportPage({
   const filteredExpenses = categoryParam ? monthExpenses.filter((e) => e.category === categoryParam) : monthExpenses;
   const totalExpenses = filteredExpenses.reduce((t, e) => t + Number(e.amount), 0);
 
+  // charts of the period: the deliveries by status, the running costs by category and the deliveries of each driver
+  const STATUS_COLOR: Record<string, string> = { scheduled: "#2f7fc1", in_transit: "#e0a030", delivered: "#2e9e6b", cancelled: RED };
+  const byStatus = Object.entries(DELIVERY_STATUS_LABEL).map(([k, label]) => ({ label, value: monthDeliveries.filter((d) => d.status === k).length, color: STATUS_COLOR[k] }));
+  const byCategory = Object.entries(EXPENSE_CATEGORY_LABEL).map(([k, label], i) => ({ label, value: monthExpenses.filter((e) => e.category === k).reduce((t, e) => t + Number(e.amount), 0), color: CHART_COLORS[i % CHART_COLORS.length] }));
+  const perDriver = new Map<string, number>();
+  for (const d of monthDeliveries) {
+    if (d.status === "cancelled") continue;
+    const name = d.employees?.full_name ?? "No driver";
+    perDriver.set(name, (perDriver.get(name) ?? 0) + 1);
+  }
+  const byDriver = Array.from(perDriver.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([label, value]) => ({ label, value }));
+
   const { headers, tableRows } = buildReportRows(
     rows,
     [
@@ -112,6 +126,19 @@ export default async function DriverReportPage({
 
       <SectionCard title={`Vehicle Running Costs (${categoryParam ? EXPENSE_CATEGORY_LABEL[categoryParam] : "All Categories"})`}>
         <div className="text-xl font-extrabold text-text">{formatCurrency(totalExpenses)}</div>
+      </SectionCard>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <SectionCard title="Deliveries by Status">
+          <DonutChart slices={byStatus} centerLabel="Deliveries" unit="count" empty="No deliveries in this period." />
+        </SectionCard>
+        <SectionCard title="Running Costs by Category">
+          <DonutChart slices={byCategory} centerLabel="Running costs" empty="No running costs in this period." />
+        </SectionCard>
+      </div>
+
+      <SectionCard title="Deliveries by Driver (top 10)">
+        <RankBars items={byDriver} format={(n: number) => n.toLocaleString("en-MY")} empty="No deliveries in this period." />
       </SectionCard>
 
       <ReportTable
