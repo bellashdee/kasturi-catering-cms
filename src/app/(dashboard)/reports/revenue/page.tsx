@@ -13,6 +13,9 @@ import { buildReportRows } from "@/lib/reports/buildRows";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { InvoiceListingView, RevenueViewTabs } from "@/components/reports/InvoiceListingView";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { date: "Payment date", customer: "Customer", invoice: "Invoice No.", amount: "Amount", status: "Status" };
 
 function currentYearMonth() {
   return malaysiaYearMonth();
@@ -21,14 +24,15 @@ function currentYearMonth() {
 export default async function RevenueReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; year?: string; month?: string; from?: string; to?: string; status?: string; view?: string; entity?: string }>;
+  searchParams: Promise<{ company?: string; year?: string; month?: string; from?: string; to?: string; status?: string; view?: string; entity?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
   const params = await searchParams;
   // "Invoices issued": the invoice listing view of this report (the month filter there is a plain month number)
-  if (params.view === "invoiced") return <InvoiceListingView entity={params.entity} month={params.month} />;
+  if (params.view === "invoiced") return <InvoiceListingView entity={params.entity} month={params.month} sortParam={params.sort} dirParam={params.dir} />;
+  const { sort, dir } = readSort(params, SORTS, "date", "desc");
 
   const supabase = await createClient();
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
@@ -48,7 +52,13 @@ export default async function RevenueReportPage({
   const range = parseDateRange(fromParam, toParam);
 
   const allRows = await getRevenueReportRows(supabase, targetCompanyIds, year, month, range);
-  const rows = statusParam ? allRows.filter((r) => r.customer_invoices?.status === statusParam) : allRows;
+  const rows = sortBy(statusParam ? allRows.filter((r) => r.customer_invoices?.status === statusParam) : allRows, sort, dir, {
+    date: (r) => r.payment_date,
+    customer: [(r) => r.customer_invoices?.customers?.name, (r) => r.payment_date],
+    invoice: (r) => r.customer_invoices?.invoice_number,
+    amount: (r) => Number(r.amount),
+    status: [(r) => (r.customer_invoices?.status ? INVOICE_STATUS_LABEL[r.customer_invoices.status] ?? r.customer_invoices.status : null), (r) => r.payment_date],
+  });
   const total = rows.reduce((t, r) => t + Number(r.amount), 0);
 
   const { headers, tableRows } = buildReportRows(
@@ -87,6 +97,10 @@ export default async function RevenueReportPage({
       <RevenueViewTabs active="received" />
 
       <ReportFilterBar
+        path="/reports/revenue"
+        sortOptions={SORTS}
+        sort={sort}
+        dir={dir}
         requestedCompanyId={requestedId}
         year={year}
         month={month}

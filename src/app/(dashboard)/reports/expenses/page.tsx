@@ -12,6 +12,9 @@ import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { ReportTable } from "@/components/reports/ReportTable";
 import { buildReportRows } from "@/lib/reports/buildRows";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { amount: "Amount", date: "Date", module: "Module", category: "Category", department: "Department" };
 
 function currentYearMonth() {
   return malaysiaYearMonth();
@@ -20,7 +23,7 @@ function currentYearMonth() {
 export default async function ExpenseReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; year?: string; month?: string; from?: string; to?: string; department?: string; category?: string }>;
+  searchParams: Promise<{ company?: string; year?: string; month?: string; from?: string; to?: string; department?: string; category?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -29,7 +32,9 @@ export default async function ExpenseReportPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, year: yearParam, month: monthParam, from: fromParam, to: toParam, department: departmentParam, category: categoryParam } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, year: yearParam, month: monthParam, from: fromParam, to: toParam, department: departmentParam, category: categoryParam } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "amount", "desc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -49,18 +54,28 @@ export default async function ExpenseReportPage({
 
   const companyName = new Map(companies.map((c) => [c.id, c.name]));
   const departments = Array.from(new Set(allRows.map((r) => r.department).filter((d): d is string => !!d))).sort();
-  const rows = allRows
-    .filter((r) => {
+  const rows = sortBy(
+    allRows.filter((r) => {
       if (departmentParam && !sameLabel(r.department, departmentParam)) return false;
       if (categoryParam && !sameLabel(r.category, categoryParam)) return false;
       return true;
-    })
-    .sort((a, b) => b.amount - a.amount);
+    }),
+    sort,
+    dir,
+    {
+      amount: (r) => r.amount,
+      date: [(r) => r.date, (r) => r.amount],
+      module: [(r) => r.source, (r) => r.amount],
+      category: [(r) => r.category, (r) => r.amount],
+      department: [(r) => r.department, (r) => r.amount],
+    },
+  );
   const total = rows.reduce((t, r) => t + r.amount, 0);
 
   const { headers, tableRows } = buildReportRows(
     rows,
     [
+      { key: "date", label: "Date", exportValue: (r) => r.date },
       { key: "source", label: "Module", exportValue: (r) => r.source },
       { key: "category", label: "Category", exportValue: (r) => r.category },
       { key: "department", label: "Department", exportValue: (r) => r.department ?? "—" },
@@ -79,6 +94,10 @@ export default async function ExpenseReportPage({
       </div>
 
       <ReportFilterBar
+        path="/reports/expenses"
+        sortOptions={SORTS}
+        sort={sort}
+        dir={dir}
         requestedCompanyId={requestedId}
         year={year}
         month={month}

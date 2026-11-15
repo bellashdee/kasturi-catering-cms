@@ -13,11 +13,14 @@ import { ReportTable } from "@/components/reports/ReportTable";
 import { buildReportRows } from "@/lib/reports/buildRows";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { date: "Invoice date", invoice: "Invoice No.", customer: "Customer", due: "Due date", balance: "Balance owed" };
 
 export default async function CustomerOutstandingReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; status?: string; year?: string; month?: string }>;
+  searchParams: Promise<{ company?: string; status?: string; year?: string; month?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -26,7 +29,9 @@ export default async function CustomerOutstandingReportPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, status: statusParam, year: yearParam, month: monthParam } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, status: statusParam, year: yearParam, month: monthParam } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "date", "desc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -42,7 +47,18 @@ export default async function CustomerOutstandingReportPage({
   const year = Number(yearParam) || (month ? malaysiaYearMonth().year : 0);
   const inPeriod = (date: string) => (!year || Number(date.slice(0, 4)) === year) && (!month || Number(date.slice(5, 7)) === month);
   const periodLabel = month ? `${MONTH_LABEL[month - 1]} ${year}` : year ? String(year) : "all months";
-  const rows = outstanding.filter((i) => inPeriod(i.invoice_date) && (!statusParam || i.status === statusParam));
+  const rows = sortBy(
+    outstanding.filter((i) => inPeriod(i.invoice_date) && (!statusParam || i.status === statusParam)),
+    sort,
+    dir,
+    {
+      date: [(r) => r.invoice_date, (r) => r.invoice_number],
+      invoice: (r) => r.invoice_number,
+      customer: [(r) => r.customers?.name, (r) => r.invoice_date],
+      due: [(r) => r.due_date, (r) => r.invoice_number],
+      balance: (r) => invoiceBalance(r),
+    },
+  );
   const total = rows.reduce((t, i) => t + invoiceBalance(i), 0);
 
   const { headers, tableRows } = buildReportRows(
@@ -50,6 +66,7 @@ export default async function CustomerOutstandingReportPage({
     [
       { key: "invoice", label: "Invoice #", exportValue: (r) => r.invoice_number },
       { key: "customer", label: "Customer", exportValue: (r) => r.customers?.name ?? "—" },
+      { key: "date", label: "Invoice Date", exportValue: (r) => r.invoice_date },
       { key: "due", label: "Due Date", exportValue: (r) => r.due_date },
       { key: "company", label: "Company", exportValue: (r) => r.companies?.name ?? "—" },
       { key: "amount", label: "Invoice Total", exportValue: (r) => invoiceTotal(r), display: (r) => formatCurrency(invoiceTotal(r)) },
@@ -74,6 +91,10 @@ export default async function CustomerOutstandingReportPage({
       </div>
 
       <ReportFilterBar
+        path="/reports/customer-outstanding"
+        sortOptions={SORTS}
+        sort={sort}
+        dir={dir}
         requestedCompanyId={requestedId}
         year={year || undefined}
         month={month}

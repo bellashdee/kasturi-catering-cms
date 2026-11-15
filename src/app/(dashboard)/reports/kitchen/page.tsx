@@ -13,6 +13,9 @@ import { ReportTable } from "@/components/reports/ReportTable";
 import { buildReportRows } from "@/lib/reports/buildRows";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { date: "Planned Date", recipe: "Recipe", event: "Event", status: "Status" };
 
 function currentYearMonth() {
   return malaysiaYearMonth();
@@ -21,7 +24,7 @@ function currentYearMonth() {
 export default async function KitchenReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; year?: string; month?: string; from?: string; to?: string; status?: string }>;
+  searchParams: Promise<{ company?: string; year?: string; month?: string; from?: string; to?: string; status?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -30,7 +33,9 @@ export default async function KitchenReportPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, year: yearParam, month: monthParam, from: fromParam, to: toParam, status: statusParam } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, year: yearParam, month: monthParam, from: fromParam, to: toParam, status: statusParam } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "date", "desc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -50,7 +55,12 @@ export default async function KitchenReportPage({
   ]);
 
   const monthOrders = allOrders.filter((o) => !!o.planned_date && o.planned_date >= start && o.planned_date <= end);
-  const rows = statusParam ? monthOrders.filter((o) => o.status === statusParam) : monthOrders;
+  const rows = sortBy(statusParam ? monthOrders.filter((o) => o.status === statusParam) : monthOrders, sort, dir, {
+    date: (r) => r.planned_date,
+    recipe: [(r) => r.recipes?.name, (r) => r.planned_date],
+    event: [(r) => r.catering_events?.event_name, (r) => r.planned_date],
+    status: [(r) => PRODUCTION_STATUS_LABEL[r.status] ?? r.status, (r) => r.planned_date],
+  });
 
   const kitchenCosts = costRows.filter((r) => r.source === "Kitchen");
   const ingredientCost = kitchenCosts.filter((r) => r.category === "Ingredients Consumed").reduce((t, r) => t + r.amount, 0);
@@ -83,6 +93,10 @@ export default async function KitchenReportPage({
       </div>
 
       <ReportFilterBar
+        path="/reports/kitchen"
+        sortOptions={SORTS}
+        sort={sort}
+        dir={dir}
         requestedCompanyId={requestedId}
         year={year}
         month={month}

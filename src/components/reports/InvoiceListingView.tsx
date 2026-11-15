@@ -10,6 +10,10 @@ import { PrintButton } from "@/components/reports/PrintButton";
 import { ReportTable } from "@/components/reports/ReportTable";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 import { SoftPage } from "@/components/ui/Soft";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { date: "Date", invoice: "Invoice No.", customer: "Customer", amount: "Amount" };
 
 const ENTITIES = {
   kasturi: { label: "Kasturi Indah Sdn Bhd", note: "Kasturi Indah Sdn Bhd", withTax: false },
@@ -109,7 +113,7 @@ export function RevenueViewTabs({ active }: { active: "received" | "invoiced" })
  * Invoices issued (the Invoice Listing view of the Revenue Report): the AutoCount invoice listings of Kasturi Indah Sdn Bhd and Signature Solution
  * Sdn Bhd, which has two parts — Signature Solution Catering (food for the JDT game match events) and Signature Solution Sdn Bhd. Finance / Admin only.
  */
-export async function InvoiceListingView({ entity: entityParam, month: monthParam }: { entity?: string; month?: string }) {
+export async function InvoiceListingView({ entity: entityParam, month: monthParam, sortParam, dirParam }: { entity?: string; month?: string; sortParam?: string; dirParam?: string }) {
   const supabase = await createClient();
   const { data: companies } = await supabase.from("companies").select("id");
   const admins = await adminCompanyIds(supabase, (companies ?? []).map((c) => c.id));
@@ -130,10 +134,17 @@ export async function InvoiceListingView({ entity: entityParam, month: monthPara
   const data = await loadRows(supabase);
   const entityKey: EntityKey = entityParam && entityParam in ENTITIES ? (entityParam as EntityKey) : "kasturi";
   const entity = { ...ENTITIES[entityKey], rows: data[entityKey] };
-  const month = Math.min(Math.max(Number(monthParam) || 0, 0), 12); // 0 = the whole year so far
+  // opens at this month (Malaysia time); 0 = the whole year so far
+  const month = monthParam === undefined || monthParam === "" ? malaysiaYearMonth().month : Math.min(Math.max(Number(monthParam) || 0, 0), 12);
+  const { sort, dir } = readSort({ sort: sortParam, dir: dirParam }, SORTS, "date", "asc");
 
   const byMonth = Array.from({ length: 12 }, (_, i) => sum(entity.rows.filter((r) => monthOf(r) === i + 1), 6));
-  const rows = month === 0 ? entity.rows : entity.rows.filter((r) => monthOf(r) === month);
+  const rows = sortBy(month === 0 ? entity.rows : entity.rows.filter((r) => monthOf(r) === month), sort, dir, {
+    date: [(r) => r[1], (r) => r[0]],
+    invoice: (r) => r[0],
+    customer: [(r) => r[3], (r) => r[1]],
+    amount: (r) => r[6],
+  });
   const total = sum(rows, 6);
   const lastMonthWithInvoices = Math.max(0, ...entity.rows.map(monthOf));
   const periodLabel = month === 0 ? `Jan – ${MONTH_LABEL[Math.max(lastMonthWithInvoices, 1) - 1].slice(0, 3)} ${YEAR}` : `${MONTH_LABEL[month - 1]} ${YEAR}`;
@@ -196,20 +207,16 @@ export async function InvoiceListingView({ entity: entityParam, month: monthPara
       </div>
 
       <div className="flex flex-wrap items-end justify-between gap-3 print:hidden">
-        <form method="get" className="flex items-end gap-3">
-          <input type="hidden" name="view" value="invoiced" />
-          <input type="hidden" name="entity" value={entityKey} />
-          <div>
-            <label className="text-[12px] font-semibold text-text-secondary">Month</label>
-            <Select name="month" defaultValue={month} className="mt-1 h-9 w-44 rounded-lg border border-border-strong px-2 text-[13px]">
+        <ListFilters keep={{ view: "invoiced", entity: entityKey }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/reports/revenue?view=invoiced&entity=${entityKey}`}>
+          <FilterField label="Month">
+            <Select name="month" defaultValue={month} className={`${FILTER_INPUT} w-44`}>
               <option value={0}>Whole year ({YEAR})</option>
               {MONTH_LABEL.map((m, i) => (
                 <option key={m} value={i + 1}>{m}</option>
               ))}
             </Select>
-          </div>
-          <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply</button>
-        </form>
+          </FilterField>
+        </ListFilters>
         <PrintButton />
       </div>
 
@@ -268,7 +275,7 @@ function EntityTab({ k, active, month, total }: { k: EntityKey; active: EntityKe
   const on = k === active;
   return (
     <Link
-      href={`/reports/revenue?view=invoiced&entity=${k}${month ? `&month=${month}` : ""}`}
+      href={`/reports/revenue?view=invoiced&entity=${k}&month=${month}`}
       className={`flex flex-col gap-0.5 rounded-xl border px-3 py-2.5 transition ${on ? "border-primary bg-info-bg" : "border-border hover:border-primary"}`}
     >
       <span className="text-[13.5px] font-bold text-text">{e.label}</span>

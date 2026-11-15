@@ -61,10 +61,8 @@ export default async function CompanySummaryReportPage({
         <p className="mt-0.5 text-[13px] text-text-secondary">{periodLabel}</p>
       </div>
 
-      <div className="flex items-center justify-between print:hidden">
-        <ReportFilterBar requestedCompanyId={requestedId} year={year} month={month}
-        from={fromParam}
-        to={toParam} />
+      <div className="flex flex-wrap items-start justify-between gap-3 print:hidden">
+        <ReportFilterBar path="/reports/company-summary" requestedCompanyId={requestedId} year={year} month={month} from={fromParam} to={toParam} />
         <PrintButton />
       </div>
 

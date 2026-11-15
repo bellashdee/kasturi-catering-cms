@@ -374,7 +374,7 @@ export default async function PerformanceDashboardPage({ searchParams }: { searc
       </div>
 
       <div className="flex flex-wrap items-end justify-between gap-3 print:hidden">
-        <ReportFilterBar requestedCompanyId={requestedId} year={year} month={month} monthAll showRange={false} />
+        <ReportFilterBar path="/reports/performance" requestedCompanyId={requestedId} year={year} month={month} monthAll showRange={false} />
         <PrintButton />
       </div>
 

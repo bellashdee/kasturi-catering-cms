@@ -11,6 +11,9 @@ import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { buildReportRows } from "@/lib/reports/buildRows";
 import { ReportTable } from "@/components/reports/ReportTable";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { total: "Total owed", supplier: "Supplier", overdue: "Overdue" };
 
 type Cell = { amount: number; overdue: boolean };
 type Row = { key: string; name: string; cells: Map<string, Cell>; total: number; overdue: number; isTotal?: boolean };
@@ -24,7 +27,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
  * Supplier Outstanding Report: what is still owed to each supplier, month by month — the monthly summary of the supplier's statement of account
  * as it is keyed in Finance when the payment voucher is issued. Not the daily invoices. Red = past its due date. Finance / Admin only.
  */
-export default async function SupplierOutstandingReportPage({ searchParams }: { searchParams: Promise<{ company?: string; year?: string; month?: string }> }) {
+export default async function SupplierOutstandingReportPage({ searchParams }: { searchParams: Promise<{ company?: string; year?: string; month?: string; sort?: string; dir?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
@@ -32,7 +35,9 @@ export default async function SupplierOutstandingReportPage({ searchParams }: { 
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, year: yearParam, month: monthParam } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, year: yearParam, month: monthParam } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "total", "desc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
   if (targetCompanyIds.length === 0) return <EmptyRow text="You don't have access to any company yet." />;
@@ -76,7 +81,11 @@ export default async function SupplierOutstandingReportPage({ searchParams }: { 
     if (late) row.overdue += r.balance;
     bySupplier.set(key, row);
   }
-  const suppliers = Array.from(bySupplier.values()).sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+  const suppliers = sortBy(Array.from(bySupplier.values()), sort, dir, {
+    total: [(r) => round2(r.total), (r) => r.name],
+    supplier: (r) => r.name,
+    overdue: [(r) => round2(r.overdue), (r) => r.name],
+  });
 
   const totalRow: Row = { key: "TOTAL", name: "TOTAL", cells: new Map(), total: 0, overdue: 0, isTotal: true };
   for (const s of suppliers) {
@@ -112,7 +121,17 @@ export default async function SupplierOutstandingReportPage({ searchParams }: { 
   return (
     <div className="flex flex-col gap-5">
       {header(`${suppliers.length} supplier${suppliers.length === 1 ? "" : "s"} · ${formatCurrency(totalRow.total)} outstanding · ${formatCurrency(totalRow.overdue)} overdue`)}
-      <ReportFilterBar requestedCompanyId={requestedId} year={year || undefined} month={month} monthAll showRange={false} />
+      <ReportFilterBar
+        path="/reports/supplier-outstanding"
+        sortOptions={SORTS}
+        sort={sort}
+        dir={dir}
+        requestedCompanyId={requestedId}
+        year={year || undefined}
+        month={month}
+        monthAll
+        showRange={false}
+      />
       <p className="text-[12.5px] text-text-secondary">
         By month, as keyed in <Link href={`/reports/finance-payments${query}`} className="font-semibold text-primary underline">Finance → Supplier Payment</Link> from the supplier&apos;s statement of account (SOA) when the payment voucher is issued.
         Each figure is the month of the statement; red is past its due date.

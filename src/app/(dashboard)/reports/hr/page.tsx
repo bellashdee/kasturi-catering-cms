@@ -13,6 +13,9 @@ import { ReportTable } from "@/components/reports/ReportTable";
 import { buildReportRows } from "@/lib/reports/buildRows";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { period: "Pay Period", employee: "Employee", department: "Department", net: "Net Pay", status: "Status" };
 
 function currentYearMonth() {
   return malaysiaYearMonth();
@@ -21,7 +24,7 @@ function currentYearMonth() {
 export default async function HRReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; year?: string; month?: string; from?: string; to?: string; department?: string; status?: string }>;
+  searchParams: Promise<{ company?: string; year?: string; month?: string; from?: string; to?: string; department?: string; status?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -32,7 +35,9 @@ export default async function HRReportPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, year: yearParam, month: monthParam, from: fromParam, to: toParam, department: departmentParam, status: statusParam } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, year: yearParam, month: monthParam, from: fromParam, to: toParam, department: departmentParam, status: statusParam } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "period", "desc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -51,10 +56,17 @@ export default async function HRReportPage({
   ]);
 
   const departments = Array.from(new Set(allRows.map((r) => r.employees?.department).filter((d): d is string => !!d))).sort();
-  const rows = allRows.filter((r) => {
+  const filtered = allRows.filter((r) => {
     if (departmentParam && r.employees?.department !== departmentParam) return false;
     if (statusParam && r.status !== statusParam) return false;
     return true;
+  });
+  const rows = sortBy(filtered, sort, dir, {
+    period: [(r) => r.pay_period_end, (r) => r.employees?.full_name],
+    employee: [(r) => r.employees?.full_name, (r) => r.pay_period_end],
+    department: [(r) => r.employees?.department, (r) => r.employees?.full_name],
+    net: (r) => Number(r.net_pay),
+    status: [(r) => PAYROLL_STATUS_LABEL[r.status] ?? r.status, (r) => r.employees?.full_name],
   });
   const totalGross = rows.reduce((t, r) => t + Number(r.gross_pay), 0);
   const totalNet = rows.reduce((t, r) => t + Number(r.net_pay), 0);
@@ -87,6 +99,10 @@ export default async function HRReportPage({
       </div>
 
       <ReportFilterBar
+        path="/reports/hr"
+        sortOptions={SORTS}
+        sort={sort}
+        dir={dir}
         requestedCompanyId={requestedId}
         year={year}
         month={month}

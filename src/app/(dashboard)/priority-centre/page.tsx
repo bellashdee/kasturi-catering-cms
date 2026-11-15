@@ -485,7 +485,7 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
               <option value="none">No due date</option>
             </Select>
           </div>
-          <button type="submit" className={BTN}>Apply</button>
+          <button type="submit" className={BTN}>Apply Filters</button>
           {tasksFiltered && <Link href={clearTasks} className="flex h-10 items-center text-[14px] font-semibold text-text-secondary hover:text-text">Clear</Link>}
         </form>
         <TaskBoard tasks={taskCards} companies={companyOptions} people={peopleOptions} canAssignTo={access.adminCompanyIds} currentUserId={session.userId} startOpen={params.new === "1"} />
@@ -564,7 +564,7 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
               <input id="p-to" type="date" name="dueTo" defaultValue={params.dueTo ?? ""} className={FIELD} />
             </div>
             <div className="flex gap-2">
-              <button type="submit" className={BTN}>Apply</button>
+              <button type="submit" className={BTN}>Apply Filters</button>
               {paysFiltered && <Link href={clearPays} className="flex h-10 items-center text-[14px] font-semibold text-text-secondary hover:text-text">Clear</Link>}
             </div>
           </form>

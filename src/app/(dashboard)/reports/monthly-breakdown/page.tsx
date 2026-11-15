@@ -14,6 +14,7 @@ import {
 import { BreakdownEditor } from "@/components/reports/BreakdownEditor";
 import { MonthlyBreakdownChart } from "@/components/reports/MonthlyBreakdownChart";
 import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
 import { PrintButton } from "@/components/reports/PrintButton";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 import { SoftPage } from "@/components/ui/Soft";
@@ -138,21 +139,17 @@ export default async function MonthlyBreakdownPage({ searchParams }: { searchPar
       </div>
 
       <div className="flex flex-wrap items-end justify-between gap-3 print:hidden">
-        <form method="get" className="flex items-end gap-3">
-          {requestedId && <input type="hidden" name="company" value={requestedId} />}
-          <div>
-            <label className="text-[12px] font-semibold text-text-secondary">Year</label>
-            <input type="number" name="year" defaultValue={year} className="mt-1 h-9 w-24 rounded-lg border border-border-strong px-2 text-[13px]" />
-          </div>
-          <div>
-            <label className="text-[12px] font-semibold text-text-secondary">Month</label>
-            <Select name="month" defaultValue={month} className="mt-1 h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
+        <ListFilters keep={{ company: requestedId }} clearHref={requestedId ? `/reports/monthly-breakdown?company=${requestedId}` : "/reports/monthly-breakdown"}>
+          <FilterField label="Year">
+            <input type="number" name="year" defaultValue={year} className={`${FILTER_INPUT} w-24`} />
+          </FilterField>
+          <FilterField label="Month">
+            <Select name="month" defaultValue={month} className={`${FILTER_INPUT} w-36`}>
               <option value={0}>All months</option>
               {MONTH_LABEL.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
             </Select>
-          </div>
-          <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply</button>
-        </form>
+          </FilterField>
+        </ListFilters>
         <PrintButton />
       </div>
 

@@ -15,6 +15,9 @@ import { ReportTable } from "@/components/reports/ReportTable";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 import { SoftPage } from "@/components/ui/Soft";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { date: "Event date", event: "Event name", customer: "Customer", revenue: "Revenue", payment: "Payment status" };
 
 type Entity = "K" | "SSC" | "SS" | "O2";
 const ENTITY_LABEL: Record<Entity, string> = { K: "Kasturi Indah Sdn Bhd", SSC: "Signature Solution Catering", SS: "Signature Solution Sdn Bhd", O2: "O2 Life Sdn Bhd" };
@@ -65,14 +68,16 @@ function Bars({ items }: { items: { label: string; value: number; note?: string 
 export default async function EventSummaryReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; year?: string; month?: string; category?: string; status?: string }>;
+  searchParams: Promise<{ company?: string; year?: string; month?: string; category?: string; status?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
   const supabase = await createClient();
   const { data: companies } = await supabase.from("companies").select("id, name");
-  const { company: requestedId, year: yearParam, month: monthParam, category: entityParam, status: statusParam } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, year: yearParam, month: monthParam, category: entityParam, status: statusParam } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "date", "asc");
   const query = requestedId ? `?company=${requestedId}` : "";
   const back = <Link href={`/reports${query}`} className="text-[12.5px] font-semibold text-text-secondary">← Back to Reports</Link>;
 
@@ -117,7 +122,13 @@ export default async function EventSummaryReportPage({
   const status = statusParam && statusParam in EVENT_STATUS_LABEL ? statusParam : "";
   const inMonth = (date: string) => !month || Number(date.slice(5, 7)) === month;
   const monthRows = all.filter((e) => inMonth(e.event_date) && (!entityFilter || e.entity === entityFilter));
-  const rows = monthRows.filter((e) => !status || e.status === status);
+  const rows = sortBy(monthRows.filter((e) => !status || e.status === status), sort, dir, {
+    date: [(r) => r.event_date, (r) => r.event_name],
+    event: [(r) => r.event_name, (r) => r.event_date],
+    customer: [(r) => r.customers?.name, (r) => r.event_date],
+    revenue: (r) => r.revenue,
+    payment: [(r) => PAY_LABEL[r.pay], (r) => r.event_date],
+  });
   const sum = (list: { revenue: number }[]) => list.reduce((t, e) => t + e.revenue, 0);
   const periodLabel = month ? `${MONTH_LABEL[month - 1]} ${year}` : String(year);
 
@@ -162,6 +173,10 @@ export default async function EventSummaryReportPage({
 
       <div className="flex flex-wrap items-end justify-between gap-3 print:hidden">
         <ReportFilterBar
+          path="/reports/event-summary"
+          sortOptions={SORTS}
+          sort={sort}
+          dir={dir}
           requestedCompanyId={requestedId}
           year={year}
           month={month}
@@ -169,6 +184,7 @@ export default async function EventSummaryReportPage({
           showRange={false}
           category={entityFilter}
           categoryLabel="Company"
+          categoryAllLabel="All Companies"
           categoryOptions={allowed.map((k) => ({ value: k, label: `${k} · ${ENTITY_LABEL[k]}` }))}
           status={status}
           statusOptions={Object.entries(EVENT_STATUS_LABEL).filter(([v]) => v !== "cancelled").map(([value, label]) => ({ value, label }))}

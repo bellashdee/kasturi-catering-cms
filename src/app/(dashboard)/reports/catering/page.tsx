@@ -14,6 +14,9 @@ import { TopCustomersChart, type TopCustomer } from "@/components/reports/TopCus
 import { buildReportRows } from "@/lib/reports/buildRows";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { date: "Event date", event: "Event name", customer: "Customer", revenue: "Revenue", margin: "Margin", status: "Status" };
 
 function currentYearMonth() {
   return malaysiaYearMonth();
@@ -22,7 +25,7 @@ function currentYearMonth() {
 export default async function CateringReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; year?: string; month?: string; from?: string; to?: string; category?: string; status?: string }>;
+  searchParams: Promise<{ company?: string; year?: string; month?: string; from?: string; to?: string; category?: string; status?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -31,7 +34,9 @@ export default async function CateringReportPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, year: yearParam, month: monthParam, from: fromParam, to: toParam, category: categoryParam, status: statusParam } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, year: yearParam, month: monthParam, from: fromParam, to: toParam, category: categoryParam, status: statusParam } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "date", "desc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -45,10 +50,18 @@ export default async function CateringReportPage({
   const range = parseDateRange(fromParam, toParam);
 
   const allRows = await getCateringReportRows(supabase, targetCompanyIds, year, month, range);
-  const rows = allRows.filter((e) => {
+  const filtered = allRows.filter((e) => {
     if (categoryParam && e.event_type !== categoryParam) return false;
     if (statusParam && e.status !== statusParam) return false;
     return true;
+  });
+  const rows = sortBy(filtered, sort, dir, {
+    date: [(r) => r.event_date, (r) => r.event_name],
+    event: [(r) => r.event_name, (r) => r.event_date],
+    customer: [(r) => r.customers?.name, (r) => r.event_date],
+    revenue: (r) => r.revenue,
+    margin: (r) => r.margin,
+    status: [(r) => EVENT_STATUS_LABEL[r.status] ?? r.status, (r) => r.event_date],
   });
   // repeat customers: the events of the whole year (one month rarely shows who comes back), without cancelled events unless that status is chosen
   const { data: yearEvents } = await supabase
@@ -106,6 +119,10 @@ export default async function CateringReportPage({
       </div>
 
       <ReportFilterBar
+        path="/reports/catering"
+        sortOptions={SORTS}
+        sort={sort}
+        dir={dir}
         requestedCompanyId={requestedId}
         year={year}
         month={month}
@@ -114,6 +131,7 @@ export default async function CateringReportPage({
         category={categoryParam}
         categoryOptions={Object.entries(EVENT_TYPE_LABEL).sort((a, b) => a[1].localeCompare(b[1])).map(([value, label]) => ({ value, label }))}
         categoryLabel="Event Type"
+        categoryAllLabel="All types"
         status={statusParam}
         statusOptions={Object.entries(EVENT_STATUS_LABEL).map(([value, label]) => ({ value, label }))}
       />

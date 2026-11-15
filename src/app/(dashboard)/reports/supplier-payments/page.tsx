@@ -7,12 +7,15 @@ import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { getSupplierPaymentReportRows } from "@/lib/reports/queries";
 import { PAYMENT_STATUS_LABEL } from "@/lib/procurement/constants";
-import { formatCurrency, malaysiaYearMonth } from "@/lib/format";
+import { formatCurrency, malaysiaDateOf, malaysiaYearMonth } from "@/lib/format";
 import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { ReportTable } from "@/components/reports/ReportTable";
 import { buildReportRows } from "@/lib/reports/buildRows";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { date: "Date", invoice: "Invoice No.", supplier: "Supplier", amount: "Amount", status: "Status" };
 
 function currentYearMonth() {
   return malaysiaYearMonth();
@@ -21,7 +24,7 @@ function currentYearMonth() {
 export default async function SupplierPaymentReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; year?: string; month?: string; from?: string; to?: string; department?: string; status?: string }>;
+  searchParams: Promise<{ company?: string; year?: string; month?: string; from?: string; to?: string; department?: string; status?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -30,7 +33,9 @@ export default async function SupplierPaymentReportPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, year: yearParam, month: monthParam, from: fromParam, to: toParam, department: departmentParam, status: statusParam } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, year: yearParam, month: monthParam, from: fromParam, to: toParam, department: departmentParam, status: statusParam } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "date", "desc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -45,16 +50,24 @@ export default async function SupplierPaymentReportPage({
 
   const allRows = await getSupplierPaymentReportRows(supabase, targetCompanyIds, year, month, range);
   const departments = Array.from(new Set(allRows.map((r) => r.supplier_invoices?.department).filter((d): d is string => !!d))).sort();
-  const rows = allRows.filter((r) => {
+  const filtered = allRows.filter((r) => {
     if (departmentParam && r.supplier_invoices?.department !== departmentParam) return false;
     if (statusParam && r.status !== statusParam) return false;
     return true;
+  });
+  const rows = sortBy(filtered, sort, dir, {
+    date: (r) => r.created_at,
+    invoice: (r) => r.supplier_invoices?.invoice_number,
+    supplier: [(r) => r.supplier_invoices?.suppliers?.name, (r) => r.created_at],
+    amount: (r) => Number(r.amount),
+    status: [(r) => PAYMENT_STATUS_LABEL[r.status] ?? r.status, (r) => r.created_at],
   });
   const total = rows.reduce((t, r) => t + Number(r.amount), 0);
 
   const { headers, tableRows } = buildReportRows(
     rows,
     [
+      { key: "date", label: "Date", exportValue: (r) => malaysiaDateOf(r.created_at) },
       { key: "invoice", label: "Invoice #", exportValue: (r) => r.supplier_invoices?.invoice_number ?? "—" },
       { key: "supplier", label: "Supplier", exportValue: (r) => r.supplier_invoices?.suppliers?.name ?? "—" },
       { key: "department", label: "Department", exportValue: (r) => r.supplier_invoices?.department ?? "—" },
@@ -79,6 +92,10 @@ export default async function SupplierPaymentReportPage({
       </div>
 
       <ReportFilterBar
+        path="/reports/supplier-payments"
+        sortOptions={SORTS}
+        sort={sort}
+        dir={dir}
         requestedCompanyId={requestedId}
         year={year}
         month={month}

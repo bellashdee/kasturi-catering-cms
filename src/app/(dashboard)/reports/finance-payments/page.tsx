@@ -26,6 +26,9 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { ReportTable } from "@/components/reports/ReportTable";
 import { PaymentSummaryCards } from "@/components/finance/PaymentSummaryCards";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { due: "Due date", payee: "Payee", invoice: "Invoice No.", category: "Category", amount: "Amount", status: "Status" };
 
 type Row = Awaited<ReturnType<typeof listPaymentsForMonth>>[number];
 
@@ -80,7 +83,7 @@ function TotalsTable({ firstColumn, rows }: { firstColumn: string; rows: { label
 export default async function FinancePaymentsReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; year?: string; month?: string; category?: string; status?: string }>;
+  searchParams: Promise<{ company?: string; year?: string; month?: string; category?: string; status?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -89,7 +92,9 @@ export default async function FinancePaymentsReportPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, year: yearParam, month: monthParam, category: categoryParam, status: statusParam } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, year: yearParam, month: monthParam, category: categoryParam, status: statusParam } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "due", "asc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -123,7 +128,19 @@ export default async function FinancePaymentsReportPage({
   }
 
   const all = await listPaymentsForMonth(supabase, adminIds, year, month, { category });
-  const rows = all.filter((p) => matchesStatusFilter(paymentUrgency(p.status, p.due_date, today), statusParam));
+  const rows = sortBy(
+    all.filter((p) => matchesStatusFilter(paymentUrgency(p.status, p.due_date, today), statusParam)),
+    sort,
+    dir,
+    {
+      due: [(r) => r.due_date, (r) => r.payee_name],
+      payee: [(r) => r.payee_name, (r) => r.due_date],
+      invoice: (r) => r.invoice_number,
+      category: [(r) => PAYMENT_CATEGORY_LABEL[r.category as PaymentCategory], (r) => r.due_date],
+      amount: (r) => Number(r.amount),
+      status: [(r) => URGENCY_LABEL[paymentUrgency(r.status, r.due_date, today)], (r) => r.due_date],
+    },
+  );
 
   const { headers, tableRows } = buildReportRows(
     rows,
@@ -164,9 +181,14 @@ export default async function FinancePaymentsReportPage({
       {header}
 
       <ReportFilterBar
+        path="/reports/finance-payments"
+        sortOptions={SORTS}
+        sort={sort}
+        dir={dir}
         requestedCompanyId={requestedId}
         year={year}
         month={month}
+        showRange={false}
         category={category}
         categoryLabel="Payment Category"
         categoryOptions={[

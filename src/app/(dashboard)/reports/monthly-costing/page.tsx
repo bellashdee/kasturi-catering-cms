@@ -13,6 +13,9 @@ import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { ReportTable } from "@/components/reports/ReportTable";
 import { buildReportRows } from "@/lib/reports/buildRows";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { amount: "Amount", module: "Module", category: "Category", department: "Department" };
 
 function currentYearMonth() {
   return malaysiaYearMonth();
@@ -36,7 +39,7 @@ function daysBetween(start: string, end: string): string[] {
 export default async function MonthlyCostingReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; year?: string; month?: string; from?: string; to?: string; department?: string; category?: string }>;
+  searchParams: Promise<{ company?: string; year?: string; month?: string; from?: string; to?: string; department?: string; category?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -45,7 +48,9 @@ export default async function MonthlyCostingReportPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, year: yearParam, month: monthParam, from: fromParam, to: toParam, department: departmentParam, category: categoryParam } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, year: yearParam, month: monthParam, from: fromParam, to: toParam, department: departmentParam, category: categoryParam } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "amount", "desc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -96,7 +101,12 @@ export default async function MonthlyCostingReportPage({
     const existing = grouped.get(key);
     grouped.set(key, { source: r.source, category: r.category, department: r.department, amount: (existing?.amount ?? 0) + r.amount });
   }
-  const rows = Array.from(grouped.values()).sort((a, b) => b.amount - a.amount);
+  const rows = sortBy(Array.from(grouped.values()), sort, dir, {
+    amount: (r) => r.amount,
+    module: [(r) => r.source, (r) => r.category],
+    category: [(r) => r.category, (r) => r.source],
+    department: [(r) => r.department, (r) => r.category],
+  });
 
   // where the records behind a line are kept (to review and edit them): the page of that module, for the same company and month
   const companyQuery = requestedId ? `company=${requestedId}&` : "";
@@ -145,6 +155,10 @@ export default async function MonthlyCostingReportPage({
       </div>
 
       <ReportFilterBar
+        path="/reports/monthly-costing"
+        sortOptions={SORTS}
+        sort={sort}
+        dir={dir}
         requestedCompanyId={requestedId}
         year={year}
         month={month}

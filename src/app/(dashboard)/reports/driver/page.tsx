@@ -12,6 +12,9 @@ import { ReportTable } from "@/components/reports/ReportTable";
 import { buildReportRows } from "@/lib/reports/buildRows";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { date: "Date", event: "Event", driver: "Driver", vehicle: "Vehicle", status: "Status" };
 
 function currentYearMonth() {
   return malaysiaYearMonth();
@@ -20,7 +23,7 @@ function currentYearMonth() {
 export default async function DriverReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; year?: string; month?: string; from?: string; to?: string; category?: string; status?: string }>;
+  searchParams: Promise<{ company?: string; year?: string; month?: string; from?: string; to?: string; category?: string; status?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -29,7 +32,9 @@ export default async function DriverReportPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, year: yearParam, month: monthParam, from: fromParam, to: toParam, category: categoryParam, status: statusParam } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, year: yearParam, month: monthParam, from: fromParam, to: toParam, category: categoryParam, status: statusParam } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "date", "desc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -49,7 +54,14 @@ export default async function DriverReportPage({
   ]);
 
   const monthDeliveries = allDeliveries.filter((d) => !!d.scheduled_time && malaysiaDateOf(d.scheduled_time) >= start && malaysiaDateOf(d.scheduled_time) <= end);
-  const rows = statusParam ? monthDeliveries.filter((d) => d.status === statusParam) : monthDeliveries;
+  const eventOf = (d: (typeof monthDeliveries)[number]) => [d.catering_events?.customers?.name ?? d.catering_events?.event_name, d.catering_events?.location ?? d.location].filter(Boolean).join(" — ");
+  const rows = sortBy(statusParam ? monthDeliveries.filter((d) => d.status === statusParam) : monthDeliveries, sort, dir, {
+    date: (r) => r.scheduled_time,
+    event: [eventOf, (r) => r.scheduled_time],
+    driver: [(r) => r.employees?.full_name, (r) => r.scheduled_time],
+    vehicle: [(r) => r.vehicles?.plate_number, (r) => r.scheduled_time],
+    status: [(r) => DELIVERY_STATUS_LABEL[r.status] ?? r.status, (r) => r.scheduled_time],
+  });
 
   const monthExpenses = allExpenses.filter((e) => e.expense_date >= start && e.expense_date <= end);
   const filteredExpenses = categoryParam ? monthExpenses.filter((e) => e.category === categoryParam) : monthExpenses;
@@ -59,7 +71,7 @@ export default async function DriverReportPage({
     rows,
     [
       { key: "date", label: "Scheduled", exportValue: (r) => formatMalaysiaDateTime(r.scheduled_time) },
-      { key: "event", label: "Event / Location", exportValue: (r) => [r.catering_events?.customers?.name ?? r.catering_events?.event_name, r.catering_events?.location ?? r.location].filter(Boolean).join(" — ") || "—" },
+      { key: "event", label: "Event / Location", exportValue: (r) => eventOf(r) || "—" },
       { key: "driver", label: "Driver", exportValue: (r) => r.employees?.full_name ?? "—" },
       { key: "vehicle", label: "Vehicle", exportValue: (r) => r.vehicles?.plate_number ?? "—" },
       { key: "company", label: "Company", exportValue: (r) => r.companies?.name ?? "—" },
@@ -82,6 +94,10 @@ export default async function DriverReportPage({
       </div>
 
       <ReportFilterBar
+        path="/reports/driver"
+        sortOptions={SORTS}
+        sort={sort}
+        dir={dir}
         requestedCompanyId={requestedId}
         year={year}
         month={month}
