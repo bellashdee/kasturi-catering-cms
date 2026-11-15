@@ -8,15 +8,23 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { IntakeReviewActions } from "@/components/catering/IntakeReviewActions";
 import { MonthFilter } from "@/components/MonthFilter";
 import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
 
-export default async function CustomerSubmissionsPage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string }> }) {
+type SearchParams = { company?: string; month?: string; customer?: string; agent?: string; sort?: string; dir?: string };
+
+const SORTS = { date: "Date submitted", customer: "Customer", agent: "Sales agent" };
+
+export default async function CustomerSubmissionsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
   const supabase = await createClient();
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
-  const { company: requestedId, month } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, month } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "date", "desc");
   const monthLabel = monthLabelOf(month);
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
@@ -28,7 +36,18 @@ export default async function CustomerSubmissionsPage({ searchParams }: { search
     .order("created_at", { ascending: false })
     .limit(200);
   // the month is the day the details were submitted
-  const submissions = filterByMonth(rows ?? [], month, (s) => s.created_at);
+  const has = (value: string | null | undefined, part: string | undefined) => !part || (value ?? "").toLowerCase().includes(part.trim().toLowerCase());
+  const filtered = Boolean(sp.customer || sp.agent);
+  const submissions = sortBy(
+    filterByMonth(rows ?? [], month, (s) => s.created_at).filter((s) => has(s.name, sp.customer) && has(s.sales_agent, sp.agent)),
+    sort,
+    dir,
+    {
+      date: (s) => s.created_at,
+      customer: [(s) => s.name, (s) => s.created_at],
+      agent: [(s) => s.sales_agent, (s) => s.created_at],
+    },
+  );
   const pending = submissions.filter((s) => s.status === "pending");
   const reviewed = submissions.filter((s) => s.status !== "pending");
 
@@ -44,10 +63,19 @@ export default async function CustomerSubmissionsPage({ searchParams }: { search
 
       <MonthFilter />
 
+      <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/catering/customers/submissions?${new URLSearchParams({ ...(requestedId ? { company: requestedId } : {}), ...(month ? { month } : {}) }).toString()}`}>
+        <FilterField label="Customer">
+          <input name="customer" defaultValue={sp.customer ?? ""} className={`${FILTER_INPUT} w-44`} />
+        </FilterField>
+        <FilterField label="Sales agent">
+          <input name="agent" defaultValue={sp.agent ?? ""} className={`${FILTER_INPUT} w-40`} />
+        </FilterField>
+      </ListFilters>
+
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         <div className="border-b border-border px-5 py-3 text-[13px] font-bold text-text">Waiting for review ({pending.length})</div>
         {pending.length === 0 ? (
-          <EmptyRow text={monthLabel ? "Nothing waiting for review in this month." : "Nothing waiting for review."} />
+          <EmptyRow text={filtered ? "Nothing waiting for review matches these filters." : monthLabel ? "Nothing waiting for review in this month." : "Nothing waiting for review."} />
         ) : (
           <div className="divide-y divide-border">
             {pending.map((s) => (

@@ -10,11 +10,16 @@ import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { MarketingSubNav } from "@/components/marketing/MarketingSubNav";
 import { MonthFilter } from "@/components/MonthFilter";
 import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
+import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { date: "Date", description: "Description", category: "Category", campaign: "Campaign", amount: "Amount" };
 
 export default async function MarketingExpensesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; month?: string }>;
+  searchParams: Promise<{ company?: string; month?: string; q?: string; category?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -23,7 +28,9 @@ export default async function MarketingExpensesPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, month } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, month, q } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "date", "desc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -31,7 +38,21 @@ export default async function MarketingExpensesPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const expenses = filterByMonth(await listExpensesForCompanies(supabase, targetCompanyIds), month, (e) => e.expense_date);
+  const filtered = Boolean(q || sp.category);
+  const expenses = sortBy(
+    filterByMonth(await listExpensesForCompanies(supabase, targetCompanyIds), month, (e) => e.expense_date).filter(
+      (e) => (!q || (e.description ?? "").toLowerCase().includes(q.trim().toLowerCase())) && (!sp.category || e.category === sp.category),
+    ),
+    sort,
+    dir,
+    {
+      date: (e) => e.expense_date,
+      description: [(e) => e.description, (e) => e.expense_date],
+      category: [(e) => EXPENSE_CATEGORY_LABEL[e.category] ?? e.category, (e) => e.expense_date],
+      campaign: [(e) => e.campaigns?.name, (e) => e.expense_date],
+      amount: (e) => Number(e.amount),
+    },
+  );
   const monthLabel = monthLabelOf(month);
   const total = expenses.reduce((t, e) => t + Number(e.amount), 0);
 
@@ -52,9 +73,21 @@ export default async function MarketingExpensesPage({
       <MarketingSubNav />
       <MonthFilter />
 
+      <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/marketing/expenses?${new URLSearchParams({ ...(requestedId ? { company: requestedId } : {}), ...(month ? { month } : {}) }).toString()}`}>
+        <FilterField label="Description">
+          <input name="q" defaultValue={q ?? ""} className={`${FILTER_INPUT} w-52`} />
+        </FilterField>
+        <FilterField label="Category">
+          <Select name="category" defaultValue={sp.category ?? ""} className={`${FILTER_INPUT} w-44`}>
+            <option value="">All categories</option>
+            {Object.entries(EXPENSE_CATEGORY_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </Select>
+        </FilterField>
+      </ListFilters>
+
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {expenses.length === 0 ? (
-          <EmptyRow text={monthLabel ? "No expenses in this month." : "No marketing expenses yet."} />
+          <EmptyRow text={filtered ? "No expenses match these filters." : monthLabel ? "No expenses in this month." : "No marketing expenses yet."} />
         ) : (
           <div className="divide-y divide-border">
             {expenses.map((e) => (

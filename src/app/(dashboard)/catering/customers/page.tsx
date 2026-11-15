@@ -5,13 +5,16 @@ import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listCustomersWithHistory } from "@/lib/catering/queries";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
-import { SearchBox } from "@/components/SearchBox";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
 import { CateringSubNav } from "@/components/catering/CateringSubNav";
+
+const SORTS = { name: "Name", contact: "Contact person" };
 
 export default async function CateringCustomersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; q?: string }>;
+  searchParams: Promise<{ company?: string; q?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -20,7 +23,9 @@ export default async function CateringCustomersPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, q } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, q } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "name", "asc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -38,7 +43,11 @@ export default async function CateringCustomersPage({
     const key = r.name.toUpperCase().replace(/[^A-Z0-9]/g, "");
     byName.set(key, [...(byName.get(key) ?? []), r]);
   }
-  const customers = Array.from(byName.values());
+  const pickOf = (group: CustomerRecord[], get: (g: CustomerRecord) => string | null | undefined) => group.map(get).find((v) => !!v) ?? null;
+  const customers = sortBy(Array.from(byName.values()), sort, dir, {
+    name: (g) => g[0].name,
+    contact: [(g) => pickOf(g, (r) => r.contact_person), (g) => g[0].name],
+  });
   const { count: pendingCount } = await supabase
     .from("customer_intake_submissions")
     .select("id", { count: "exact", head: true })
@@ -66,16 +75,20 @@ export default async function CateringCustomersPage({
         </div>
       </div>
 
-      <SearchBox placeholder="Search customers by name..." />
+      <ListFilters keep={{ company: requestedId }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/catering/customers${query}`}>
+        <FilterField label="Name">
+          <input name="q" defaultValue={q ?? ""} className={`${FILTER_INPUT} w-56`} />
+        </FilterField>
+      </ListFilters>
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {customers.length === 0 ? (
-          <EmptyRow text="No customers yet." />
+          <EmptyRow text={q ? "No customers match these filters." : "No customers yet."} />
         ) : (
           <div className="divide-y divide-border">
             {customers.map((group) => {
               const c = group[0];
-              const pick = (get: (g: CustomerRecord) => string | null | undefined) => group.map(get).find((v) => !!v) ?? null;
+              const pick = (get: (g: CustomerRecord) => string | null | undefined) => pickOf(group, get);
               const companyNames = Array.from(new Set(group.map((g) => g.companies?.name).filter((n): n is string => !!n)));
               const contact = pick((g) => g.contact_person);
               return (

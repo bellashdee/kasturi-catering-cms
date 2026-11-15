@@ -7,11 +7,16 @@ import { listLeadsForCompanies } from "@/lib/marketing/queries";
 import { LEAD_SOURCE_LABEL, LEAD_STATUS_LABEL } from "@/lib/marketing/constants";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
-import { SearchBox } from "@/components/SearchBox";
 import { MarketingSubNav } from "@/components/marketing/MarketingSubNav";
 import { MonthFilter } from "@/components/MonthFilter";
 import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
 import { LeadActions } from "@/components/marketing/LeadActions";
+import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { date: "Date added", name: "Name", source: "Source", campaign: "Campaign", status: "Status" };
+const STATUS_ORDER = Object.keys(LEAD_STATUS_LABEL);
 
 function statusTone(status: string): "success" | "warning" | "danger" | "info" | "neutral" {
   if (status === "converted") return "success";
@@ -24,7 +29,7 @@ function statusTone(status: string): "success" | "warning" | "danger" | "info" |
 export default async function LeadsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; q?: string; month?: string }>;
+  searchParams: Promise<{ company?: string; q?: string; month?: string; source?: string; status?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -33,7 +38,9 @@ export default async function LeadsPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, q, month } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, q, month } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "date", "desc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -41,7 +48,21 @@ export default async function LeadsPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const leads = filterByMonth(await listLeadsForCompanies(supabase, targetCompanyIds, q), month, (l) => l.created_at);
+  const filtered = Boolean(q || sp.source || sp.status);
+  const leads = sortBy(
+    filterByMonth(await listLeadsForCompanies(supabase, targetCompanyIds, q), month, (l) => l.created_at).filter(
+      (l) => (!sp.source || l.source === sp.source) && (!sp.status || l.status === sp.status),
+    ),
+    sort,
+    dir,
+    {
+      date: (l) => l.created_at,
+      name: (l) => l.name,
+      source: [(l) => LEAD_SOURCE_LABEL[l.source] ?? l.source, (l) => l.created_at],
+      campaign: [(l) => l.campaigns?.name, (l) => l.created_at],
+      status: [(l) => STATUS_ORDER.indexOf(l.status), (l) => l.created_at],
+    },
+  );
   const monthLabel = monthLabelOf(month);
 
   return (
@@ -62,14 +83,29 @@ export default async function LeadsPage({
       </div>
 
       <MarketingSubNav />
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-        <SearchBox placeholder="Search leads by name..." />
-        <MonthFilter />
-      </div>
+      <MonthFilter />
+
+      <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/marketing/leads?${new URLSearchParams({ ...(requestedId ? { company: requestedId } : {}), ...(month ? { month } : {}) }).toString()}`}>
+        <FilterField label="Name">
+          <input name="q" defaultValue={q ?? ""} className={`${FILTER_INPUT} w-52`} />
+        </FilterField>
+        <FilterField label="Source">
+          <Select name="source" defaultValue={sp.source ?? ""} className={`${FILTER_INPUT} w-40`}>
+            <option value="">All sources</option>
+            {Object.entries(LEAD_SOURCE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </Select>
+        </FilterField>
+        <FilterField label="Status">
+          <Select name="status" defaultValue={sp.status ?? ""} className={`${FILTER_INPUT} w-36`}>
+            <option value="">All statuses</option>
+            {Object.entries(LEAD_STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </Select>
+        </FilterField>
+      </ListFilters>
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {leads.length === 0 ? (
-          <EmptyRow text={monthLabel ? "No leads in this month." : q ? "No lead matches the search." : "No leads yet. Add one, or import an enquiry list."} />
+          <EmptyRow text={filtered ? "No leads match these filters." : monthLabel ? "No leads in this month." : "No leads yet. Add one, or import an enquiry list."} />
         ) : (
           <div className="divide-y divide-border">
             {leads.map((l) => (

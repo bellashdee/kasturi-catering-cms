@@ -8,11 +8,16 @@ import { SectionCard, EmptyRow, StatRow } from "@/components/dashboard/SectionCa
 import { MarketingSubNav } from "@/components/marketing/MarketingSubNav";
 import { MonthFilter } from "@/components/MonthFilter";
 import { filterByMonth, monthLabelOf, monthRange } from "@/lib/monthFilter";
+import { ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { spend: "Spend", name: "Campaign", status: "Status", impressions: "Impressions", clicks: "Clicks", leads: "Leads" };
+const STATUS_ORDER = Object.keys(CAMPAIGN_STATUS_LABEL);
 
 export default async function MarketingReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; month?: string }>;
+  searchParams: Promise<{ company?: string; month?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -21,7 +26,9 @@ export default async function MarketingReportsPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, month } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, month } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "spend", "desc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
 
   if (targetCompanyIds.length === 0) {
@@ -70,11 +77,23 @@ export default async function MarketingReportsPage({
   const totalImpressions = [...perfByCampaign.values()].reduce((t, p) => t + p.impressions, 0);
   const totalClicks = [...perfByCampaign.values()].reduce((t, p) => t + p.clicks, 0);
 
-  const rows = (campaigns ?? []).map((c) => {
-    const perf = perfByCampaign.get(c.id) ?? { impressions: 0, clicks: 0, leads: 0, conversions: 0, spend: 0 };
-    const expense = expenseByCampaign.get(c.id) ?? 0;
-    return { ...c, ...perf, expense, totalSpend: perf.spend + expense };
-  }).sort((a, b) => b.totalSpend - a.totalSpend);
+  const rows = sortBy(
+    (campaigns ?? []).map((c) => {
+      const perf = perfByCampaign.get(c.id) ?? { impressions: 0, clicks: 0, leads: 0, conversions: 0, spend: 0 };
+      const expense = expenseByCampaign.get(c.id) ?? 0;
+      return { ...c, ...perf, expense, totalSpend: perf.spend + expense };
+    }),
+    sort,
+    dir,
+    {
+      spend: [(r) => r.totalSpend, (r) => r.name],
+      name: (r) => r.name,
+      status: [(r) => STATUS_ORDER.indexOf(r.status), (r) => r.name],
+      impressions: (r) => r.impressions,
+      clicks: (r) => r.clicks,
+      leads: (r) => r.leads,
+    },
+  );
 
   const conversionRate = leadsCount ? Math.round(((convertedCount ?? 0) / leadsCount) * 100) : 0;
 
@@ -87,6 +106,8 @@ export default async function MarketingReportsPage({
 
       <MarketingSubNav />
       <MonthFilter />
+
+      <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/marketing/reports?${new URLSearchParams({ ...(requestedId ? { company: requestedId } : {}), ...(month ? { month } : {}) }).toString()}`} />
 
       <div className="grid grid-cols-4 gap-4">
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
@@ -107,7 +128,7 @@ export default async function MarketingReportsPage({
         </div>
       </div>
 
-      <SectionCard title="Spend &amp; Performance by Campaign">
+      <SectionCard title="Spend & Performance by Campaign">
         {rows.length === 0 ? (
           <EmptyRow text="No campaigns yet." />
         ) : (

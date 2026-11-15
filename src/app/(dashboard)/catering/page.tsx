@@ -8,13 +8,18 @@ import { EVENT_STATUS_LABEL, EVENT_TYPE_LABEL } from "@/lib/catering/constants";
 import { formatCurrency } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
-import { SearchBox } from "@/components/SearchBox";
 import { MonthFilter } from "@/components/MonthFilter";
+import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
 import { CopyLink } from "@/components/driver/CopyLink";
 import { INTAKE_COMPANIES } from "@/lib/catering/intake";
 import { CateringSubNav } from "@/components/catering/CateringSubNav";
 import { CalendarEntryActions } from "@/components/catering/CalendarEntryActions";
 import { CalendarUndoBanner } from "@/components/catering/CalendarUndoBanner";
+
+const SORTS = { date: "Event date", customer: "Customer", reference: "Event reference", event: "Event name", amount: "Amount", status: "Status" };
+const STATUS_ORDER = Object.keys(EVENT_STATUS_LABEL);
 
 function statusTone(status: string): "success" | "warning" | "danger" | "info" | "neutral" {
   if (status === "completed" || status === "confirmed") return "success";
@@ -27,7 +32,7 @@ function statusTone(status: string): "success" | "warning" | "danger" | "info" |
 export default async function CateringPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; q?: string; month?: string }>;
+  searchParams: Promise<{ company?: string; q?: string; month?: string; customer?: string; status?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -36,7 +41,8 @@ export default async function CateringPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, q, month } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, q, month } = sp;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -44,7 +50,29 @@ export default async function CateringPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const events = await listEvents(supabase, targetCompanyIds, q, month);
+  const { sort, dir } = readSort(sp, SORTS, "date", "desc");
+  const listed = await listEvents(supabase, targetCompanyIds, undefined, month);
+  // the event reference (EV-...) of each listed event, for the search and the sort
+  const { data: refs } = listed.length
+    ? await supabase.from("catering_events").select("id, event_reference").in("id", listed.map((e) => e.id))
+    : { data: [] as { id: string; event_reference: string | null }[] };
+  const refOf = new Map((refs ?? []).map((r) => [r.id, r.event_reference]));
+  const loaded = listed.map((e) => ({ ...e, event_reference: refOf.get(e.id) ?? null }));
+  const has = (value: string | null | undefined, part: string | undefined) => !part || (value ?? "").toLowerCase().includes(part.trim().toLowerCase());
+  const events = sortBy(
+    loaded.filter((e) => (has(e.event_name, q) || has(e.event_reference, q)) && has(e.customers?.name, sp.customer) && (!sp.status || e.status === sp.status)),
+    sort,
+    dir,
+    {
+      date: [(e) => e.event_date, (e) => e.event_name],
+      customer: [(e) => e.customers?.name, (e) => e.event_date],
+      reference: (e) => e.event_reference,
+      event: [(e) => e.event_name, (e) => e.event_date],
+      amount: (e) => e.total_amount,
+      status: [(e) => STATUS_ORDER.indexOf(e.status), (e) => e.event_date],
+    },
+  );
+  const filtered = Boolean(q || sp.customer || sp.status);
   const range = monthRange(month);
   const monthLabel = range ? new Date(`${range.start}T00:00:00Z`).toLocaleString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" }) : null;
   const adminFlags = await Promise.all(
@@ -120,14 +148,26 @@ export default async function CateringPage({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-        <SearchBox placeholder="Search events by name..." />
-        <MonthFilter />
-      </div>
+      <MonthFilter />
+
+      <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/catering?${new URLSearchParams({ ...(requestedId ? { company: requestedId } : {}), ...(month ? { month } : {}) }).toString()}`}>
+        <FilterField label="Event name / reference">
+          <input name="q" defaultValue={q ?? ""} className={`${FILTER_INPUT} w-48`} />
+        </FilterField>
+        <FilterField label="Customer">
+          <input name="customer" defaultValue={sp.customer ?? ""} className={`${FILTER_INPUT} w-40`} />
+        </FilterField>
+        <FilterField label="Status">
+          <Select name="status" defaultValue={sp.status ?? ""} className={`${FILTER_INPUT} w-40`}>
+            <option value="">All statuses</option>
+            {Object.entries(EVENT_STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </Select>
+        </FilterField>
+      </ListFilters>
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {events.length === 0 ? (
-          <EmptyRow text={monthLabel ? "No catering event in this month." : "No catering events yet. Create one to start quoting and planning."} />
+          <EmptyRow text={filtered ? "No catering events match these filters." : monthLabel ? "No catering events in this month." : "No catering events yet. Create one to start quoting and planning."} />
         ) : (
           <div>
             <div className="grid grid-cols-[1.8fr_1.2fr_1fr_0.8fr_1fr_1fr_1fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
@@ -147,6 +187,7 @@ export default async function CateringPage({
               >
                 <div className="font-semibold text-text">
                   {e.event_name}
+                  {e.event_reference && <span className="ml-2 font-mono text-[11px] font-normal text-text-muted">{e.event_reference}</span>}
                   {companies.length > 1 && <span className="ml-2 text-[11px] font-normal text-text-muted">{e.companies?.name}</span>}
                 </div>
                 <div className="text-text-secondary">{e.customers?.name || "—"}</div>

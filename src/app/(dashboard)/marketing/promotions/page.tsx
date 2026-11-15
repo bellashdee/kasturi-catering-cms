@@ -10,6 +10,12 @@ import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { MarketingSubNav } from "@/components/marketing/MarketingSubNav";
 import { MonthFilter } from "@/components/MonthFilter";
 import { monthLabelOf, monthRange } from "@/lib/monthFilter";
+import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { date: "Start date", end: "End date", title: "Title", campaign: "Campaign", status: "Status" };
+const STATUS_ORDER = Object.keys(PROMOTION_STATUS_LABEL);
 
 function statusTone(status: string): "success" | "neutral" | "danger" {
   if (status === "active") return "success";
@@ -20,7 +26,7 @@ function statusTone(status: string): "success" | "neutral" | "danger" {
 export default async function PromotionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; month?: string }>;
+  searchParams: Promise<{ company?: string; month?: string; q?: string; status?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -29,7 +35,9 @@ export default async function PromotionsPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, month } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, month, q } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "date", "desc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -39,7 +47,25 @@ export default async function PromotionsPage({
 
   // a promotion belongs to the month when its start-to-end dates overlap that month
   const range = monthRange(month);
-  const promotions = (await listPromotionsForCompanies(supabase, targetCompanyIds)).filter((p) => !range || (p.start_date <= range.end && p.end_date >= range.start));
+  const needle = (q ?? "").trim().toLowerCase();
+  const filtered = Boolean(needle || sp.status);
+  const promotions = sortBy(
+    (await listPromotionsForCompanies(supabase, targetCompanyIds)).filter(
+      (p) =>
+        (!range || (p.start_date <= range.end && p.end_date >= range.start)) &&
+        (!needle || p.title.toLowerCase().includes(needle) || (p.code ?? "").toLowerCase().includes(needle)) &&
+        (!sp.status || p.status === sp.status),
+    ),
+    sort,
+    dir,
+    {
+      date: [(p) => p.start_date, (p) => p.title],
+      end: [(p) => p.end_date, (p) => p.title],
+      title: (p) => p.title,
+      campaign: [(p) => p.campaigns?.name, (p) => p.start_date],
+      status: [(p) => STATUS_ORDER.indexOf(p.status), (p) => p.start_date],
+    },
+  );
   const monthLabel = monthLabelOf(month);
 
   return (
@@ -57,9 +83,21 @@ export default async function PromotionsPage({
       <MarketingSubNav />
       <MonthFilter />
 
+      <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/marketing/promotions?${new URLSearchParams({ ...(requestedId ? { company: requestedId } : {}), ...(month ? { month } : {}) }).toString()}`}>
+        <FilterField label="Title / code">
+          <input name="q" defaultValue={q ?? ""} className={`${FILTER_INPUT} w-52`} />
+        </FilterField>
+        <FilterField label="Status">
+          <Select name="status" defaultValue={sp.status ?? ""} className={`${FILTER_INPUT} w-36`}>
+            <option value="">All statuses</option>
+            {Object.entries(PROMOTION_STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </Select>
+        </FilterField>
+      </ListFilters>
+
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {promotions.length === 0 ? (
-          <EmptyRow text={monthLabel ? "No promotions running in this month." : "No promotions yet."} />
+          <EmptyRow text={filtered ? "No promotions match these filters." : monthLabel ? "No promotions running in this month." : "No promotions yet."} />
         ) : (
           <div className="divide-y divide-border">
             {promotions.map((p) => (

@@ -5,15 +5,18 @@ import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listCustomersForCompanies } from "@/lib/marketing/queries";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
-import { SearchBox } from "@/components/SearchBox";
 import { MarketingSubNav } from "@/components/marketing/MarketingSubNav";
 import { MonthFilter } from "@/components/MonthFilter";
 import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { name: "Name", contact: "Contact person", added: "Date added" };
 
 export default async function CustomersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; q?: string; month?: string }>;
+  searchParams: Promise<{ company?: string; q?: string; month?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -22,7 +25,9 @@ export default async function CustomersPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, q, month } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, q, month } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "name", "asc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -30,7 +35,11 @@ export default async function CustomersPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const customers = filterByMonth(await listCustomersForCompanies(supabase, targetCompanyIds, q), month, (c) => c.created_at);
+  const customers = sortBy(filterByMonth(await listCustomersForCompanies(supabase, targetCompanyIds, q), month, (c) => c.created_at), sort, dir, {
+    name: (c) => c.name,
+    contact: [(c) => c.contact_person, (c) => c.name],
+    added: [(c) => c.created_at, (c) => c.name],
+  });
   const monthLabel = monthLabelOf(month);
 
   return (
@@ -46,14 +55,17 @@ export default async function CustomersPage({
       </div>
 
       <MarketingSubNav />
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-        <SearchBox placeholder="Search customers by name..." />
-        <MonthFilter />
-      </div>
+      <MonthFilter />
+
+      <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/marketing/customers?${new URLSearchParams({ ...(requestedId ? { company: requestedId } : {}), ...(month ? { month } : {}) }).toString()}`}>
+        <FilterField label="Name">
+          <input name="q" defaultValue={q ?? ""} className={`${FILTER_INPUT} w-56`} />
+        </FilterField>
+      </ListFilters>
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {customers.length === 0 ? (
-          <EmptyRow text={monthLabel ? "No customers added in this month." : q ? "No customer matches the search." : "No customers yet. Add one, or convert a lead from the Leads tab."} />
+          <EmptyRow text={q ? "No customers match these filters." : monthLabel ? "No customers added in this month." : "No customers yet. Add one, or convert a lead from the Leads tab."} />
         ) : (
           <div className="divide-y divide-border">
             {customers.map((c) => (

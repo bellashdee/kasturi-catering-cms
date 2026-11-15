@@ -13,12 +13,16 @@ import { formatMargin, round2, VERDICT_LABEL, VERDICT_TONE } from "@/lib/finance
 import { MONTH_LABEL } from "@/lib/finance/constants";
 import { formatRM } from "@/lib/finance/payments";
 import { todayInMalaysia } from "@/lib/format";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
 
-type Search = { company?: string; period?: string; year?: string; month?: string; week?: string; customer?: string; agent?: string; status?: string };
+type Search = { company?: string; period?: string; year?: string; month?: string; week?: string; customer?: string; agent?: string; status?: string; sort?: string; dir?: string };
+
+const SORTS = { date: "Event date", customer: "Customer", reference: "Event reference", event: "Event name", agent: "Sales agent", status: "Status", profit: "Net profit" };
+const STATUS_ORDER = Object.keys(EVENT_STATUS_LABEL);
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const lastDay = (y: number, m: number) => new Date(Date.UTC(y, m, 0)).getUTCDate();
-const inputClass = "mt-1 h-9 rounded-lg border border-border-strong bg-surface px-2 text-[13px]";
 
 /** Booked events: Confirmed (and later, In Production / Delivered), Completed and Cancelled are counted apart; quotation requests are never events. */
 const CONFIRMED = ["confirmed", "in_production", "delivered"];
@@ -76,7 +80,17 @@ export default async function EventReportPage({ searchParams }: { searchParams: 
 
   const status = sp.status && EVENT_STATUS_LABEL[sp.status] ? sp.status : undefined;
   const agent = sp.agent && SALES_AGENTS.includes(sp.agent) ? sp.agent : undefined;
-  const rows = await listEventPnlRange(supabase, allowedIds, start, end, { customer: sp.customer, status, salesAgent: agent });
+  const { sort, dir } = readSort(sp, SORTS, "date", "asc");
+  const loaded = await listEventPnlRange(supabase, allowedIds, start, end, { customer: sp.customer, status, salesAgent: agent });
+  const rows = sortBy(loaded, sort, dir, {
+    date: [(r) => r.eventDate, (r) => r.eventName],
+    customer: [(r) => r.customerName, (r) => r.eventDate],
+    reference: (r) => r.eventReference,
+    event: [(r) => r.eventName, (r) => r.eventDate],
+    agent: [(r) => r.salesAgent, (r) => r.eventDate],
+    status: [(r) => STATUS_ORDER.indexOf(r.status), (r) => r.eventDate],
+    profit: (r) => r.pnl.netProfit,
+  });
 
   const confirmed = rows.filter((r) => CONFIRMED.includes(r.status)).length;
   const completed = rows.filter((r) => r.status === "completed").length;
@@ -106,52 +120,43 @@ export default async function EventReportPage({ searchParams }: { searchParams: 
     <div className="flex flex-col gap-5">
       {header}
 
-      <form className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-surface p-4 shadow-sm">
-        {sp.company && <input type="hidden" name="company" value={sp.company} />}
-        <label className="text-[12px] font-semibold text-text-secondary">
-          Period
-          <Select name="period" defaultValue={period} className={`${inputClass} block w-32`}>
+      <ListFilters keep={{ company: sp.company }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={sp.company ? `/catering/event-report?company=${sp.company}` : "/catering/event-report"}>
+        <FilterField label="Period">
+          <Select name="period" defaultValue={period} className={`${FILTER_INPUT} w-32`}>
             <option value="week">Weekly</option>
             <option value="month">Monthly</option>
             <option value="year">Yearly</option>
           </Select>
-        </label>
-        <label className="text-[12px] font-semibold text-text-secondary">
-          Month
-          <Select name="month" defaultValue={String(month)} className={`${inputClass} block w-36`}>
+        </FilterField>
+        <FilterField label="Month">
+          <Select name="month" defaultValue={String(month)} className={`${FILTER_INPUT} w-36`}>
             {MONTH_LABEL.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
           </Select>
-        </label>
-        <label className="text-[12px] font-semibold text-text-secondary">
-          Week
-          <Select name="week" defaultValue={String(week)} className={`${inputClass} block w-32`}>
+        </FilterField>
+        <FilterField label="Week">
+          <Select name="week" defaultValue={String(week)} className={`${FILTER_INPUT} w-32`}>
             {[1, 2, 3, 4].map((w) => <option key={w} value={w}>Week {w}</option>)}
           </Select>
-        </label>
-        <label className="text-[12px] font-semibold text-text-secondary">
-          Year
-          <input type="number" name="year" defaultValue={year} className={`${inputClass} block w-24`} />
-        </label>
-        <label className="text-[12px] font-semibold text-text-secondary">
-          Customer
-          <input name="customer" defaultValue={sp.customer ?? ""} placeholder="Name contains" className={`${inputClass} block w-44`} />
-        </label>
-        <label className="text-[12px] font-semibold text-text-secondary">
-          Sales agent
-          <Select name="agent" defaultValue={agent ?? ""} className={`${inputClass} block w-40`}>
+        </FilterField>
+        <FilterField label="Year">
+          <input type="number" name="year" defaultValue={year} className={`${FILTER_INPUT} w-24`} />
+        </FilterField>
+        <FilterField label="Customer">
+          <input name="customer" defaultValue={sp.customer ?? ""} placeholder="Name contains" className={`${FILTER_INPUT} w-44`} />
+        </FilterField>
+        <FilterField label="Sales agent">
+          <Select name="agent" defaultValue={agent ?? ""} className={`${FILTER_INPUT} w-40`}>
             <option value="">All</option>
             {SALES_AGENTS.map((a) => <option key={a} value={a}>{a}</option>)}
           </Select>
-        </label>
-        <label className="text-[12px] font-semibold text-text-secondary">
-          Event status
-          <Select name="status" defaultValue={status ?? ""} className={`${inputClass} block w-40`}>
-            <option value="">All</option>
+        </FilterField>
+        <FilterField label="Event status">
+          <Select name="status" defaultValue={status ?? ""} className={`${FILTER_INPUT} w-40`}>
+            <option value="">All statuses</option>
             {Object.entries(EVENT_STATUS_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
           </Select>
-        </label>
-        <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Show</button>
-      </form>
+        </FilterField>
+      </ListFilters>
 
       <div className="text-[13px] font-bold text-text">{periodLabel} · {rows.length} event{rows.length === 1 ? "" : "s"}</div>
 

@@ -8,10 +8,15 @@ import { CAMPAIGN_STATUS_LABEL, CAMPAIGN_CHANNEL_LABEL } from "@/lib/marketing/c
 import { formatCurrency } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
-import { SearchBox } from "@/components/SearchBox";
 import { MarketingSubNav } from "@/components/marketing/MarketingSubNav";
 import { MonthFilter } from "@/components/MonthFilter";
 import { monthLabelOf, monthRange } from "@/lib/monthFilter";
+import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { date: "Start date", end: "End date", name: "Campaign", channel: "Channel", budget: "Budget", status: "Status" };
+const STATUS_ORDER = Object.keys(CAMPAIGN_STATUS_LABEL);
 
 function statusTone(status: string): "success" | "neutral" | "danger" {
   if (status === "active") return "success";
@@ -22,7 +27,7 @@ function statusTone(status: string): "success" | "neutral" | "danger" {
 export default async function MarketingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; q?: string; month?: string }>;
+  searchParams: Promise<{ company?: string; q?: string; month?: string; channel?: string; status?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -31,7 +36,9 @@ export default async function MarketingPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, q, month } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, q, month } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "date", "desc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -41,12 +48,26 @@ export default async function MarketingPage({
 
   // a campaign belongs to the month when its start-to-end dates overlap that month (one with only one date counts by that date; one with no date is left out)
   const range = monthRange(month);
-  const campaigns = (await listCampaigns(supabase, targetCompanyIds, q)).filter((c) => {
+  const inMonth = (await listCampaigns(supabase, targetCompanyIds, q)).filter((c) => {
     if (!range) return true;
     const start = c.start_date ?? c.end_date;
     const end = c.end_date ?? c.start_date;
     return !!start && !!end && start <= range.end && end >= range.start;
   });
+  const filtered = Boolean(q || sp.channel || sp.status);
+  const campaigns = sortBy(
+    inMonth.filter((c) => (!sp.channel || c.channel === sp.channel) && (!sp.status || c.status === sp.status)),
+    sort,
+    dir,
+    {
+      date: [(c) => c.start_date, (c) => c.name],
+      end: [(c) => c.end_date, (c) => c.name],
+      name: (c) => c.name,
+      channel: [(c) => CAMPAIGN_CHANNEL_LABEL[c.channel] ?? c.channel, (c) => c.start_date],
+      budget: (c) => c.budget,
+      status: [(c) => STATUS_ORDER.indexOf(c.status), (c) => c.start_date],
+    },
+  );
   const monthLabel = monthLabelOf(month);
 
   return (
@@ -64,14 +85,29 @@ export default async function MarketingPage({
       </div>
 
       <MarketingSubNav />
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-        <SearchBox placeholder="Search campaigns by name..." />
-        <MonthFilter />
-      </div>
+      <MonthFilter />
+
+      <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/marketing?${new URLSearchParams({ ...(requestedId ? { company: requestedId } : {}), ...(month ? { month } : {}) }).toString()}`}>
+        <FilterField label="Campaign">
+          <input name="q" defaultValue={q ?? ""} className={`${FILTER_INPUT} w-52`} />
+        </FilterField>
+        <FilterField label="Channel">
+          <Select name="channel" defaultValue={sp.channel ?? ""} className={`${FILTER_INPUT} w-40`}>
+            <option value="">All channels</option>
+            {Object.entries(CAMPAIGN_CHANNEL_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </Select>
+        </FilterField>
+        <FilterField label="Status">
+          <Select name="status" defaultValue={sp.status ?? ""} className={`${FILTER_INPUT} w-36`}>
+            <option value="">All statuses</option>
+            {Object.entries(CAMPAIGN_STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </Select>
+        </FilterField>
+      </ListFilters>
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {campaigns.length === 0 ? (
-          <EmptyRow text={monthLabel ? "No campaigns running in this month." : q ? "No campaign matches the search." : "No campaigns yet. Create one to start planning content, leads and spend."} />
+          <EmptyRow text={filtered ? "No campaigns match these filters." : monthLabel ? "No campaigns running in this month." : "No campaigns yet. Create one to start planning content, leads and spend."} />
         ) : (
           <div>
             <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">

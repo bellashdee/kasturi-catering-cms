@@ -13,6 +13,8 @@ import { formatMalaysiaDate, formatMalaysiaDateTime } from "@/lib/format";
 import { Select } from "@/components/ui/Select";
 import { MonthFilter } from "@/components/MonthFilter";
 import { monthLabelOf, monthRange } from "@/lib/monthFilter";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
 
 type Search = {
   company?: string;
@@ -24,11 +26,22 @@ type Search = {
   sentFrom?: string;
   sentTo?: string;
   sort?: string;
+  dir?: string;
   month?: string;
 };
 
+const SORTS = {
+  submitted: "Date submitted",
+  date: "Event date",
+  customer: "Customer",
+  reference: "Request ID",
+  event: "Event name",
+  agent: "Sales agent",
+  status: "Status",
+  updated: "Last updated",
+};
+
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
-const inputClass = "h-9 rounded-lg border border-border-strong bg-surface px-2.5 text-[13px] outline-none focus:border-primary";
 
 /** The private inbox of the quotation requests sales agents send: only Ms. Nabilah, Mr. Adlan and Ms. Penny can open it. */
 export default async function QuotationRequestsPage({ searchParams }: { searchParams: Promise<Search> }) {
@@ -63,8 +76,21 @@ export default async function QuotationRequestsPage({ searchParams }: { searchPa
   if (range) request = request.gte("created_at", `${range.start}T00:00:00+08:00`).lte("created_at", `${range.end}T23:59:59.999+08:00`);
   if (sp.sentFrom && DATE.test(sp.sentFrom)) request = request.gte("created_at", `${sp.sentFrom}T00:00:00+08:00`);
   if (sp.sentTo && DATE.test(sp.sentTo)) request = request.lte("created_at", `${sp.sentTo}T23:59:59.999+08:00`);
-  const { data: rows, error } = await request.order("created_at", { ascending: sp.sort === "oldest" }).limit(300);
-  const requests = rows ?? [];
+  // the old "oldest first" link still opens the oldest submitted first
+  const { sort, dir } = sp.sort === "oldest" ? { sort: "submitted" as const, dir: "asc" as const } : readSort(sp, SORTS, "submitted", "desc");
+  const { data: rows, error } = await request.order("created_at", { ascending: false }).limit(300);
+  const firstDay = (r: { days: unknown }) => ((r.days as EventDay[] | null) ?? [])[0]?.dayDate;
+  const requests = sortBy(rows ?? [], sort, dir, {
+    submitted: (r) => r.created_at,
+    date: [firstDay, (r) => r.created_at],
+    customer: [(r) => r.customer_name, (r) => r.created_at],
+    reference: (r) => r.request_code,
+    event: [(r) => r.event_name, (r) => r.created_at],
+    agent: [(r) => r.sales_agent, (r) => r.created_at],
+    status: [(r) => Object.keys(TRACKING_STATUS_LABEL).indexOf(r.tracking_status), (r) => r.created_at],
+    updated: (r) => r.updated_at,
+  });
+  const filtered = Boolean(q || sp.agent || sp.status || sp.eventFrom || sp.eventTo || sp.sentFrom || sp.sentTo);
   const waiting = requests.filter((r) => r.tracking_status === "new_request").length;
 
   return (
@@ -81,55 +107,35 @@ export default async function QuotationRequestsPage({ searchParams }: { searchPa
 
       <MonthFilter />
 
-      <form className="flex flex-wrap items-end gap-2.5 rounded-xl border border-border bg-surface p-4 shadow-sm">
-        {sp.company && <input type="hidden" name="company" value={sp.company} />}
-        {range && <input type="hidden" name="month" value={sp.month} />}
-        <label className="flex flex-col gap-1 text-[11.5px] font-semibold text-text-secondary">
-          Search
-          <input name="q" defaultValue={sp.q ?? ""} placeholder="Request ID, customer, event, agent" className={`${inputClass} w-64`} />
-        </label>
-        <label className="flex flex-col gap-1 text-[11.5px] font-semibold text-text-secondary">
-          Sales agent
-          <Select name="agent" defaultValue={sp.agent ?? ""} className={inputClass}>
+      <ListFilters keep={{ company: sp.company, month: range ? sp.month : undefined }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/catering/quotation-requests?${new URLSearchParams({ ...(sp.company ? { company: sp.company } : {}), ...(range && sp.month ? { month: sp.month } : {}) }).toString()}`}>
+        <FilterField label="Search">
+          <input name="q" defaultValue={sp.q ?? ""} placeholder="Request ID, customer, event, agent" className={`${FILTER_INPUT} w-64`} />
+        </FilterField>
+        <FilterField label="Sales agent">
+          <Select name="agent" defaultValue={sp.agent ?? ""} className={`${FILTER_INPUT} w-40`}>
             <option value="">All</option>
             {SALES_AGENTS.map((a) => <option key={a} value={a}>{a}</option>)}
           </Select>
-        </label>
-        <label className="flex flex-col gap-1 text-[11.5px] font-semibold text-text-secondary">
-          Status
-          <Select name="status" defaultValue={sp.status ?? ""} className={inputClass}>
-            <option value="">All</option>
+        </FilterField>
+        <FilterField label="Status">
+          <Select name="status" defaultValue={sp.status ?? ""} className={`${FILTER_INPUT} w-44`}>
+            <option value="">All statuses</option>
             {Object.entries(TRACKING_STATUS_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
           </Select>
-        </label>
-        <label className="flex flex-col gap-1 text-[11.5px] font-semibold text-text-secondary">
-          Event date from
-          <input type="date" name="eventFrom" defaultValue={sp.eventFrom ?? ""} className={inputClass} />
-        </label>
-        <label className="flex flex-col gap-1 text-[11.5px] font-semibold text-text-secondary">
-          to
-          <input type="date" name="eventTo" defaultValue={sp.eventTo ?? ""} className={inputClass} />
-        </label>
-        <label className="flex flex-col gap-1 text-[11.5px] font-semibold text-text-secondary">
-          Submitted from
-          <input type="date" name="sentFrom" defaultValue={sp.sentFrom ?? ""} className={inputClass} />
-        </label>
-        <label className="flex flex-col gap-1 text-[11.5px] font-semibold text-text-secondary">
-          to
-          <input type="date" name="sentTo" defaultValue={sp.sentTo ?? ""} className={inputClass} />
-        </label>
-        <label className="flex flex-col gap-1 text-[11.5px] font-semibold text-text-secondary">
-          Sort
-          <Select name="sort" defaultValue={sp.sort === "oldest" ? "oldest" : "newest"} className={inputClass}>
-            <option value="newest">Newest first</option>
-            <option value="oldest">Oldest first</option>
-          </Select>
-        </label>
-        <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply</button>
-        <Link href={`/catering/quotation-requests${query}`} className="h-9 rounded-lg border border-border-strong px-3 text-[13px] font-semibold leading-9 text-text">
-          Clear
-        </Link>
-      </form>
+        </FilterField>
+        <FilterField label="Event date from">
+          <input type="date" name="eventFrom" defaultValue={sp.eventFrom ?? ""} className={FILTER_INPUT} />
+        </FilterField>
+        <FilterField label="to">
+          <input type="date" name="eventTo" defaultValue={sp.eventTo ?? ""} className={FILTER_INPUT} />
+        </FilterField>
+        <FilterField label="Submitted from">
+          <input type="date" name="sentFrom" defaultValue={sp.sentFrom ?? ""} className={FILTER_INPUT} />
+        </FilterField>
+        <FilterField label="to">
+          <input type="date" name="sentTo" defaultValue={sp.sentTo ?? ""} className={FILTER_INPUT} />
+        </FilterField>
+      </ListFilters>
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         <div className="border-b border-border px-5 py-3 text-[13px] font-bold text-text">
@@ -140,7 +146,7 @@ export default async function QuotationRequestsPage({ searchParams }: { searchPa
         {error ? (
           <div className="px-5 py-4 text-[13px] text-danger">Could not load the requests. Please refresh the page.</div>
         ) : requests.length === 0 ? (
-          <EmptyRow text={monthLabel ? "No quotation request in this month matches." : "No quotation request matches."} />
+          <EmptyRow text={filtered ? "No quotation requests match these filters." : monthLabel ? "No quotation requests in this month." : "No quotation requests yet."} />
         ) : (
           <div className="overflow-x-auto">
             {/* related details share a column (ID + submitted, customer + contact, event + date, status + handler) so nothing is squeezed */}
