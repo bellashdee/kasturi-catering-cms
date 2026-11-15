@@ -4,7 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { CateringSubNav } from "@/components/catering/CateringSubNav";
-import { EmptyRow } from "@/components/dashboard/SectionCard";
+import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
+import { DonutChart, RED } from "@/components/reports/Charts";
+import { RankBars } from "@/components/reports/RankBars";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Select } from "@/components/ui/Select";
 import { EVENT_STATUS_LABEL, SALES_AGENTS } from "@/lib/catering/constants";
@@ -105,6 +107,15 @@ export default async function EventReportPage({ searchParams }: { searchParams: 
   const averageMargin = margins.length > 0 ? margins.reduce((t, m) => t + m, 0) / margins.length : null;
   const overallMargin = revenue === 0 ? null : (profit / revenue) * 100;
 
+  // charts: the events by status, and the events with the biggest revenue (the margin beside each; a loss is flagged)
+  const STATUS_COLOR: Record<string, string> = { enquiry: "#7fb8e6", quoted: "#8a8f98", confirmed: "#2f7fc1", in_production: "#1e3a5f", delivered: "#b8794a", completed: "#2e9e6b", cancelled: RED };
+  const byStatus = STATUS_ORDER.map((k) => ({ label: EVENT_STATUS_LABEL[k], value: rows.filter((r) => r.status === k).length, color: STATUS_COLOR[k] }));
+  const topEvents = [...counted]
+    .filter((r) => r.pnl.netRevenue > 0)
+    .sort((a, b) => b.pnl.netRevenue - a.pnl.netRevenue)
+    .slice(0, 10)
+    .map((r) => ({ label: r.eventName, value: r.pnl.netRevenue, note: `margin ${formatMargin(r.pnl.margin)}`, flag: r.pnl.netProfit < 0 ? "Loss" : undefined }));
+
   const cards: { label: string; value: string; note?: string }[] = [
     { label: "Confirmed events", value: String(confirmed), note: "Confirmed, In Production, Delivered" },
     { label: "Completed events", value: String(completed) },
@@ -169,6 +180,17 @@ export default async function EventReportPage({ searchParams }: { searchParams: 
           </div>
         ))}
       </div>
+
+      {rows.length > 0 && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <SectionCard title="Events by Status">
+            <DonutChart slices={byStatus} centerLabel="Events" unit="count" empty="No events in this period." />
+          </SectionCard>
+          <SectionCard title="Biggest Events by Revenue (top 10)">
+            <RankBars items={topEvents} total={revenue} empty="No event revenue recorded on the P&L yet." />
+          </SectionCard>
+        </div>
+      )}
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {rows.length === 0 ? (
