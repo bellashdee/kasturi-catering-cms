@@ -1,0 +1,14 @@
+-- Kasturi Indah: the November 2026 invoices that were missing (data change run on the database on 15 Nov 2026, from the AutoCount
+-- invoice PDFs in Downloads; only these three November invoice PDFs exist — the others are event orders, not invoices).
+--
+--  * customer_invoices added exactly as printed, linked to their catering event (same customer, date and total):
+--      - INV-KI2611/002 SANWU NIUMA ENTERPRISE, 01/11/2026, Net 30 (due 01/12/2026), RM 21,640.00;
+--      - INV-KI2611/004 BRIDGE DATA CENTRES MALAYSIA III SDN BHD, 12/11/2026, C.O.D., RM 14,060.00;
+--      - INV-KI2611/010 MASJID SULTAN ISKANDAR BANDAR DATO ONN, 05/11/2026, Net 30 (due 05/12/2026), RM 5,200.00 (no receipt yet: issued);
+--  * customer_payments added (RM 35,700.00):
+--      - OR-KI2608/003 RM 500.00 (05/08/2026) and OR-KI2610/006 RM 10,630.00 (09/10/2026) on INV-KI2611/002 — both receipts name the invoice;
+--      - RM 10,510.00 of the 03/11/2026 Sanwu receipt (RM 10,846.00) on INV-KI2611/002 — its balance; the other RM 336.00 is for the
+--        Sanwu pack food event of 1 Nov, whose invoice is not in the system;
+--      - the 27/10/2026 Bridge Data Centres receipt RM 14,060.00 on INV-KI2611/004 (same amount, paid before the event);
+--  * INV-KI2611/002 and /004 are paid; one task_audit_log row per invoice and per payment.
+select 1;
