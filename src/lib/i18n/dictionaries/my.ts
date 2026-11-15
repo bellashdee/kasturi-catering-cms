@@ -4463,6 +4463,22 @@ const dictionary: Record<string, string> = {
  "Biggest Events by Revenue (top 10)": "ဝင်ငွေအများဆုံး ပွဲများ (ထိပ်ဆုံး 10)",
  "No events in this period.": "ဤကာလတွင် ပွဲ မရှိပါ။",
  "No event revenue recorded on the P&L yet.": "P&L တွင် ပွဲဝင်ငွေ မှတ်တမ်း မတင်ရသေးပါ။",
+ "Sales: {0} vs {1}": "အရောင်း - {0} နှင့် {1}",
+ "Sales of each month against the same month of {0}: the monthly sales keyed in, or the invoices issued in a month with none keyed. The totals compare the same months ({1}).": "လစဉ် အရောင်းကို {0} ၏ တူညီသောလနှင့် နှိုင်းယှဉ်ထားသည် - ထည့်သွင်းထားသော လစဉ်အရောင်း၊ မထည့်သွင်းရသေးသောလအတွက် ထုတ်ထားသော ငွေတောင်းခံလွှာများ။ စုစုပေါင်းများသည် တူညီသောလများကိုသာ နှိုင်းယှဉ်သည် ({1})။",
+ "{0} (whole year)": "{0} (တစ်နှစ်လုံး)",
+ "Whole {0}: {1}": "{0} တစ်နှစ်လုံး - {1}",
+ "Best month of {0}": "{0} ၏ အကောင်းဆုံးလ",
+ "No sales are recorded for {0}.": "{0} အတွက် အရောင်း မှတ်တမ်း မရှိပါ။",
+ "No sales are recorded for {0} in these companies.": "ဤကုမ္ပဏီများတွင် {0} အတွက် အရောင်း မှတ်တမ်း မရှိပါ။",
+ "Difference": "ကွာခြားချက်",
+ "Purchases {0}": "{0} ဝယ်ယူမှု",
+ "Total ({0})": "စုစုပေါင်း ({0})",
+ "Purchases {0} ({1}): {2}% of sales.": "{0} ဝယ်ယူမှု ({1}) - အရောင်း၏ {2}%။",
+ "By company ({0})": "ကုမ္ပဏီအလိုက် ({0})",
+ "whole year": "တစ်နှစ်လုံး",
+ "No data": "ဒေတာ မရှိ",
+ "· sales (compared with the year before), expenses and what is still owed, from the recorded figures. What is owed is as it stands today. Each block links to the report with its detail.": "· အရောင်း (ယခင်နှစ်နှင့် နှိုင်းယှဉ်)၊ အသုံးစရိတ်နှင့် ပေးရန်ကျန်ငွေ၊ မှတ်တမ်းတင်ထားသော ကိန်းဂဏန်းများမှ။ ပေးရန်ကျန်ငွေသည် ယနေ့အခြေအနေအတိုင်း ဖြစ်သည်။ အပိုင်းတိုင်းသည် အသေးစိတ်အစီရင်ခံစာသို့ ချိတ်ဆက်ထားသည်။",
+ "Sales, costs, profit and what is still owed: one month, or the whole year compared with last year, with the top products, key customers and where the money went.": "အရောင်း၊ ကုန်ကျစရိတ်၊ အမြတ်နှင့် ပေးရန်ကျန်ငွေ - တစ်လ၊ သို့မဟုတ် နှစ်တစ်နှစ်လုံးကို ယမန်နှစ်နှင့် နှိုင်းယှဉ်၍ ထိပ်တန်းထုတ်ကုန်များ၊ အဓိကဖောက်သည်များနှင့် ငွေသုံးစွဲရာနေရာများနှင့်အတူ။",
 };
 
 export default dictionary;

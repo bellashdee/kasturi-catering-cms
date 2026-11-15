@@ -4575,6 +4575,22 @@ const dictionary: Record<string, string> = {
  "Biggest Events by Revenue (top 10)": "Acara Terbesar Mengikut Hasil (10 teratas)",
  "No events in this period.": "Tiada acara dalam tempoh ini.",
  "No event revenue recorded on the P&L yet.": "Belum ada hasil acara direkodkan dalam P&L.",
+ "Sales: {0} vs {1}": "Jualan: {0} berbanding {1}",
+ "Sales of each month against the same month of {0}: the monthly sales keyed in, or the invoices issued in a month with none keyed. The totals compare the same months ({1}).": "Jualan setiap bulan berbanding bulan yang sama pada {0}: jualan bulanan yang dimasukkan, atau invois yang dikeluarkan bagi bulan yang tiada jualan dimasukkan. Jumlah membandingkan bulan-bulan yang sama ({1}).",
+ "{0} (whole year)": "{0} (sepanjang tahun)",
+ "Whole {0}: {1}": "Sepanjang {0}: {1}",
+ "Best month of {0}": "Bulan terbaik {0}",
+ "No sales are recorded for {0}.": "Tiada jualan direkodkan bagi {0}.",
+ "No sales are recorded for {0} in these companies.": "Tiada jualan direkodkan bagi {0} dalam syarikat-syarikat ini.",
+ "Difference": "Perbezaan",
+ "Purchases {0}": "Pembelian {0}",
+ "Total ({0})": "Jumlah ({0})",
+ "Purchases {0} ({1}): {2}% of sales.": "Pembelian {0} ({1}): {2}% daripada jualan.",
+ "By company ({0})": "Mengikut syarikat ({0})",
+ "whole year": "sepanjang tahun",
+ "No data": "Tiada data",
+ "· sales (compared with the year before), expenses and what is still owed, from the recorded figures. What is owed is as it stands today. Each block links to the report with its detail.": "· jualan (berbanding tahun sebelumnya), perbelanjaan dan baki terhutang, daripada angka yang direkodkan. Baki terhutang adalah setakat hari ini. Setiap blok dipautkan ke laporan dengan butirannya.",
+ "Sales, costs, profit and what is still owed: one month, or the whole year compared with last year, with the top products, key customers and where the money went.": "Jualan, kos, keuntungan dan baki terhutang: satu bulan, atau sepanjang tahun berbanding tahun lepas, dengan produk teratas, pelanggan utama dan ke mana wang dibelanjakan.",
 };
 
 export default dictionary;

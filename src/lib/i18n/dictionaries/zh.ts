@@ -4475,6 +4475,22 @@ const dictionary: Record<string, string> = {
  "Biggest Events by Revenue (top 10)": "收入最高的活动（前 10 名）",
  "No events in this period.": "此期间没有活动。",
  "No event revenue recorded on the P&L yet.": "损益表中尚未记录活动收入。",
+ "Sales: {0} vs {1}": "销售额：{0} 对比 {1}",
+ "Sales of each month against the same month of {0}: the monthly sales keyed in, or the invoices issued in a month with none keyed. The totals compare the same months ({1}).": "每月销售额与 {0} 同月对比：采用已录入的月度销售额；未录入的月份则采用当月开出的发票。总额只比较相同的月份（{1}）。",
+ "{0} (whole year)": "{0}（全年）",
+ "Whole {0}: {1}": "{0} 全年：{1}",
+ "Best month of {0}": "{0} 最佳月份",
+ "No sales are recorded for {0}.": "{0} 没有销售记录。",
+ "No sales are recorded for {0} in these companies.": "这些公司在 {0} 没有销售记录。",
+ "Difference": "差额",
+ "Purchases {0}": "{0} 采购",
+ "Total ({0})": "合计（{0}）",
+ "Purchases {0} ({1}): {2}% of sales.": "{0} 采购（{1}）：占销售额的 {2}%。",
+ "By company ({0})": "按公司（{0}）",
+ "whole year": "全年",
+ "No data": "无数据",
+ "· sales (compared with the year before), expenses and what is still owed, from the recorded figures. What is owed is as it stands today. Each block links to the report with its detail.": "· 销售额（与上一年对比）、开支及未付款项，来自已记录的数据。未付款项以今天为准。每个板块都链接到对应的详细报告。",
+ "Sales, costs, profit and what is still owed: one month, or the whole year compared with last year, with the top products, key customers and where the money went.": "销售额、成本、利润及未付款项：单月，或全年并与去年对比，附热门产品、主要客户及资金去向。",
 };
 
 export default dictionary;

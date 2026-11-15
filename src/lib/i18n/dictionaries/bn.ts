@@ -4469,6 +4469,22 @@ const dictionary: Record<string, string> = {
  "Biggest Events by Revenue (top 10)": "আয় অনুযায়ী সবচেয়ে বড় ইভেন্ট (শীর্ষ 10)",
  "No events in this period.": "এই সময়ে কোনো ইভেন্ট নেই।",
  "No event revenue recorded on the P&L yet.": "P&L-এ এখনও কোনো ইভেন্টের আয় রেকর্ড করা হয়নি।",
+ "Sales: {0} vs {1}": "বিক্রয়: {0} বনাম {1}",
+ "Sales of each month against the same month of {0}: the monthly sales keyed in, or the invoices issued in a month with none keyed. The totals compare the same months ({1}).": "প্রতি মাসের বিক্রয় {0}-এর একই মাসের সাথে তুলনা: এন্ট্রি করা মাসিক বিক্রয়, অথবা যে মাসে এন্ট্রি নেই সেই মাসে ইস্যু করা ইনভয়েস। মোট হিসাব একই মাসগুলোর তুলনা করে ({1})।",
+ "{0} (whole year)": "{0} (পুরো বছর)",
+ "Whole {0}: {1}": "পুরো {0}: {1}",
+ "Best month of {0}": "{0}-এর সেরা মাস",
+ "No sales are recorded for {0}.": "{0}-এর জন্য কোনো বিক্রয় রেকর্ড নেই।",
+ "No sales are recorded for {0} in these companies.": "এই কোম্পানিগুলোতে {0}-এর জন্য কোনো বিক্রয় রেকর্ড নেই।",
+ "Difference": "পার্থক্য",
+ "Purchases {0}": "ক্রয় {0}",
+ "Total ({0})": "মোট ({0})",
+ "Purchases {0} ({1}): {2}% of sales.": "ক্রয় {0} ({1}): বিক্রয়ের {2}%।",
+ "By company ({0})": "কোম্পানি অনুযায়ী ({0})",
+ "whole year": "পুরো বছর",
+ "No data": "কোনো ডেটা নেই",
+ "· sales (compared with the year before), expenses and what is still owed, from the recorded figures. What is owed is as it stands today. Each block links to the report with its detail.": "· বিক্রয় (আগের বছরের সাথে তুলনা), খরচ এবং এখনও বকেয়া, রেকর্ড করা হিসাব থেকে। বকেয়া আজকের অবস্থা অনুযায়ী। প্রতিটি অংশ বিস্তারিত রিপোর্টের সাথে যুক্ত।",
+ "Sales, costs, profit and what is still owed: one month, or the whole year compared with last year, with the top products, key customers and where the money went.": "বিক্রয়, খরচ, লাভ এবং এখনও বকেয়া: এক মাস, অথবা পুরো বছর গত বছরের সাথে তুলনা করে, শীর্ষ পণ্য, প্রধান গ্রাহক এবং অর্থ কোথায় গেছে তা সহ।",
 };
 
 export default dictionary;

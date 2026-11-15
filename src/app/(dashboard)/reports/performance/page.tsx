@@ -13,7 +13,7 @@ import { MONTH_LABEL } from "@/lib/finance/constants";
 import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { PrintButton } from "@/components/reports/PrintButton";
 import { RankBars, type RankItem } from "@/components/reports/RankBars";
-import { SalesPurchasesChart } from "@/components/reports/SalesPurchasesChart";
+import { SalesYearComparison, type CompanySales } from "@/components/reports/SalesYearComparison";
 import { AGING_LABELS, CHART_COLORS, ColumnChart, DonutChart, RED, StackedBar, TrendLines, agingBucket, type Slice } from "@/components/reports/Charts";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 import { SoftPage } from "@/components/ui/Soft";
@@ -44,6 +44,27 @@ const getMonthlySales = cache(async (ids: string, year: number) => {
   const { data } = await (await createClient()).from("monthly_sales").select("company_id, month, sales_amount").in("company_id", ids.split(",")).eq("year", year);
   return data ?? [];
 });
+
+/**
+ * Sales of each company, month by month: the monthly sales keyed in for the company (the figure Monthly Costing and the Admin dashboard use);
+ * a month with none keyed counts the invoices issued in it, tax included. The Sales card and the comparison with last year both use it.
+ */
+const getSalesByCompany = cache(async (ids: string, year: number) => {
+  const [yearInvoices, monthlySales] = await Promise.all([getYearInvoices(ids, year), getMonthlySales(ids, year)]);
+  const by = new Map<string, number[]>(ids.split(",").map((id) => [id, Array<number>(12).fill(0)]));
+  const row = (id: string) => {
+    if (!by.has(id)) by.set(id, Array<number>(12).fill(0));
+    return by.get(id) as number[];
+  };
+  const keyed = new Set(monthlySales.map((s) => `${s.company_id}|${s.month}`));
+  for (const i of yearInvoices) {
+    const m = Number(i.invoice_date.slice(5, 7));
+    if (!keyed.has(`${i.company_id}|${m}`)) row(i.company_id)[m - 1] += invoiceTotal(i);
+  }
+  for (const s of monthlySales) row(s.company_id)[s.month - 1] += Number(s.sales_amount);
+  return { by, keyedAny: monthlySales.length > 0 };
+});
+const totalByMonth = (by: Map<string, number[]>) => Array.from({ length: 12 }, (_, m) => sum(Array.from(by.values(), (v) => v[m])));
 
 /** Sales = the invoices issued in the year (drafts and quotation requests waiting for review are not issued), tax included. */
 async function getYearInvoices(ids: string, year: number) {
@@ -77,21 +98,10 @@ async function Headline({ ids, year, month, query }: BlockProps) {
   const now = malaysiaYearMonth();
   // the months that have come: a month still to come is left out of the lines instead of dropping to 0
   const lastMonth = year < now.year ? 12 : year > now.year ? 0 : now.month;
-  const [yearInvoices, payments, spending, monthlyPurchases, monthlySales] = await Promise.all([getYearInvoices(ids, year), getPayments(ids, year), getSpending(ids, year), getMonthlyPurchases(ids, year), getMonthlySales(ids, year)]);
+  const [yearInvoices, payments, spending, sales] = await Promise.all([getYearInvoices(ids, year), getPayments(ids, year), getSpending(ids, year), getSalesByCompany(ids, year)]);
 
-  // sales of a month = the monthly sales keyed in for the company (the figure Monthly Costing and the Admin dashboard use); a month with none
-  // keyed counts the invoices issued in it
-  const salesByMonth = Array<number>(12).fill(0);
-  const keyed = new Set(monthlySales.map((s) => `${s.company_id}|${s.month}`));
-  for (const i of yearInvoices) {
-    const m = Number(i.invoice_date.slice(5, 7));
-    if (!keyed.has(`${i.company_id}|${m}`)) salesByMonth[m - 1] += invoiceTotal(i);
-  }
-  const recordedOnly = new Set<string>();
-  for (const s of monthlySales) {
-    salesByMonth[s.month - 1] += Number(s.sales_amount);
-    recordedOnly.add(s.company_id);
-  }
+  // sales of a month = the monthly sales keyed in, or the invoices issued in a month with none keyed (see getSalesByCompany)
+  const salesByMonth = totalByMonth(sales.by);
   // the cards are for the month chosen (the whole year when none); the charts keep the whole year so the month can be seen in its year
   const pick = (v: number[]) => (month ? v[month - 1] : sum(v));
   const invoiced = pick(salesByMonth);
@@ -110,30 +120,54 @@ async function Headline({ ids, year, month, query }: BlockProps) {
   }
   const totalExpenses = pick(expenseByMonth);
 
-  const purchasesByMonth = Array<number>(12).fill(0);
-  for (const p of monthlyPurchases) purchasesByMonth[p.month - 1] += Number(p.purchase_amount);
-
   const net = received - totalExpenses;
   const upTo = (v: number[]): (number | null)[] => v.map((x, i) => (i < lastMonth ? x : null));
 
   return (
     <>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Sales" value={formatCurrency(invoiced)} sub={recordedOnly.size > 0 ? `${invoiceCount} invoices + recorded monthly sales` : `${invoiceCount} invoices issued`} />
+        <Stat label="Sales" value={formatCurrency(invoiced)} sub={sales.keyedAny ? `${invoiceCount} invoices + recorded monthly sales` : `${invoiceCount} invoices issued`} />
         <Stat label="Money received" value={formatCurrency(received)} sub={month ? "payments in the month" : "payments in the year"} />
         <Stat label="Total expenses" value={formatCurrency(totalExpenses)} sub={`${cats.size} categories`} />
         <Stat label="Received less expenses" value={formatCurrency(net)} bad={net < 0} sub={received > 0 ? `${((net / received) * 100).toFixed(1)}% of money received` : undefined} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <SectionCard title={`Money Received and Expenses — ${year}`}>
-          <Note>Month by month: payments received against every cost recorded.</Note>
-          <TrendLines series={[{ label: "Money received", values: upTo(receivedByMonth), color: "#2e9e6b" }, { label: "Expenses", values: upTo(expenseByMonth), color: RED }]} />
-          <More to={`/reports/revenue${query}`}>Revenue Report</More>
-        </SectionCard>
-        <SalesPurchasesChart year={year} sales={salesByMonth} purchases={purchasesByMonth} />
-      </div>
+      <SectionCard title={`Money Received and Expenses — ${year}`}>
+        <Note>Month by month: payments received against every cost recorded.</Note>
+        <TrendLines series={[{ label: "Money received", values: upTo(receivedByMonth), color: "#2e9e6b" }, { label: "Expenses", values: upTo(expenseByMonth), color: RED }]} />
+        <More to={`/reports/revenue${query}`}>Revenue Report</More>
+      </SectionCard>
     </>
+  );
+}
+
+/**
+ * Sales of the chosen year against the year before, for the companies in scope (this was the "Sales: this year vs last year" report). Sales by
+ * month are shown here only, with the purchases of the year beside them.
+ */
+async function SalesVsLastYear({ ids, year }: BlockProps) {
+  const now = malaysiaYearMonth();
+  const lastMonth = year < now.year ? 12 : year > now.year ? 0 : now.month;
+  const [cur, prev, monthlyPurchases, companiesRes] = await Promise.all([
+    getSalesByCompany(ids, year),
+    getSalesByCompany(ids, year - 1),
+    getMonthlyPurchases(ids, year),
+    (await createClient()).from("companies").select("id, name").in("id", ids.split(",")).order("name"),
+  ]);
+  const purchases = Array<number>(12).fill(0);
+  for (const p of monthlyPurchases) purchases[p.month - 1] += Number(p.purchase_amount);
+  const zero = Array<number>(12).fill(0);
+  const companies: CompanySales[] = (companiesRes.data ?? []).map((c) => ({ id: c.id, name: c.name, current: cur.by.get(c.id) ?? zero, previous: prev.by.get(c.id) ?? zero }));
+  return (
+    <SalesYearComparison
+      year={year}
+      compare={year - 1}
+      lastMonth={lastMonth}
+      current={totalByMonth(cur.by)}
+      previous={totalByMonth(prev.by)}
+      purchases={purchases}
+      companies={companies}
+    />
   );
 }
 
@@ -361,7 +395,7 @@ export default async function PerformanceDashboardPage({ searchParams }: { searc
       <div>
         <Link href={`/reports${query}`} className="text-[12.5px] font-semibold text-text-secondary">← Back to Reports</Link>
         <h1 className="mt-2 text-[22px] font-extrabold text-text">Performance Dashboard — {selected ? selected.name : "All Companies"}</h1>
-        <p className="mt-0.5 text-[13px] text-text-secondary">{periodOf(year, month)} · sales, expenses and what is still owed, from the recorded figures. What is owed is as it stands today. Each block links to the report with its detail.</p>
+        <p className="mt-0.5 text-[13px] text-text-secondary">{periodOf(year, month)} · sales (compared with the year before), expenses and what is still owed, from the recorded figures. What is owed is as it stands today. Each block links to the report with its detail.</p>
       </div>
 
       <div className="flex flex-wrap items-end justify-between gap-3 print:hidden">
@@ -370,6 +404,7 @@ export default async function PerformanceDashboardPage({ searchParams }: { searc
       </div>
 
       <Suspense fallback={<Skeleton height={420} />}><Headline {...props} /></Suspense>
+      <Suspense fallback={<Skeleton height={520} />}><SalesVsLastYear {...props} /></Suspense>
       <Suspense fallback={<Skeleton />}><Rings {...props} /></Suspense>
       <Suspense fallback={<Skeleton />}><People {...props} /></Suspense>
       <Suspense fallback={<Skeleton height={340} />}><OwedToUs {...props} /></Suspense>

@@ -13,17 +13,11 @@ const REPORTS: ReportCard[] = [
   {
     key: "overview",
     title: "Business Overview",
-    description: "Sales, costs, profit and what is still owed: one month, or the whole year with the top products, key customers and where the money went.",
+    description: "Sales, costs, profit and what is still owed: one month, or the whole year compared with last year, with the top products, key customers and where the money went.",
     links: [
       { href: "/reports/company-summary", label: "This month" },
       { href: "/reports/performance", label: "Whole year" },
     ],
-  },
-  {
-    key: "comparison",
-    title: "Sales: this year vs last year",
-    description: "Sales of each month against the same month of last year, with the change, the best month and each company.",
-    links: [{ href: "/reports/sales-comparison", label: "Open" }],
   },
   {
     key: "revenue",
