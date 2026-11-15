@@ -13,6 +13,8 @@ import { ReportTable } from "@/components/reports/ReportTable";
 import { buildReportRows } from "@/lib/reports/buildRows";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
+import { DonutChart } from "@/components/reports/Charts";
+import { RankBars } from "@/components/reports/RankBars";
 import { readSort, sortBy } from "@/lib/listSort";
 
 const SORTS = { date: "Planned Date", recipe: "Recipe", event: "Event", status: "Status" };
@@ -62,6 +64,22 @@ export default async function KitchenReportPage({
     status: [(r) => PRODUCTION_STATUS_LABEL[r.status] ?? r.status, (r) => r.planned_date],
   });
 
+  // charts of the period: the production orders by status and the recipes cooked most often
+  const STATUS_COLOR: Record<string, string> = { planned: "#8a8f98", preparing: "#e0a030", ready: "#2f7fc1", completed: "#2e9e6b" };
+  const byStatus = Object.entries(PRODUCTION_STATUS_LABEL).map(([k, label]) => ({ label, value: monthOrders.filter((o) => o.status === k).length, color: STATUS_COLOR[k] }));
+  const perRecipe = new Map<string, { count: number; pax: number }>();
+  for (const o of monthOrders) {
+    const name = o.recipes?.name ?? "No recipe";
+    const r = perRecipe.get(name) ?? { count: 0, pax: 0 };
+    r.count += 1;
+    r.pax += o.pax_count ?? 0;
+    perRecipe.set(name, r);
+  }
+  const byRecipe = Array.from(perRecipe.entries())
+    .sort((a, b) => b[1].count - a[1].count || b[1].pax - a[1].pax)
+    .slice(0, 10)
+    .map(([label, r]) => ({ label, value: r.count, note: `${r.pax.toLocaleString("en-MY")} pax` }));
+
   const kitchenCosts = costRows.filter((r) => r.source === "Kitchen");
   const ingredientCost = kitchenCosts.filter((r) => r.category === "Ingredients Consumed").reduce((t, r) => t + r.amount, 0);
   const wastageCost = kitchenCosts.filter((r) => r.category === "Wastage").reduce((t, r) => t + r.amount, 0);
@@ -109,6 +127,15 @@ export default async function KitchenReportPage({
       <div className="grid grid-cols-2 gap-4">
         <SectionCard title="Ingredient Cost Used"><div className="text-xl font-extrabold text-text">{formatCurrency(ingredientCost)}</div></SectionCard>
         <SectionCard title="Wastage Cost"><div className="text-xl font-extrabold text-danger">{formatCurrency(wastageCost)}</div></SectionCard>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <SectionCard title="Production Orders by Status">
+          <DonutChart slices={byStatus} centerLabel="Orders" unit="count" empty="No production orders in this period." />
+        </SectionCard>
+        <SectionCard title="Recipes Cooked Most (top 10)">
+          <RankBars items={byRecipe} format={(n: number) => n.toLocaleString("en-MY")} empty="No production orders in this period." />
+        </SectionCard>
       </div>
 
       <ReportTable
