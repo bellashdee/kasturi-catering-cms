@@ -13,6 +13,7 @@ import { ReportTable } from "@/components/reports/ReportTable";
 import { buildReportRows } from "@/lib/reports/buildRows";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
+import { DonutChart } from "@/components/reports/Charts";
 import { readSort, sortBy } from "@/lib/listSort";
 
 const SORTS = { period: "Pay Period", employee: "Employee", department: "Department", net: "Net Pay", status: "Status" };
@@ -70,6 +71,12 @@ export default async function HRReportPage({
   });
   const totalGross = rows.reduce((t, r) => t + Number(r.gross_pay), 0);
   const totalNet = rows.reduce((t, r) => t + Number(r.net_pay), 0);
+  const grossByDepartment = new Map<string, number>();
+  for (const r of rows) {
+    const department = r.employees?.department ?? "No department";
+    grossByDepartment.set(department, (grossByDepartment.get(department) ?? 0) + Number(r.gross_pay));
+  }
+  const byDepartment = Array.from(grossByDepartment.entries()).sort((a, b) => b[1] - a[1]).map(([label, value]) => ({ label, value }));
 
   const { headers, tableRows } = buildReportRows(
     rows,
@@ -119,6 +126,10 @@ export default async function HRReportPage({
         <SectionCard title="Gross Pay"><div className="text-xl font-extrabold text-text">{formatCurrency(totalGross)}</div></SectionCard>
         <SectionCard title="Net Pay"><div className="text-xl font-extrabold text-text">{formatCurrency(totalNet)}</div></SectionCard>
       </div>
+
+      <SectionCard title="Gross Pay by Department">
+        <DonutChart slices={byDepartment} centerLabel="Gross pay" empty="No payroll records for this period." />
+      </SectionCard>
 
       <ReportTable
         filenameBase={`hr-${year}-${month}`}
