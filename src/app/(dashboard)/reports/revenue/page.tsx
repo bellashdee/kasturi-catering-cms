@@ -11,7 +11,8 @@ import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { ReportTable } from "@/components/reports/ReportTable";
 import { buildReportRows } from "@/lib/reports/buildRows";
 import { StatusBadge } from "@/components/StatusBadge";
-import { EmptyRow } from "@/components/dashboard/SectionCard";
+import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
+import { MonthColumns } from "@/components/reports/Charts";
 import { InvoiceListingView, RevenueViewTabs } from "@/components/reports/InvoiceListingView";
 import { readSort, sortBy } from "@/lib/listSort";
 
@@ -19,6 +20,25 @@ const SORTS = { date: "Payment date", customer: "Customer", invoice: "Invoice No
 
 function currentYearMonth() {
   return malaysiaYearMonth();
+}
+
+/** The money received in each month of the year (customer payments by payment date), read a thousand at a time so none is left out. */
+async function receivedByMonth(supabase: Awaited<ReturnType<typeof createClient>>, companyIds: string[], year: number): Promise<number[]> {
+  const out: number[] = Array(12).fill(0);
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase
+      .from("customer_payments")
+      .select("id, amount, payment_date")
+      .in("company_id", companyIds)
+      .gte("payment_date", `${year}-01-01`)
+      .lte("payment_date", `${year}-12-31`)
+      .order("id")
+      .range(from, from + 999);
+    if (error) throw error;
+    for (const p of data ?? []) out[Number(p.payment_date.slice(5, 7)) - 1] += Number(p.amount);
+    if ((data ?? []).length < 1000) break;
+  }
+  return out;
 }
 
 export default async function RevenueReportPage({
@@ -51,7 +71,7 @@ export default async function RevenueReportPage({
   const month = Number(monthParam) || nowMonth;
   const range = parseDateRange(fromParam, toParam);
 
-  const allRows = await getRevenueReportRows(supabase, targetCompanyIds, year, month, range);
+  const [allRows, yearByMonth] = await Promise.all([getRevenueReportRows(supabase, targetCompanyIds, year, month, range), receivedByMonth(supabase, targetCompanyIds, year)]);
   const rows = sortBy(statusParam ? allRows.filter((r) => r.customer_invoices?.status === statusParam) : allRows, sort, dir, {
     date: (r) => r.payment_date,
     customer: [(r) => r.customer_invoices?.customers?.name, (r) => r.payment_date],
@@ -109,6 +129,10 @@ export default async function RevenueReportPage({
         status={statusParam}
         statusOptions={Object.entries(INVOICE_STATUS_LABEL).map(([value, label]) => ({ value, label }))}
       />
+
+      <SectionCard title={`Money Received by Month — ${year}`}>
+        <MonthColumns series={[{ label: "Received", color: "#2e9e6b", values: yearByMonth }]} empty="No payments received this year." />
+      </SectionCard>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-1">
         <PieChart title="Revenue by customer" slices={sumBy(rows, (r) => r.customer_invoices?.customers?.name ?? "—", (r) => Number(r.amount))} />
