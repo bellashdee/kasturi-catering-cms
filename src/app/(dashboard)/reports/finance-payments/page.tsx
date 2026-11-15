@@ -26,6 +26,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { ReportTable } from "@/components/reports/ReportTable";
 import { PaymentSummaryCards } from "@/components/finance/PaymentSummaryCards";
+import { MonthColumns, RED } from "@/components/reports/Charts";
 import { readSort, sortBy } from "@/lib/listSort";
 
 const SORTS = { due: "Due date", payee: "Payee", invoice: "Invoice No.", category: "Category", amount: "Amount", status: "Status" };
@@ -127,7 +128,17 @@ export default async function FinancePaymentsReportPage({
     );
   }
 
-  const all = await listPaymentsForMonth(supabase, adminIds, year, month, { category });
+  // the chosen month for the table, and the whole year (same category) for the month-by-month chart
+  const [all, yearAll] = await Promise.all([
+    listPaymentsForMonth(supabase, adminIds, year, month, { category }),
+    listPaymentsForMonth(supabase, adminIds, year, 0, { category }),
+  ]);
+  const byMonth = MONTH_LABEL.map((_, i) => summarizePayments(yearAll.filter((p) => Number(p.period_month.slice(5, 7)) === i + 1), today));
+  const yearSeries = [
+    { label: "Paid", color: "#2e9e6b", values: byMonth.map((s) => s.paid) },
+    { label: "Pending (not yet due)", color: "#e0a030", values: byMonth.map((s) => s.pending - s.overdue) },
+    { label: "Overdue", color: RED, values: byMonth.map((s) => s.overdue) },
+  ];
   const rows = sortBy(
     all.filter((p) => matchesStatusFilter(paymentUrgency(p.status, p.due_date, today), statusParam)),
     sort,
@@ -214,6 +225,11 @@ export default async function FinancePaymentsReportPage({
           )}
         </SectionCard>
       </div>
+
+      <SectionCard title={`Month by Month — ${year}${category ? ` · ${PAYMENT_CATEGORY_LABEL[category]}` : ""}`}>
+        <p className="mb-3 text-[12.5px] text-text-secondary">The payments of each month of the year: what is paid, what is still to pay and what is past its due date today.</p>
+        <MonthColumns series={yearSeries} empty="No payments recorded this year." />
+      </SectionCard>
 
       <ReportTable filenameBase={`finance-payment-report-${year}-${month}`} headers={headers} rows={tableRows} emptyText="No payments for this month and filter." />
     </div>
