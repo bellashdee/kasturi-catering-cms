@@ -14,7 +14,7 @@ import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { PrintButton } from "@/components/reports/PrintButton";
 import { RankBars, type RankItem } from "@/components/reports/RankBars";
 import { SalesPurchasesChart } from "@/components/reports/SalesPurchasesChart";
-import { CHART_COLORS, ColumnChart, DonutChart, RED, StackedBar, TrendLines, type Slice } from "@/components/reports/Charts";
+import { AGING_LABELS, CHART_COLORS, ColumnChart, DonutChart, RED, StackedBar, TrendLines, agingBucket, type Slice } from "@/components/reports/Charts";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 import { SoftPage } from "@/components/ui/Soft";
 
@@ -241,15 +241,6 @@ async function People({ ids, year, month, query, requestedId }: BlockProps) {
     </div>
   );
 }
-
-const AGING_LABELS: { label: string; color: string }[] = [
-  { label: "Not yet due", color: "#2e9e6b" },
-  { label: "1 – 30 days late", color: "#e0a030" },
-  { label: "31 – 60 days late", color: "#d9772b" },
-  { label: "61 – 90 days late", color: "#c2410c" },
-  { label: "Over 90 days late", color: RED },
-];
-const agingBucket = (days: number) => (days <= 0 ? 0 : days <= 30 ? 1 : days <= 60 ? 2 : days <= 90 ? 3 : 4);
 
 /** Who still owes us: how late the unpaid invoices are and the customers with the biggest balance. */
 async function OwedToUs({ ids, query }: BlockProps) {
