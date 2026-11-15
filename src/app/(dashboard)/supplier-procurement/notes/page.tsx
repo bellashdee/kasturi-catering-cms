@@ -10,14 +10,25 @@ import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SupplierProcurementSubNav } from "@/components/procurement/SupplierProcurementSubNav";
+import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { natural, readSort, sortBy } from "@/lib/listSort";
 
-export default async function SupplierNotesPage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string }> }) {
+const SORTS = { date: "Date", note: "Note No.", supplier: "Supplier", invoice: "Invoice No.", amount: "Amount" };
+
+export default async function SupplierNotesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ company?: string; month?: string; type?: string; supplier?: string; sort?: string; dir?: string }>;
+}) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
   const supabase = await createClient();
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
-  const { company: requestedId, month } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, month, type, supplier } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "date", "desc");
   const { targetCompanyIds } = resolveCompanyScope(session, allCompanies ?? [], requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
   const sep = requestedId ? "&" : "?";
@@ -25,7 +36,21 @@ export default async function SupplierNotesPage({ searchParams }: { searchParams
   if (targetCompanyIds.length === 0) return <EmptyRow text="You don't have access to any company yet." />;
 
   // by month: the date of the note
-  const notes = filterByMonth(await listSupplierNotes(supabase, targetCompanyIds), month, (n) => n.note_date);
+  const inMonth = filterByMonth(await listSupplierNotes(supabase, targetCompanyIds), month, (n) => n.note_date);
+  const supplierOptions = Array.from(new Map(inMonth.filter((n) => n.supplier_id).map((n) => [n.supplier_id as string, n.suppliers?.name ?? "—"])).entries()).sort((a, b) => natural(a[1], b[1]));
+  const notes = sortBy(
+    inMonth.filter((n) => (!type || n.note_type === type) && (!supplier || n.supplier_id === supplier)),
+    sort,
+    dir,
+    {
+      date: (n) => n.note_date,
+      note: (n) => n.note_number,
+      supplier: [(n) => n.suppliers?.name, (n) => n.note_date],
+      invoice: [(n) => n.supplier_invoices?.invoice_number, (n) => n.note_date],
+      amount: (n) => Number(n.amount),
+    },
+  );
+  const filtered = !!(type || supplier);
   const monthLabel = monthLabelOf(month);
   const credit = notes.filter((n) => n.note_type === "credit").reduce((t, n) => t + Number(n.amount), 0);
   const debit = notes.filter((n) => n.note_type === "debit").reduce((t, n) => t + Number(n.amount), 0);
@@ -54,8 +79,24 @@ export default async function SupplierNotesPage({ searchParams }: { searchParams
 
       <MonthFilter />
 
+      <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/supplier-procurement/notes${query}`}>
+        <FilterField label="Type">
+          <Select name="type" defaultValue={type ?? ""} className={`${FILTER_INPUT} w-36`}>
+            <option value="">All types</option>
+            <option value="credit">Credit note</option>
+            <option value="debit">Debit note</option>
+          </Select>
+        </FilterField>
+        <FilterField label="Supplier">
+          <Select name="supplier" defaultValue={supplier ?? ""} className={`${FILTER_INPUT} w-64`}>
+            <option value="">All suppliers</option>
+            {supplierOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+          </Select>
+        </FilterField>
+      </ListFilters>
+
       {notes.length === 0 ? (
-        <EmptyRow text={monthLabel ? "No credit or debit notes in this month." : "No credit or debit notes yet. A credit note lowers what you owe a supplier (returned goods, wrong price); a debit note raises it (extra charge)."} />
+        <EmptyRow text={filtered ? "No credit or debit notes match these filters." : monthLabel ? "No credit or debit notes in this month." : "No credit or debit notes yet. A credit note lowers what you owe a supplier (returned goods, wrong price); a debit note raises it (extra charge)."} />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-surface shadow-sm">
           <table className="w-full min-w-[720px] text-[14px]">

@@ -7,9 +7,13 @@ import { listSuppliers } from "@/lib/procurement/queries";
 import { SUPPLIER_STATUS_LABEL } from "@/lib/procurement/constants";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
-import { SearchBox } from "@/components/SearchBox";
 import { ExportButtons } from "@/components/shared/ExportButtons";
 import { SupplierProcurementSubNav } from "@/components/procurement/SupplierProcurementSubNav";
+import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { natural, readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { name: "Name", category: "Category", company: "Company", status: "Status" };
 
 function statusTone(status: string): "success" | "neutral" | "danger" {
   if (status === "active") return "success";
@@ -20,7 +24,7 @@ function statusTone(status: string): "success" | "neutral" | "danger" {
 export default async function SupplierProcurementPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; q?: string }>;
+  searchParams: Promise<{ company?: string; q?: string; category?: string; status?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -29,7 +33,9 @@ export default async function SupplierProcurementPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, q } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, q, category, status } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "name", "asc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -37,7 +43,9 @@ export default async function SupplierProcurementPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const records = await listSuppliers(supabase, targetCompanyIds, q);
+  const allRecords = await listSuppliers(supabase, targetCompanyIds, q);
+  const categories = Array.from(new Set(allRecords.map((r) => r.category).filter((c): c is string => !!c))).sort(natural);
+  const records = allRecords.filter((r) => (!category || r.category === category) && (!status || r.status === status));
 
   // The same supplier kept by several companies has one record per company (invoices and payments stay separate per company).
   // The list shows each supplier once, with every company that buys from it.
@@ -47,8 +55,14 @@ export default async function SupplierProcurementPage({
     const key = r.name.toUpperCase().replace(/[^A-Z0-9]/g, "");
     byName.set(key, [...(byName.get(key) ?? []), r]);
   }
-  const suppliers = Array.from(byName.values());
   const joined = (values: (string | null | undefined)[]) => Array.from(new Set(values.filter((v): v is string => !!v))).join(" / ") || "—";
+  const suppliers = sortBy(Array.from(byName.values()), sort, dir, {
+    name: (g) => g[0].name,
+    category: [(g) => g.map((r) => r.category).find(Boolean), (g) => g[0].name],
+    company: [(g) => g.map((r) => r.companies?.name).find(Boolean), (g) => g[0].name],
+    status: [(g) => SUPPLIER_STATUS_LABEL[g[0].status] ?? g[0].status, (g) => g[0].name],
+  });
+  const filtered = !!(q || category || status);
 
   return (
     <div className="flex flex-col gap-5">
@@ -88,11 +102,27 @@ export default async function SupplierProcurementPage({
       </div>
 
       <SupplierProcurementSubNav />
-      <SearchBox placeholder="Search suppliers by name..." />
+      <ListFilters keep={{ company: requestedId }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/supplier-procurement${query}`}>
+        <FilterField label="Search">
+          <input name="q" defaultValue={q ?? ""} placeholder="Search suppliers by name..." className={`${FILTER_INPUT} w-60`} />
+        </FilterField>
+        <FilterField label="Category">
+          <Select name="category" defaultValue={category ?? ""} className={`${FILTER_INPUT} w-44`}>
+            <option value="">All categories</option>
+            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+          </Select>
+        </FilterField>
+        <FilterField label="Status">
+          <Select name="status" defaultValue={status ?? ""} className={`${FILTER_INPUT} w-36`}>
+            <option value="">All statuses</option>
+            {Object.entries(SUPPLIER_STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </Select>
+        </FilterField>
+      </ListFilters>
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {suppliers.length === 0 ? (
-          <EmptyRow text="No suppliers yet. Add one manually or import from Excel/CSV." />
+          <EmptyRow text={filtered ? "No suppliers match these filters." : "No suppliers yet. Add one manually or import from Excel/CSV."} />
         ) : (
           <div>
             <div className="grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr_1fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">

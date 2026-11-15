@@ -9,6 +9,10 @@ import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { KitchenSubNav } from "@/components/kitchen/KitchenSubNav";
 import { packagePriceLabel } from "@/lib/kitchen/packages/format";
 import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { order: "Default order", name: "Name", dishes: "Dishes" };
 
 /** The fixed menu sets (Signature Solution), shown first and in this order; other packages come after them. */
 const MENU_SETS = ["JDT 2", "JDT 3", "JDT 4", "JDT UTM"];
@@ -16,7 +20,7 @@ const MENU_SETS = ["JDT 2", "JDT 3", "JDT 4", "JDT UTM"];
 export default async function PackageMenusPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; set?: string; q?: string }>;
+  searchParams: Promise<{ company?: string; set?: string; q?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -25,7 +29,9 @@ export default async function PackageMenusPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, set: setParam, q } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, set: setParam, q } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "order", "asc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -38,7 +44,16 @@ export default async function PackageMenusPage({
   const sets = MENU_SETS.filter((m) => allPackages.some((p) => setOf(p) === m));
   const activeSet = setParam === "other" || sets.includes(setParam ?? "") ? setParam : undefined;
   const search = q?.trim().toLowerCase();
-  const packages = allPackages.filter((p) => (!activeSet || (activeSet === "other" ? !setOf(p) : setOf(p) === activeSet)) && (!search || p.name.toLowerCase().includes(search)));
+  const packages = sortBy(
+    allPackages.filter((p) => (!activeSet || (activeSet === "other" ? !setOf(p) : setOf(p) === activeSet)) && (!search || p.name.toLowerCase().includes(search))),
+    sort,
+    dir,
+    {
+      order: (p) => allPackages.indexOf(p),
+      name: (p) => p.name,
+      dishes: [(p) => p.package_menu_items?.length ?? 0, (p) => p.name],
+    },
+  );
   const groups = [...sets.map((m) => ({ key: m, title: m, items: packages.filter((p) => setOf(p) === m) })), { key: "other", title: sets.length ? "Other packages" : "Packages", items: packages.filter((p) => !setOf(p)) }].filter((g) => g.items.length > 0);
   const hasOther = allPackages.some((p) => !setOf(p));
 
@@ -57,27 +72,20 @@ export default async function PackageMenusPage({
       <KitchenSubNav />
 
       {allPackages.length > 0 && (
-        <form method="get" className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-surface p-4 shadow-sm">
-          {requestedId && <input type="hidden" name="company" value={requestedId} />}
+        <ListFilters keep={{ company: requestedId }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/kitchen/packages${query}`}>
           {sets.length > 0 && (
-            <label className="text-[12px] font-semibold text-text-secondary">
-              Menu
-              <Select name="set" defaultValue={activeSet ?? ""} className="mt-1 block h-9 w-44 rounded-lg border border-border-strong px-2 text-[13px]">
+            <FilterField label="Menu">
+              <Select name="set" defaultValue={activeSet ?? ""} className={`${FILTER_INPUT} w-44`}>
                 <option value="">All menus</option>
                 {sets.map((m) => <option key={m} value={m}>{m}</option>)}
                 {hasOther && <option value="other">Other packages</option>}
               </Select>
-            </label>
+            </FilterField>
           )}
-          <label className="min-w-[14rem] flex-1 text-[12px] font-semibold text-text-secondary">
-            Search
-            <input name="q" defaultValue={q ?? ""} placeholder="Package name, e.g. Week 1 or Menu 3" className="mt-1 block h-9 w-full max-w-md rounded-lg border border-border-strong px-3 text-[13px] outline-none focus:border-primary" />
-          </label>
-          <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply</button>
-          {(activeSet || search) && (
-            <Link href={`/kitchen/packages${query}`} className="flex h-9 items-center rounded-lg border border-border-strong bg-surface px-3.5 text-[13px] font-semibold text-text">Clear</Link>
-          )}
-        </form>
+          <FilterField label="Search">
+            <input name="q" defaultValue={q ?? ""} placeholder="Package name, e.g. Week 1 or Menu 3" className={`${FILTER_INPUT} w-64`} />
+          </FilterField>
+        </ListFilters>
       )}
 
       {groups.length === 0 ? (

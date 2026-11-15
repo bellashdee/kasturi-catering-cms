@@ -12,9 +12,17 @@ import { KitchenSubNav } from "@/components/kitchen/KitchenSubNav";
 import { PlanSteps } from "@/components/kitchenPlan/PlanSteps";
 import { MonthFilter } from "@/components/MonthFilter";
 import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { date: "Event date", event: "Event", pax: "Pax" };
 
 /** Step 1: choose the event. Nothing is typed: everything is read from the Event Order. */
-export default async function CookingPlanPage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string }> }) {
+export default async function CookingPlanPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ company?: string; month?: string; q?: string; sort?: string; dir?: string }>;
+}) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
   const lang = (await getServerLanguage()) === "ms" ? "ms" : "en";
@@ -22,12 +30,24 @@ export default async function CookingPlanPage({ searchParams }: { searchParams: 
 
   const supabase = await createClient();
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
-  const { company: requestedId, month } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, month } = sp;
+  const q = (sp.q ?? "").trim().toLowerCase();
+  const { sort, dir } = readSort(sp, SORTS, "date", "asc");
   const { targetCompanyIds } = resolveCompanyScope(session, allCompanies ?? [], requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
   if (targetCompanyIds.length === 0) return <EmptyRow text="You don't have access to any company yet." />;
 
-  const events = filterByMonth(await listPlanEvents(supabase, targetCompanyIds), month, (e) => e.date);
+  const events = sortBy(
+    filterByMonth(await listPlanEvents(supabase, targetCompanyIds), month, (e) => e.date).filter((e) => !q || e.eventName.toLowerCase().includes(q)),
+    sort,
+    dir,
+    {
+      date: [(e) => e.date, (e) => e.readyTime],
+      event: [(e) => e.eventName, (e) => e.date],
+      pax: [(e) => e.pax || null, (e) => e.date],
+    },
+  );
   const monthLabel = monthLabelOf(month);
   const progress = await planProgress(supabase, Array.from(new Set(events.map((e) => e.eventId))));
 
@@ -46,8 +66,14 @@ export default async function CookingPlanPage({ searchParams }: { searchParams: 
 
       <MonthFilter />
 
+      <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/kitchen/plan${query}`}>
+        <FilterField label="Event">
+          <input name="q" defaultValue={sp.q ?? ""} placeholder="Event name" className={`${FILTER_INPUT} w-60`} />
+        </FilterField>
+      </ListFilters>
+
       {events.length === 0 ? (
-        <EmptyRow text={monthLabel ? (lang === "ms" ? "Tiada acara dalam bulan ini." : "No events in this month.") : t.noEvents} />
+        <EmptyRow text={q ? "No events match these filters." : monthLabel ? (lang === "ms" ? "Tiada acara dalam bulan ini." : "No events in this month.") : t.noEvents} />
       ) : (
         <ul className="flex flex-col gap-3">
           {events.map((e) => {

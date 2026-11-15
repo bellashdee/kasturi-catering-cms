@@ -11,6 +11,11 @@ import { SIDE_LABEL, sideOf, type KitchenSide } from "@/lib/kitchen/side";
 import { ApproveDraftsButton } from "@/components/kitchenPurchase/ApproveRecipeButton";
 import { kitchenPlanAccess } from "@/lib/kitchenPlan/access";
 import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+/** the recipes inside each category */
+const SORTS = { name: "Name", pax: "Base pax", ingredients: "Ingredients" };
 
 /** The fixed menu sets of Signature Solution (from its menu files); a recipe can be in more than one. */
 const MENU_SETS = ["JDT 2", "JDT 3", "JDT 4", "JDT UTM"];
@@ -19,7 +24,7 @@ const setsOf = (r: unknown) => ((r as { menu_sets?: string[] }).menu_sets ?? [])
 export default async function RecipesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; category?: string; q?: string; side?: string; status?: string; set?: string }>;
+  searchParams: Promise<{ company?: string; category?: string; q?: string; side?: string; status?: string; set?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -28,7 +33,9 @@ export default async function RecipesPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, category: categoryParam, q, side: sideParam, status: statusParam, set: setParam } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, category: categoryParam, q, side: sideParam, status: statusParam, set: setParam } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "name", "asc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -52,7 +59,11 @@ export default async function RecipesPage({
   const matching = activeSide ? bySearch.filter((r) => sideOf(r.name) === activeSide) : bySearch;
   const counts = Object.fromEntries(RECIPE_CATEGORIES.map((c) => [c.key, matching.filter((r) => recipeCategory(r.name) === c.key).length]));
   const activeCategory = RECIPE_CATEGORIES.some((c) => c.key === categoryParam) ? categoryParam : undefined;
-  const recipes = activeCategory ? matching.filter((r) => recipeCategory(r.name) === activeCategory) : matching;
+  const recipes = sortBy(activeCategory ? matching.filter((r) => recipeCategory(r.name) === activeCategory) : matching, sort, dir, {
+    name: (r) => r.name,
+    pax: [(r) => Number(r.yield_pax), (r) => r.name],
+    ingredients: [(r) => r.recipe_ingredients?.[0]?.count ?? 0, (r) => r.name],
+  });
   const sections = RECIPE_CATEGORIES.map((c) => ({ ...c, items: recipes.filter((r) => recipeCategory(r.name) === c.key) })).filter((s) => s.items.length > 0);
   const filtered = !!(activeCategory || search || activeSet || activeSide || draftsOnly);
   const showCompany = targetCompanyIds.length > 1;
@@ -79,49 +90,37 @@ export default async function RecipesPage({
 
       <KitchenSubNav />
 
-      <form method="get" className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-surface p-4 shadow-sm">
-        {requestedId && <input type="hidden" name="company" value={requestedId} />}
-        <label className="min-w-[14rem] flex-1 text-[12px] font-semibold text-text-secondary">
-          Search
-          <input name="q" defaultValue={q ?? ""} placeholder="Recipe name" className="mt-1 block h-9 w-full rounded-lg border border-border-strong px-3 text-[13px] outline-none focus:border-primary" />
-        </label>
+      <ListFilters keep={{ company: requestedId }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/kitchen/recipes${query}`}>
+        <FilterField label="Search">
+          <input name="q" defaultValue={q ?? ""} placeholder="Recipe name" className={`${FILTER_INPUT} w-56`} />
+        </FilterField>
         {hasSets && (
-          <label className="text-[12px] font-semibold text-text-secondary">
-            Menu
-            <Select name="set" defaultValue={activeSet ?? ""} className="mt-1 block h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
+          <FilterField label="Menu">
+            <Select name="set" defaultValue={activeSet ?? ""} className={`${FILTER_INPUT} w-36`}>
               <option value="">All menus</option>
               {MENU_SETS.map((m) => <option key={m} value={m}>{m}</option>)}
             </Select>
-          </label>
+          </FilterField>
         )}
-        <label className="text-[12px] font-semibold text-text-secondary">
-          Category
-          <Select name="category" defaultValue={activeCategory ?? ""} className="mt-1 block h-9 w-44 rounded-lg border border-border-strong px-2 text-[13px]">
+        <FilterField label="Category">
+          <Select name="category" defaultValue={activeCategory ?? ""} className={`${FILTER_INPUT} w-44`}>
             <option value="">All categories</option>
             {RECIPE_CATEGORIES.filter((c) => counts[c.key] > 0 || c.key === activeCategory).map((c) => <option key={c.key} value={c.key}>{`${c.label} (${counts[c.key]})`}</option>)}
           </Select>
-        </label>
-        <label className="text-[12px] font-semibold text-text-secondary">
-          Side
-          <Select name="side" defaultValue={activeSide ?? ""} className="mt-1 block h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
+        </FilterField>
+        <FilterField label="Side">
+          <Select name="side" defaultValue={activeSide ?? ""} className={`${FILTER_INPUT} w-36`}>
             <option value="">Kitchen &amp; bar</option>
             {(["kitchen", "bar"] as const).map((k) => <option key={k} value={k}>{`${SIDE_LABEL[k]} (${sideCounts[k]})`}</option>)}
           </Select>
-        </label>
-        <label className="text-[12px] font-semibold text-text-secondary">
-          Status
-          <Select name="status" defaultValue={draftsOnly ? "draft" : ""} className="mt-1 block h-9 w-44 rounded-lg border border-border-strong px-2 text-[13px]">
+        </FilterField>
+        <FilterField label="Status">
+          <Select name="status" defaultValue={draftsOnly ? "draft" : ""} className={`${FILTER_INPUT} w-44`}>
             <option value="">All recipes</option>
             <option value="draft">{`Drafts to review (${draftCount})`}</option>
           </Select>
-        </label>
-        <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply</button>
-        {filtered && (
-          <Link href={`/kitchen/recipes${query}`} className="flex h-9 items-center rounded-lg border border-border-strong bg-surface px-3.5 text-[13px] font-semibold text-text">
-            Clear
-          </Link>
-        )}
-      </form>
+        </FilterField>
+      </ListFilters>
 
       {draftsOnly && canApprove && recipes.length > 0 && (
         <div className="rounded-xl border border-warning/40 bg-warning-bg px-4 py-3 text-[13.5px] text-warning">

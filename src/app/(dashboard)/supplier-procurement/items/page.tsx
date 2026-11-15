@@ -12,10 +12,15 @@ import { SupplierProcurementSubNav } from "@/components/procurement/SupplierProc
 import { ExportListButtons } from "@/components/procurement/ExportListButtons";
 import { MonthFilter } from "@/components/MonthFilter";
 import { monthLabelOf, monthRange } from "@/lib/monthFilter";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const dayLabel = (iso: string) => formatMalaysiaDate(`${iso}T12:00:00+08:00`);
-const inputClass = "h-9 rounded-lg border border-border-strong bg-surface px-2.5 text-[13px] outline-none focus:border-primary";
+/** "All purchase lines": the lines themselves */
+const LINE_SORTS = { date: "Date", invoice: "Invoice No.", supplier: "Supplier", item: "Item", amount: "Amount" };
+/** "By supplier": the suppliers by name, or the items inside each supplier */
+const SUPPLIER_SORTS = { supplier: "Supplier", item: "Item", date: "Latest date", price: "Latest price" };
 
 /**
  * What every supplier sold and at what price per unit, worked out from the purchase invoice lines
@@ -24,7 +29,7 @@ const inputClass = "h-9 rounded-lg border border-border-strong bg-surface px-2.5
 export default async function SupplierItemsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; view?: string; supplier?: string; q?: string; from?: string; to?: string; month?: string }>;
+  searchParams: Promise<{ company?: string; view?: string; supplier?: string; q?: string; from?: string; to?: string; month?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -48,19 +53,43 @@ export default async function SupplierItemsPage({
   const itemQ = (sp.q ?? "").trim().toLowerCase();
 
   const all = await listPurchaseLines(supabase, targetCompanyIds, { from, to });
-  const lines = all.filter(
+  const filtered = all.filter(
     (l) =>
       (!supplierQ || l.supplierName.toLowerCase().includes(supplierQ)) &&
       (!itemQ || l.description.toLowerCase().includes(itemQ) || (l.itemCode ?? "").toLowerCase().includes(itemQ)),
   );
 
-  const suppliers = summariseSupplierItems(lines);
+  const lineSort = readSort(sp, LINE_SORTS, "date", "desc");
+  const supplierSort = readSort(sp, SUPPLIER_SORTS, "supplier", "asc");
+  const { sort, dir } = view === "lines" ? lineSort : supplierSort;
+  const lines = sortBy(filtered, lineSort.sort, lineSort.dir, {
+    date: (l) => l.docDate,
+    invoice: [(l) => l.docNo, (l) => l.docDate],
+    supplier: [(l) => l.supplierName, (l) => l.docDate],
+    item: [(l) => l.description, (l) => l.docDate],
+    amount: (l) => l.amount,
+  });
+
+  // by supplier: the suppliers A–Z (or Z–A when sorted by supplier), each one's items in the chosen order
+  const summary = summariseSupplierItems(filtered);
+  const suppliers = sortBy(summary, "supplier", supplierSort.sort === "supplier" ? supplierSort.dir : "asc", { supplier: (s) => s.name }).map((s) =>
+    supplierSort.sort === "supplier"
+      ? s
+      : {
+          ...s,
+          items: sortBy(s.items, supplierSort.sort, supplierSort.dir, {
+            item: (i) => i.description,
+            date: [(i) => i.latestDate, (i) => i.description],
+            price: [(i) => i.latestPrice, (i) => i.description],
+          }),
+        },
+  );
   const itemCount = suppliers.reduce((t, s) => t + s.items.length, 0);
   const total = lines.reduce((t, l) => t + l.amount, 0);
 
   const query = new URLSearchParams();
   if (sp.company) query.set("company", sp.company);
-  for (const [k, v] of Object.entries({ supplier: sp.supplier, q: sp.q, from: fromInput, to: toInput, month: range ? sp.month : undefined })) if (v) query.set(k, v);
+  for (const [k, v] of Object.entries({ supplier: sp.supplier, q: sp.q, from: fromInput, to: toInput, month: range ? sp.month : undefined, sort: sp.sort, dir: sp.dir })) if (v) query.set(k, v);
   const viewHref = (v: string) => `/supplier-procurement/items?${new URLSearchParams({ ...Object.fromEntries(query), view: v }).toString()}`;
   const tab = (active: boolean) => `rounded-full border px-3.5 py-1.5 text-[13px] font-semibold ${active ? "border-primary bg-primary text-white" : "border-border-strong bg-surface text-text hover:bg-surface-alt"}`;
 
@@ -100,35 +129,26 @@ export default async function SupplierItemsPage({
 
       <MonthFilter />
 
-      <form method="get" className="flex flex-wrap items-end gap-3">
-        {sp.company && <input type="hidden" name="company" value={sp.company} />}
-        {range && <input type="hidden" name="month" value={sp.month} />}
-        <input type="hidden" name="view" value={view} />
-        <label className="flex flex-col gap-1 text-[12px] font-semibold text-text-secondary">
-          Supplier
-          <input name="supplier" defaultValue={sp.supplier ?? ""} placeholder="Supplier name" className={`${inputClass} w-52`} />
-        </label>
-        <label className="flex flex-col gap-1 text-[12px] font-semibold text-text-secondary">
-          Item
-          <input name="q" defaultValue={sp.q ?? ""} placeholder="Item name or code" className={`${inputClass} w-52`} />
-        </label>
-        <label className="flex flex-col gap-1 text-[12px] font-semibold text-text-secondary">
-          From
-          <input type="date" name="from" defaultValue={fromInput ?? ""} className={inputClass} />
-        </label>
-        <label className="flex flex-col gap-1 text-[12px] font-semibold text-text-secondary">
-          To
-          <input type="date" name="to" defaultValue={toInput ?? ""} className={inputClass} />
-        </label>
-        <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">
-          Filter
-        </button>
-        {(sp.supplier || sp.q || fromInput || toInput) && (
-          <Link href={`/supplier-procurement/items?view=${view}${sp.company ? `&company=${sp.company}` : ""}`} className="h-9 content-center text-[13px] font-semibold text-text-secondary hover:underline">
-            Clear
-          </Link>
-        )}
-      </form>
+      <ListFilters
+        keep={{ company: sp.company, month: range ? sp.month : undefined, view }}
+        sortOptions={view === "lines" ? LINE_SORTS : SUPPLIER_SORTS}
+        sort={sort}
+        dir={dir}
+        clearHref={`/supplier-procurement/items?view=${view}${sp.company ? `&company=${sp.company}` : ""}`}
+      >
+        <FilterField label="Supplier">
+          <input name="supplier" defaultValue={sp.supplier ?? ""} placeholder="Supplier name" className={`${FILTER_INPUT} w-52`} />
+        </FilterField>
+        <FilterField label="Item">
+          <input name="q" defaultValue={sp.q ?? ""} placeholder="Item name or code" className={`${FILTER_INPUT} w-52`} />
+        </FilterField>
+        <FilterField label="From">
+          <input type="date" name="from" defaultValue={fromInput ?? ""} className={`${FILTER_INPUT} w-40`} />
+        </FilterField>
+        <FilterField label="To">
+          <input type="date" name="to" defaultValue={toInput ?? ""} className={`${FILTER_INPUT} w-40`} />
+        </FilterField>
+      </ListFilters>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-1.5">

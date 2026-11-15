@@ -14,13 +14,17 @@ import { RequestEditActions } from "@/components/procurement/ProcurementRecordAc
 import { PurchaseOrdersBoard, type BoardSupplier } from "@/components/procurement/PurchaseOrdersBoard";
 import { MonthFilter } from "@/components/MonthFilter";
 import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
+import { ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy, sortRows } from "@/lib/listSort";
+
+const SORTS = { supplier: "Supplier", date: "Order date", po: "PO Number", amount: "Amount" };
 
 /**
  * Purchase Requests and Purchase Orders in one place. The orders made from the menu of the events (one for each supplier) are listed by
  * supplier with the events, the items and the quantities, and can be edited, deleted or sent to the supplier on WhatsApp. The item requests
  * of the staff that are still waiting (or approved, not yet ordered) are listed above them.
  */
-export default async function PurchaseOrdersPage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string }> }) {
+export default async function PurchaseOrdersPage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string; sort?: string; dir?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
@@ -28,7 +32,9 @@ export default async function PurchaseOrdersPage({ searchParams }: { searchParam
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, month } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, month } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "supplier", "asc");
   const monthLabel = monthLabelOf(month);
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
@@ -71,7 +77,19 @@ export default async function PurchaseOrdersPage({ searchParams }: { searchParam
     });
     bySupplier.set(key, entry);
   }
-  const suppliers = Array.from(bySupplier.values()).sort((a, b) => a.name.localeCompare(b.name));
+  // by supplier: the suppliers A to Z (or Z to A), each one's orders newest first. Otherwise the orders of each supplier in the chosen order,
+  // and the suppliers by their first order
+  type Order = BoardSupplier["orders"][number];
+  const orderKey: Record<Exclude<keyof typeof SORTS, "supplier">, (o: Order) => string | number> = { date: (o) => o.orderDate, po: (o) => o.poNumber, amount: (o) => o.total };
+  const suppliers =
+    sort === "supplier"
+      ? sortBy(Array.from(bySupplier.values()), sort, dir, { supplier: (s) => s.name })
+      : sortRows(
+          Array.from(bySupplier.values()).map((s) => ({ ...s, orders: sortRows(s.orders, dir, orderKey[sort]) })),
+          dir,
+          (s) => orderKey[sort](s.orders[0]),
+          (s) => s.name,
+        );
 
   const waiting = requests.filter((r) => r.status === "pending" || r.status === "approved");
   const count = orders.length;
@@ -102,6 +120,8 @@ export default async function PurchaseOrdersPage({ searchParams }: { searchParam
       <SupplierProcurementSubNav />
 
       <MonthFilter />
+
+      <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/supplier-procurement/orders${query}`} />
 
       <div className="rounded-xl border border-border bg-surface px-4 py-3 text-[14px] text-text-secondary shadow-sm">
         <b className="text-text">How it works:</b> 1. Make the orders from an event menu (the ingredient list of the menu, one order for each supplier) · 2. Check the items and quantities here, edit them if needed · 3. Press Send to supplier on WhatsApp: the chat of the supplier opens with the event, its date and the list of items typed in.

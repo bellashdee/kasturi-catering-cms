@@ -18,6 +18,12 @@ import { listKitchenRequests } from "@/lib/kitchenPurchase/queries";
 import { canAccessModule } from "@/lib/modules";
 import { MonthFilter } from "@/components/MonthFilter";
 import { filterByMonth, monthLabelOf, monthRange } from "@/lib/monthFilter";
+import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+import { STATUS_LABEL, type RequestStatus } from "@/lib/kitchenPurchase/shared";
+
+const SORTS = { created: "Date requested", date: "Event date", request: "Request No.", event: "Event", status: "Status" };
 
 function statusTone(status: string): "success" | "warning" | "danger" | "info" {
   if (status === "completed") return "success";
@@ -29,7 +35,7 @@ function statusTone(status: string): "success" | "warning" | "danger" | "info" {
 export default async function PurchaseRequestsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; month?: string }>;
+  searchParams: Promise<{ company?: string; month?: string; q?: string; status?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -38,7 +44,10 @@ export default async function PurchaseRequestsPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, month } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, month, status } = sp;
+  const q = (sp.q ?? "").trim().toLowerCase();
+  const { sort, dir } = readSort(sp, SORTS, "created", "desc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -50,7 +59,20 @@ export default async function PurchaseRequestsPage({
   const range = monthRange(month);
   // the date shown on a request row is the event date (the request date when the event has none)
   const requests = filterByMonth(await listPurchaseRequests(supabase, targetCompanyIds), month, (r) => r.created_at);
-  const kitchenRequests = filterByMonth(await listKitchenRequests(supabase, targetCompanyIds), month, (r) => r.event_date ?? r.created_at);
+  const kitchenRequests = sortBy(
+    filterByMonth(await listKitchenRequests(supabase, targetCompanyIds), month, (r) => r.event_date ?? r.created_at).filter(
+      (r) => (!status || r.status === status) && (!q || r.request_no.toLowerCase().includes(q) || r.event_name.toLowerCase().includes(q)),
+    ),
+    sort,
+    dir,
+    {
+      created: (r) => r.created_at,
+      date: [(r) => r.event_date, (r) => r.created_at],
+      request: (r) => r.request_no,
+      event: [(r) => r.event_name, (r) => r.event_date],
+      status: [(r) => STATUS_LABEL[r.status as RequestStatus] ?? r.status, (r) => r.created_at],
+    },
+  );
   let menuOrdersQuery = supabase
     .from("purchase_orders")
     .select("id, po_number, order_date, status, total_amount, source_events, suppliers(name), companies(name), purchase_order_items(id)")
@@ -80,12 +102,24 @@ export default async function PurchaseRequestsPage({
 
       <MonthFilter />
 
+      <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/kitchen/purchase-requests${query}`}>
+        <FilterField label="Search">
+          <input name="q" defaultValue={sp.q ?? ""} placeholder="Request No. or event" className={`${FILTER_INPUT} w-52`} />
+        </FilterField>
+        <FilterField label="Status">
+          <Select name="status" defaultValue={status ?? ""} className={`${FILTER_INPUT} w-48`}>
+            <option value="">All statuses</option>
+            {(Object.keys(STATUS_LABEL) as RequestStatus[]).map((v) => <option key={v} value={v}>{STATUS_LABEL[v]}</option>)}
+          </Select>
+        </FilterField>
+      </ListFilters>
+
       <section className="flex flex-col gap-3">
         <div>
           <h2 className="text-[17px] font-extrabold text-text">Purchase Request History</h2>
           <p className="text-[13px] text-text-secondary">Choose the event (or key in the menu) and the pax: the ingredients and quantities are worked out from the recipes, and one purchase order is made for each supplier at its latest price.</p>
         </div>
-        <RequestList rows={kitchenRequests} hrefBase="/kitchen/purchase-requests" query={query} kitchenActions={canAccessModule(session.allowedModules, "kitchen")} empty={monthLabel ? "No purchase requests in this month." : "No purchase requests yet."} />
+        <RequestList rows={kitchenRequests} hrefBase="/kitchen/purchase-requests" query={query} kitchenActions={canAccessModule(session.allowedModules, "kitchen")} empty={q || status ? "No purchase requests match these filters." : monthLabel ? "No purchase requests in this month." : "No purchase requests yet."} />
       </section>
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">

@@ -12,6 +12,11 @@ import { ProductionOrderRowActions } from "@/components/kitchen/ProductionOrderR
 import { RecordUndoBanner } from "@/components/driver/RecordUndoBanner";
 import { MonthFilter } from "@/components/MonthFilter";
 import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
+import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { date: "Planned Date", event: "Event", pax: "Pax", status: "Status" };
 
 function statusTone(status: string): "success" | "warning" | "info" {
   if (status === "completed") return "success";
@@ -22,7 +27,7 @@ function statusTone(status: string): "success" | "warning" | "info" {
 export default async function KitchenPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; month?: string }>;
+  searchParams: Promise<{ company?: string; month?: string; q?: string; status?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -31,7 +36,10 @@ export default async function KitchenPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, month } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, month, status } = sp;
+  const q = (sp.q ?? "").trim().toLowerCase();
+  const { sort, dir } = readSort(sp, SORTS, "date", "desc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -39,7 +47,21 @@ export default async function KitchenPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const orders = filterByMonth(await listProductionOrders(supabase, targetCompanyIds), month, (o) => o.planned_date);
+  type Order = Awaited<ReturnType<typeof listProductionOrders>>[number];
+  const menuText = (o: Order) => o.recipes?.name ?? o.menu_plan_dishes?.name ?? orderMenuItems(o).join(" ");
+  const orders = sortBy(
+    filterByMonth(await listProductionOrders(supabase, targetCompanyIds), month, (o) => o.planned_date).filter(
+      (o) => (!status || o.status === status) && (!q || `${o.catering_events?.event_name ?? ""} ${menuText(o)}`.toLowerCase().includes(q)),
+    ),
+    sort,
+    dir,
+    {
+      date: (o) => o.planned_date,
+      event: [(o) => o.catering_events?.event_name, (o) => o.planned_date],
+      pax: [(o) => o.pax_count, (o) => o.planned_date],
+      status: [(o) => Object.keys(PRODUCTION_STATUS_LABEL).indexOf(o.status), (o) => o.planned_date],
+    },
+  );
   const monthLabel = monthLabelOf(month);
 
   return (
@@ -60,9 +82,21 @@ export default async function KitchenPage({
 
       <MonthFilter />
 
+      <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/kitchen${query}`}>
+        <FilterField label="Search">
+          <input name="q" defaultValue={sp.q ?? ""} placeholder="Event or menu" className={`${FILTER_INPUT} w-52`} />
+        </FilterField>
+        <FilterField label="Status">
+          <Select name="status" defaultValue={status ?? ""} className={`${FILTER_INPUT} w-36`}>
+            <option value="">All statuses</option>
+            {Object.entries(PRODUCTION_STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </Select>
+        </FilterField>
+      </ListFilters>
+
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {orders.length === 0 ? (
-          <EmptyRow text={monthLabel ? "No production orders in this month." : "No production orders yet. Confirming a catering event, or creating one manually, will list it here."} />
+          <EmptyRow text={q || status ? "No production orders match these filters." : monthLabel ? "No production orders in this month." : "No production orders yet. Confirming a catering event, or creating one manually, will list it here."} />
         ) : (
           <div>
             <div className="grid grid-cols-[1fr_1.4fr_0.8fr_0.8fr_1.4fr_1fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">

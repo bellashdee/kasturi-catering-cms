@@ -7,16 +7,16 @@ import { listSupplierInvoices } from "@/lib/procurement/queries";
 import { INVOICE_STATUS_LABEL, isOverdue } from "@/lib/procurement/constants";
 import { formatCurrency, formatMalaysiaDate } from "@/lib/format";
 import { parseInvoiceDateFilter } from "@/lib/finance/dateFilter";
-import { InvoiceDateFilter } from "@/components/shared/InvoiceDateFilter";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SupplierProcurementSubNav } from "@/components/procurement/SupplierProcurementSubNav";
 import { MonthFilter } from "@/components/MonthFilter";
 import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
 import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { natural, readSort, sortBy } from "@/lib/listSort";
 
-const SORTS: Record<string, string> = { newest: "Newest first", invoice: "Invoice number (A–Z)", supplier: "Supplier (A–Z)" };
-const natural = (a: string | null | undefined, b: string | null | undefined) => (a ?? "").localeCompare(b ?? "", undefined, { numeric: true, sensitivity: "base" });
+const SORTS = { date: "Invoice date", month: "Month", invoice: "Invoice No.", supplier: "Supplier", due: "Due date", amount: "Amount" };
 
 function statusTone(status: string, overdue: boolean): "success" | "warning" | "danger" | "neutral" {
   if (status === "paid") return "success";
@@ -28,7 +28,7 @@ function statusTone(status: string, overdue: boolean): "success" | "warning" | "
 export default async function SupplierInvoicesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; dateField?: string; from?: string; to?: string; month?: string; supplier?: string; sort?: string }>;
+  searchParams: Promise<{ company?: string; dateField?: string; from?: string; to?: string; month?: string; supplier?: string; status?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -37,8 +37,9 @@ export default async function SupplierInvoicesPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, dateField, from, to, month, supplier, sort: sortParam } = await searchParams;
-  const sort = sortParam && SORTS[sortParam] ? sortParam : "newest";
+  const sp = await searchParams;
+  const { company: requestedId, dateField, from, to, month, supplier, status } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "date", "desc");
   const dateFilter = parseInvoiceDateFilter({ dateField, from, to });
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
@@ -52,16 +53,28 @@ export default async function SupplierInvoicesPage({
   const monthLabel = monthLabelOf(month);
   // the suppliers of the invoices in this period, for the supplier filter
   const supplierOptions = Array.from(new Map(inPeriod.filter((inv) => inv.supplier_id).map((inv) => [inv.supplier_id as string, inv.suppliers?.name ?? "—"])).entries()).sort((a, b) => natural(a[1], b[1]));
-  const invoices = inPeriod.filter((inv) => !supplier || inv.supplier_id === supplier);
-  if (sort === "invoice") invoices.sort((a, b) => natural(a.invoice_number, b.invoice_number));
-  else if (sort === "supplier") invoices.sort((a, b) => natural(a.suppliers?.name, b.suppliers?.name) || natural(a.invoice_number, b.invoice_number));
-  // a link that keeps every filter and changes only the sort
-  const sortHref = (key: string) => {
+  const invoices = sortBy(
+    inPeriod.filter((inv) => (!supplier || inv.supplier_id === supplier) && (!status || inv.status === status)),
+    sort,
+    dir,
+    {
+      date: [(inv) => inv.invoice_date, (inv) => inv.invoice_number],
+      month: [(inv) => inv.invoice_date?.slice(0, 7), (inv) => inv.suppliers?.name, (inv) => inv.invoice_number],
+      invoice: (inv) => inv.invoice_number,
+      supplier: [(inv) => inv.suppliers?.name, (inv) => inv.invoice_number],
+      due: [(inv) => inv.due_date, (inv) => inv.invoice_number],
+      amount: (inv) => Number(inv.amount),
+    },
+  );
+  // a column header link that keeps every filter and sorts by that column (a second click turns the order round)
+  const sortHref = (key: keyof typeof SORTS) => {
     const q = new URLSearchParams();
-    for (const [k, v] of Object.entries({ company: requestedId, dateField, from, to, month, supplier })) if (v) q.set(k, v);
+    for (const [k, v] of Object.entries({ company: requestedId, dateField, from, to, month, supplier, status })) if (v) q.set(k, v);
     q.set("sort", key);
+    q.set("dir", sort === key && dir === "asc" ? "desc" : "asc");
     return `/supplier-procurement/invoices?${q.toString()}`;
   };
+  const arrow = (key: keyof typeof SORTS) => (sort === key ? (dir === "asc" ? " ▲" : " ▼") : "");
 
   return (
     <div className="flex flex-col gap-5">
@@ -79,37 +92,45 @@ export default async function SupplierInvoicesPage({
 
       <MonthFilter />
 
-      <InvoiceDateFilter filter={dateFilter} requestedCompanyId={requestedId} month={month} clearHref={`/supplier-procurement/invoices${query}`} />
-
-      <form className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-surface p-4 shadow-sm">
-        {Object.entries({ company: requestedId, dateField, from, to, month }).map(([k, v]) => (v ? <input key={k} type="hidden" name={k} value={v} /> : null))}
-        <label className="text-[12px] font-semibold text-text-secondary">
-          Supplier
-          <Select name="supplier" defaultValue={supplier ?? ""} className="mt-1 block h-9 w-72 rounded-lg border border-border-strong bg-surface px-2 text-[13px]">
+      <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/supplier-procurement/invoices${query}`}>
+        <FilterField label="Supplier">
+          <Select name="supplier" defaultValue={supplier ?? ""} className={`${FILTER_INPUT} w-64`}>
             <option value="">All suppliers</option>
             {supplierOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
           </Select>
-        </label>
-        <label className="text-[12px] font-semibold text-text-secondary">
-          Sort by
-          <Select name="sort" defaultValue={sort} className="mt-1 block h-9 w-52 rounded-lg border border-border-strong bg-surface px-2 text-[13px]">
-            {Object.entries(SORTS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+        </FilterField>
+        <FilterField label="Status">
+          <Select name="status" defaultValue={status ?? ""} className={`${FILTER_INPUT} w-40`}>
+            <option value="">All statuses</option>
+            {Object.entries(INVOICE_STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </Select>
-        </label>
-        <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply</button>
-      </form>
+        </FilterField>
+        <FilterField label="Filter by">
+          <Select name="dateField" defaultValue={dateFilter.field} className={`${FILTER_INPUT} w-36`}>
+            <option value="invoice_date">Invoice date</option>
+            <option value="due_date">Due date</option>
+          </Select>
+        </FilterField>
+        <FilterField label="From">
+          <input type="date" name="from" defaultValue={dateFilter.from ?? ""} className={`${FILTER_INPUT} w-40`} />
+        </FilterField>
+        <FilterField label="To">
+          <input type="date" name="to" defaultValue={dateFilter.to ?? ""} className={`${FILTER_INPUT} w-40`} />
+        </FilterField>
+      </ListFilters>
+      {dateFilter.error && <p className="-mt-3 text-[13px] font-semibold text-danger">{dateFilter.error}</p>}
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {invoices.length === 0 ? (
-          <EmptyRow text={monthLabel ? "No invoices in this month." : dateFilter.active ? "No invoices match this date filter." : "No invoices yet."} />
+          <EmptyRow text={supplier || status ? "No invoices match these filters." : monthLabel ? "No invoices in this month." : dateFilter.active ? "No invoices match this date filter." : "No invoices yet."} />
         ) : (
           <div>
             <div className="grid grid-cols-[1.2fr_1.2fr_1fr_1fr_1fr_1fr_1fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
-              <Link href={sortHref("invoice")} className={sort === "invoice" ? "text-primary" : "hover:text-text"}>Invoice #{sort === "invoice" ? " ▲" : ""}</Link>
-              <Link href={sortHref("supplier")} className={sort === "supplier" ? "text-primary" : "hover:text-text"}>Supplier{sort === "supplier" ? " ▲" : ""}</Link>
-              <div>Invoice Date</div>
-              <div>Due Date</div>
-              <div>Amount</div>
+              <Link href={sortHref("invoice")} className={sort === "invoice" ? "text-primary" : "hover:text-text"}>Invoice No.{arrow("invoice")}</Link>
+              <Link href={sortHref("supplier")} className={sort === "supplier" ? "text-primary" : "hover:text-text"}>Supplier{arrow("supplier")}</Link>
+              <Link href={sortHref("date")} className={sort === "date" ? "text-primary" : "hover:text-text"}>Invoice Date{arrow("date")}</Link>
+              <Link href={sortHref("due")} className={sort === "due" ? "text-primary" : "hover:text-text"}>Due Date{arrow("due")}</Link>
+              <Link href={sortHref("amount")} className={sort === "amount" ? "text-primary" : "hover:text-text"}>Amount{arrow("amount")}</Link>
               <div>Company</div>
               <div>Status</div>
             </div>

@@ -4,13 +4,17 @@ import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { formatMalaysiaDate, formatPrice } from "@/lib/format";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
-import { SearchBox } from "@/components/SearchBox";
 import { SupplierProcurementSubNav } from "@/components/procurement/SupplierProcurementSubNav";
 import { SupplierPriceForm } from "@/components/kitchenPurchase/SupplierPriceForm";
 import { listSuppliersFor } from "@/lib/kitchenPurchase/queries";
 import { untyped } from "@/lib/kitchenPurchase/shared";
 import { MonthFilter } from "@/components/MonthFilter";
 import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
+import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { item: "Item", date: "Latest date" };
 
 type Quote = { id: string; supplier_id: string; item_key: string; item_name: string; unit: string; price_per_unit: number; note: string | null; quoted_on: string; created_at: string; suppliers: { name: string } | null };
 
@@ -18,12 +22,18 @@ type Quote = { id: string; supplier_id: string; item_key: string; item_name: str
  * Supplier Price Database: the prices suppliers have offered, item by item. The newest offer of each supplier is shown for comparison.
  * Older offers stay in the history; none of them is a confirmed quotation, so enter today's price when you buy.
  */
-export default async function SupplierQuotesPage({ searchParams }: { searchParams: Promise<{ company?: string; q?: string; month?: string }> }) {
+export default async function SupplierQuotesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ company?: string; q?: string; month?: string; supplier?: string; sort?: string; dir?: string }>;
+}) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
   const supabase = await createClient();
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
-  const { company: requestedId, q, month } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, q, month, supplier } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "item", "asc");
   const monthLabel = monthLabelOf(month);
   const { targetCompanyIds } = resolveCompanyScope(session, allCompanies ?? [], requestedId);
   if (targetCompanyIds.length === 0) return <EmptyRow text="You don't have access to any company yet." />;
@@ -34,7 +44,7 @@ export default async function SupplierQuotesPage({ searchParams }: { searchParam
   const { data, error } = await query;
   if (error) throw error;
   // by month: the day the supplier offered the price
-  const quotes = filterByMonth((data ?? []) as unknown as Quote[], month, (x) => x.quoted_on);
+  const quotes = filterByMonth((data ?? []) as unknown as Quote[], month, (x) => x.quoted_on).filter((x) => !supplier || x.supplier_id === supplier);
   const suppliers = await listSuppliersFor(supabase, targetCompanyIds);
 
   // item -> supplier -> offers (newest first)
@@ -45,7 +55,11 @@ export default async function SupplierQuotesPage({ searchParams }: { searchParam
     item.bySupplier.set(x.supplier_id, [...(item.bySupplier.get(x.supplier_id) ?? []), x]);
     byItem.set(k, item);
   }
-  const items = [...byItem.values()].sort((a, b) => a.name.localeCompare(b.name));
+  // by item name, or by the newest offer of the item (the offers are newest first)
+  const items = sortBy([...byItem.values()], sort, dir, {
+    item: (it) => it.name,
+    date: [(it) => [...it.bySupplier.values()].map((offers) => offers[0].quoted_on).sort().at(-1), (it) => it.name],
+  });
 
   return (
     <div className="flex flex-col gap-5">
@@ -59,10 +73,20 @@ export default async function SupplierQuotesPage({ searchParams }: { searchParam
         <p className="text-[13px] text-text-secondary">The price each supplier offered for an item, newest first. Older prices are kept as history and are not confirmed quotations.</p>
       </div>
       <SupplierPriceForm suppliers={suppliers} />
-      <SearchBox placeholder="Search an item..." />
       <MonthFilter />
+      <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/supplier-procurement/price-quotes${requestedId ? `?company=${requestedId}` : ""}`}>
+        <FilterField label="Item">
+          <input name="q" defaultValue={q ?? ""} placeholder="Search an item..." className={`${FILTER_INPUT} w-52`} />
+        </FilterField>
+        <FilterField label="Supplier">
+          <Select name="supplier" defaultValue={supplier ?? ""} className={`${FILTER_INPUT} w-64`}>
+            <option value="">All suppliers</option>
+            {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </Select>
+        </FilterField>
+      </ListFilters>
       {items.length === 0 ? (
-        <EmptyRow text={monthLabel ? "No supplier prices in this month." : "No supplier price yet. Prices entered in a purchase request, or here, appear in this list."} />
+        <EmptyRow text={q || supplier ? "No supplier prices match these filters." : monthLabel ? "No supplier prices in this month." : "No supplier price yet. Prices entered in a purchase request, or here, appear in this list."} />
       ) : (
         <ul className="flex flex-col gap-3">
           {items.map((it) => {

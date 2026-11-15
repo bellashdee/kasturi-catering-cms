@@ -10,14 +10,20 @@ import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 import { KitchenSubNav } from "@/components/kitchen/KitchenSubNav";
 import { UNCATEGORISED, categoryOf, latestPurchasePrices } from "@/lib/kitchen/itemPrices";
 import { normaliseName } from "@/lib/purchaseList/calc";
-import { formatPrice, formatUnitPrice } from "@/lib/format";
+import { formatMalaysiaDate, formatPrice, formatUnitPrice } from "@/lib/format";
 import { MonthFilter } from "@/components/MonthFilter";
 import { monthLabelOf } from "@/lib/monthFilter";
+import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+/** the stock movements of the month */
+const SORTS = { date: "Date", ingredient: "Ingredient", type: "Type", quantity: "Quantity" };
 
 export default async function StockPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; month?: string }>;
+  searchParams: Promise<{ company?: string; month?: string; q?: string; type?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -26,7 +32,10 @@ export default async function StockPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, month } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, month, type } = sp;
+  const q = (sp.q ?? "").trim().toLowerCase();
+  const { sort, dir } = readSort(sp, SORTS, "date", "desc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -34,13 +43,24 @@ export default async function StockPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const [movements, ingredients, purchasePrices] = await Promise.all([
+  const [allMovements, ingredients, purchasePrices] = await Promise.all([
     listStockMovementsForCompanies(supabase, targetCompanyIds, month),
     listIngredients(supabase, targetCompanyIds),
     latestPurchasePrices(supabase, targetCompanyIds),
   ]);
 
   const monthLabel = monthLabelOf(month);
+  const movements = sortBy(
+    allMovements.filter((m) => (!type || m.movement_type === type) && (!q || (m.ingredients?.name ?? "").toLowerCase().includes(q))),
+    sort,
+    dir,
+    {
+      date: (m) => m.created_at,
+      ingredient: [(m) => m.ingredients?.name, (m) => m.created_at],
+      type: [(m) => MOVEMENT_TYPE_LABEL[m.movement_type] ?? m.movement_type, (m) => m.created_at],
+      quantity: [(m) => Number(m.quantity), (m) => m.created_at],
+    },
+  );
 
   // every item with its price (the stock item's own unit cost, else the latest purchase order price), grouped by category
   const priced = ingredients.map((i) => {
@@ -158,12 +178,25 @@ export default async function StockPage({
 
       <MonthFilter />
 
+      <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/kitchen/stock${query}`}>
+        <FilterField label="Ingredient">
+          <input name="q" defaultValue={sp.q ?? ""} placeholder="Ingredient name" className={`${FILTER_INPUT} w-52`} />
+        </FilterField>
+        <FilterField label="Type">
+          <Select name="type" defaultValue={type ?? ""} className={`${FILTER_INPUT} w-40`}>
+            <option value="">All types</option>
+            {Object.entries(MOVEMENT_TYPE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </Select>
+        </FilterField>
+      </ListFilters>
+
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {movements.length === 0 ? (
-          <EmptyRow text={monthLabel ? "No stock movements in this month." : "No stock movements yet."} />
+          <EmptyRow text={q || type ? "No stock movements match these filters." : monthLabel ? "No stock movements in this month." : "No stock movements yet."} />
         ) : (
           <div>
-            <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1.4fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
+            <div className="grid grid-cols-[0.9fr_1.2fr_1fr_1fr_1fr_1.4fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
+              <div>Date</div>
               <div>Ingredient</div>
               <div>Type</div>
               <div>Quantity</div>
@@ -171,7 +204,8 @@ export default async function StockPage({
               <div>Notes</div>
             </div>
             {movements.map((m) => (
-              <div key={m.id} className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1.4fr] border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0">
+              <div key={m.id} className="grid grid-cols-[0.9fr_1.2fr_1fr_1fr_1fr_1.4fr] border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0">
+                <div className="text-text-secondary">{formatMalaysiaDate(m.created_at)}</div>
                 <div className="font-semibold text-text">{m.ingredients?.name ?? "—"}</div>
                 <div className="text-text-secondary">{MOVEMENT_TYPE_LABEL[m.movement_type] ?? m.movement_type}</div>
                 <div className="text-text-secondary">{Number(m.quantity) > 0 ? "+" : ""}{m.quantity} {m.ingredients?.unit_of_measure ?? ""}</div>

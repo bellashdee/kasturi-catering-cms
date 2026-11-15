@@ -6,11 +6,15 @@ import { resolveCompanyScope } from "@/lib/companyScope";
 import { listMenus } from "@/lib/kitchen/queries";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { KitchenSubNav } from "@/components/kitchen/KitchenSubNav";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { name: "Name", items: "Items", company: "Company" };
 
 export default async function MenusPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string }>;
+  searchParams: Promise<{ company?: string; q?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -19,7 +23,10 @@ export default async function MenusPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId } = sp;
+  const q = (sp.q ?? "").trim().toLowerCase();
+  const { sort, dir } = readSort(sp, SORTS, "name", "asc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -27,7 +34,16 @@ export default async function MenusPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const menus = await listMenus(supabase, targetCompanyIds);
+  const menus = sortBy(
+    (await listMenus(supabase, targetCompanyIds)).filter((m) => !q || m.name.toLowerCase().includes(q) || (m.description ?? "").toLowerCase().includes(q)),
+    sort,
+    dir,
+    {
+      name: (m) => m.name,
+      items: [(m) => m.menu_items?.length ?? 0, (m) => m.name],
+      company: [(m) => m.companies?.name, (m) => m.name],
+    },
+  );
 
   return (
     <div className="flex flex-col gap-5">
@@ -43,9 +59,15 @@ export default async function MenusPage({
 
       <KitchenSubNav />
 
+      <ListFilters keep={{ company: requestedId }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/kitchen/menus${query}`}>
+        <FilterField label="Search">
+          <input name="q" defaultValue={sp.q ?? ""} placeholder="Menu name" className={`${FILTER_INPUT} w-60`} />
+        </FilterField>
+      </ListFilters>
+
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {menus.length === 0 ? (
-          <EmptyRow text="No menus yet. Create one to group menu items that recipes can link to." />
+          <EmptyRow text={q ? "No menus match these filters." : "No menus yet. Create one to group menu items that recipes can link to."} />
         ) : (
           <div>
             <div className="grid grid-cols-[2fr_1fr_1fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
