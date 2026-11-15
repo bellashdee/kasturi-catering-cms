@@ -11,9 +11,9 @@ const input = "h-11 w-full rounded-lg border border-border-strong bg-white px-3 
 
 /**
  * Event menu selection: every dish of the event is matched to an approved recipe (change the recipe, or tick the dish off). Pressing
- * the button lists the ingredients of the chosen recipes as one purchase list with the quantities left empty.
+ * the button lists the ingredients of the chosen recipes as one purchase list, each quantity suggested from the recipe for the pax.
  */
-export function MenuSelector({ eventId, dayId, dishes, recipes }: { eventId: string; dayId: string | null; dishes: Dish[]; recipes: Recipe[] }) {
+export function MenuSelector({ eventId, dayId, dishes, recipes, pax }: { eventId: string; dayId: string | null; dishes: Dish[]; recipes: Recipe[]; pax: number }) {
   const router = useRouter();
   // fruit, kuih and the like are bought ready-made: listed apart, never matched to a recipe
   const boughtIn = dishes.filter((d) => d.boughtIn).map((d) => d.menu);
@@ -105,7 +105,11 @@ export function MenuSelector({ eventId, dayId, dishes, recipes }: { eventId: str
       <button type="button" disabled={busy || chosen.length === 0} onClick={generate} className="h-14 w-full rounded-xl bg-primary text-[16px] font-extrabold text-white hover:bg-primary-hover disabled:opacity-60">
         {busy ? "Making the ingredient list..." : `Generate ingredient list (${chosen.length} menu${chosen.length === 1 ? "" : "s"})`}
       </button>
-      <p className="text-center text-[12.5px] text-text-muted">The list has ingredients and units only. You write the quantity of each item yourself.</p>
+      <p className="text-center text-[12.5px] text-text-muted">
+        {pax > 0
+          ? `Each quantity is suggested from the recipe for ${pax} pax. Check and change every quantity before you send the list to the Purchaser.`
+          : "This event has no pax, so no quantity can be suggested. You write the quantity of each item yourself."}
+      </p>
       {error && (
         <div role="alert" className="rounded-lg bg-danger-bg px-4 py-3 text-[14px] text-danger">
           {error}

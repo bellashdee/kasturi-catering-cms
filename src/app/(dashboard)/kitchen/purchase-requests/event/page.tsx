@@ -11,6 +11,7 @@ import { dayText, myMoment } from "@/lib/kitchenPlan/schedule";
 import { loadRecipeRefs } from "@/lib/kitchenAi/data";
 import { autoMatch } from "@/lib/kitchenAi/match";
 import { isBoughtIn, untyped } from "@/lib/kitchenPurchase/shared";
+import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 
 /** Step 1: choose the event. Step 2: choose its menus (matched to approved recipes) and make the ingredient list. */
 export default async function PurchaseRequestEventPage({ searchParams }: { searchParams: Promise<{ company?: string; event?: string; day?: string }> }) {
@@ -32,6 +33,8 @@ export default async function PurchaseRequestEventPage({ searchParams }: { searc
     const approvedRefs = (approved ?? []) as { id: string; name: string }[];
     const refs = (await loadRecipeRefs(supabase, event.companyId)).filter((r) => approvedRefs.some((a) => a.id === r.id));
     // fruit, kuih and other dishes bought ready-made need no recipe and no ingredients
+    // the quotation / invoice PDF the office read the menu from (Catering → event → Menu from the quotation / invoice)
+    const { data: menuPdfs } = await supabase.from("documents").select("id, original_filename").eq("related_table", "catering_events").eq("related_id", event.eventId).eq("module", "catering_menu").order("uploaded_at", { ascending: false });
     const dishes = event.dishes.map((menu) => (isBoughtIn(menu) ? { menu, recipeId: null, boughtIn: true } : { menu, recipeId: autoMatch(menu, refs)?.recipeId ?? null, boughtIn: false }));
     body = (
       <div className="flex flex-col gap-4">
@@ -41,7 +44,15 @@ export default async function PurchaseRequestEventPage({ searchParams }: { searc
             {dayText(myMoment(event.date, "12:00"))} · {event.pax || "—"} pax
           </div>
         </div>
-        <MenuSelector eventId={event.eventId} dayId={event.dayId} dishes={dishes} recipes={approvedRefs} />
+        {(menuPdfs ?? []).length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-surface-alt px-4 py-3 text-[13.5px] text-text-secondary">
+            <span>The menu comes from the quotation / invoice:</span>
+            {(menuPdfs ?? []).map((f) => (
+              <DocumentViewLink key={f.id} documentId={f.id} label={f.original_filename} className="font-semibold text-primary underline" />
+            ))}
+          </div>
+        )}
+        <MenuSelector eventId={event.eventId} dayId={event.dayId} dishes={dishes} recipes={approvedRefs} pax={event.pax} />
       </div>
     );
   } else {

@@ -77,26 +77,30 @@ export function lineTotal(quantity: number | null, price: number | null): number
   return Math.round(quantity * price * 100) / 100;
 }
 
-export type MenuIngredients = { menu: string; lines: { name: string; unit: string | null }[] };
+export type MenuIngredients = { menu: string; lines: { name: string; unit: string | null; /** the amount this menu needs, when it could be worked out */ qty?: number | null }[] };
 
 /**
  * The ingredients of the selected menus as one purchase list: an ingredient that appears in several menus becomes ONE item that keeps
- * the name of every menu it came from. No quantity is worked out: the quantity stays empty for Kitchen to write. When the menus write
- * the same ingredient in different units, the first unit is kept and the item carries a remark so that Kitchen confirms the unit.
+ * the name of every menu it came from. The quantity is the sum of the menus' amounts (recipe x pax) when every menu gave one in the
+ * same unit; otherwise it stays empty for Kitchen to write. Kitchen checks and changes every quantity before sending the request.
+ * When the menus write the same ingredient in different units, the first unit is kept and the item carries a remark so that Kitchen
+ * confirms the unit.
  */
-export function consolidateIngredients(menus: MenuIngredients[]): { itemName: string; unit: string; menus: string[]; remark: string | null }[] {
-  const byKey = new Map<string, { itemName: string; unit: string; menus: string[]; units: Set<string> }>();
+export function consolidateIngredients(menus: MenuIngredients[]): { itemName: string; unit: string; menus: string[]; remark: string | null; quantity: number | null }[] {
+  const byKey = new Map<string, { itemName: string; unit: string; menus: string[]; units: Set<string>; qty: number | null }>();
   for (const m of menus) {
     for (const line of m.lines) {
       const name = line.name.replace(/\s+/g, " ").trim();
       if (!name) continue;
       const key = itemKey(name);
       const unit = normalizeUnit(line.unit);
+      const qty = typeof line.qty === "number" && line.qty > 0 ? line.qty : null;
       const cur = byKey.get(key);
       if (cur) {
         if (!cur.menus.includes(m.menu)) cur.menus.push(m.menu);
         cur.units.add(unit);
-      } else byKey.set(key, { itemName: name, unit, menus: [m.menu], units: new Set([unit]) });
+        cur.qty = cur.qty !== null && qty !== null ? cur.qty + qty : null;
+      } else byKey.set(key, { itemName: name, unit, menus: [m.menu], units: new Set([unit]), qty });
     }
   }
   return [...byKey.values()].map((x) => ({
@@ -104,6 +108,8 @@ export function consolidateIngredients(menus: MenuIngredients[]): { itemName: st
     unit: x.unit,
     menus: x.menus,
     remark: x.units.size > 1 ? `The menus use different units (${[...x.units].join(" / ")}). Kitchen: confirm the unit.` : null,
+    // rounded up to 2 decimals, never more than the request allows
+    quantity: x.units.size === 1 && x.qty !== null ? Math.min(1_000_000, Math.ceil(x.qty * 100 - 1e-9) / 100) : null,
   }));
 }
 

@@ -68,7 +68,10 @@ async function nextRequestNo(db: SupabaseClient, companyId: string) {
 
 export type MenuSelection = { menu: string; recipeId: string | null };
 
-/** Event menu selection -> the ingredient list of the approved recipes, consolidated, with the quantities left empty. */
+/**
+ * Event menu selection -> the ingredient list of the approved recipes, consolidated. Each quantity is suggested from the recipe for the
+ * event's pax (amount per yield x pax / yield pax); Kitchen checks and changes it before sending. Without pax it stays empty.
+ */
 export async function createRequestFromMenus(input: { eventId: string; dayId: string | null; selections: MenuSelection[] }): Promise<ActionResult<{ id: string }>> {
   return runAction(async () => {
     const c = await context();
@@ -82,16 +85,23 @@ export async function createRequestFromMenus(input: { eventId: string; dayId: st
     const ids = Array.from(new Set(chosen.map((s) => s.recipeId as string)));
     const { data: recipes, error } = await c.db
       .from("recipes")
-      .select("id, name, status, company_id, recipe_ingredients(unit, ingredients(name, unit_of_measure))")
+      .select("id, name, status, company_id, yield_pax, recipe_ingredients(unit, quantity_per_yield, ingredients(name, unit_of_measure))")
       .in("id", ids);
     if (error) throw error;
-    type RecipeRow = { id: string; name: string; status: string | null; company_id: string; recipe_ingredients: { unit: string | null; ingredients: { name: string; unit_of_measure: string | null } | null }[] };
+    type RecipeRow = { id: string; name: string; status: string | null; company_id: string; yield_pax: number | null; recipe_ingredients: { unit: string | null; quantity_per_yield: number | null; ingredients: { name: string; unit_of_measure: string | null } | null }[] };
     const byId = new Map((recipes as unknown as RecipeRow[]).map((r) => [r.id, r]));
     const menus = chosen.map((s) => {
       const r = byId.get(s.recipeId as string);
       if (!r || r.company_id !== event.companyId) throw new Error("A recipe was not found for this company.");
       if (r.status === "draft") throw new Error(`The recipe "${r.name}" is still a draft. A chef must approve it first.`);
-      return { menu: s.menu || r.name, lines: r.recipe_ingredients.filter((l) => l.ingredients).map((l) => ({ name: l.ingredients!.name, unit: l.unit || l.ingredients!.unit_of_measure })) };
+      // the amount for this event: the recipe's amount for its yield, scaled to the pax of the event (day)
+      const scale = event.pax > 0 && r.yield_pax && r.yield_pax > 0 ? event.pax / r.yield_pax : null;
+      return {
+        menu: s.menu || r.name,
+        lines: r.recipe_ingredients
+          .filter((l) => l.ingredients)
+          .map((l) => ({ name: l.ingredients!.name, unit: l.unit || l.ingredients!.unit_of_measure, qty: scale !== null && l.quantity_per_yield ? Number(l.quantity_per_yield) * scale : null })),
+      };
     });
     const items = consolidateIngredients(menus);
     if (items.length === 0) throw new Error("The selected recipes have no ingredients yet. Add the ingredients to the recipes first.");
@@ -104,10 +114,10 @@ export async function createRequestFromMenus(input: { eventId: string; dayId: st
       .single();
     if (insertError) throw insertError;
     const { error: itemsError } = await c.db.from("kitchen_purchase_request_items").insert(
-      items.map((it, i) => ({ request_id: created.id, company_id: event.companyId, sort_order: i, item_name: it.itemName, item_key: itemKey(it.itemName), unit: it.unit, quantity: null, menus: it.menus, remark: it.remark })),
+      items.map((it, i) => ({ request_id: created.id, company_id: event.companyId, sort_order: i, item_name: it.itemName, item_key: itemKey(it.itemName), unit: it.unit, quantity: it.quantity, menus: it.menus, remark: it.remark })),
     );
     if (itemsError) throw itemsError;
-    await recordAudit({ companyId: event.companyId, relatedTable: "kitchen_purchase_requests", relatedId: created.id, action: "created", newValue: `${requestNo} · ${event.eventName} · ${items.length} items from ${menus.length} menus` });
+    await recordAudit({ companyId: event.companyId, relatedTable: "kitchen_purchase_requests", relatedId: created.id, action: "created", newValue: `${requestNo} · ${event.eventName} · ${items.length} items from ${menus.length} menus · ${items.filter((i) => i.quantity !== null).length} quantities suggested for ${event.pax || 0} pax` });
     refresh();
     return { id: created.id as string };
   });

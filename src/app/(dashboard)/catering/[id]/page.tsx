@@ -36,6 +36,8 @@ import { DeliveryForm } from "@/components/catering/DeliveryForm";
 import { listDeliveryPersons } from "@/lib/driver/queries";
 import { DELIVERY_STATUS_LABEL } from "@/lib/driver/constants";
 import { RemoveAssignmentButton } from "@/components/catering/RemoveAssignmentButton";
+import { EventMenuFromPdf } from "@/components/catering/EventMenuFromPdf";
+import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 
 /** A menu as numbered points, one menu item on each line (a "-", "•" or "1." typed in front of an item is not repeated). */
 function MenuPoints({ text, className = "" }: { text: string; className?: string }) {
@@ -100,14 +102,16 @@ export default async function EventDetailPage({
   ]);
 
   // Event Profit & Loss (Finance / Admin, and the Quotation Request Inbox people) and who changed the event and when
-  const [{ data: canPnl }, { data: auditRows }] = await Promise.all([
+  const [{ data: canPnl }, { data: auditRows }, { data: menuPdfs }] = await Promise.all([
     supabase.rpc("user_can_manage_event_pnl", { target_company_id: event.company_id }),
     supabase.from("task_audit_log").select("id, action, previous_value, new_value, performed_by, created_at").eq("related_table", "catering_events").eq("related_id", id).order("created_at", { ascending: false }).limit(30),
+    // the quotation / invoice PDFs the menu was read from
+    supabase.from("documents").select("id, original_filename, uploaded_at").eq("related_table", "catering_events").eq("related_id", id).eq("module", "catering_menu").order("uploaded_at", { ascending: false }),
   ]);
   const editors = Array.from(new Set((auditRows ?? []).map((a) => a.performed_by).filter((x): x is string => !!x)));
   const { data: editorRows } = editors.length ? await supabase.from("profiles").select("id, full_name").in("id", editors) : { data: [] };
   const editorName = new Map((editorRows ?? []).map((p) => [p.id, p.full_name ?? "—"]));
-  const AUDIT_ACTION: Record<string, string> = { created: "Created", edited: "Edited", status_changed: "Status changed", imported: "Imported from Excel", import_updated: "Updated by Excel import", calendar_edit: "Edited on the calendar", deleted: "Deleted", restored: "Put back" };
+  const AUDIT_ACTION: Record<string, string> = { menu_from_pdf: "Menu read from the quotation / invoice PDF", created: "Created", edited: "Edited", status_changed: "Status changed", imported: "Imported from Excel", import_updated: "Updated by Excel import", calendar_edit: "Edited on the calendar", deleted: "Deleted", restored: "Put back" };
 
   const employees = employeesRes.data ?? [];
   const deliveryPersons = await listDeliveryPersons(supabase, [event.company_id]);
@@ -216,6 +220,28 @@ export default async function EventDetailPage({
           )}
         </div>
       )}
+
+      <SectionCard title="Menu from the quotation / invoice (PDF)">
+        <EventMenuFromPdf
+          eventId={id}
+          companyId={event.company_id}
+          hasEventMenu={!!event.menu_description}
+          days={dayRowsData.map((d, i) => ({ id: d.id, date: d.day_date, label: `Day ${i + 1} · ${d.day_date}`, hasMenu: !!d.menu_details }))}
+        />
+        {(menuPdfs ?? []).length > 0 && (
+          <ul className="mt-3 flex flex-col gap-1.5 text-[13px]">
+            {(menuPdfs ?? []).map((f) => (
+              <li key={f.id} className="flex items-center justify-between rounded-lg border border-border bg-surface-alt px-3 py-2">
+                <span className="truncate text-text">
+                  {f.original_filename}
+                  <span className="ml-2 text-xs text-text-muted">uploaded {formatMalaysiaDateTime(f.uploaded_at)}</span>
+                </span>
+                <DocumentViewLink documentId={f.id} label="View PDF" className="ml-3 shrink-0 font-semibold text-primary" />
+              </li>
+            ))}
+          </ul>
+        )}
+      </SectionCard>
 
       {eventDays.length > 0 && (
         <SectionCard title={`Event days (${eventDays.length})`}>
