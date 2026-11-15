@@ -20,6 +20,12 @@ const REPORTS: ReportCard[] = [
     ],
   },
   {
+    key: "comparison",
+    title: "Sales: this year vs last year",
+    description: "Sales of each month against the same month of last year, with the change, the best month and each company.",
+    links: [{ href: "/reports/sales-comparison", label: "Open" }],
+  },
+  {
     key: "revenue",
     title: "Revenue",
     description: "Money received by month, and the invoices issued by Kasturi Indah, Signature Solution Catering and Signature Solution.",
