@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { canAccessPath, mergeAllowedModules, moduleForPath } from "@/lib/modules";
 import { mergeAllowedSections, sectionForPath } from "@/lib/sections";
+import { MONTH_FILTER_PAGES, thisMonthInMalaysia } from "@/lib/monthPages";
 
 const PUBLIC_PATHS = ["/login", "/signup", "/auth"];
 // open to anyone, signed in or not (sales agents send customer details here without an account)
@@ -11,44 +12,6 @@ const PUBLIC_PATHS = ["/login", "/signup", "/auth"];
 // /supabase is the forwarder to Supabase for the browser (Supabase checks the session itself)
 const OPEN_PATHS = ["/privacy", "/customer-form", "/quotation-form", "/payment-proof-form", "/event-clock", "/api/convert_to_markdown", "/api/resolve-login", "/api/push/notify", "/sw.js", "/manifest.webmanifest", "/supabase"];
 
-/** The lists with the month filter (MonthFilter): opened without a month, they open on this month (Malaysia), not on all months. */
-const MONTH_FILTER_PAGES = new Set([
-  "/bulletin",
-  "/catering/customers/submissions",
-  "/catering",
-  "/catering/quotation-requests",
-  "/catering/quotations",
-  "/driver-logistics/attendance",
-  "/driver-logistics/maintenance",
-  "/driver-logistics",
-  "/finance/invoices",
-  "/finance/payment-proofs",
-  "/hr/documents",
-  "/hr/leave",
-  "/hr/payroll",
-  "/hr/probation",
-  "/kitchen",
-  "/kitchen/plan",
-  "/kitchen/purchase-requests",
-  "/kitchen/stock",
-  "/marketing/content",
-  "/marketing/customers",
-  "/marketing/expenses",
-  "/marketing/leads",
-  "/marketing",
-  "/marketing/promotions",
-  "/marketing/reports",
-  "/spending/budgets",
-  "/spending/expenses",
-  "/supplier-procurement/invoices",
-  "/supplier-procurement/items",
-  "/supplier-procurement/kitchen-requests",
-  "/supplier-procurement/notes",
-  "/supplier-procurement/orders",
-  "/supplier-procurement/payments",
-  "/supplier-procurement/price-quotes",
-]);
-const thisMonthInMalaysia = () => new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 7);
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -100,7 +63,11 @@ export async function proxy(request: NextRequest) {
   // Members restricted to certain modules cannot open the pages of the others, whatever URL they type.
   if (user) {
     const moduleKey = moduleForPath(request.nextUrl.pathname);
-    if (moduleKey || sectionForPath(request.nextUrl.pathname)) {
+    // A link prefetch (the browser getting ready for the links on screen: dozens per page) only fetches the page's loading frame, never
+    // its records, so it skips this database check; opening the page is still checked. This keeps the database free for the page being opened.
+    // (only together with the RSC header: then Next answers with the loading frame only, whatever else the request says)
+    const isPrefetch = request.headers.get("rsc") === "1" && (request.headers.has("next-router-prefetch") || request.headers.has("next-router-segment-prefetch"));
+    if (!isPrefetch && (moduleKey || sectionForPath(request.nextUrl.pathname))) {
       const { data: grants } = await supabase.from("user_company_access").select("*").eq("user_id", user.id);
       const allowed = mergeAllowedModules((grants ?? []).map((g) => g.allowed_modules));
       const sections = mergeAllowedSections((grants ?? []).map((g) => (g as { allowed_sections?: string[] | null }).allowed_sections ?? null));

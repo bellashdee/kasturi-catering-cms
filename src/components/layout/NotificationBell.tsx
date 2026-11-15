@@ -55,29 +55,51 @@ export function NotificationBell({ userId }: { userId: string }) {
     [seenKey],
   );
 
+  // the last list is kept for this browser tab: building it checks the whole system (dozens of database questions at once), so a reload or
+  // a change of company within a few minutes shows the kept list instead of asking again and slowing down the page being opened
+  const cacheKey = `reminders:${userId}:${company ?? ""}`;
+  const readCache = useCallback((): { at: number; items: Reminder[] } | null => {
+    try {
+      const raw = JSON.parse(sessionStorage.getItem(cacheKey) ?? "null");
+      return raw && typeof raw.at === "number" && Array.isArray(raw.items) ? raw : null;
+    } catch {
+      return null;
+    }
+  }, [cacheKey]);
+
   const load = useCallback(async () => {
     setLoading(true);
     const result = await getReminders(company);
     if (result.ok) {
       setItems(result.items);
       setError(null);
+      try {
+        sessionStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), items: result.items }));
+      } catch {
+        /* no storage: the next page asks again */
+      }
       // while the list is open, what it shows has been seen
       if (openRef.current) markSeen(result.items);
     } else {
       setError(result.error);
     }
     setLoading(false);
-  }, [company, markSeen]);
+  }, [company, cacheKey, markSeen]);
 
-  // load when the page opens or the company changes, then every few minutes
+  // the kept list shows at once; a fresh one is asked only when it is older than a few minutes, and only after the page has finished
+  // opening (so the page's own figures come first), then every few minutes
   useEffect(() => {
-    const first = setTimeout(() => void load(), 0);
+    const cached = readCache();
+    const age = cached ? Date.now() - cached.at : Infinity;
+    const show = setTimeout(() => cached && setItems(cached.items), 0);
+    const first = setTimeout(() => void load(), age < REFRESH_MS ? REFRESH_MS - age : 3000);
     const every = setInterval(() => void load(), REFRESH_MS);
     return () => {
+      clearTimeout(show);
       clearTimeout(first);
       clearInterval(every);
     };
-  }, [load]);
+  }, [load, readCache]);
 
   useEffect(() => {
     openRef.current = open;

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { MODULES } from "@/lib/constants";
 import { moduleHref } from "@/lib/sections";
+import { withThisMonth } from "@/lib/monthPages";
 import { useAllowedSections } from "@/components/layout/SectionAccess";
 
 const ICONS: Record<string, React.ReactNode> = {
@@ -177,7 +178,7 @@ function NavItem({ href, icon, label, matchPrefixes, badge }: { href: string; ic
   const searchParams = useSearchParams();
   const active = pathname === href || (matchPrefixes?.some((p) => pathname === p || pathname.startsWith(`${p}/`)) ?? false);
   const company = searchParams.get("company");
-  const fullHref = company ? `${href}?company=${company}` : href;
+  const fullHref = withThisMonth(href, company ? `company=${company}` : "");
   const collapsed = useSidebarCollapsed();
 
   return (
