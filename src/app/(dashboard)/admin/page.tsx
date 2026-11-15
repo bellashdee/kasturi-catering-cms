@@ -11,6 +11,11 @@ import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { MonthlySalesForm } from "@/components/finance/MonthlySalesForm";
 import { SplitSalesForm } from "@/components/finance/SplitSalesForm";
 import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+/** Sort of the "Costs by Category" list. */
+const SORTS = { amount: "Amount", category: "Category" };
 
 /** Signature Solution records its sales as catering events and daily sales. */
 const SPLIT_SALES_COMPANY_NAME = "Signature Solution";
@@ -22,7 +27,7 @@ function currentYearMonth() {
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; year?: string; month?: string; department?: string; category?: string }>;
+  searchParams: Promise<{ company?: string; year?: string; month?: string; department?: string; category?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -31,7 +36,9 @@ export default async function AdminPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, year: yearParam, month: monthParam, department: departmentParam, category: categoryParam } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, year: yearParam, month: monthParam, department: departmentParam, category: categoryParam } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "amount", "desc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
 
   if (targetCompanyIds.length === 0) {
@@ -77,9 +84,12 @@ export default async function AdminPage({
     const existing = byCategory.get(key);
     byCategory.set(key, { source: r.source, amount: (existing?.amount ?? 0) + r.amount });
   }
-  const categoryRows = Array.from(byCategory.entries())
-    .map(([key, v]) => ({ key, ...v }))
-    .sort((a, b) => b.amount - a.amount);
+  const categoryRows = sortBy(
+    Array.from(byCategory.entries()).map(([key, v]) => ({ key, ...v })),
+    sort,
+    dir,
+    { amount: [(c) => c.amount, (c) => c.key], category: (c) => c.key },
+  );
 
   return (
     <div className="flex flex-col gap-5">
@@ -90,34 +100,28 @@ export default async function AdminPage({
 
       <FinanceAdminSubNav />
 
-      <form method="get" className="flex flex-wrap items-center gap-x-6 gap-y-3">
-        {requestedId && <input type="hidden" name="company" value={requestedId} />}
-        <div className="flex items-center gap-2.5">
-          <label className="whitespace-nowrap text-[12px] font-semibold text-text-secondary">Year</label>
-          <input type="number" name="year" defaultValue={year} className="h-9 w-24 rounded-lg border border-border-strong px-2 text-[13px]" />
-        </div>
-        <div className="flex items-center gap-2.5">
-          <label className="whitespace-nowrap text-[12px] font-semibold text-text-secondary">Month</label>
-          <Select name="month" defaultValue={month} className="h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
+      <ListFilters keep={{ company: requestedId }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={requestedId ? `/admin?company=${requestedId}` : "/admin"}>
+        <FilterField label="Month">
+          <Select name="month" defaultValue={month} className={`${FILTER_INPUT} w-36`}>
             {MONTH_LABEL.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
           </Select>
-        </div>
-        <div className="flex items-center gap-2.5">
-          <label className="whitespace-nowrap text-[12px] font-semibold text-text-secondary">Department</label>
-          <Select name="department" defaultValue={departmentParam ?? ""} className="h-9 w-44 rounded-lg border border-border-strong px-2 text-[13px]">
+        </FilterField>
+        <FilterField label="Year">
+          <input type="number" name="year" defaultValue={year} className={`${FILTER_INPUT} w-24`} />
+        </FilterField>
+        <FilterField label="Department">
+          <Select name="department" defaultValue={departmentParam ?? ""} className={`${FILTER_INPUT} w-44`}>
             <option value="">All Departments</option>
             {departments.map((d) => <option key={d} value={d}>{d}</option>)}
           </Select>
-        </div>
-        <div className="flex items-center gap-2.5">
-          <label className="whitespace-nowrap text-[12px] font-semibold text-text-secondary">Category</label>
-          <Select name="category" defaultValue={categoryParam ?? ""} className="h-9 w-52 rounded-lg border border-border-strong px-2 text-[13px]">
+        </FilterField>
+        <FilterField label="Category">
+          <Select name="category" defaultValue={categoryParam ?? ""} className={`${FILTER_INPUT} w-52`}>
             <option value="">All Categories</option>
             {SPENDING_CATEGORIES.map((name) => <option key={name} value={name}>{name}</option>)}
           </Select>
-        </div>
-        <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply Filters</button>
-      </form>
+        </FilterField>
+      </ListFilters>
 
       {!singleCompanyId && (
         <p className="-mb-2 text-[12px] font-semibold text-text-secondary">Sales for {monthLabel} {year} (RM)</p>

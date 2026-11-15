@@ -14,11 +14,16 @@ import { SupplierPaymentActions } from "@/components/procurement/SupplierPayment
 import { PaymentExecutionForm } from "@/components/procurement/PaymentExecutionForm";
 import { MonthFilter } from "@/components/MonthFilter";
 import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { Select } from "@/components/ui/Select";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { date: "Request date", supplier: "Supplier", invoice: "Invoice No.", amount: "Amount", status: "Status" };
 
 export default async function SupplierPaymentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; month?: string }>;
+  searchParams: Promise<{ company?: string; month?: string; q?: string; status?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -27,7 +32,10 @@ export default async function SupplierPaymentsPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, month } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, month } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "date", "desc");
+  const search = sp.q?.trim().toLowerCase() ?? "";
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
 
   if (targetCompanyIds.length === 0) {
@@ -39,7 +47,24 @@ export default async function SupplierPaymentsPage({
     getSupplierPayments(supabase, targetCompanyIds),
   ]);
   // by month: the day the payment was requested (the figures above always show the position today)
-  const payments = filterByMonth(allPayments, month, (p) => p.created_at);
+  const inMonth = filterByMonth(allPayments, month, (p) => p.created_at);
+  const payments = sortBy(
+    inMonth.filter(
+      (p) =>
+        (!sp.status || p.status === sp.status) &&
+        (!search || [p.supplier_invoices?.invoice_number, p.supplier_invoices?.suppliers?.name].some((v) => (v ?? "").toLowerCase().includes(search))),
+    ),
+    sort,
+    dir,
+    {
+      date: (p) => p.created_at,
+      supplier: [(p) => p.supplier_invoices?.suppliers?.name, (p) => p.supplier_invoices?.invoice_number],
+      invoice: (p) => p.supplier_invoices?.invoice_number,
+      amount: (p) => Number(p.amount),
+      status: [(p) => PAYMENT_STATUS_LABEL[p.status] ?? p.status, (p) => p.created_at],
+    },
+  );
+  const filtered = !!search || !!sp.status;
   const monthLabel = monthLabelOf(month);
 
   return (
@@ -83,10 +108,22 @@ export default async function SupplierPaymentsPage({
 
       <MonthFilter />
 
+      <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/supplier-procurement/payments${requestedId ? `?company=${requestedId}` : ""}`}>
+        <FilterField label="Search">
+          <input name="q" defaultValue={sp.q ?? ""} placeholder="Supplier or invoice No." className={`${FILTER_INPUT} w-52`} />
+        </FilterField>
+        <FilterField label="Status">
+          <Select name="status" defaultValue={sp.status ?? ""} className={`${FILTER_INPUT} w-48`}>
+            <option value="">All statuses</option>
+            {Object.entries(PAYMENT_STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </Select>
+        </FilterField>
+      </ListFilters>
+
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         <div className="border-b border-border px-5 py-3.5 text-[15px] font-bold text-text">Payment Requests</div>
         {payments.length === 0 ? (
-          <div className="p-5"><EmptyRow text={monthLabel ? "No payment requests in this month." : "No payment requests yet. Request one from an invoice's page."} /></div>
+          <div className="p-5"><EmptyRow text={filtered ? "No payment requests match these filters." : monthLabel ? "No payment requests in this month." : "No payment requests yet. Request one from an invoice's page."} /></div>
         ) : (
           <div className="divide-y divide-border">
             {payments.map((p) => (

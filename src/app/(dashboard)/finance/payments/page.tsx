@@ -28,8 +28,14 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ReportTable } from "@/components/reports/ReportTable";
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
 
-type SearchParams = { company?: string; year?: string; month?: string; category?: string; payee?: string; provider?: string; status?: string };
+type SearchParams = { company?: string; year?: string; month?: string; category?: string; payee?: string; provider?: string; status?: string; sort?: string; dir?: string };
+
+const SORTS = { due: "Due date", payee: "Supplier / Payee", category: "Category", amount: "Amount", status: "Status" };
+/** Status order when sorting by status: the most urgent first (ascending). */
+const URGENCY_RANK = { overdue: 0, due_today: 1, due_soon: 2, pending: 3, paid: 4 } as const;
 
 const CATEGORY_HREF: Record<PaymentCategory, string> = {
   supplier: "/finance/supplier-payment",
@@ -97,7 +103,19 @@ export default async function PaymentDashboardPage({ searchParams }: { searchPar
 
   const category = (["supplier", "rental", "utility"].includes(sp.category ?? "") ? sp.category : undefined) as PaymentCategory | undefined;
   const all = await listPaymentsForMonth(supabase, adminIds, year, month, { category, provider: sp.provider || undefined, payee: sp.payee || undefined });
-  const filtered = all.filter((p) => matchesStatusFilter(paymentUrgency(p.status, p.due_date, today), sp.status));
+  const { sort, dir } = readSort(sp, SORTS, "due", "asc");
+  const filtered = sortBy(
+    all.filter((p) => matchesStatusFilter(paymentUrgency(p.status, p.due_date, today), sp.status)),
+    sort,
+    dir,
+    {
+      due: [(p) => p.due_date, (p) => p.payee_name],
+      payee: [(p) => p.payee_name, (p) => p.due_date],
+      category: [(p) => PAYMENT_CATEGORY_LABEL[p.category as PaymentCategory] ?? p.category, (p) => p.payee_name],
+      amount: (p) => Number(p.amount),
+      status: [(p) => URGENCY_RANK[paymentUrgency(p.status, p.due_date, today)], (p) => p.due_date],
+    },
+  );
 
   const of = (c: PaymentCategory) => filtered.filter((p) => p.category === c);
   const supplier = summarizePayments(of("supplier"), today);
@@ -141,46 +159,38 @@ export default async function PaymentDashboardPage({ searchParams }: { searchPar
     <div className="flex flex-col gap-5">
       {header}
 
-      <form method="get" className="flex flex-wrap items-end gap-3">
-        {sp.company && <input type="hidden" name="company" value={sp.company} />}
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Year</label>
-          <input type="number" name="year" defaultValue={year} className="mt-1 h-9 w-24 rounded-lg border border-border-strong px-2 text-[13px]" />
-        </div>
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Month</label>
-          <Select name="month" defaultValue={month} className="mt-1 h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
+      <ListFilters keep={{ company: sp.company }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={sp.company ? `/finance/payments?company=${sp.company}` : "/finance/payments"}>
+        <FilterField label="Month">
+          <Select name="month" defaultValue={month} className={`${FILTER_INPUT} w-36`}>
             {MONTH_LABEL.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
           </Select>
-        </div>
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Payment Category</label>
-          <Select name="category" defaultValue={category ?? ""} className="mt-1 h-9 w-44 rounded-lg border border-border-strong px-2 text-[13px]">
+        </FilterField>
+        <FilterField label="Year">
+          <input type="number" name="year" defaultValue={year} className={`${FILTER_INPUT} w-24`} />
+        </FilterField>
+        <FilterField label="Payment Category">
+          <Select name="category" defaultValue={category ?? ""} className={`${FILTER_INPUT} w-44`}>
             <option value="">All categories</option>
             <option value="supplier">Supplier Payment</option>
             <option value="rental">Rental Payment</option>
             <option value="utility">Utilities Payment</option>
           </Select>
-        </div>
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Supplier / Payee</label>
-          <input name="payee" defaultValue={sp.payee ?? ""} placeholder="Search…" className="mt-1 h-9 w-44 rounded-lg border border-border-strong px-2 text-[13px]" />
-        </div>
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Utility Provider</label>
-          <Select name="provider" defaultValue={sp.provider ?? ""} className="mt-1 h-9 w-40 rounded-lg border border-border-strong px-2 text-[13px]">
+        </FilterField>
+        <FilterField label="Supplier / Payee">
+          <input name="payee" defaultValue={sp.payee ?? ""} placeholder="Search…" className={`${FILTER_INPUT} w-44`} />
+        </FilterField>
+        <FilterField label="Utility Provider">
+          <Select name="provider" defaultValue={sp.provider ?? ""} className={`${FILTER_INPUT} w-40`}>
             <option value="">All providers</option>
             {UTILITY_PROVIDERS.map((p) => <option key={p} value={p}>{p}</option>)}
           </Select>
-        </div>
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Payment Status</label>
-          <Select name="status" defaultValue={sp.status ?? ""} className="mt-1 h-9 w-40 rounded-lg border border-border-strong px-2 text-[13px]">
+        </FilterField>
+        <FilterField label="Payment Status">
+          <Select name="status" defaultValue={sp.status ?? ""} className={`${FILTER_INPUT} w-40`}>
             {STATUS_FILTER_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </Select>
-        </div>
-        <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply Filters</button>
-      </form>
+        </FilterField>
+      </ListFilters>
 
       <div className={`rounded-xl border px-4 py-3 ${grand.overdue > 0 ? "border-danger/40 bg-danger-bg" : grand.pending > 0 ? "border-warning/40 bg-warning-bg" : "border-success/30 bg-success-bg"}`}>
         <div className={`text-[15px] font-extrabold ${grand.overdue > 0 ? "text-danger" : grand.pending > 0 ? "text-warning" : "text-success"}`}>

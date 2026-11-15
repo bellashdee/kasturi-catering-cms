@@ -12,6 +12,10 @@ import { EmptyRow, SectionCard, StatRow } from "@/components/dashboard/SectionCa
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { MarkInvoicePaidAction } from "@/components/finance/MarkInvoicePaidAction";
 import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const sortsFor = (view: "customer" | "supplier") => ({ date: "Invoice date", due: "Due date", party: view === "customer" ? "Customer" : "Supplier", invoice: "Invoice No.", amount: "Amount" });
 
 function todayIso(): string {
   return todayInMalaysia();
@@ -34,6 +38,7 @@ type Row = {
   id: string;
   counterparty: string;
   invoiceNumber: string;
+  invoiceDate: string;
   amount: number;
   dueDate: string;
   status: string;
@@ -43,7 +48,7 @@ type Row = {
 export default async function OutstandingPaymentPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; view?: string; month?: string; q?: string; status?: string }>;
+  searchParams: Promise<{ company?: string; view?: string; month?: string; q?: string; status?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -52,7 +57,8 @@ export default async function OutstandingPaymentPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, view: viewParam, month: monthParam, q, status: statusParam } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, view: viewParam, month: monthParam, q, status: statusParam } = sp;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const companyQuery = requestedId ? `company=${requestedId}&` : "";
 
@@ -61,6 +67,8 @@ export default async function OutstandingPaymentPage({
   }
 
   const view: "customer" | "supplier" = viewParam === "supplier" ? "supplier" : "customer";
+  const SORTS = sortsFor(view);
+  const { sort, dir } = readSort(sp, SORTS, "date", "desc");
 
   const today = todayIso();
   const weekEndIso = addDaysToDateIso(today, 7);
@@ -78,6 +86,7 @@ export default async function OutstandingPaymentPage({
         id: i.id,
         counterparty: i.customers?.name ?? "—",
         invoiceNumber: i.invoice_number,
+        invoiceDate: i.invoice_date,
         amount: Number(i.amount) + Number(i.tax_amount ?? 0) - i.customer_payments.reduce((t, p) => t + Number(p.amount), 0),
         dueDate: i.due_date,
         status: i.status,
@@ -95,6 +104,7 @@ export default async function OutstandingPaymentPage({
         id: i.id,
         counterparty: i.suppliers?.name ?? "—",
         invoiceNumber: i.invoice_number,
+        invoiceDate: i.invoice_date,
         amount: Number(i.amount) - i.supplier_payments.filter((p) => p.status === "paid").reduce((t, p) => t + Number(p.amount), 0),
         dueDate: i.due_date,
         status: i.status,
@@ -117,6 +127,14 @@ export default async function OutstandingPaymentPage({
     rows = rows.filter((r) => monthKey(r.dueDate) === monthParam);
   }
 
+  rows = sortBy(rows, sort, dir, {
+    date: [(r) => r.invoiceDate, (r) => r.invoiceNumber],
+    due: [(r) => r.dueDate, (r) => r.invoiceNumber],
+    party: [(r) => (r.counterparty === "—" ? null : r.counterparty), (r) => r.invoiceNumber],
+    invoice: (r) => r.invoiceNumber,
+    amount: (r) => r.amount,
+  });
+
   const totalOutstanding = rows.reduce((t, r) => t + r.amount, 0);
   const overdueRows = rows.filter((r) => r.dueDate < today);
   const dueTodayRows = rows.filter((r) => r.dueDate === today);
@@ -131,7 +149,8 @@ export default async function OutstandingPaymentPage({
     list.push(r);
     grouped.set(key, list);
   }
-  const sortedMonthKeys = [...grouped.keys()].sort((a, b) => b.localeCompare(a));
+  // grouped by due month, newest month first (oldest first when sorting by due date ascending); the rows inside follow Sort by
+  const sortedMonthKeys = [...grouped.keys()].sort((a, b) => (sort === "due" && dir === "asc" ? a.localeCompare(b) : b.localeCompare(a)));
 
   return (
     <div className="flex flex-col gap-5">
@@ -165,27 +184,20 @@ export default async function OutstandingPaymentPage({
         </SectionCard>
       </div>
 
-      <form className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-surface p-4 shadow-sm" method="get">
-        {requestedId && <input type="hidden" name="company" value={requestedId} />}
-        <input type="hidden" name="view" value={view} />
-        <div>
-          <label className="text-[11px] font-semibold text-text-secondary">Search {view === "customer" ? "customer" : "supplier"} / invoice #</label>
-          <input name="q" defaultValue={q ?? ""} className="mt-1 h-9 w-56 rounded-lg border border-border-strong px-2 text-[13px]" />
-        </div>
-        <div>
-          <label className="text-[11px] font-semibold text-text-secondary">Due month</label>
-          <input type="month" name="month" defaultValue={monthParam ?? ""} className="mt-1 h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
-        </div>
-        <div>
-          <label className="text-[11px] font-semibold text-text-secondary">Status</label>
-          <Select name="status" defaultValue={statusParam ?? ""} className="mt-1 h-9 rounded-lg border border-border-strong px-2 text-[13px]">
-            <option value="">All</option>
+      <ListFilters keep={{ company: requestedId, view }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/finance/outstanding?${companyQuery}view=${view}`}>
+        <FilterField label="Search">
+          <input name="q" defaultValue={q ?? ""} placeholder={view === "customer" ? "Customer or invoice No." : "Supplier or invoice No."} className={`${FILTER_INPUT} w-56`} />
+        </FilterField>
+        <FilterField label="Due month">
+          <input type="month" name="month" defaultValue={monthParam ?? ""} className={`${FILTER_INPUT} w-40`} />
+        </FilterField>
+        <FilterField label="Status">
+          <Select name="status" defaultValue={statusParam ?? ""} className={`${FILTER_INPUT} w-40`}>
+            <option value="">All statuses</option>
             {Object.entries(INVOICE_STATUS_LABEL).filter(([v]) => v !== "paid").map(([v, label]) => <option key={v} value={v}>{label}</option>)}
           </Select>
-        </div>
-        <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-xs font-bold text-white">Filter</button>
-        <Link href={`/finance/outstanding?${companyQuery}view=${view}`} className="h-9 rounded-lg border border-border-strong px-4 py-2 text-xs font-bold text-text">Clear</Link>
-      </form>
+        </FilterField>
+      </ListFilters>
 
       {sortedMonthKeys.length === 0 ? (
         <EmptyRow text="Nothing outstanding — everything's paid." />
@@ -213,7 +225,7 @@ export default async function OutstandingPaymentPage({
                       <div className="text-text-secondary">{r.dueDate}</div>
                       <div className="flex items-center gap-1.5">
                         <StatusBadge tone={overdue ? "danger" : "warning"}>
-                          {overdue ? "🔴 Outstanding" : INVOICE_STATUS_LABEL[r.status] ?? r.status}
+                          {overdue ? "Overdue" : INVOICE_STATUS_LABEL[r.status] ?? r.status}
                         </StatusBadge>
                       </div>
                       <div>

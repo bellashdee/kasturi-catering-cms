@@ -13,20 +13,27 @@ import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { PaymentProofReviewRow, type InvoiceOption } from "@/components/finance/PaymentProofReviewRow";
 import { MonthFilter } from "@/components/MonthFilter";
 import { monthLabelOf, monthRange } from "@/lib/monthFilter";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
 
 type InvoiceWithPayments = { id: string; invoice_number: string; company_id: string; amount: number; tax_amount: number | null; customers: { name: string } | null; customer_payments: { amount: number }[] };
+
+const SORTS = { sent: "Date sent", paid: "Payment date", customer: "Customer", invoice: "Invoice No.", agent: "Sales agent", amount: "Amount" };
 
 const outstandingOf = (i: { amount: number; tax_amount: number | null; customer_payments: { amount: number }[] }) =>
   Math.max(0, Number(i.amount) + Number(i.tax_amount ?? 0) - i.customer_payments.reduce((t, p) => t + Number(p.amount), 0));
 
-export default async function PaymentProofsPage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string }> }) {
+export default async function PaymentProofsPage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string; q?: string; sort?: string; dir?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
   const supabase = await createClient();
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
-  const { company: requestedId, month } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, month } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "sent", "desc");
+  const search = sp.q?.trim().toLowerCase() ?? "";
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
   if (targetCompanyIds.length === 0) return <EmptyRow text="You don't have access to any company yet." />;
@@ -50,7 +57,20 @@ export default async function PaymentProofsPage({ searchParams }: { searchParams
       .order("invoice_date", { ascending: false })
       .limit(500),
   ]);
-  const proofs = rows ?? [];
+  const customerOf = (p: { customer_invoices: unknown }) => (p.customer_invoices as { customers: { name: string } | null } | null)?.customers?.name ?? null;
+  const proofs = sortBy(
+    (rows ?? []).filter((p) => !search || [p.invoice_number, p.sales_agent, customerOf(p)].some((v) => (v ?? "").toLowerCase().includes(search))),
+    sort,
+    dir,
+    {
+      sent: (p) => p.created_at,
+      paid: [(p) => p.payment_date, (p) => p.created_at],
+      customer: [(p) => customerOf(p), (p) => p.invoice_number],
+      invoice: (p) => p.invoice_number,
+      agent: [(p) => p.sales_agent, (p) => p.created_at],
+      amount: (p) => (p.amount === null ? null : Number(p.amount)),
+    },
+  );
   const pending = proofs.filter((p) => p.status === "pending");
   const reviewed = proofs.filter((p) => p.status !== "pending");
   const today = todayInMalaysia();
@@ -70,6 +90,12 @@ export default async function PaymentProofsPage({ searchParams }: { searchParams
 
       <MonthFilter />
 
+      <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/finance/payment-proofs${query}`}>
+        <FilterField label="Search">
+          <input name="q" defaultValue={sp.q ?? ""} placeholder="Invoice No., customer or sales agent" className={`${FILTER_INPUT} w-60`} />
+        </FilterField>
+      </ListFilters>
+
       {links.length > 0 && (
         <div className="rounded-xl border border-border bg-surface px-4 py-3 text-[14px] text-text-secondary shadow-sm">
           <b className="text-text">Link for sales agents (no login needed):</b>
@@ -85,7 +111,7 @@ export default async function PaymentProofsPage({ searchParams }: { searchParams
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         <div className="border-b border-border px-5 py-3 text-[14px] font-bold text-text">Waiting for review ({pending.length})</div>
         {pending.length === 0 ? (
-          <EmptyRow text={monthLabel ? "No payment proof waiting for review in this month." : "Nothing waiting for review."} />
+          <EmptyRow text={search ? "No payment proof waiting for review matches this search." : monthLabel ? "No payment proof waiting for review in this month." : "Nothing waiting for review."} />
         ) : (
           <div className="divide-y divide-border">
             {pending.map((p) => {

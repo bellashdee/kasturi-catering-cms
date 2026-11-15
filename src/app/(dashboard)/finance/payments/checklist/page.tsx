@@ -25,8 +25,12 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { ChecklistActions } from "@/components/finance/ChecklistActions";
 import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy, sortRows } from "@/lib/listSort";
 
-type SearchParams = { company?: string; year?: string; month?: string; category?: string; show?: string; group?: string };
+type SearchParams = { company?: string; year?: string; month?: string; category?: string; show?: string; group?: string; sort?: string; dir?: string };
+
+const SORTS = { priority: "Priority", payee: "Supplier / Payee", due: "Due date", amount: "Amount" };
 
 function companyLabel(name: string): string {
   const code = /signature/i.test(name) ? "SS" : /kasturi/i.test(name) ? "KI" : /o2/i.test(name) ? "O2" : null;
@@ -90,11 +94,18 @@ export default async function PaymentChecklistPage({ searchParams }: { searchPar
   const inProgress = all.filter((p) => p.status === "in_progress").length;
 
   const visible = showPaid ? all : unpaid;
+  // the rows inside each month / company follow Sort by (by default the highest priority first, then by name)
+  const { sort, dir } = readSort(sp, SORTS, "priority", "desc");
+  const ordered = sortBy(sortRows(visible, "asc", (p) => p.payee_name), sort, dir, {
+    priority: (p) => priorityWeight(p.priority),
+    payee: [(p) => p.payee_name, (p) => p.due_date],
+    due: [(p) => p.due_date, (p) => p.payee_name],
+    amount: (p) => Number(p.amount),
+  });
   const companyOf = (p: Row) => p.companies?.name ?? "—";
   const periods = Array.from(new Set(visible.map((p) => p.period_month.slice(0, 7)))).sort();
   const companyNames = Array.from(new Set(visible.map(companyOf))).sort();
   const sumUnpaid = (rows: Row[]) => rows.filter((p) => p.status !== "paid").reduce((t, p) => t + Number(p.amount), 0);
-  const byPriority = (rows: Row[]) => [...rows].sort((a, b) => priorityWeight(b.priority) - priorityWeight(a.priority) || a.payee_name.localeCompare(b.payee_name));
 
   const query = (extra: Record<string, string>) => {
     const params = new URLSearchParams();
@@ -103,6 +114,8 @@ export default async function PaymentChecklistPage({ searchParams }: { searchPar
     if (category) params.set("category", category);
     if (showPaid) params.set("show", "all");
     if (byCompanyFirst) params.set("group", "company");
+    if (sp.sort) params.set("sort", sort);
+    if (sp.dir) params.set("dir", dir);
     for (const [k, v] of Object.entries(extra)) { if (v) params.set(k, v); else params.delete(k); }
     return `/finance/payments/checklist?${params.toString()}`;
   };
@@ -148,35 +161,36 @@ export default async function PaymentChecklistPage({ searchParams }: { searchPar
     <div className="flex flex-col gap-5">
       {header}
 
-      <form method="get" className="flex flex-wrap items-end gap-3">
-        {sp.company && <input type="hidden" name="company" value={sp.company} />}
-        {showPaid && <input type="hidden" name="show" value="all" />}
-        {byCompanyFirst && <input type="hidden" name="group" value="company" />}
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Year</label>
-          <input type="number" name="year" defaultValue={year ?? ""} placeholder="All" className="mt-1 h-9 w-24 rounded-lg border border-border-strong px-2 text-[13px]" />
-        </div>
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Month</label>
-          <Select name="month" defaultValue={month ?? ""} className="mt-1 h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
+      <ListFilters
+        keep={{ company: sp.company, show: showPaid ? "all" : undefined, group: byCompanyFirst ? "company" : undefined }}
+        sortOptions={SORTS}
+        sort={sort}
+        dir={dir}
+        clearHref={`/finance/payments/checklist${sp.company ? `?company=${sp.company}` : ""}`}
+      >
+        <FilterField label="Month">
+          <Select name="month" defaultValue={month ?? ""} className={`${FILTER_INPUT} w-36`}>
             <option value="">All months</option>
             {MONTH_LABEL.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
           </Select>
-        </div>
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Category</label>
-          <Select name="category" defaultValue={category ?? ""} className="mt-1 h-9 w-44 rounded-lg border border-border-strong px-2 text-[13px]">
+        </FilterField>
+        <FilterField label="Year">
+          <input type="number" name="year" defaultValue={year ?? ""} placeholder="All" className={`${FILTER_INPUT} w-24`} />
+        </FilterField>
+        <FilterField label="Category">
+          <Select name="category" defaultValue={category ?? ""} className={`${FILTER_INPUT} w-44`}>
             <option value="">All categories</option>
             <option value="supplier">Supplier Payment</option>
             <option value="rental">Rental Payment</option>
             <option value="utility">Utilities Payment</option>
           </Select>
-        </div>
-        <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply Filters</button>
-        <Link href={query({ show: showPaid ? "" : "all" })} className="flex h-9 items-center rounded-lg border border-border-strong px-4 text-[13px] font-semibold text-text">
+        </FilterField>
+      </ListFilters>
+      <div className="-mt-2">
+        <Link href={query({ show: showPaid ? "" : "all" })} className="inline-flex h-9 items-center rounded-lg border border-border-strong px-4 text-[13px] font-semibold text-text">
           {showPaid ? "Hide completed" : "Show completed too"}
         </Link>
-      </form>
+      </div>
 
       <div className="flex gap-1 border-b border-border">
         {[
@@ -209,12 +223,12 @@ export default async function PaymentChecklistPage({ searchParams }: { searchPar
         <EmptyRow text={total === 0 ? "No payments recorded yet." : "Everything in this filter is paid. 🎉"} />
       ) : byCompanyFirst ? (
         companyNames.map((companyName) => {
-          const rows = visible.filter((p) => companyOf(p) === companyName);
+          const rows = ordered.filter((p) => companyOf(p) === companyName);
           return (
             <SectionCard key={companyName} title={`${companyLabel(companyName)} — still to pay ${formatRM(sumUnpaid(rows))}`}>
               <div className="-mx-5 -mb-5 flex flex-col">
                 {Array.from(new Set(rows.map((p) => p.period_month.slice(0, 7)))).sort().map((period) => {
-                  const inPeriod = byPriority(rows.filter((p) => p.period_month.startsWith(period)));
+                  const inPeriod = rows.filter((p) => p.period_month.startsWith(period));
                   return (
                     <div key={period}>
                       {subHeading(`${monthTitle(period)} · ${inPeriod.length} item(s) · ${formatRM(inPeriod.reduce((t, p) => t + Number(p.amount), 0))}`)}
@@ -228,12 +242,12 @@ export default async function PaymentChecklistPage({ searchParams }: { searchPar
         })
       ) : (
         periods.map((period) => {
-          const inPeriod = visible.filter((p) => p.period_month.startsWith(period));
+          const inPeriod = ordered.filter((p) => p.period_month.startsWith(period));
           return (
             <SectionCard key={period} title={`${monthTitle(period)} — ${inPeriod.length} item(s) · still to pay ${formatRM(sumUnpaid(inPeriod))}`}>
               <div className="-mx-5 -mb-5 flex flex-col">
                 {Array.from(new Set(inPeriod.map(companyOf))).sort().map((companyName) => {
-                  const rows = byPriority(inPeriod.filter((p) => companyOf(p) === companyName));
+                  const rows = inPeriod.filter((p) => companyOf(p) === companyName);
                   return (
                     <div key={companyName}>
                       {subHeading(`${companyLabel(companyName)} · ${rows.length} item(s) · ${formatRM(rows.reduce((t, p) => t + Number(p.amount), 0))}`)}

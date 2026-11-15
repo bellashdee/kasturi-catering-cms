@@ -34,8 +34,13 @@ import { Select } from "@/components/ui/Select";
 import { ToggleSection } from "@/components/shared/ToggleSection";
 import { listSupplierMonth } from "@/lib/finance/supplierMonth";
 import { GenerateSupplierPayments } from "@/components/finance/GenerateSupplierPayments";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
 
-type SearchParams = { company?: string; year?: string; month?: string; status?: string; payee?: string; provider?: string; saved?: string };
+type SearchParams = { company?: string; year?: string; month?: string; status?: string; payee?: string; provider?: string; saved?: string; sort?: string; dir?: string };
+
+/** Status order when sorting by status: the most urgent first (ascending). */
+const URGENCY_RANK = { overdue: 0, due_today: 1, due_soon: 2, pending: 3, paid: 4 } as const;
 
 const PATH: Record<PaymentCategory, string> = {
   supplier: "/finance/supplier-payment",
@@ -112,7 +117,30 @@ export async function PaymentListPage({ category, searchParams }: { category: Pa
   const supplierMonth = supplierCompanyId ? await listSupplierMonth(supabase, supplierCompanyId, periodMonth) : [];
   const toOpen = supplierMonth.filter((r) => !r.paymentId && r.net > 0);
 
-  const rows = payments.filter((p) => matchesStatusFilter(paymentUrgency(p.status, p.due_date, today), sp.status));
+  const payeeLabel = category === "supplier" ? "Supplier" : category === "rental" ? "Payee" : "Location";
+  // "Month" is offered only when every month of the year is listed
+  const SORTS = {
+    due: "Due date",
+    ...(allMonths ? { month: "Month" } : {}),
+    payee: payeeLabel,
+    invoice: category === "utility" ? "Bill No." : "Invoice No.",
+    amount: "Amount",
+    status: "Status",
+  } as Record<"due" | "month" | "payee" | "invoice" | "amount" | "status", string>;
+  const { sort, dir } = readSort(sp, SORTS, "due", "asc");
+  const rows = sortBy(
+    payments.filter((p) => matchesStatusFilter(paymentUrgency(p.status, p.due_date, today), sp.status)),
+    sort,
+    dir,
+    {
+      due: [(p) => p.due_date, (p) => p.payee_name],
+      month: [(p) => p.period_month, (p) => p.due_date, (p) => p.payee_name],
+      payee: [(p) => p.payee_name, (p) => p.due_date],
+      invoice: [(p) => p.invoice_number, (p) => p.payee_name],
+      amount: (p) => Number(p.amount),
+      status: [(p) => URGENCY_RANK[paymentUrgency(p.status, p.due_date, today)], (p) => p.due_date],
+    },
+  );
   const summary = summarizePayments(payments, today);
 
   const paidAccountIds = new Set(payments.map((p) => p.account_id).filter((id): id is string => !!id));
@@ -176,40 +204,33 @@ export async function PaymentListPage({ category, searchParams }: { category: Pa
 
       {sp.saved && <div className="rounded-lg border border-success/30 bg-success-bg px-3 py-2 text-[13px] font-semibold text-success">Payment saved.</div>}
 
-      <form method="get" className="flex flex-wrap items-end gap-3">
-        {sp.company && <input type="hidden" name="company" value={sp.company} />}
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Year</label>
-          <input type="number" name="year" defaultValue={year} className="mt-1 h-9 w-24 rounded-lg border border-border-strong px-2 text-[13px]" />
-        </div>
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Month</label>
-          <Select name="month" defaultValue={allMonths ? "all" : month} className="mt-1 h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
+      <ListFilters keep={{ company: sp.company }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`${PATH[category]}${query ? `?${query}` : ""}`}>
+        <FilterField label="Month">
+          <Select name="month" defaultValue={allMonths ? "all" : month} className={`${FILTER_INPUT} w-36`}>
             <option value="all">All months</option>
             {MONTH_LABEL.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
           </Select>
-        </div>
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Status</label>
-          <Select name="status" defaultValue={sp.status ?? ""} className="mt-1 h-9 w-40 rounded-lg border border-border-strong px-2 text-[13px]">
+        </FilterField>
+        <FilterField label="Year">
+          <input type="number" name="year" defaultValue={year} className={`${FILTER_INPUT} w-24`} />
+        </FilterField>
+        <FilterField label="Status">
+          <Select name="status" defaultValue={sp.status ?? ""} className={`${FILTER_INPUT} w-40`}>
             {STATUS_FILTER_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </Select>
-        </div>
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">{category === "supplier" ? "Supplier" : category === "rental" ? "Payee" : "Location"}</label>
-          <input name="payee" defaultValue={sp.payee ?? ""} placeholder="Search…" className="mt-1 h-9 w-44 rounded-lg border border-border-strong px-2 text-[13px]" />
-        </div>
+        </FilterField>
+        <FilterField label={payeeLabel}>
+          <input name="payee" defaultValue={sp.payee ?? ""} placeholder="Search…" className={`${FILTER_INPUT} w-44`} />
+        </FilterField>
         {category === "utility" && (
-          <div>
-            <label className="text-[12px] font-semibold text-text-secondary">Utility Provider</label>
-            <Select name="provider" defaultValue={sp.provider ?? ""} className="mt-1 h-9 w-40 rounded-lg border border-border-strong px-2 text-[13px]">
+          <FilterField label="Utility Provider">
+            <Select name="provider" defaultValue={sp.provider ?? ""} className={`${FILTER_INPUT} w-40`}>
               <option value="">All providers</option>
               {providerOptions.map((p) => <option key={p} value={p}>{p}</option>)}
             </Select>
-          </div>
+          </FilterField>
         )}
-        <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply Filters</button>
-      </form>
+      </ListFilters>
 
       <PaymentSummaryCards summary={summary} />
       {summary.pending > 0 && (

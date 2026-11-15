@@ -15,8 +15,12 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { PrintButton } from "@/components/finance/EventPnlForms";
 import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
 
-type SearchParams = { company?: string; year?: string; month?: string; q?: string; customer?: string; status?: string };
+type SearchParams = { company?: string; year?: string; month?: string; q?: string; customer?: string; status?: string; sort?: string; dir?: string };
+
+const SORTS = { date: "Event date", customer: "Customer", reference: "Event reference", event: "Event name", profit: "Net profit" };
 
 const money = (n: number) => formatRM(n);
 
@@ -56,12 +60,20 @@ export default async function MonthlyEventPnlPage({ searchParams }: { searchPara
   const month = Math.min(12, Math.max(1, Number(sp.month) || now.month));
   const filters = { year, month, search: sp.q, customer: sp.customer, status: sp.status };
 
-  const [rows, trend, review] = await Promise.all([
+  const { sort, dir } = readSort(sp, SORTS, "date", "asc");
+  const [loaded, trend, review] = await Promise.all([
     listEventPnl(supabase, adminIds, filters),
     eventPnlTrend(supabase, adminIds, year, month, 6),
     eventPnlReviewItems(supabase, adminIds, year, month),
   ]);
 
+  const rows = sortBy(loaded, sort, dir, {
+    date: [(r) => r.eventDate, (r) => r.eventName],
+    customer: [(r) => r.customerName, (r) => r.eventDate],
+    reference: (r) => r.eventReference,
+    event: (r) => r.eventName,
+    profit: (r) => r.pnl.netProfit,
+  });
   const totals = totalEventPnl(rows.map((r) => r.pnl));
   const companyName = sp.company && pnlCompanies.find((c) => c.id === sp.company)?.name;
   const scopeLabel = companyName ?? "Signature Solution + Kasturi Indah (consolidated)";
@@ -75,7 +87,7 @@ export default async function MonthlyEventPnlPage({ searchParams }: { searchPara
     .map((c) => ({ company: c, t: totalEventPnl(rows.filter((r) => r.company_id === c.id).map((r) => r.pnl)) }));
 
   const exportQuery = new URLSearchParams({ year: String(year), month: String(month) });
-  for (const k of ["company", "q", "customer", "status"] as const) if (sp[k]) exportQuery.set(k, sp[k]!);
+  for (const k of ["company", "q", "customer", "status", "sort", "dir"] as const) if (sp[k]) exportQuery.set(k, sp[k]!);
 
   const cards: { label: string; value: string; tone?: string }[] = [
     { label: "Total Event Revenue", value: money(totals.netRevenue) },
@@ -92,41 +104,34 @@ export default async function MonthlyEventPnlPage({ searchParams }: { searchPara
     <div className="flex flex-col gap-5">
       {header}
 
-      <form method="get" className="flex flex-wrap items-end gap-3 print:hidden">
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Month</label>
-          <Select name="month" defaultValue={month} className="mt-1 h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
+      <ListFilters keep={{}} sortOptions={SORTS} sort={sort} dir={dir} clearHref={sp.company ? `/finance/event-pnl?company=${sp.company}` : "/finance/event-pnl"}>
+        <FilterField label="Month">
+          <Select name="month" defaultValue={month} className={`${FILTER_INPUT} w-36`}>
             {MONTH_LABEL.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
           </Select>
-        </div>
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Year</label>
-          <input type="number" name="year" defaultValue={year} className="mt-1 h-9 w-24 rounded-lg border border-border-strong px-2 text-[13px]" />
-        </div>
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Company</label>
-          <Select name="company" defaultValue={sp.company ?? ""} className="mt-1 h-9 w-52 rounded-lg border border-border-strong px-2 text-[13px]">
+        </FilterField>
+        <FilterField label="Year">
+          <input type="number" name="year" defaultValue={year} className={`${FILTER_INPUT} w-24`} />
+        </FilterField>
+        <FilterField label="Company">
+          <Select name="company" defaultValue={sp.company ?? ""} className={`${FILTER_INPUT} w-52`}>
             <option value="">Both companies (consolidated)</option>
             {pnlCompanies.filter((c) => adminIds.includes(c.id) || session.hasAllCompaniesAccess).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </Select>
-        </div>
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Event name / reference</label>
-          <input name="q" defaultValue={sp.q ?? ""} placeholder="e.g. EV-2610-001" className="mt-1 h-9 w-44 rounded-lg border border-border-strong px-2 text-[13px]" />
-        </div>
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Customer</label>
-          <input name="customer" defaultValue={sp.customer ?? ""} className="mt-1 h-9 w-40 rounded-lg border border-border-strong px-2 text-[13px]" />
-        </div>
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Event status</label>
-          <Select name="status" defaultValue={sp.status ?? ""} className="mt-1 h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
+        </FilterField>
+        <FilterField label="Event name / reference">
+          <input name="q" defaultValue={sp.q ?? ""} placeholder="e.g. EV-2610-001" className={`${FILTER_INPUT} w-44`} />
+        </FilterField>
+        <FilterField label="Customer">
+          <input name="customer" defaultValue={sp.customer ?? ""} className={`${FILTER_INPUT} w-40`} />
+        </FilterField>
+        <FilterField label="Event status">
+          <Select name="status" defaultValue={sp.status ?? ""} className={`${FILTER_INPUT} w-36`}>
             <option value="">All statuses</option>
             {Object.entries(EVENT_STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </Select>
-        </div>
-        <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply Filters</button>
-      </form>
+        </FilterField>
+      </ListFilters>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
