@@ -5,14 +5,17 @@ import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listCustomerInvoices } from "@/lib/finance/queries";
 import { INVOICE_STATUS_LABEL, isOverdue } from "@/lib/finance/constants";
-import { invoiceBalance, invoicePaid, invoiceTotal, isOpenInvoice } from "@/lib/finance/outstanding";
+import { daysOverdue, invoiceBalance, invoicePaid, invoiceTotal, isOpenInvoice } from "@/lib/finance/outstanding";
+import { todayInMalaysia } from "@/lib/driverAttendance/date";
 import { formatCurrency, malaysiaYearMonth } from "@/lib/format";
 import { MONTH_LABEL } from "@/lib/finance/constants";
 import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { ReportTable } from "@/components/reports/ReportTable";
 import { buildReportRows } from "@/lib/reports/buildRows";
 import { StatusBadge } from "@/components/StatusBadge";
-import { EmptyRow } from "@/components/dashboard/SectionCard";
+import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
+import { AGING_LABELS, RED, StackedBar, agingBucket } from "@/components/reports/Charts";
+import { RankBars } from "@/components/reports/RankBars";
 import { readSort, sortBy } from "@/lib/listSort";
 
 const SORTS = { date: "Invoice date", invoice: "Invoice No.", customer: "Customer", due: "Due date", balance: "Balance owed" };
@@ -61,6 +64,26 @@ export default async function CustomerOutstandingReportPage({
   );
   const total = rows.reduce((t, i) => t + invoiceBalance(i), 0);
 
+  // how late the listed invoices are (by their due date, as of today) and the customers who owe the most
+  const today = todayInMalaysia();
+  const aging = [0, 0, 0, 0, 0];
+  const owedBy = new Map<string, { value: number; count: number; late: number }>();
+  for (const i of rows) {
+    const balance = invoiceBalance(i);
+    const days = i.due_date ? daysOverdue(i.due_date, today) : 0;
+    aging[agingBucket(days)] += balance;
+    const name = i.customers?.name ?? "—";
+    const c = owedBy.get(name) ?? { value: 0, count: 0, late: 0 };
+    c.value += balance;
+    c.count += 1;
+    c.late = Math.max(c.late, days);
+    owedBy.set(name, c);
+  }
+  const topCustomers = Array.from(owedBy.entries())
+    .sort((a, b) => b[1].value - a[1].value)
+    .slice(0, 10)
+    .map(([label, c]) => ({ label, value: c.value, note: `${c.count} invoice${c.count === 1 ? "" : "s"}`, flag: c.late > 0 ? `${c.late} days late` : undefined }));
+
   const { headers, tableRows } = buildReportRows(
     rows,
     [
@@ -103,6 +126,15 @@ export default async function CustomerOutstandingReportPage({
         status={statusParam}
         statusOptions={Object.entries(INVOICE_STATUS_LABEL).filter(([v]) => isOpenInvoice(v)).map(([value, label]) => ({ value, label }))}
       />
+
+      {rows.length > 0 && (
+        <SectionCard title={`How Late Is It — ${formatCurrency(total)}`}>
+          <p className="mb-3 text-[12.5px] text-text-secondary">The balance of the invoices listed below, by how many days past the due date they are today.</p>
+          <StackedBar segments={AGING_LABELS.map((a, k) => ({ ...a, value: aging[k] }))} />
+          <div className="mb-2 mt-6 text-[12px] font-bold uppercase tracking-wider text-text-secondary">Customers who owe the most (top 10)</div>
+          <RankBars items={topCustomers} total={total} color={RED} empty="Nothing is owed." />
+        </SectionCard>
+      )}
 
       <ReportTable
         filenameBase={`customer-outstanding${month ? `-${year}-${month}` : ""}`}
