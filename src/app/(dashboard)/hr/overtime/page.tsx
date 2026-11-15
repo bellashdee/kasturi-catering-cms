@@ -22,6 +22,10 @@ import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 import { ReportTable } from "@/components/reports/ReportTable";
 import { buildReportRows } from "@/lib/reports/buildRows";
 import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { date: "Date", staff: "Staff name", hours: "Hours", status: "Status" };
 
 type Summary = {
   employeeId: string;
@@ -37,7 +41,7 @@ type Summary = {
 export default async function OvertimePage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; year?: string; month?: string }>;
+  searchParams: Promise<{ company?: string; year?: string; month?: string; q?: string; status?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -46,7 +50,8 @@ export default async function OvertimePage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, year: yearParam, month: monthParam } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, year: yearParam, month: monthParam } = sp;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -58,11 +63,25 @@ export default async function OvertimePage({
   const year = Number(yearParam) || now.year;
   const month = Number(monthParam) || now.month;
 
-  const records = await listOvertimeForMonth(supabase, targetCompanyIds, year, month);
+  const q = sp.q?.trim().toLowerCase() ?? "";
+  const { sort, dir } = readSort(sp, SORTS, "date", "desc");
+  const monthRecords = (await listOvertimeForMonth(supabase, targetCompanyIds, year, month)).filter((r) => !q || (r.employees?.full_name ?? "").toLowerCase().includes(q));
+  // the status filter narrows the list of OT records; the staff summary always counts the whole month
+  const records = sortBy(
+    monthRecords.filter((r) => !sp.status || r.status === sp.status),
+    sort,
+    dir,
+    {
+      date: [(r) => r.work_date, (r) => r.created_at],
+      staff: [(r) => r.employees?.full_name, (r) => r.work_date],
+      hours: [(r) => Number(r.hours), (r) => r.work_date],
+      status: [(r) => OT_STATUS_LABEL[r.status] ?? r.status, (r) => r.work_date],
+    },
+  );
 
   // Per-staff summary for the month: counted hours come from Submitted + Approved records only.
   const byStaff = new Map<string, Summary>();
-  for (const r of records) {
+  for (const r of monthRecords) {
     const s =
       byStaff.get(r.employee_id) ??
       { employeeId: r.employee_id, name: r.employees?.full_name ?? "—", company: r.companies?.name ?? "—", department: r.employees?.department ?? "—", total: 0, pending: 0, approved: 0, rejected: 0 };
@@ -72,8 +91,11 @@ export default async function OvertimePage({
     if (r.status === "rejected") s.rejected += 1;
     byStaff.set(r.employee_id, s);
   }
-  const summaries = Array.from(byStaff.values()).sort((a, b) => b.total - a.total);
-  const pendingRequests = records.filter((r) => r.status === "pending_approval");
+  const summaries =
+    sort === "staff"
+      ? sortBy(Array.from(byStaff.values()), "name", dir, { name: (s: Summary) => s.name })
+      : sortBy(Array.from(byStaff.values()), "total", sort === "hours" ? dir : "desc", { total: (s: Summary) => s.total });
+  const pendingRequests = monthRecords.filter((r) => r.status === "pending_approval");
   const monthLabel = `${MONTH_LABEL[month - 1]} ${year}`;
 
   const { headers, tableRows } = buildReportRows(
@@ -110,20 +132,25 @@ export default async function OvertimePage({
         <Link href={`/hr/overtime/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13.5px] font-semibold text-white">+ Staff OT Form</Link>
       </div>
 
-      <form method="get" className="flex flex-wrap items-end gap-3">
-        {requestedId && <input type="hidden" name="company" value={requestedId} />}
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Year</label>
-          <input type="number" name="year" defaultValue={year} className="mt-1 h-9 w-24 rounded-lg border border-border-strong px-2 text-[13px]" />
-        </div>
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Month</label>
-          <Select name="month" defaultValue={month} className="mt-1 h-9 w-36 rounded-lg border border-border-strong px-2 text-[13px]">
+      <ListFilters keep={{ company: requestedId }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/hr/overtime${query}`}>
+        <FilterField label="Month">
+          <Select name="month" defaultValue={month} className={`${FILTER_INPUT} w-36`}>
             {MONTH_LABEL.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
           </Select>
-        </div>
-        <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply</button>
-      </form>
+        </FilterField>
+        <FilterField label="Year">
+          <input type="number" name="year" defaultValue={year} className={`${FILTER_INPUT} w-24`} />
+        </FilterField>
+        <FilterField label="Staff name">
+          <input name="q" defaultValue={sp.q ?? ""} className={`${FILTER_INPUT} w-44`} />
+        </FilterField>
+        <FilterField label="Status">
+          <Select name="status" defaultValue={sp.status ?? ""} className={`${FILTER_INPUT} w-40`}>
+            <option value="">All statuses</option>
+            {Object.entries(OT_STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </Select>
+        </FilterField>
+      </ListFilters>
 
       {atLimit.length > 0 && (
         <div className="rounded-xl border-2 border-danger bg-danger-bg px-4 py-3">

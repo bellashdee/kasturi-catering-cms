@@ -10,6 +10,11 @@ import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { DriverLogisticsSubNav } from "@/components/driver/DriverLogisticsSubNav";
 import { OperationRowActions } from "@/components/driver/OperationRowActions";
 import { RecordUndoBanner } from "@/components/driver/RecordUndoBanner";
+import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { added: "Date added", name: "Name", expiry: "License Expiry", availability: "Availability" };
 
 function availabilityTone(status: string): "success" | "warning" | "neutral" | "info" {
   if (status === "available") return "success";
@@ -21,7 +26,7 @@ function availabilityTone(status: string): "success" | "warning" | "neutral" | "
 export default async function DriversPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string }>;
+  searchParams: Promise<{ company?: string; q?: string; availability?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -30,7 +35,8 @@ export default async function DriversPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId } = sp;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -38,7 +44,11 @@ export default async function DriversPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const records = await listDrivers(supabase, targetCompanyIds);
+  const q = sp.q?.trim().toLowerCase() ?? "";
+  const records = (await listDrivers(supabase, targetCompanyIds)).filter(
+    (d) => (!q || (d.employees?.full_name ?? "").toLowerCase().includes(q)) && (!sp.availability || d.availability_status === sp.availability),
+  );
+  const { sort, dir } = readSort(sp, SORTS, "added", "desc");
 
   // The same driver who works for several companies has one driver record per company (deliveries and expenses stay separate per
   // company). The list shows each person once, with the companies he works for.
@@ -48,7 +58,12 @@ export default async function DriversPage({
     const key = (d.employees?.full_name ?? d.id).toUpperCase().replace(/\s+/g, " ").trim();
     byName.set(key, [...(byName.get(key) ?? []), d]);
   }
-  const drivers = Array.from(byName.values());
+  const drivers = sortBy(Array.from(byName.values()), sort, dir, {
+    added: (g) => g[0].created_at,
+    name: (g) => g[0].employees?.full_name,
+    expiry: [(g) => g.map((x) => x.license_expiry).filter((v): v is string => !!v).sort()[0], (g) => g[0].employees?.full_name],
+    availability: [(g) => AVAILABILITY_LABEL[g[0].availability_status] ?? g[0].availability_status, (g) => g[0].employees?.full_name],
+  });
   const joined = (values: (string | null | undefined)[]) => Array.from(new Set(values.filter((v): v is string => !!v))).join(" / ") || "—";
 
   return (
@@ -66,6 +81,18 @@ export default async function DriversPage({
       <DriverLogisticsSubNav />
 
       <RecordUndoBanner />
+
+      <ListFilters keep={{ company: requestedId }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/driver-logistics/drivers${query}`}>
+        <FilterField label="Name">
+          <input name="q" defaultValue={sp.q ?? ""} className={`${FILTER_INPUT} w-48`} />
+        </FilterField>
+        <FilterField label="Availability">
+          <Select name="availability" defaultValue={sp.availability ?? ""} className={`${FILTER_INPUT} w-40`}>
+            <option value="">All</option>
+            {Object.entries(AVAILABILITY_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </Select>
+        </FilterField>
+      </ListFilters>
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {drivers.length === 0 ? (

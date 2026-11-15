@@ -9,7 +9,8 @@ import { CONFIRMATION_LETTER_LABEL, PROBATION_STATUS_LABEL, daysBetween, formatS
 import { todayInMalaysia } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
-import { SearchBox } from "@/components/SearchBox";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
 import { ExportButtons } from "@/components/shared/ExportButtons";
 import { MonthFilter } from "@/components/MonthFilter";
 import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
@@ -22,15 +23,17 @@ const TONE: Record<ProbationStatus, "success" | "warning" | "danger" | "info" | 
   confirmed: "success",
 };
 const ORDER: ProbationStatus[] = ["review_required", "pending_confirmation", "probation_extended", "on_probation", "confirmed"];
+const SORTS = { status: "Status", name: "Staff name", start: "Start Date", end: "End Date" };
 
-export default async function ProbationDashboardPage({ searchParams }: { searchParams: Promise<{ company?: string; q?: string; status?: string; month?: string }> }) {
+export default async function ProbationDashboardPage({ searchParams }: { searchParams: Promise<{ company?: string; q?: string; status?: string; month?: string; sort?: string; dir?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
   const supabase = await createClient();
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
-  const { company: requestedId, q, status: statusFilter, month } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, q, status: statusFilter, month } = sp;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   if (targetCompanyIds.length === 0) return <EmptyRow text="You don't have access to any company yet." />;
   const access = await getHrAccess(supabase, session, targetCompanyIds);
@@ -44,7 +47,14 @@ export default async function ProbationDashboardPage({ searchParams }: { searchP
   const monthLabel = monthLabelOf(month);
   const counts = Object.fromEntries(ORDER.map((s) => [s, searched.filter((r) => r.status === s).length])) as Record<ProbationStatus, number>;
   const filter = ORDER.includes(statusFilter as ProbationStatus) ? (statusFilter as ProbationStatus) : null;
-  const rows = (filter ? searched.filter((r) => r.status === filter) : searched).sort((a, b) => ORDER.indexOf(a.status) - ORDER.indexOf(b.status) || (a.probation.current_end_date ?? "").localeCompare(b.probation.current_end_date ?? "") || a.name.localeCompare(b.name));
+  // by default the statuses that need action come first, then the probation that ends soonest
+  const { sort, dir } = readSort(sp, SORTS, "status", "asc");
+  const rows = sortBy(filter ? searched.filter((r) => r.status === filter) : searched, sort, dir, {
+    status: [(r) => ORDER.indexOf(r.status), (r) => r.probation.current_end_date, (r) => r.name],
+    name: (r) => r.name,
+    start: [(r) => r.probation.start_date, (r) => r.name],
+    end: [(r) => r.probation.current_end_date, (r) => r.name],
+  });
   const query = requestedId ? `?company=${requestedId}` : "";
 
   const link = (s: ProbationStatus | null) => {
@@ -53,6 +63,8 @@ export default async function ProbationDashboardPage({ searchParams }: { searchP
     if (q) params.set("q", q);
     if (month) params.set("month", month);
     if (s) params.set("status", s);
+    if (sp.sort) params.set("sort", sp.sort);
+    if (sp.dir) params.set("dir", sp.dir);
     const qs = params.toString();
     return `/hr/probation${qs ? `?${qs}` : ""}`;
   };
@@ -106,10 +118,13 @@ export default async function ProbationDashboardPage({ searchParams }: { searchP
         ))}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <SearchBox placeholder="Search staff by name..." />
-        <MonthFilter />
-      </div>
+      <MonthFilter />
+
+      <ListFilters keep={{ company: requestedId, month, status: filter }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={link(filter)}>
+        <FilterField label="Staff name">
+          <input name="q" defaultValue={q ?? ""} className={`${FILTER_INPUT} w-48`} />
+        </FilterField>
+      </ListFilters>
 
       <div className="overflow-x-auto rounded-xl border border-border bg-surface shadow-sm">
         {rows.length === 0 ? (

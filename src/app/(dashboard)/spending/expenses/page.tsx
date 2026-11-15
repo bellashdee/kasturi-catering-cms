@@ -8,16 +8,20 @@ import { formatCurrency, formatMalaysiaDate, todayInMalaysia } from "@/lib/forma
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SpendingSubNav } from "@/components/spending/SpendingSubNav";
 import { CompanyExpenseTable } from "@/components/finance/CompanyExpenseTable";
-import { ExpenseFilterBar } from "@/components/finance/ExpenseFilterBar";
 import { CompanyExpenseOverview } from "@/components/finance/CompanyExpenseOverview";
 import { SPENDING_CATEGORIES } from "@/lib/finance/spendingCategories";
 import { MonthFilter } from "@/components/MonthFilter";
 import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
+import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { date: "Date", category: "Category", department: "Department", amount: "Amount" };
 
 export default async function CompanyExpensesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; page?: string; q?: string; category?: string; department?: string; from?: string; to?: string; month?: string }>;
+  searchParams: Promise<{ company?: string; page?: string; q?: string; category?: string; department?: string; from?: string; to?: string; month?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -26,7 +30,9 @@ export default async function CompanyExpensesPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, page: pageParam, q = "", category = "", department = "", from = "", to = "", month = "" } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, page: pageParam, q = "", category = "", department = "", from = "", to = "", month = "" } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "date", "desc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -53,7 +59,12 @@ export default async function CompanyExpensesPage({
   });
   // the month picker (by expense date) works together with the search, the filters and the date range; the monthly chart below keeps showing every month
   const monthLabel = monthLabelOf(month);
-  const expenses = filterByMonth(matching.filter((e) => !(from && e.expense_date < from) && !(to && e.expense_date > to)), month, (e) => e.expense_date);
+  const expenses = sortBy(filterByMonth(matching.filter((e) => !(from && e.expense_date < from) && !(to && e.expense_date > to)), month, (e) => e.expense_date), sort, dir, {
+    date: [(e) => e.expense_date, (e) => e.source],
+    category: [(e) => e.category, (e) => e.expense_date],
+    department: [(e) => e.department, (e) => e.expense_date],
+    amount: (e) => Number(e.amount),
+  });
   // the charts: the months up to this month (or to the To date), and the category chart of the list as shown
   const toEntry = (e: (typeof everyExpense)[number]) => ({ date: e.expense_date, amount: Number(e.amount), category: e.category });
   const dayText = (iso: string) => formatMalaysiaDate(`${iso}T12:00:00+08:00`);
@@ -67,9 +78,9 @@ export default async function CompanyExpensesPage({
   const pages = Math.max(1, Math.ceil(expenses.length / PAGE_SIZE));
   const page = Math.min(pages, Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1));
   const shown = expenses.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const keep = { ...(requestedId ? { company: requestedId } : {}), ...(q.trim() ? { q } : {}), ...(category ? { category } : {}), ...(department ? { department } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}), ...(monthLabel ? { month } : {}) };
+  const keep = { ...(requestedId ? { company: requestedId } : {}), ...(q.trim() ? { q } : {}), ...(category ? { category } : {}), ...(department ? { department } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}), ...(monthLabel ? { month } : {}), ...(sp.sort ? { sort: sp.sort } : {}), ...(sp.dir ? { dir: sp.dir } : {}) };
   const pageHref = (n: number) => `/spending/expenses?${new URLSearchParams({ ...keep, ...(n > 1 ? { page: String(n) } : {}) }).toString()}`;
-  const clearHref = `/spending/expenses${query}`;
+  const clearHref = `/spending/expenses${query}${monthLabel ? `${query ? "&" : "?"}month=${month}` : ""}`;
 
   return (
     <div className="flex flex-col gap-5">
@@ -86,14 +97,29 @@ export default async function CompanyExpensesPage({
       <SpendingSubNav />
       <MonthFilter />
 
-      <ExpenseFilterBar
-        categories={Array.from(new Set([...SPENDING_CATEGORIES, ...categoryNames])).sort((a, b) => a.localeCompare(b))}
-        departments={departments}
-        initial={{ q, category, department, from, to }}
-        hidden={{ company: requestedId ?? "", month: monthLabel ? month : "" }}
-        clearHref={clearHref}
-        filtered={filtered}
-      />
+      <ListFilters keep={{ company: requestedId, month: monthLabel ? month : "" }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={clearHref}>
+        <FilterField label="Search">
+          <input name="q" defaultValue={q} placeholder="Category, notes, department, amount…" className={`${FILTER_INPUT} w-56`} />
+        </FilterField>
+        <FilterField label="Category">
+          <Select name="category" defaultValue={category} className={`${FILTER_INPUT} w-44`}>
+            <option value="">All categories</option>
+            {Array.from(new Set([...SPENDING_CATEGORIES, ...categoryNames])).sort((a, b) => a.localeCompare(b)).map((c) => <option key={c} value={c}>{c}</option>)}
+          </Select>
+        </FilterField>
+        <FilterField label="Department">
+          <Select name="department" defaultValue={department} className={`${FILTER_INPUT} w-44`}>
+            <option value="">All departments</option>
+            {departments.map((d) => <option key={d} value={d}>{d}</option>)}
+          </Select>
+        </FilterField>
+        <FilterField label="From">
+          <input type="date" name="from" defaultValue={from} className={`${FILTER_INPUT} w-40`} />
+        </FilterField>
+        <FilterField label="To">
+          <input type="date" name="to" defaultValue={to} className={`${FILTER_INPUT} w-40`} />
+        </FilterField>
+      </ListFilters>
 
       {matching.length > 0 && (
         <CompanyExpenseOverview entries={expenses.map(toEntry)} monthEntries={matching.map(toEntry)} thisMonth={(to || todayInMalaysia()).slice(0, 7)} periodLabel={periodLabel} />

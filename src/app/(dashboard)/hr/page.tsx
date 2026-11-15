@@ -7,11 +7,15 @@ import { listEmployees } from "@/lib/hr/queries";
 import { EMPLOYMENT_TYPE_LABEL, EMPLOYEE_STATUS_LABEL } from "@/lib/hr/constants";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
-import { SearchBox } from "@/components/SearchBox";
+import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
 import { ExportButtons } from "@/components/shared/ExportButtons";
 import { getHrAccess } from "@/lib/hr/access";
 import { canUsePayrollCentre } from "@/lib/hr/payrollAccess";
 import { canOpenSection } from "@/lib/sections";
+
+const SORTS = { name: "Name", staffNo: "Staff No.", department: "Department", position: "Position", joined: "Join Date", status: "Status" };
 
 function statusTone(status: string): "success" | "danger" | "neutral" {
   if (status === "active") return "success";
@@ -22,7 +26,7 @@ function statusTone(status: string): "success" | "danger" | "neutral" {
 export default async function HRPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; q?: string }>;
+  searchParams: Promise<{ company?: string; q?: string; department?: string; status?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -31,7 +35,8 @@ export default async function HRPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, q } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, q } = sp;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
 
   const query = requestedId ? `?company=${requestedId}` : "";
@@ -46,7 +51,10 @@ export default async function HRPage({
   // the Payroll Centre belongs to HR; only the Director of Finance and her personal assistant see its button
   const showPayroll = await canUsePayrollCentre(supabase);
   // an admin sees every employee of the company; anyone else only the staff record linked to their own login
-  const records = (await listEmployees(supabase, targetCompanyIds, q)).filter((e) => access.canSee(e));
+  const visible = (await listEmployees(supabase, targetCompanyIds, q)).filter((e) => access.canSee(e));
+  const departments = Array.from(new Set(visible.map((e) => e.department).filter((d): d is string => !!d))).sort((a, b) => a.localeCompare(b));
+  const records = visible.filter((e) => (!sp.department || e.department === sp.department) && (!sp.status || e.status === sp.status));
+  const { sort, dir } = readSort(sp, SORTS, "name", "asc");
 
   // The same person who works for several companies has one record per company (leave, payroll and OT stay separate per company).
   // The list shows each person once, with a link to the record of every company.
@@ -56,8 +64,16 @@ export default async function HRPage({
     const key = e.full_name.toUpperCase().replace(/\s+/g, " ").trim();
     byName.set(key, [...(byName.get(key) ?? []), e]);
   }
-  const employees = Array.from(byName.values());
   const joined = (values: (string | null | undefined)[]) => Array.from(new Set(values.filter((v): v is string => !!v))).join(" / ") || "—";
+  const listed = (values: (string | null | undefined)[]) => Array.from(new Set(values.filter((v): v is string => !!v))).join(" / ");
+  const employees = sortBy(Array.from(byName.values()), sort, dir, {
+    name: (g) => g[0].full_name,
+    staffNo: [(g) => listed(g.map((e) => e.employee_no)), (g) => g[0].full_name],
+    department: [(g) => listed(g.map((e) => e.department)), (g) => g[0].full_name],
+    position: [(g) => listed(g.map((e) => e.position)), (g) => g[0].full_name],
+    joined: [(g) => g.map((e) => e.join_date ?? "").filter(Boolean).sort()[0], (g) => g[0].full_name],
+    status: [(g) => EMPLOYEE_STATUS_LABEL[g[0].status] ?? g[0].status, (g) => g[0].full_name],
+  });
 
   const companyLabel = requestedId ? (companies.find((c) => c.id === requestedId)?.name ?? "") : "All companies";
   const subtitle = `${companyLabel} - ${employees.length} employee${employees.length === 1 ? "" : "s"}${q ? ` matching "${q}"` : ""}`;
@@ -168,7 +184,25 @@ export default async function HRPage({
         </div>
       )}
 
-      {access.adminAnywhere && <SearchBox placeholder="Search employees by name..." />}
+      {access.adminAnywhere && (
+        <ListFilters keep={{ company: requestedId }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/hr${query}`}>
+          <FilterField label="Name">
+            <input name="q" defaultValue={q ?? ""} placeholder="Search by name" className={`${FILTER_INPUT} w-48`} />
+          </FilterField>
+          <FilterField label="Department">
+            <Select name="department" defaultValue={sp.department ?? ""} className={`${FILTER_INPUT} w-44`}>
+              <option value="">All departments</option>
+              {departments.map((d) => <option key={d} value={d}>{d}</option>)}
+            </Select>
+          </FilterField>
+          <FilterField label="Status">
+            <Select name="status" defaultValue={sp.status ?? ""} className={`${FILTER_INPUT} w-36`}>
+              <option value="">All statuses</option>
+              {Object.entries(EMPLOYEE_STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </Select>
+          </FilterField>
+        </ListFilters>
+      )}
 
       {companies.length > 1 && (
         <div className="flex flex-wrap items-center gap-2">
@@ -177,7 +211,7 @@ export default async function HRPage({
             const active = (requestedId ?? "") === c.id;
             const params = new URLSearchParams();
             if (c.id) params.set("company", c.id);
-            if (q) params.set("q", q);
+            for (const k of ["q", "department", "status", "sort", "dir"] as const) if (sp[k]) params.set(k, sp[k]!);
             const qs = params.toString();
             return (
               <Link

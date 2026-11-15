@@ -18,6 +18,10 @@ import { monthLabelOf } from "@/lib/monthFilter";
 import { listEventAttendance, listEventSites, listEventSuggestions } from "@/lib/eventAttendance/queries";
 import { EVENT_CLOCK_COMPANIES, slugForCompany, type StaffType } from "@/lib/eventAttendance/rules";
 import { ROLE_LABEL, listEventDutyStaff } from "@/lib/eventAttendance/staff";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { date: "Date", name: "Name", event: "Event" };
 
 function formatTime(iso: string | null): string {
   return formatMalaysiaTime(iso);
@@ -27,7 +31,7 @@ function formatTime(iso: string | null): string {
  * Attendance: the staff on duty at an event (the drivers and the foreign staff) clock in and out of it, within 100 m of the
  * event location. The same form is sent to them as a link (no login needed).
  */
-export default async function AttendancePage({ searchParams }: { searchParams: Promise<{ company?: string; date?: string; name?: string; month?: string }> }) {
+export default async function AttendancePage({ searchParams }: { searchParams: Promise<{ company?: string; date?: string; name?: string; month?: string; sort?: string; dir?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
@@ -35,7 +39,9 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   const { data: allCompanies } = await supabase.from("companies").select("id, name").order("name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, date: dateParam, name: nameParam, month } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, date: dateParam, name: nameParam, month } = sp;
+  const { sort, dir } = readSort(sp, SORTS, "date", "desc");
   const monthLabel = monthLabelOf(month);
   const { accessibleIds, targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const selectable = companies.filter((c) => accessibleIds.includes(c.id));
@@ -48,12 +54,18 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   );
   const adminCompanyIds = new Set(adminFlags.filter(([, isAdmin]) => isAdmin).map(([id]) => id));
 
-  const [eventRows, eventSites, eventSuggestions, duty] = await Promise.all([
+  const [loadedRows, eventSites, eventSuggestions, duty] = await Promise.all([
     listEventAttendance(supabase, targetCompanyIds, { date: dateParam || undefined, name: nameParam || undefined, month }),
     listEventSites(supabase, targetCompanyIds),
     listEventSuggestions(supabase, selectable.map((c) => c.id), todayInMalaysia()),
     listEventDutyStaff(supabase, selectable.map((c) => c.id)),
   ]);
+
+  const eventRows = sortBy(loadedRows, sort, dir, {
+    date: [(r) => r.attendance_date, (r) => r.clock_in_time],
+    name: [(r) => r.person_name, (r) => r.attendance_date],
+    event: [(r) => r.event_name, (r) => r.attendance_date],
+  });
 
   const clockCompanies = selectable.flatMap((c) => {
     const slug = slugForCompany(c.id);
@@ -131,21 +143,22 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
         </div>
       </div>
 
-      <form method="get" className="flex flex-wrap items-end gap-3">
-        {requestedId && <input type="hidden" name="company" value={requestedId} />}
-        {month && <input type="hidden" name="month" value={month} />}
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Name</label>
-          <input name="name" defaultValue={nameParam ?? ""} className="mt-1 h-9 w-56 rounded-lg border border-border-strong px-2 text-[13px]" />
-        </div>
-        <div>
-          <label className="text-[12px] font-semibold text-text-secondary">Date</label>
-          <input type="date" name="date" defaultValue={dateParam ?? ""} className="mt-1 h-9 w-44 rounded-lg border border-border-strong px-2 text-[13px]" />
-        </div>
-        <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply Filters</button>
-      </form>
-
       <MonthFilter />
+
+      <ListFilters
+        keep={{ company: requestedId, month }}
+        sortOptions={SORTS}
+        sort={sort}
+        dir={dir}
+        clearHref={`/driver-logistics/attendance${requestedId ? `?company=${requestedId}` : ""}${month ? `${requestedId ? "&" : "?"}month=${month}` : ""}`}
+      >
+        <FilterField label="Name">
+          <input name="name" defaultValue={nameParam ?? ""} className={`${FILTER_INPUT} w-56`} />
+        </FilterField>
+        <FilterField label="Date">
+          <input type="date" name="date" defaultValue={dateParam ?? ""} className={`${FILTER_INPUT} w-44`} />
+        </FilterField>
+      </ListFilters>
 
       <ReportTable filenameBase={`event-attendance-${dateParam || month || "all"}`} headers={table.headers} rows={table.tableRows} emptyText={monthLabel ? "No event clock-in in this month." : "No event clock-ins yet."} />
 

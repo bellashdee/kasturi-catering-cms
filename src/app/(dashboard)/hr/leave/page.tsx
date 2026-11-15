@@ -9,11 +9,17 @@ import { LeaveItem } from "@/components/hr/LeaveItem";
 import Link from "next/link";
 import { MonthFilter } from "@/components/MonthFilter";
 import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
+import { LEAVE_STATUS_LABEL, LEAVE_TYPE_LABEL } from "@/lib/hr/constants";
+import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { submitted: "Submitted", start: "Start date", staff: "Staff name", status: "Status" };
 
 export default async function LeavePage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; month?: string }>;
+  searchParams: Promise<{ company?: string; month?: string; q?: string; type?: string; status?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -22,7 +28,8 @@ export default async function LeavePage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, month } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, month } = sp;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
 
   if (targetCompanyIds.length === 0) {
@@ -42,11 +49,25 @@ export default async function LeavePage({
   const canKeyIn = access.adminAnywhere || isEditor;
   // only the people who may look at staff leave see it (the database enforces the same); anyone else only their own
   // the month is the month the leave starts in
-  const requests = filterByMonth(
+  const inMonth = filterByMonth(
     (await listLeaveForCompanies(supabase, targetCompanyIds)).filter((r) => access.isAdminOf(r.company_id) || isEditor || isViewer || access.ownEmployeeIds.has(r.employee_id)),
     month,
     (r) => r.start_date,
   );
+  const q = sp.q?.trim().toLowerCase() ?? "";
+  const { sort, dir } = readSort(sp, SORTS, "submitted", "desc");
+  const requests = sortBy(
+    inMonth.filter((r) => (!q || (r.employees?.full_name ?? "").toLowerCase().includes(q)) && (!sp.type || r.leave_type === sp.type) && (!sp.status || r.status === sp.status)),
+    sort,
+    dir,
+    {
+      submitted: (r) => r.created_at,
+      start: [(r) => r.start_date, (r) => r.employees?.full_name],
+      staff: [(r) => r.employees?.full_name, (r) => r.start_date],
+      status: [(r) => LEAVE_STATUS_LABEL[r.status] ?? r.status, (r) => r.start_date],
+    },
+  );
+  const query = requestedId ? `?company=${requestedId}` : "";
   const monthLabel = monthLabelOf(month);
 
   return (
@@ -60,13 +81,31 @@ export default async function LeavePage({
           </p>
         </div>
         {canKeyIn && (
-          <Link href={`/hr/leave/new${requestedId ? `?company=${requestedId}` : ""}`} className="flex h-9 items-center rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">
+          <Link href={`/hr/leave/new${query}`} className="flex h-9 items-center rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">
             + Key in leave for staff
           </Link>
         )}
       </div>
 
       <MonthFilter />
+
+      <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/hr/leave${query}${month ? `${query ? "&" : "?"}month=${month}` : ""}`}>
+        <FilterField label="Staff name">
+          <input name="q" defaultValue={sp.q ?? ""} className={`${FILTER_INPUT} w-44`} />
+        </FilterField>
+        <FilterField label="Type">
+          <Select name="type" defaultValue={sp.type ?? ""} className={`${FILTER_INPUT} w-56`}>
+            <option value="">All types</option>
+            {Object.entries(LEAVE_TYPE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </Select>
+        </FilterField>
+        <FilterField label="Status">
+          <Select name="status" defaultValue={sp.status ?? ""} className={`${FILTER_INPUT} w-36`}>
+            <option value="">All statuses</option>
+            {Object.entries(LEAVE_STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </Select>
+        </FilterField>
+      </ListFilters>
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {requests.length === 0 ? (

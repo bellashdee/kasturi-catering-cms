@@ -18,6 +18,11 @@ import { ExportListButtons } from "@/components/procurement/ExportListButtons";
 import { receiptIds } from "@/lib/documents/receipts";
 import { formatRm, spendSummary, spentByCompany } from "@/lib/pettyCash/summary";
 import { MyClaimActions, MyClaimForm } from "@/components/claims/MyClaims";
+import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { date: "Date", bought: "What you bought", amount: "Amount", status: "Status" };
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -29,7 +34,7 @@ const monthLabel = (ym: string) => (ym === "all" ? "All months" : `${MONTH_NAMES
  * print. A person sees and works on only their own claims (the staff have no access to the petty cash records themselves, so this page
  * reads them with the service role and keeps to the claims the person made).
  */
-export default async function MyClaimsPage({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
+export default async function MyClaimsPage({ searchParams }: { searchParams: Promise<{ month?: string; q?: string; status?: string; sort?: string; dir?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
   const sp = await searchParams;
@@ -55,11 +60,28 @@ export default async function MyClaimsPage({ searchParams }: { searchParams: Pro
   const { data: claims } = await admin.from("petty_cash_transactions").select("*").eq("created_by", session.userId).eq("type", "expense").order("transaction_date", { ascending: false }).order("created_at", { ascending: false });
   const all = claims ?? [];
 
-  // the history by month (all months by default), like the Petty Cash
+  // the history by month (this month by default, or All months), like the Petty Cash
   const thisMonth = todayInMalaysia().slice(0, 7);
   const months = Array.from(new Set([thisMonth, ...all.map((c) => c.transaction_date.slice(0, 7))])).sort().reverse();
-  const month = sp.month && (sp.month === "all" || MONTH_RE.test(sp.month)) ? sp.month : "all";
-  const shown = all.filter((c) => month === "all" || c.transaction_date.startsWith(month));
+  const month = sp.month && (sp.month === "all" || MONTH_RE.test(sp.month)) ? sp.month : thisMonth;
+  const q = sp.q?.trim().toLowerCase() ?? "";
+  const { sort, dir } = readSort(sp, SORTS, "date", "desc");
+  const shown = sortBy(
+    all.filter(
+      (c) =>
+        (month === "all" || c.transaction_date.startsWith(month)) &&
+        (!sp.status || c.payment_status === sp.status) &&
+        (!q || [c.description, c.category, c.remarks].some((x) => x?.toLowerCase().includes(q))),
+    ),
+    sort,
+    dir,
+    {
+      date: [(c) => c.transaction_date, (c) => c.created_at],
+      bought: [(c) => c.description, (c) => c.transaction_date],
+      amount: (c) => Number(c.amount),
+      status: [(c) => PETTY_CASH_PAYMENT_STATUS_LABEL[c.payment_status] ?? c.payment_status, (c) => c.transaction_date],
+    },
+  );
 
   const sum = (list: typeof all) => list.reduce((t, c) => t + Number(c.amount), 0);
   const paid = shown.filter((c) => c.payment_status === "paid");
@@ -103,22 +125,27 @@ export default async function MyClaimsPage({ searchParams }: { searchParams: Pro
         </SectionCard>
       )}
 
-      <form method="get" className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-border bg-surface px-5 py-3.5">
-        <label className="text-[12px] font-bold uppercase tracking-wide text-text-muted" htmlFor="mc-month">
-          History of
-        </label>
-        <select id="mc-month" name="month" defaultValue={month} className="h-9 rounded-lg border border-border-strong bg-surface px-3 text-[13.5px] font-semibold">
-          <option value="all">All months</option>
-          {months.map((m) => (
-            <option key={m} value={m}>
-              {monthLabel(m)}
-            </option>
-          ))}
-        </select>
-        <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">
-          Show
-        </button>
-      </form>
+      <ListFilters sortOptions={SORTS} sort={sort} dir={dir} clearHref="/spending/my-claims">
+        <FilterField label="Month">
+          <Select name="month" defaultValue={month} className={`${FILTER_INPUT} w-44`}>
+            <option value="all">All months</option>
+            {months.map((m) => (
+              <option key={m} value={m}>
+                {monthLabel(m)}
+              </option>
+            ))}
+          </Select>
+        </FilterField>
+        <FilterField label="Search">
+          <input name="q" defaultValue={sp.q ?? ""} className={`${FILTER_INPUT} w-48`} />
+        </FilterField>
+        <FilterField label="Status">
+          <Select name="status" defaultValue={sp.status ?? ""} className={`${FILTER_INPUT} w-40`}>
+            <option value="">All statuses</option>
+            {Object.entries(PETTY_CASH_PAYMENT_STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </Select>
+        </FilterField>
+      </ListFilters>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {[

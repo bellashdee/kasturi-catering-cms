@@ -26,6 +26,10 @@ import { SoftHeader, SoftPage } from "@/components/ui/Soft";
 import { buildOverview } from "@/lib/pettyCash/overview";
 import { chosenHolder, holdersOnly, likeExact, loadHolderNames, loadPersonOptions, shortNameIn } from "@/lib/pettyCash/people";
 import { claimPayers, ownIdentity, pettyCashAccess } from "@/lib/pettyCash/access";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { date: "Date", company: "Company", details: "Details", amount: "Amount" };
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
 const dayLabel = (iso: string) => formatMalaysiaDate(`${iso}T12:00:00+08:00`);
@@ -62,7 +66,7 @@ type Row = {
  * the name is chosen at the top and nothing of anyone else's is mixed in. The cash book is private to the people who
  * hold a petty cash (and the Director of Finance); the claims follow Admin & Finance access.
  */
-export default async function PettyCashPage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string; edit?: string; holder?: string; position?: string; status?: string; all?: string }> }) {
+export default async function PettyCashPage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string; edit?: string; holder?: string; position?: string; status?: string; all?: string; q?: string; sort?: string; dir?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
@@ -178,7 +182,21 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
   const summary = summarizePettyCashClaims(claimsInMonth.map((r) => ({ amount: r.amount, payment_status: r.claim!.status })));
   const overdueCount = claimsInMonth.filter((r) => isPettyCashOverdue(r.date, r.claim!.status)).length;
   const statusParam = sp.status === "pending_payment" || sp.status === "paid" ? sp.status : undefined;
-  const shown = (statusParam ? inMonth.filter((r) => r.claim?.status === statusParam) : inMonth).slice().reverse();
+  // newest first by default; the search looks in the details, the category, the remarks and the names
+  const q = sp.q?.trim().toLowerCase() ?? "";
+  const { sort, dir } = readSort(sp, SORTS, "date", "desc");
+  const shown = sortBy(
+    inMonth.filter((r) => (!statusParam || r.claim?.status === statusParam) && (!q || [r.title, r.category, r.remarks, r.person, r.claim?.claimant].some((x) => x?.toLowerCase().includes(q)))),
+    sort,
+    dir,
+    {
+      date: [(r) => r.date, (r) => r.created],
+      company: [(r) => r.companyName, (r) => r.date],
+      details: [(r) => r.title, (r) => r.date],
+      amount: (r) => r.amount,
+    },
+  );
+  const lastBalance = inMonth.length > 0 ? inMonth[inMonth.length - 1].balance : 0;
 
   const overview = buildOverview(
     rows.map((r) => ({ date: r.date, kind: r.kind, amount: r.amount, category: r.category })),
@@ -191,14 +209,14 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
     ? { id: editing.id, company_id: editing.company_id, entry_type: editing.entry_type as EntryType, entry_date: editing.entry_date, category: editing.category, description: editing.description, amount: Number(editing.amount), document_id: editing.document_id, extra_document_ids: editing.extra_document_ids ?? [], created_by: editing.created_by, person_name: editing.person_name, person_position: editing.person_position, payment_method: editing.payment_method, remarks: editing.remarks, shared_company_ids: editing.shared_company_ids ?? [] }
     : undefined;
 
-  const keep = new URLSearchParams({ ...(sp.company ? { company: sp.company } : {}), holder: who.name, month, ...(everyone ? { all: "1" } : {}) });
+  const keep = new URLSearchParams({ ...(sp.company ? { company: sp.company } : {}), holder: who.name, month, ...(everyone ? { all: "1" } : {}), ...(sp.q ? { q: sp.q } : {}), ...(sp.sort ? { sort: sp.sort } : {}), ...(sp.dir ? { dir: sp.dir } : {}) });
   const listHref = `/spending/petty-cash?${keep.toString()}`;
   const editHref = (id: string) => `${listHref}${statusParam ? `&status=${statusParam}` : ""}&edit=${id}`;
   const statusHref = (status?: string) => `${listHref}${status ? `&status=${status}` : ""}`;
 
   const exportHeaders = ["Date", "Company", "Kind", "Category", "Payment method", "Details", "Name", "Claimant", "Remarks", "Claim status", "Claim paid by", "Received (RM)", "Spent (RM)", "Balance (RM)"];
   const moneyColumns = ["Received (RM)", "Spent (RM)", "Balance (RM)"];
-  const exportRows = [...shown].reverse().map((r): (string | number)[] => [
+  const exportRows = (sort === "date" && dir === "desc" ? [...shown].reverse() : shown).map((r): (string | number)[] => [
     r.date,
     r.companyName,
     r.source === "claim" ? "Staff claim" : r.kind === "in" ? "Received" : "Spent",
@@ -231,7 +249,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
         </div>
       )}
 
-      <PettyCashHolderBar holders={holders} holder={who.name} month={month} months={months} hidden={{ company: sp.company ?? "", status: statusParam ?? "" }} lockName={!seeAll} canSeeAll={seeAll} everyone={everyone}>
+      <PettyCashHolderBar holders={holders} holder={who.name} month={month} months={months} hidden={{ company: sp.company ?? "", status: statusParam ?? "", q: sp.q ?? "", sort: sp.sort ?? "", dir: sp.dir ?? "" }} lockName={!seeAll} canSeeAll={seeAll} everyone={everyone}>
         {shownScope && (
           <span>
             {everyone ? "Everyone's balance" : <>Balance of {who.name}</>}: <strong className={totalBalance < 0 ? "text-danger" : "text-text"}>{formatPrice(totalBalance)}</strong>
@@ -239,6 +257,20 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
           </span>
         )}
       </PettyCashHolderBar>
+
+      {shownScope && (
+        <ListFilters
+          keep={{ company: sp.company, holder: who.name, month, all: everyone ? "1" : "", status: statusParam }}
+          sortOptions={SORTS}
+          sort={sort}
+          dir={dir}
+          clearHref={`/spending/petty-cash?${new URLSearchParams({ ...(sp.company ? { company: sp.company } : {}), holder: who.name, month, ...(everyone ? { all: "1" } : {}) }).toString()}`}
+        >
+          <FilterField label="Search">
+            <input name="q" defaultValue={sp.q ?? ""} placeholder="Details, category, remarks or name" className={`${FILTER_INPUT} w-60`} />
+          </FilterField>
+        </ListFilters>
+      )}
 
       {!shownScope && <EmptyRow text="Choose your name above to see your own petty cash." />}
 
@@ -306,7 +338,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
                   companies,
                   {
                     before: [{ label: "Total received (money in)", value: formatRm(shown.filter((r) => r.kind === "in").reduce((t, r) => t + r.amount, 0)) }],
-                    after: [{ label: `Balance${month === "all" ? "" : ` at the end of ${month}`}`, value: formatRm(shown.length > 0 ? shown[0].balance : 0), bold: true }],
+                    after: [{ label: `Balance${month === "all" ? "" : ` at the end of ${month}`}`, value: formatRm(lastBalance), bold: true }],
                   },
                 )}
               />

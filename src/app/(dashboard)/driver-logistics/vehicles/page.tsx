@@ -10,6 +10,11 @@ import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { DriverLogisticsSubNav } from "@/components/driver/DriverLogisticsSubNav";
 import { OperationRowActions } from "@/components/driver/OperationRowActions";
 import { RecordUndoBanner } from "@/components/driver/RecordUndoBanner";
+import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { plate: "Plate Number", type: "Type", insurance: "Insurance", roadTax: "Road Tax", status: "Status" };
 
 function statusTone(status: string): "success" | "warning" | "neutral" | "danger" {
   if (status === "active") return "success";
@@ -21,7 +26,7 @@ function statusTone(status: string): "success" | "warning" | "neutral" | "danger
 export default async function VehiclesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string }>;
+  searchParams: Promise<{ company?: string; q?: string; status?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -30,7 +35,8 @@ export default async function VehiclesPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId } = sp;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -38,7 +44,12 @@ export default async function VehiclesPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const records = await listVehicles(supabase, targetCompanyIds);
+  const q = sp.q?.trim().toLowerCase().replace(/[^a-z0-9]/g, "") ?? "";
+  const records = (await listVehicles(supabase, targetCompanyIds)).filter(
+    (r) => (!q || r.plate_number.toLowerCase().replace(/[^a-z0-9]/g, "").includes(q)) && (!sp.status || r.status === sp.status),
+  );
+  const { sort, dir } = readSort(sp, SORTS, "plate", "asc");
+  const earliest = (values: (string | null)[]) => values.filter((x): x is string => !!x).sort()[0] ?? null;
 
   // The same vehicle used by several companies has one record per company (maintenance and expenses stay separate per company).
   // The list shows each plate number once, with every company that uses it.
@@ -48,8 +59,14 @@ export default async function VehiclesPage({
     const key = r.plate_number.toUpperCase().replace(/[^A-Z0-9]/g, "");
     byPlate.set(key, [...(byPlate.get(key) ?? []), r]);
   }
-  const vehicles = Array.from(byPlate.values());
   const joined = (values: (string | null | undefined)[]) => Array.from(new Set(values.filter((v): v is string => !!v))).join(" / ") || "—";
+  const vehicles = sortBy(Array.from(byPlate.values()), sort, dir, {
+    plate: (g) => g[0].plate_number,
+    type: [(g) => joined(g.map((x) => x.vehicle_type)).replace("—", ""), (g) => g[0].plate_number],
+    insurance: [(g) => earliest(g.map((x) => x.insurance_expiry)), (g) => g[0].plate_number],
+    roadTax: [(g) => earliest(g.map((x) => x.road_tax_expiry)), (g) => g[0].plate_number],
+    status: [(g) => VEHICLE_STATUS_LABEL[g[0].status] ?? g[0].status, (g) => g[0].plate_number],
+  });
 
   return (
     <div className="flex flex-col gap-5">
@@ -75,6 +92,18 @@ export default async function VehiclesPage({
 
       <RecordUndoBanner />
 
+      <ListFilters keep={{ company: requestedId }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/driver-logistics/vehicles${query}`}>
+        <FilterField label="Plate Number">
+          <input name="q" defaultValue={sp.q ?? ""} className={`${FILTER_INPUT} w-40`} />
+        </FilterField>
+        <FilterField label="Status">
+          <Select name="status" defaultValue={sp.status ?? ""} className={`${FILTER_INPUT} w-36`}>
+            <option value="">All statuses</option>
+            {Object.entries(VEHICLE_STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </Select>
+        </FilterField>
+      </ListFilters>
+
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {vehicles.length === 0 ? (
           <EmptyRow text="No vehicles yet. Add one manually or import from Excel/CSV." />
@@ -90,7 +119,6 @@ export default async function VehiclesPage({
             </div>
             {vehicles.map((group) => {
               const v = group[0];
-              const earliest = (values: (string | null)[]) => values.filter((x): x is string => !!x).sort()[0] ?? null;
               const insurance = earliest(group.map((g) => g.insurance_expiry));
               const roadTax = earliest(group.map((g) => g.road_tax_expiry));
               const statuses = Array.from(new Set(group.map((g) => g.status)));

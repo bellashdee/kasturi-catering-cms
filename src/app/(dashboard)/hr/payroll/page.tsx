@@ -12,11 +12,16 @@ import { canUsePayrollCentre } from "@/lib/hr/payrollAccess";
 import { MarkPaidButton } from "@/components/hr/MarkPaidButton";
 import { MonthFilter } from "@/components/MonthFilter";
 import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
+import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { period: "Pay Period", staff: "Staff name", net: "Net Pay", status: "Status" };
 
 export default async function PayrollPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; month?: string }>;
+  searchParams: Promise<{ company?: string; month?: string; q?: string; status?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -26,7 +31,8 @@ export default async function PayrollPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, month } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, month } = sp;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
 
   if (targetCompanyIds.length === 0) {
@@ -34,7 +40,22 @@ export default async function PayrollPage({
   }
 
   // the month is the month the pay period ends in
-  const records = filterByMonth(await listPayrollForCompanies(supabase, targetCompanyIds), month, (r) => r.pay_period_end);
+  const q = sp.q?.trim().toLowerCase() ?? "";
+  const { sort, dir } = readSort(sp, SORTS, "period", "desc");
+  const records = sortBy(
+    filterByMonth(await listPayrollForCompanies(supabase, targetCompanyIds), month, (r) => r.pay_period_end).filter(
+      (r) => (!q || (r.employees?.full_name ?? "").toLowerCase().includes(q)) && (!sp.status || r.status === sp.status),
+    ),
+    sort,
+    dir,
+    {
+      period: [(r) => r.pay_period_start, (r) => r.employees?.full_name],
+      staff: [(r) => r.employees?.full_name, (r) => r.pay_period_start],
+      net: (r) => Number(r.net_pay),
+      status: [(r) => PAYROLL_STATUS_LABEL[r.status] ?? r.status, (r) => r.employees?.full_name],
+    },
+  );
+  const query = requestedId ? `?company=${requestedId}` : "";
   const monthLabel = monthLabelOf(month);
 
   return (
@@ -48,6 +69,18 @@ export default async function PayrollPage({
       </div>
 
       <MonthFilter />
+
+      <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/hr/payroll${query}${month ? `${query ? "&" : "?"}month=${month}` : ""}`}>
+        <FilterField label="Staff name">
+          <input name="q" defaultValue={sp.q ?? ""} className={`${FILTER_INPUT} w-44`} />
+        </FilterField>
+        <FilterField label="Status">
+          <Select name="status" defaultValue={sp.status ?? ""} className={`${FILTER_INPUT} w-36`}>
+            <option value="">All statuses</option>
+            {Object.entries(PAYROLL_STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </Select>
+        </FilterField>
+      </ListFilters>
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {records.length === 0 ? (

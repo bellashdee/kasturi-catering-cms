@@ -11,11 +11,15 @@ import { OperationRowActions } from "@/components/driver/OperationRowActions";
 import { RecordUndoBanner } from "@/components/driver/RecordUndoBanner";
 import { MonthFilter } from "@/components/MonthFilter";
 import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { date: "Service Date", vehicle: "Vehicle", next: "Next Service", cost: "Cost" };
 
 export default async function MaintenancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; month?: string }>;
+  searchParams: Promise<{ company?: string; month?: string; vehicle?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -24,7 +28,8 @@ export default async function MaintenancePage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, month } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, month } = sp;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -32,7 +37,21 @@ export default async function MaintenancePage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const records = filterByMonth(await listMaintenanceForCompanies(supabase, targetCompanyIds), month, (m) => m.service_date);
+  const vehicle = sp.vehicle?.trim().toLowerCase() ?? "";
+  const { sort, dir } = readSort(sp, SORTS, "date", "desc");
+  const records = sortBy(
+    filterByMonth(await listMaintenanceForCompanies(supabase, targetCompanyIds), month, (m) => m.service_date).filter(
+      (m) => !vehicle || (m.vehicles?.plate_number ?? "").toLowerCase().includes(vehicle),
+    ),
+    sort,
+    dir,
+    {
+      date: (m) => m.service_date,
+      vehicle: [(m) => m.vehicles?.plate_number, (m) => m.service_date],
+      next: [(m) => m.next_service_date, (m) => m.service_date],
+      cost: (m) => Number(m.cost),
+    },
+  );
   const monthLabel = monthLabelOf(month);
 
   return (
@@ -52,6 +71,12 @@ export default async function MaintenancePage({
       <RecordUndoBanner />
 
       <MonthFilter />
+
+      <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/driver-logistics/maintenance${query}${month ? `${query ? "&" : "?"}month=${month}` : ""}`}>
+        <FilterField label="Plate Number">
+          <input name="vehicle" defaultValue={sp.vehicle ?? ""} className={`${FILTER_INPUT} w-40`} />
+        </FilterField>
+      </ListFilters>
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {records.length === 0 ? (

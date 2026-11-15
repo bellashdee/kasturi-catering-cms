@@ -9,6 +9,12 @@ import { canUsePayrollCentre } from "@/lib/hr/payrollAccess";
 import { isValidMonth, loadPayrollLines, shiftMonth, summarisePayroll } from "@/lib/hr/payrollCentre";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { PayrollCentreTable } from "@/components/hr/PayrollCentreTable";
+import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { name: "Staff name", position: "Position", net: "Net salary", status: "Status" };
+const LINE_STATUS_LABEL: Record<string, string> = { none: "Data required", draft: "Waiting for payment", paid: "Paid" };
 
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -24,7 +30,7 @@ function StatCard({ label, value, sub, tone }: { label: string; value: React.Rea
 }
 
 /** One place to pay the staff salaries, month by month and company by company: the reference of the Director of Finance. */
-export default async function PayrollCentrePage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string }> }) {
+export default async function PayrollCentrePage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string; q?: string; status?: string; sort?: string; dir?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
@@ -33,7 +39,8 @@ export default async function PayrollCentrePage({ searchParams }: { searchParams
   if (!(await canUsePayrollCentre(supabase))) return <EmptyRow text="Payroll is private. Only the Director of Finance and her personal assistant can open the Payroll Centre." />;
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
-  const { company: requestedId, month: requestedMonth } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, month: requestedMonth } = sp;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
 
   // salaries and bank accounts are for the Finance / Admin level only (also enforced by the database)
@@ -44,6 +51,20 @@ export default async function PayrollCentrePage({ searchParams }: { searchParams
   const month = isValidMonth(requestedMonth) ? requestedMonth : today.slice(0, 7);
   const lines = await loadPayrollLines(supabase, adminIds, month);
   const s = summarisePayroll(lines);
+  // the cards count the whole month; the filters and the sort only change the lists of staff below
+  const q = sp.q?.trim().toLowerCase() ?? "";
+  const { sort, dir } = readSort(sp, SORTS, "name", "asc");
+  const shownLines = sortBy(
+    lines.filter((l) => (!q || l.fullName.toLowerCase().includes(q)) && (!sp.status || l.status === sp.status)),
+    sort,
+    dir,
+    {
+      name: (l) => l.fullName,
+      position: [(l) => l.position, (l) => l.fullName],
+      net: [(l) => l.netPay, (l) => l.fullName],
+      status: [(l) => LINE_STATUS_LABEL[l.status], (l) => l.fullName],
+    },
+  );
 
   const [y, m] = month.split("-").map(Number);
   const companyQuery = requestedId ? `&company=${requestedId}` : "";
@@ -88,10 +109,24 @@ export default async function PayrollCentrePage({ searchParams }: { searchParams
         />
       </div>
 
+      <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={monthLink(month)}>
+        <FilterField label="Staff name">
+          <input name="q" defaultValue={sp.q ?? ""} className={`${FILTER_INPUT} w-48`} />
+        </FilterField>
+        <FilterField label="Status">
+          <Select name="status" defaultValue={sp.status ?? ""} className={`${FILTER_INPUT} w-44`}>
+            <option value="">All statuses</option>
+            {Object.entries(LINE_STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </Select>
+        </FilterField>
+      </ListFilters>
+
       {lines.length === 0 ? (
         <EmptyRow text="No active staff found for this company." />
+      ) : shownLines.length === 0 ? (
+        <EmptyRow text="No staff match these filters." />
       ) : (
-        <PayrollCentreTable lines={lines} month={month} today={today} />
+        <PayrollCentreTable lines={shownLines} month={month} today={today} />
       )}
 
       <p className="text-[12.5px] text-text-muted print:hidden">

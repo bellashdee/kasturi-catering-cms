@@ -12,11 +12,16 @@ import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SpendingSubNav } from "@/components/spending/SpendingSubNav";
 import { MonthFilter } from "@/components/MonthFilter";
 import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
+import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { period: "Period", category: "Category", department: "Department", budgeted: "Budgeted" };
 
 export default async function BudgetsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; month?: string }>;
+  searchParams: Promise<{ company?: string; month?: string; category?: string; department?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -25,7 +30,8 @@ export default async function BudgetsPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, month } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, month } = sp;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -34,7 +40,21 @@ export default async function BudgetsPage({
   }
 
   // a budget belongs to the month it is set for
-  const budgets = filterByMonth(await listBudgets(supabase, targetCompanyIds), month, (b) => `${b.year}-${String(b.month).padStart(2, "0")}-01`);
+  const inMonth = filterByMonth(await listBudgets(supabase, targetCompanyIds), month, (b) => `${b.year}-${String(b.month).padStart(2, "0")}-01`);
+  const categoryNames = Array.from(new Set(inMonth.map((b) => b.category))).sort((a, b) => a.localeCompare(b));
+  const departmentNames = Array.from(new Set(inMonth.map((b) => b.department).filter((d): d is string => !!d))).sort((a, b) => a.localeCompare(b));
+  const { sort, dir } = readSort(sp, SORTS, "period", "desc");
+  const budgets = sortBy(
+    inMonth.filter((b) => (!sp.category || b.category === sp.category) && (!sp.department || b.department === sp.department)),
+    sort,
+    dir,
+    {
+      period: (b) => b.year * 100 + b.month,
+      category: [(b) => b.category, (b) => b.year * 100 + b.month],
+      department: [(b) => b.department, (b) => b.category],
+      budgeted: (b) => Number(b.budgeted_amount),
+    },
+  );
   const monthLabel = monthLabelOf(month);
 
   const periods = Array.from(new Set(budgets.map((b) => `${b.year}-${b.month}`))).map((p) => {
@@ -78,6 +98,21 @@ export default async function BudgetsPage({
 
       <SpendingSubNav />
       <MonthFilter />
+
+      <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/spending/budgets${query}${month ? `${query ? "&" : "?"}month=${month}` : ""}`}>
+        <FilterField label="Category">
+          <Select name="category" defaultValue={sp.category ?? ""} className={`${FILTER_INPUT} w-44`}>
+            <option value="">All categories</option>
+            {categoryNames.map((c) => <option key={c} value={c}>{c}</option>)}
+          </Select>
+        </FilterField>
+        <FilterField label="Department">
+          <Select name="department" defaultValue={sp.department ?? ""} className={`${FILTER_INPUT} w-44`}>
+            <option value="">All departments</option>
+            {departmentNames.map((d) => <option key={d} value={d}>{d}</option>)}
+          </Select>
+        </FilterField>
+      </ListFilters>
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {budgets.length === 0 ? (

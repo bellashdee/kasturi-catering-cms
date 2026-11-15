@@ -13,6 +13,11 @@ import { OperationRowActions } from "@/components/driver/OperationRowActions";
 import { RecordUndoBanner } from "@/components/driver/RecordUndoBanner";
 import { MonthFilter } from "@/components/MonthFilter";
 import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
+import { Select } from "@/components/ui/Select";
+import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { readSort, sortBy } from "@/lib/listSort";
+
+const SORTS = { date: "Date", customer: "Customer", driver: "Driver", vehicle: "Vehicle", status: "Status" };
 
 function statusTone(status: string): "success" | "warning" | "danger" | "info" {
   if (status === "delivered") return "success";
@@ -24,7 +29,7 @@ function statusTone(status: string): "success" | "warning" | "danger" | "info" {
 export default async function DriverLogisticsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; month?: string }>;
+  searchParams: Promise<{ company?: string; month?: string; q?: string; status?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -33,7 +38,8 @@ export default async function DriverLogisticsPage({
   const { data: allCompanies } = await supabase.from("companies").select("id, name");
   const companies = allCompanies ?? [];
 
-  const { company: requestedId, month } = await searchParams;
+  const sp = await searchParams;
+  const { company: requestedId, month } = sp;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
 
@@ -41,7 +47,27 @@ export default async function DriverLogisticsPage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const deliveries = filterByMonth(await listDeliveries(supabase, targetCompanyIds), month, (d) => d.scheduled_time);
+  type Delivery = Awaited<ReturnType<typeof listDeliveries>>[number];
+  const customerOf = (d: Delivery) => d.catering_events?.customers?.name ?? d.catering_events?.event_name ?? d.location ?? "";
+  const driverOf = (d: Delivery) => d.employees?.full_name ?? d.delivery_vendors?.name ?? "";
+  const q = sp.q?.trim().toLowerCase() ?? "";
+  const { sort, dir } = readSort(sp, SORTS, "date", "desc");
+  const deliveries = sortBy(
+    filterByMonth(await listDeliveries(supabase, targetCompanyIds), month, (d) => d.scheduled_time).filter(
+      (d) =>
+        (!q || [customerOf(d), d.catering_events?.event_name, d.catering_events?.location, d.location].some((x) => x?.toLowerCase().includes(q))) &&
+        (!sp.status || d.status === sp.status),
+    ),
+    sort,
+    dir,
+    {
+      date: (d) => d.scheduled_time,
+      customer: [customerOf, (d) => d.scheduled_time],
+      driver: [driverOf, (d) => d.scheduled_time],
+      vehicle: [(d) => d.vehicles?.plate_number, (d) => d.scheduled_time],
+      status: [(d) => DELIVERY_STATUS_LABEL[d.status] ?? d.status, (d) => d.scheduled_time],
+    },
+  );
   const monthLabel = monthLabelOf(month);
 
   return (
@@ -61,6 +87,18 @@ export default async function DriverLogisticsPage({
       <RecordUndoBanner />
 
       <MonthFilter />
+
+      <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/driver-logistics${query}${month ? `${query ? "&" : "?"}month=${month}` : ""}`}>
+        <FilterField label="Customer">
+          <input name="q" defaultValue={sp.q ?? ""} placeholder="Customer, event or venue" className={`${FILTER_INPUT} w-52`} />
+        </FilterField>
+        <FilterField label="Status">
+          <Select name="status" defaultValue={sp.status ?? ""} className={`${FILTER_INPUT} w-36`}>
+            <option value="">All statuses</option>
+            {Object.entries(DELIVERY_STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </Select>
+        </FilterField>
+      </ListFilters>
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {deliveries.length === 0 ? (
