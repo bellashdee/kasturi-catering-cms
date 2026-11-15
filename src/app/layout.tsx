@@ -18,8 +18,9 @@ export const metadata: Metadata = {
   description:
     "Central Management System for Signature Solution, Kasturi Indah and O2 Life.",
   manifest: "/manifest.webmanifest",
-  icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
-  appleWebApp: { capable: true, title: "CMS", statusBarStyle: "default" },
+  // the Kasturi Catering logo (?v=2 so phones and browsers drop the old "CM" icon they kept)
+  icons: { icon: [{ url: "/favicon.ico?v=2", sizes: "any" }], apple: "/icons/apple-touch-icon.png?v=2" },
+  appleWebApp: { capable: true, title: "Kasturi Catering", statusBarStyle: "default" },
 };
 
 export default async function RootLayout({

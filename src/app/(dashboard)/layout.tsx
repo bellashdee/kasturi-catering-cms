@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PushPrompt } from "@/components/settings/PushPrompt";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext, ROLE_LABEL } from "@/lib/auth";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -58,6 +59,7 @@ export default async function DashboardLayout({
           </main>
         </div>
         <AssistantWidget />
+        <PushPrompt />
       </div>
       </SectionAccessProvider>
     </MobileNavProvider>

@@ -11,7 +11,7 @@ self.addEventListener("push", (event) => {
   } catch {
     data = { title: event.data ? event.data.text() : "" };
   }
-  const title = data.title || "Central Management System";
+  const title = data.title || "Kasturi Catering";
   event.waitUntil(
     self.registration.showNotification(title, {
       body: data.body || "",

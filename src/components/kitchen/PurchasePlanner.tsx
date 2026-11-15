@@ -17,6 +17,7 @@ import { SupplierItemPicker } from "@/components/procurement/SupplierItemPicker"
 import type { PlannerEvent } from "@/lib/purchasePlanner/data";
 import { formatPrice, formatCurrency } from "@/lib/format";
 import { Select } from "@/components/ui/Select";
+import { ChoiceSelect } from "@/components/ui/ChoiceSelect";
 
 const inputClass = "h-9 w-full rounded-lg border border-border-strong bg-white px-2 text-[13px] outline-none focus:border-primary";
 const norm = (s: string) => s.trim().replace(/\s+/g, " ").toUpperCase();
@@ -320,20 +321,23 @@ export function PurchasePlanner({ companyId, companyName, events, recipeOptions,
               ))}
             </div>
             {setMenus.length > 0 && (
-              <label className="mt-3 block text-[12px] font-semibold text-text-secondary">
+              <div className="mt-3 block text-[12px] font-semibold text-text-secondary">
                 Fixed menu of the day (adds all its recipes)
-                <select
-                  value=""
-                  onChange={(e) => {
-                    const menu = setMenus.find((m) => m.id === e.target.value);
-                    if (menu) setPickedRecipes((p) => Array.from(new Set([...p, ...menu.recipeIds.filter((id) => !isBoughtReadyRecipe(recipeOptions.find((r) => r.id === id)?.name ?? ""))])));
-                  }}
-                  className={`${inputClass} mt-1 block max-w-md`}
-                >
-                  <option value="">Choose a menu (e.g. JDT 3 - Menu 5)...</option>
-                  {setMenus.map((m) => <option key={m.id} value={m.id}>{`${m.name} (${m.recipeIds.length} recipes)`}</option>)}
-                </select>
-              </label>
+                {/* type to search (e.g. "jdt 3 menu 5") and pick: all its recipes are added, and the box is empty again for the next one */}
+                <div className="mt-1 max-w-md">
+                  <ChoiceSelect
+                    value=""
+                    onChange={(id) => {
+                      const menu = setMenus.find((m) => m.id === id);
+                      if (menu) setPickedRecipes((p) => Array.from(new Set([...p, ...menu.recipeIds.filter((rid) => !isBoughtReadyRecipe(recipeOptions.find((r) => r.id === rid)?.name ?? ""))])));
+                    }}
+                    options={setMenus.map((m) => ({ value: m.id, label: `${m.name} (${m.recipeIds.length} recipes)` }))}
+                    placeholder="Type to search, e.g. JDT 3 Menu 5"
+                    ariaLabel="Fixed menu of the day"
+                    className={`${inputClass} w-full`}
+                  />
+                </div>
+              </div>
             )}
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <input value={recipeSearch} onChange={(e) => setRecipeSearch(e.target.value)} placeholder="Search recipe..." className={`${inputClass} max-w-md`} />
