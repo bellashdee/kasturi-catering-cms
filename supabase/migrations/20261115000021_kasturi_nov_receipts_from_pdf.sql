@@ -1,0 +1,13 @@
+-- Kasturi Indah: the November 2026 customer receipts (data change run on the database on 15 Nov 2026, from the AutoCount
+-- "AR Receive Payment Multi-Currency Audit Trail Listing NOV 2026 - KASTURI" PDF, 9 receipts, RM 31,238.00 for 1 - 15 Nov 2026).
+--
+--  * 10 customer_payments rows (RM 16,787.00) were added, reference OR-KI2611/0 (AutoCount prints the receipt number cut short):
+--      - BNI VICTORY CHAPTER RM 2,240.00 (4 Nov) on INV-KI2610/021, the only unpaid invoice of the customer, same amount;
+--      - DAIMAN DEVELOPMENT BERHAD RM 10,097.00 (12 Nov) on INV-KI2610/012 + /015 + /017, which add up to it exactly;
+--      - DAIMAN DEVELOPMENT BERHAD RM 1,450.00 (3 Nov) and RM 3,000.00 (12 Nov): the listing does not name the invoices, so the
+--        oldest unpaid invoices were taken first (INV-KI2606/009, 2607/019, 2607/020, 2607/024 paid; 2607/030 RM 129.00 paid);
+--  * invoice statuses were worked out again (8 paid, INV-KI2607/030 part paid); one task_audit_log row per payment;
+--  * not added: NEGERI SEMBILAN FC RM 530.00 (2 Nov, already recorded from the sales agent's payment proof) and the receipts whose
+--    invoice is not in the system yet (SANWU NIUMA RM 10,846.00, LALA CANOPY RM 1,200.00, CHRISTOPHER HAN RM 1,225.00,
+--    ABBOT LABORATORIES RM 650.00) — they can be uploaded again from Admin & Finance → Receive Payment (PDF) once the invoices are in.
+select 1;

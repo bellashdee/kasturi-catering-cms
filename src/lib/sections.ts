@@ -65,6 +65,7 @@ export const MODULE_SECTIONS: Record<string, Section[]> = {
     { key: "finance-admin:event-pnl", label: "Event P&L", href: "/finance/event-pnl", prefixes: ["/finance/event-pnl"] },
     { key: "finance-admin:invoices", label: "Customer Invoices", href: "/finance/invoices", prefixes: ["/finance/invoices"] },
     { key: "finance-admin:payment-proofs", label: "Payment Proofs", href: "/finance/payment-proofs", prefixes: ["/finance/payment-proofs"] },
+    { key: "finance-admin:receive-payments", label: "Receive Payment (PDF)", href: "/finance/receive-payments", prefixes: ["/finance/receive-payments"] },
     { key: "finance-admin:outstanding", label: "Outstanding Payment", href: "/finance/outstanding", prefixes: ["/finance/outstanding"] },
     { key: "finance-admin:payments", label: "Payment Dashboard", href: "/finance/payments", prefixes: ["/finance/payments", "/finance/payment-accounts"] },
     { key: "finance-admin:checklist", label: "Payment Checklist", href: "/finance/payments/checklist", prefixes: ["/finance/payments/checklist"] },
