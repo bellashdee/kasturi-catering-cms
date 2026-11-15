@@ -10,7 +10,10 @@ import { formatCurrency, malaysiaYearMonth } from "@/lib/format";
 import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { buildReportRows } from "@/lib/reports/buildRows";
 import { ReportTable } from "@/components/reports/ReportTable";
-import { EmptyRow } from "@/components/dashboard/SectionCard";
+import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
+import { AGING_LABELS, StackedBar, agingBucket } from "@/components/reports/Charts";
+import { RankBars } from "@/components/reports/RankBars";
+import { daysOverdue } from "@/lib/finance/outstanding";
 import { readSort, sortBy } from "@/lib/listSort";
 
 const SORTS = { total: "Total owed", supplier: "Supplier", overdue: "Overdue" };
@@ -99,6 +102,20 @@ export default async function SupplierOutstandingReportPage({ searchParams }: { 
     }
   }
 
+  // how late the balances are (by the due date of the statement, as of today) and the suppliers owed the most
+  const aging = [0, 0, 0, 0, 0];
+  const lateBy = new Map<string, number>();
+  for (const r of owed) {
+    const days = r.due_date ? daysOverdue(r.due_date, today) : 0;
+    aging[agingBucket(days)] += r.balance;
+    const key = normalName(r.payee_name);
+    lateBy.set(key, Math.max(lateBy.get(key) ?? 0, days));
+  }
+  const topSuppliers = [...bySupplier.values()]
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 10)
+    .map((r) => ({ label: r.name, value: r.total, note: r.overdue > 0 ? `${formatCurrency(r.overdue)} overdue` : undefined, flag: (lateBy.get(r.key) ?? 0) > 0 ? `${lateBy.get(r.key)} days late` : undefined }));
+
   const money = (v: number, late = false, bold = false) =>
     v === 0 ? <span className="text-text-muted">—</span> : <span className={late ? "font-semibold text-danger" : bold ? "font-semibold text-text" : ""}>{formatCurrency(v)}</span>;
 
@@ -136,6 +153,14 @@ export default async function SupplierOutstandingReportPage({ searchParams }: { 
         By month, as keyed in <Link href={`/reports/finance-payments${query}`} className="font-semibold text-primary underline">Finance → Supplier Payment</Link> from the supplier&apos;s statement of account (SOA) when the payment voucher is issued.
         Each figure is the month of the statement; red is past its due date.
       </p>
+      {suppliers.length > 0 && (
+        <SectionCard title={`How Late Is It — ${formatCurrency(totalRow.total)}`}>
+          <p className="mb-3 text-[12.5px] text-text-secondary">What is still owed to the suppliers, by how many days past the due date it is today.</p>
+          <StackedBar segments={AGING_LABELS.map((a, k) => ({ ...a, value: aging[k] }))} />
+          <div className="mb-2 mt-6 text-[12px] font-bold uppercase tracking-wider text-text-secondary">Suppliers we owe the most (top 10)</div>
+          <RankBars items={topSuppliers} total={totalRow.total} color="#b8794a" empty="Nothing is owed." />
+        </SectionCard>
+      )}
       <ReportTable filenameBase={`supplier-outstanding-by-month${month ? `-${year}-${month}` : ""}`} headers={headers} rows={tableRows} emptyText="No supplier payment is waiting to be paid." />
     </div>
   );
