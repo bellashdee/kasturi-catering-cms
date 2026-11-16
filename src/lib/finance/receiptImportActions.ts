@@ -293,7 +293,7 @@ export async function saveReceiptPayments(input: { companyId: string; fileName: 
     revalidatePath("/finance/invoices");
     for (const id of touched) revalidatePath(`/finance/invoices/${id}`);
     revalidatePath("/finance/outstanding");
-    revalidatePath("/finance/receive-payments");
+    revalidatePath("/finance/payment-proofs");
     revalidatePath("/reports", "layout");
     revalidatePath("/");
     return { saved: rows.length, savedAmount: cents(rows.reduce((t, r) => t + Number(r.amount), 0)), skipped, invoices };

@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { CopyLink } from "@/components/driver/CopyLink";
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
+import { ReceiptPdfImport } from "@/components/finance/ReceiptPdfImport";
 import { PaymentProofReviewRow, type InvoiceOption } from "@/components/finance/PaymentProofReviewRow";
 import { MonthFilter } from "@/components/MonthFilter";
 import { monthLabelOf, monthRange } from "@/lib/monthFilter";
@@ -84,9 +85,13 @@ export default async function PaymentProofsPage({ searchParams }: { searchParams
     <div className="flex flex-col gap-5">
       <div>
         <h1 className="text-[22px] font-extrabold text-text">Admin &amp; Finance</h1>
-        <p className="mt-0.5 text-[13px] text-text-secondary">Proof of customer payments sent by sales agents. Approving one records the payment on the customer invoice.{monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}</p>
+        <p className="mt-0.5 text-[13px] text-text-secondary">Payments received from customers: the receipt listing from AutoCount (PDF), and the payment proofs sent by sales agents. Saving a receipt or approving a proof records the payment on the customer invoice.{monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}</p>
       </div>
       <FinanceAdminSubNav />
+
+      <ReceiptPdfImport companies={companies.filter((c) => targetCompanyIds.includes(c.id)).sort((a, b) => a.name.localeCompare(b.name))} />
+
+      <h2 className="mt-1 text-[16px] font-extrabold text-text">Payment proofs from sales agents</h2>
 
       <MonthFilter />
 

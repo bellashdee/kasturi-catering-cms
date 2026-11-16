@@ -4610,6 +4610,12 @@ const dictionary: Record<string, string> = {
  "This claim was not found, or you do not have access to it.": "Tuntutan ini tidak dijumpai, atau anda tiada akses kepadanya.",
  "This claim is not paid yet. Use Mark as Paid instead.": "Tuntutan ini belum dibayar. Gunakan Mark as Paid.",
  "The payment could not be changed. Please try again.": "Bayaran tidak dapat diubah. Sila cuba lagi.",
+ "Payments Received": "Bayaran Diterima",
+ "Payment proofs from sales agents": "Bukti pembayaran daripada ejen jualan",
+ "Payments received from customers: the receipt listing from AutoCount (PDF), and the payment proofs sent by sales agents. Saving a receipt or approving a proof records the payment on the customer invoice.": "Bayaran yang diterima daripada pelanggan: senarai resit daripada AutoCount (PDF), dan bukti pembayaran yang dihantar oleh ejen jualan. Menyimpan resit atau meluluskan bukti akan merekodkan bayaran pada invois pelanggan.",
+ "Payments Received records the money customers have paid, in two ways.": "Bayaran Diterima merekodkan wang yang telah dibayar oleh pelanggan, dengan dua cara.",
+ "AutoCount receipts: in AutoCount print the AR Receive Payment Audit Trail Listing for the month and save it as PDF. Upload it at the top: each receipt is matched to the customer's unpaid invoices. Check the invoice and amount of each receipt, untick any you do not want, then press Save.": "Resit AutoCount: dalam AutoCount, cetak AR Receive Payment Audit Trail Listing bagi bulan itu dan simpan sebagai PDF. Muat naik di bahagian atas: setiap resit dipadankan dengan invois pelanggan yang belum dibayar. Semak invois dan jumlah setiap resit, nyahtanda yang tidak mahu, kemudian tekan Save.",
+ "Payment proofs from sales agents: check the receipt, then approve it to record the payment, or reject it.": "Bukti pembayaran daripada ejen jualan: semak resit, kemudian luluskan untuk merekodkan bayaran, atau tolak.",
 };
 
 export default dictionary;

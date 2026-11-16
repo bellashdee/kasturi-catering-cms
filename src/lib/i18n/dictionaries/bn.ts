@@ -4504,6 +4504,12 @@ const dictionary: Record<string, string> = {
  "This claim was not found, or you do not have access to it.": "এই দাবিটি পাওয়া যায়নি, অথবা আপনার এতে প্রবেশাধিকার নেই।",
  "This claim is not paid yet. Use Mark as Paid instead.": "এই দাবি এখনও পরিশোধ হয়নি। এর বদলে Mark as Paid ব্যবহার করুন।",
  "The payment could not be changed. Please try again.": "পেমেন্ট পরিবর্তন করা যায়নি। আবার চেষ্টা করুন।",
+ "Payments Received": "প্রাপ্ত পেমেন্ট",
+ "Payment proofs from sales agents": "বিক্রয় এজেন্টদের পাঠানো পেমেন্টের প্রমাণ",
+ "Payments received from customers: the receipt listing from AutoCount (PDF), and the payment proofs sent by sales agents. Saving a receipt or approving a proof records the payment on the customer invoice.": "গ্রাহকদের কাছ থেকে প্রাপ্ত পেমেন্ট: AutoCount থেকে রসিদের তালিকা (PDF), এবং বিক্রয় এজেন্টদের পাঠানো পেমেন্টের প্রমাণ। রসিদ সংরক্ষণ বা প্রমাণ অনুমোদন করলে পেমেন্টটি গ্রাহকের ইনভয়েসে রেকর্ড হয়।",
+ "Payments Received records the money customers have paid, in two ways.": "প্রাপ্ত পেমেন্ট গ্রাহকদের পরিশোধিত টাকা দুইভাবে রেকর্ড করে।",
+ "AutoCount receipts: in AutoCount print the AR Receive Payment Audit Trail Listing for the month and save it as PDF. Upload it at the top: each receipt is matched to the customer's unpaid invoices. Check the invoice and amount of each receipt, untick any you do not want, then press Save.": "AutoCount রসিদ: AutoCount-এ মাসের AR Receive Payment Audit Trail Listing প্রিন্ট করে PDF হিসেবে সংরক্ষণ করুন। উপরে আপলোড করুন: প্রতিটি রসিদ গ্রাহকের অপরিশোধিত ইনভয়েসের সাথে মেলানো হয়। প্রতিটি রসিদের ইনভয়েস ও পরিমাণ যাচাই করুন, যেগুলো চান না সেগুলোর টিক তুলে দিন, তারপর Save চাপুন।",
+ "Payment proofs from sales agents: check the receipt, then approve it to record the payment, or reject it.": "বিক্রয় এজেন্টদের পাঠানো পেমেন্টের প্রমাণ: রসিদ যাচাই করুন, তারপর পেমেন্ট রেকর্ড করতে অনুমোদন করুন, অথবা প্রত্যাখ্যান করুন।",
 };
 
 export default dictionary;

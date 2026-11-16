@@ -4498,6 +4498,12 @@ const dictionary: Record<string, string> = {
  "This claim was not found, or you do not have access to it.": "ဤတောင်းခံချက်ကို ရှာမတွေ့ပါ၊ သို့မဟုတ် သင့်တွင် ဝင်ရောက်ခွင့် မရှိပါ။",
  "This claim is not paid yet. Use Mark as Paid instead.": "ဤတောင်းခံချက်ကို မပေးချေရသေးပါ။ Mark as Paid ကို အသုံးပြုပါ။",
  "The payment could not be changed. Please try again.": "ငွေပေးချေမှုကို ပြင်၍ မရပါ။ ထပ်စမ်းကြည့်ပါ။",
+ "Payments Received": "လက်ခံရရှိသော ငွေပေးချေမှုများ",
+ "Payment proofs from sales agents": "အရောင်းကိုယ်စားလှယ်များထံမှ ငွေပေးချေမှု အထောက်အထားများ",
+ "Payments received from customers: the receipt listing from AutoCount (PDF), and the payment proofs sent by sales agents. Saving a receipt or approving a proof records the payment on the customer invoice.": "ဖောက်သည်များထံမှ လက်ခံရရှိသော ငွေပေးချေမှုများ - AutoCount မှ ပြေစာစာရင်း (PDF) နှင့် အရောင်းကိုယ်စားလှယ်များ ပို့သော ငွေပေးချေမှု အထောက်အထားများ။ ပြေစာကို သိမ်းခြင်း သို့မဟုတ် အထောက်အထားကို အတည်ပြုခြင်းဖြင့် ငွေပေးချေမှုကို ဖောက်သည်ငွေတောင်းခံလွှာတွင် မှတ်တမ်းတင်ပါသည်။",
+ "Payments Received records the money customers have paid, in two ways.": "လက်ခံရရှိသော ငွေပေးချေမှုများသည် ဖောက်သည်များ ပေးချေထားသော ငွေကို နည်းလမ်းနှစ်မျိုးဖြင့် မှတ်တမ်းတင်ပါသည်။",
+ "AutoCount receipts: in AutoCount print the AR Receive Payment Audit Trail Listing for the month and save it as PDF. Upload it at the top: each receipt is matched to the customer's unpaid invoices. Check the invoice and amount of each receipt, untick any you do not want, then press Save.": "AutoCount ပြေစာများ - AutoCount တွင် လအတွက် AR Receive Payment Audit Trail Listing ကို ပရင့်ထုတ်ပြီး PDF အဖြစ် သိမ်းပါ။ အပေါ်ဆုံးတွင် တင်ပါ - ပြေစာတစ်ခုချင်းစီကို ဖောက်သည်၏ မပေးရသေးသော ငွေတောင်းခံလွှာများနှင့် တွဲပေးပါမည်။ ပြေစာတစ်ခုချင်းစီ၏ ငွေတောင်းခံလွှာနှင့် ပမာဏကို စစ်ဆေးပြီး မလိုချင်သည်များကို အမှန်ခြစ်ဖြုတ်ကာ Save ကို နှိပ်ပါ။",
+ "Payment proofs from sales agents: check the receipt, then approve it to record the payment, or reject it.": "အရောင်းကိုယ်စားလှယ်များထံမှ ငွေပေးချေမှု အထောက်အထားများ - ပြေစာကို စစ်ဆေးပြီး ငွေပေးချေမှုကို မှတ်တမ်းတင်ရန် အတည်ပြုပါ၊ သို့မဟုတ် ငြင်းပယ်ပါ။",
 };
 
 export default dictionary;

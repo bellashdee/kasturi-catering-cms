@@ -4510,6 +4510,12 @@ const dictionary: Record<string, string> = {
  "This claim was not found, or you do not have access to it.": "未找到此报销，或您无权访问。",
  "This claim is not paid yet. Use Mark as Paid instead.": "此报销尚未付款。请改用 Mark as Paid。",
  "The payment could not be changed. Please try again.": "无法修改付款信息。请重试。",
+ "Payments Received": "已收款项",
+ "Payment proofs from sales agents": "销售代理提交的付款凭证",
+ "Payments received from customers: the receipt listing from AutoCount (PDF), and the payment proofs sent by sales agents. Saving a receipt or approving a proof records the payment on the customer invoice.": "客户的已收款项：来自 AutoCount 的收据清单（PDF），以及销售代理提交的付款凭证。保存收据或批准凭证，即会把付款记录到客户发票上。",
+ "Payments Received records the money customers have paid, in two ways.": "“已收款项”用两种方式记录客户已支付的款项。",
+ "AutoCount receipts: in AutoCount print the AR Receive Payment Audit Trail Listing for the month and save it as PDF. Upload it at the top: each receipt is matched to the customer's unpaid invoices. Check the invoice and amount of each receipt, untick any you do not want, then press Save.": "AutoCount 收据：在 AutoCount 中打印当月的 AR Receive Payment Audit Trail Listing 并另存为 PDF。在顶部上传：每张收据会与客户未付的发票配对。检查每张收据的发票和金额，取消勾选不需要的，然后按 Save。",
+ "Payment proofs from sales agents: check the receipt, then approve it to record the payment, or reject it.": "销售代理提交的付款凭证：检查收据，然后批准以记录付款，或予以拒绝。",
 };
 
 export default dictionary;
