@@ -4498,6 +4498,12 @@ const dictionary: Record<string, string> = {
  "Opens New Event filled in with this request. Nothing is saved until you press Create Event.": "এই অনুরোধ দিয়ে পূরণ করা নতুন ইভেন্ট খোলে। Create Event চাপার আগে কিছুই সংরক্ষিত হয় না।",
  "An event was made from this request:": "এই অনুরোধ থেকে একটি ইভেন্ট তৈরি হয়েছে:",
  "Made from quotation request": "কোটেশন অনুরোধ থেকে তৈরি",
+ "Change payment": "পেমেন্ট পরিবর্তন করুন",
+ "Change the payment": "পেমেন্ট পরিবর্তন করুন",
+ "Only the Director of Finance and her assistant can change the payment of a staff claim.": "শুধু ফাইন্যান্স ডিরেক্টর ও তাঁর সহকারী কর্মীর দাবির পেমেন্ট পরিবর্তন করতে পারেন।",
+ "This claim was not found, or you do not have access to it.": "এই দাবিটি পাওয়া যায়নি, অথবা আপনার এতে প্রবেশাধিকার নেই।",
+ "This claim is not paid yet. Use Mark as Paid instead.": "এই দাবি এখনও পরিশোধ হয়নি। এর বদলে Mark as Paid ব্যবহার করুন।",
+ "The payment could not be changed. Please try again.": "পেমেন্ট পরিবর্তন করা যায়নি। আবার চেষ্টা করুন।",
 };
 
 export default dictionary;

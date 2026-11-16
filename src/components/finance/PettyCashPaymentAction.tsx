@@ -3,29 +3,37 @@
 import { todayInMalaysia } from "@/lib/format";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { markPettyCashPaid } from "@/lib/finance/actions";
+import { markPettyCashPaid, updatePettyCashPayment } from "@/lib/finance/actions";
 import { PAYMENT_METHOD_LABEL } from "@/lib/operationPettyCash/constants";
 
-function todayIso(): string {
-  return todayInMalaysia();
-}
+/** What was saved when the claim was marked as paid, to correct it. */
+type Paid = { paymentDate: string | null; paymentMethod: string | null; paymentReference: string | null; paymentRemarks: string | null };
 
-export function PettyCashPaymentAction({ transactionId, paymentStatus }: { transactionId: string; paymentStatus: string }) {
+/**
+ * Mark as Paid for a claim waiting for payment; for a claim already paid, Change payment corrects how it was paid (cash or online
+ * transfer), the date, the reference and the remarks.
+ */
+export function PettyCashPaymentAction({ transactionId, paymentStatus, paid }: { transactionId: string; paymentStatus: string; paid?: Paid }) {
   const router = useRouter();
+  const editing = paymentStatus === "paid";
   const [open, setOpen] = useState(false);
-  const [paymentDate, setPaymentDate] = useState(todayIso());
-  const [paymentMethod, setPaymentMethod] = useState("");
-  const [paymentReference, setPaymentReference] = useState("");
-  const [paymentRemarks, setPaymentRemarks] = useState("");
+  const [paymentDate, setPaymentDate] = useState((editing && paid?.paymentDate) || todayInMalaysia());
+  const [paymentMethod, setPaymentMethod] = useState((editing && paid?.paymentMethod) || "");
+  const [paymentReference, setPaymentReference] = useState((editing && paid?.paymentReference) || "");
+  const [paymentRemarks, setPaymentRemarks] = useState((editing && paid?.paymentRemarks) || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (paymentStatus !== "pending_payment") {
+  if (paymentStatus !== "pending_payment" && !editing) {
     return <span className="text-[12px] text-text-muted">—</span>;
   }
 
   if (!open) {
-    return (
+    return editing ? (
+      <button onClick={() => setOpen(true)} className="rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-xs font-semibold text-text">
+        Change payment
+      </button>
+    ) : (
       <button onClick={() => setOpen(true)} className="rounded-lg bg-success px-3 py-1.5 text-xs font-bold text-white">
         Mark as Paid
       </button>
@@ -35,8 +43,17 @@ export function PettyCashPaymentAction({ transactionId, paymentStatus }: { trans
   async function confirm() {
     setSaving(true);
     setError(null);
+    const input = { transactionId, paymentDate, paymentMethod, paymentReference: paymentReference || undefined, paymentRemarks: paymentRemarks || undefined };
     try {
-      await markPettyCashPaid({ transactionId, paymentDate, paymentMethod, paymentReference: paymentReference || undefined, paymentRemarks: paymentRemarks || undefined });
+      if (editing) {
+        const r = await updatePettyCashPayment(input);
+        if (!r.ok) {
+          setError(r.error);
+          return;
+        }
+      } else {
+        await markPettyCashPaid(input);
+      }
       router.refresh();
       setOpen(false);
     } catch (err) {
@@ -48,7 +65,7 @@ export function PettyCashPaymentAction({ transactionId, paymentStatus }: { trans
 
   return (
     <div className="flex w-56 flex-col gap-2 rounded-lg border border-border bg-white p-3 text-left shadow-lg">
-      <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Director of Finance — Mark Paid</div>
+      <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">{editing ? "Change the payment" : "Director of Finance — Mark Paid"}</div>
       {error && <div className="text-[11px] text-danger">{error}</div>}
       <div>
         <label className="text-[11px] font-semibold text-text-secondary">Payment Date *</label>
@@ -76,7 +93,7 @@ export function PettyCashPaymentAction({ transactionId, paymentStatus }: { trans
           Cancel
         </button>
         <button onClick={confirm} disabled={saving || !paymentDate || !paymentMethod} className="rounded-md bg-success px-3 py-1 text-[12px] font-bold text-white disabled:opacity-50">
-          {saving ? "Saving..." : "Confirm Paid"}
+          {saving ? "Saving..." : editing ? "Save changes" : "Confirm Paid"}
         </button>
       </div>
     </div>

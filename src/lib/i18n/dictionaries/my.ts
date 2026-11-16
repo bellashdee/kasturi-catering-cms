@@ -4492,6 +4492,12 @@ const dictionary: Record<string, string> = {
  "Opens New Event filled in with this request. Nothing is saved until you press Create Event.": "ဤတောင်းဆိုချက်ဖြင့် ဖြည့်ထားသော ပွဲအသစ်ကို ဖွင့်သည်။ Create Event မနှိပ်မချင်း ဘာမှ မသိမ်းပါ။",
  "An event was made from this request:": "ဤတောင်းဆိုချက်မှ ပွဲတစ်ခု ပြုလုပ်ပြီးပါပြီ:",
  "Made from quotation request": "စျေးနှုန်းတောင်းဆိုချက်မှ ပြုလုပ်ထားသည်",
+ "Change payment": "ငွေပေးချေမှု ပြင်ရန်",
+ "Change the payment": "ငွေပေးချေမှုကို ပြင်ရန်",
+ "Only the Director of Finance and her assistant can change the payment of a staff claim.": "ဘဏ္ဍာရေးဒါရိုက်တာနှင့် ၎င်း၏ လက်ထောက်သာ ဝန်ထမ်းတောင်းခံငွေ၏ ငွေပေးချေမှုကို ပြင်နိုင်သည်။",
+ "This claim was not found, or you do not have access to it.": "ဤတောင်းခံချက်ကို ရှာမတွေ့ပါ၊ သို့မဟုတ် သင့်တွင် ဝင်ရောက်ခွင့် မရှိပါ။",
+ "This claim is not paid yet. Use Mark as Paid instead.": "ဤတောင်းခံချက်ကို မပေးချေရသေးပါ။ Mark as Paid ကို အသုံးပြုပါ။",
+ "The payment could not be changed. Please try again.": "ငွေပေးချေမှုကို ပြင်၍ မရပါ။ ထပ်စမ်းကြည့်ပါ။",
 };
 
 export default dictionary;

@@ -9,7 +9,7 @@ import { recordAudit } from "@/lib/audit";
 import { runAction, type ActionResult } from "@/lib/actionResult";
 import { assertOwnPerson, claimPayers, pettyCashAccess } from "@/lib/pettyCash/access";
 import { confirmedPaymentDate, todayInMalaysia } from "@/lib/format";
-import { isPaymentMethod } from "@/lib/operationPettyCash/constants";
+import { isPaymentMethod, paymentMethodLabel } from "@/lib/operationPettyCash/constants";
 import { checkCategoryShares, type CategoryShare } from "@/lib/categorySplit";
 import { addReceipts } from "@/lib/documents/receipts";
 import { DUPLICATE_INVOICE_MESSAGE } from "@/lib/finance/constants";
@@ -483,6 +483,51 @@ export async function markPettyCashPaid(input: MarkPettyCashPaidInput) {
   revalidatePath("/spending/petty-cash");
   revalidatePath("/admin");
   revalidatePath("/");
+}
+
+/**
+ * Corrects the payment of a claim already marked as paid (a wrong date, "cash" instead of "online transfer", the reference). Only the
+ * Director of Finance and her assistant, the same people who mark a claim as paid. The change is kept in the audit log.
+ */
+export async function updatePettyCashPayment(input: MarkPettyCashPaidInput): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase, userId } = await requireUser();
+    const { seeAll } = await pettyCashAccess(supabase, userId);
+    if (!seeAll) throw new Error("Only the Director of Finance and her assistant can change the payment of a staff claim.");
+    const paymentDate = confirmedPaymentDate(input.paymentDate);
+    if (!isPaymentMethod(input.paymentMethod)) throw new Error("Choose how the claim was paid: cash or online transfer.");
+    const { data: before, error: readError } = await supabase
+      .from("petty_cash_transactions")
+      .select("company_id, amount, payment_status, payment_date, claim_payment_method, payment_reference")
+      .eq("id", input.transactionId)
+      .maybeSingle();
+    if (readError) throw readError;
+    if (!before) throw new Error("This claim was not found, or you do not have access to it.");
+    if (before.payment_status !== "paid") throw new Error("This claim is not paid yet. Use Mark as Paid instead.");
+    const { error } = await supabase
+      .from("petty_cash_transactions")
+      .update({
+        payment_date: paymentDate,
+        claim_payment_method: input.paymentMethod,
+        payment_reference: input.paymentReference || null,
+        payment_remarks: input.paymentRemarks || null,
+      })
+      .eq("id", input.transactionId);
+    if (error) throw error;
+    const describe = (date: string | null, method: string | null, ref: string | null) => [date ?? "no date", paymentMethodLabel(method) || "no method", ref].filter(Boolean).join(" · ");
+    await recordAudit({
+      companyId: before.company_id,
+      relatedTable: "petty_cash_transactions",
+      relatedId: input.transactionId,
+      action: "payment_edited",
+      previousValue: describe(before.payment_date, before.claim_payment_method, before.payment_reference),
+      newValue: describe(paymentDate, input.paymentMethod, input.paymentReference || null),
+    });
+    revalidatePath("/spending/petty-cash");
+    revalidatePath("/admin");
+    revalidatePath("/");
+    return {};
+  }, "The payment could not be changed. Please try again.");
 }
 
 export type BudgetInput = {

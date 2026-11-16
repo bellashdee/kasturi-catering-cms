@@ -4504,6 +4504,12 @@ const dictionary: Record<string, string> = {
  "Opens New Event filled in with this request. Nothing is saved until you press Create Event.": "打开已填好此请求内容的“新活动”。按下 Create Event 之前不会保存任何内容。",
  "An event was made from this request:": "已根据此请求创建活动：",
  "Made from quotation request": "根据报价请求创建",
+ "Change payment": "修改付款",
+ "Change the payment": "修改付款信息",
+ "Only the Director of Finance and her assistant can change the payment of a staff claim.": "只有财务总监及其助理可以修改员工报销的付款信息。",
+ "This claim was not found, or you do not have access to it.": "未找到此报销，或您无权访问。",
+ "This claim is not paid yet. Use Mark as Paid instead.": "此报销尚未付款。请改用 Mark as Paid。",
+ "The payment could not be changed. Please try again.": "无法修改付款信息。请重试。",
 };
 
 export default dictionary;

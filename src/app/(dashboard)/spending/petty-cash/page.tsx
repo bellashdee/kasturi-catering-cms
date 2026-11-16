@@ -58,7 +58,7 @@ type Row = {
   documentIds: string[];
   bookId?: string;
   /** a staff claim; paidMethod is how the claim was paid back to the staff member */
-  claim?: { id: string; status: string; paymentDate: string | null; claimant: string | null; department: string | null; paidMethod: string | null };
+  claim?: { id: string; status: string; paymentDate: string | null; claimant: string | null; department: string | null; paidMethod: string | null; paymentReference: string | null; paymentRemarks: string | null };
   /** a row that comes from the claims / top-ups table (it can be edited and deleted here) */
   tx?: { id: string; type: "expense" | "top_up"; claimant: string; department: string; category: string; description: string; companyId: string; sharedCompanyIds: string[]; hasReceipt: boolean; remarks: string; invoiceNo: string };
 };
@@ -159,7 +159,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
       person: short(t.person_name),
       documentId: t.document_id,
       documentIds: receiptIds(t),
-      claim: t.type === "expense" ? { id: t.id, status: t.payment_status, paymentDate: t.payment_date, claimant: short(t.claimant_name), department: t.claimant_department, paidMethod: t.claim_payment_method } : undefined,
+      claim: t.type === "expense" ? { id: t.id, status: t.payment_status, paymentDate: t.payment_date, claimant: short(t.claimant_name), department: t.claimant_department, paidMethod: t.claim_payment_method, paymentReference: t.payment_reference, paymentRemarks: t.payment_remarks } : undefined,
       tx: { id: t.id, type: t.type === "expense" ? "expense" : "top_up", claimant: t.claimant_name ?? "", department: t.claimant_department ?? "", category: t.category ?? "", description: t.description ?? "", companyId: t.company_id, sharedCompanyIds: t.shared_company_ids ?? [], hasReceipt: receiptIds(t).length > 0, remarks: t.remarks ?? "", invoiceNo: t.invoice_no ?? "" },
     })),
   ].sort((a, b) => a.date.localeCompare(b.date) || a.created.localeCompare(b.created));
@@ -423,7 +423,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
                             <OperationPettyCashRowActions id={r.bookId} editHref={editHref(r.bookId)} />
                           ) : (
                             <div className="flex flex-col items-start gap-1.5">
-                              {r.claim && (seeAll ? <PettyCashPaymentAction transactionId={r.claim.id} paymentStatus={r.claim.status} /> : <span className="text-[12px] text-text-muted">—</span>)}
+                              {r.claim && (seeAll ? <PettyCashPaymentAction transactionId={r.claim.id} paymentStatus={r.claim.status} paid={{ paymentDate: r.claim.paymentDate, paymentMethod: r.claim.paidMethod, paymentReference: r.claim.paymentReference, paymentRemarks: r.claim.paymentRemarks }} /> : <span className="text-[12px] text-text-muted">—</span>)}
                               {r.tx && <PettyCashClaimActions claim={{ ...r.tx, amount: String(r.amount), date: r.date }} companies={companies} />}
                             </div>
                           )}

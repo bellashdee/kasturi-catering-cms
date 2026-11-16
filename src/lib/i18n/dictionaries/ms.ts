@@ -4604,6 +4604,12 @@ const dictionary: Record<string, string> = {
  "Opens New Event filled in with this request. Nothing is saved until you press Create Event.": "Membuka Acara Baharu yang diisi dengan permintaan ini. Tiada apa-apa disimpan sehingga anda menekan Create Event.",
  "An event was made from this request:": "Satu acara telah dibuat daripada permintaan ini:",
  "Made from quotation request": "Dibuat daripada permintaan sebut harga",
+ "Change payment": "Ubah bayaran",
+ "Change the payment": "Ubah bayaran",
+ "Only the Director of Finance and her assistant can change the payment of a staff claim.": "Hanya Pengarah Kewangan dan pembantunya boleh mengubah bayaran tuntutan staf.",
+ "This claim was not found, or you do not have access to it.": "Tuntutan ini tidak dijumpai, atau anda tiada akses kepadanya.",
+ "This claim is not paid yet. Use Mark as Paid instead.": "Tuntutan ini belum dibayar. Gunakan Mark as Paid.",
+ "The payment could not be changed. Please try again.": "Bayaran tidak dapat diubah. Sila cuba lagi.",
 };
 
 export default dictionary;
