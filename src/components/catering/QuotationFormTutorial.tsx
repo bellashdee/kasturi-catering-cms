@@ -10,8 +10,9 @@ const STEPS = [
   "Choose the Meal type and the Service type, and write the Pax for that service. If two services are served, choose a Second service type and write its pax too.",
   "Under Menu details, write the menu one item at a time: press Enter for the next item, or paste a list. Write the Price per pax if you know it.",
   "If the event is more than one day, press + Add next day to copy the day before, then change what is different. Use Remove day for a day you do not need.",
+  "Under What the customer needs, fill in only what the customer asked for (menu choices, food, special diets, equipment, serving, kitchen and catering set-up). Leave a box empty when it does not apply.",
   "Answer every Additional requirement: Yes (and the price if you know it), No, or Included in the food price.",
-  "Other extra items, Kitchen set-up, Catering set-up and Remarks are optional: fill in what the kitchen and the office need to know.",
+  "Add any Extra items to add to the quotation, write Anything else (remarks), and attach files (menu references, floor plans) if you have them.",
   "Check the Estimated total, then press Send quotation request. The office will check it and prepare the quotation. You can fill in another request straight away.",
 ];
 

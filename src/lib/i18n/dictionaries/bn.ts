@@ -4485,6 +4485,19 @@ const dictionary: Record<string, string> = {
  "No data": "কোনো ডেটা নেই",
  "· sales (compared with the year before), expenses and what is still owed, from the recorded figures. What is owed is as it stands today. Each block links to the report with its detail.": "· বিক্রয় (আগের বছরের সাথে তুলনা), খরচ এবং এখনও বকেয়া, রেকর্ড করা হিসাব থেকে। বকেয়া আজকের অবস্থা অনুযায়ী। প্রতিটি অংশ বিস্তারিত রিপোর্টের সাথে যুক্ত।",
  "Sales, costs, profit and what is still owed: one month, or the whole year compared with last year, with the top products, key customers and where the money went.": "বিক্রয়, খরচ, লাভ এবং এখনও বকেয়া: এক মাস, অথবা পুরো বছর গত বছরের সাথে তুলনা করে, শীর্ষ পণ্য, প্রধান গ্রাহক এবং অর্থ কোথায় গেছে তা সহ।",
+ "What the customer needs": "গ্রাহকের প্রয়োজন",
+ "Fill in what the customer asked for. Leave a box empty when it does not apply.": "গ্রাহক যা চেয়েছেন তা লিখুন। যে ঘর প্রযোজ্য নয় তা খালি রাখুন।",
+ "What the catering team sets up on site": "ক্যাটারিং দল সাইটে যা সাজাবে",
+ "e.g. canopy hire, equipment hire, service charge.": "যেমন: ক্যানোপি ভাড়া, সরঞ্জাম ভাড়া, সার্ভিস চার্জ।",
+ "(all days + additional requirement + extra items, for reference: the official quotation is made in AutoCount)": "(সব দিন + অতিরিক্ত প্রয়োজন + অতিরিক্ত আইটেম, শুধু রেফারেন্সের জন্য: অফিসিয়াল কোটেশন AutoCount-এ তৈরি হয়)",
+ "Attachments (optional)": "সংযুক্তি (ঐচ্ছিক)",
+ "Under What the customer needs, fill in only what the customer asked for (menu choices, food, special diets, equipment, serving, kitchen and catering set-up). Leave a box empty when it does not apply.": "গ্রাহকের প্রয়োজন অংশে শুধু গ্রাহক যা চেয়েছেন তা লিখুন (মেনু পছন্দ, খাবার, বিশেষ ডায়েট, সরঞ্জাম, পরিবেশন, রান্নাঘর ও ক্যাটারিং সেট-আপ)। যে ঘর প্রযোজ্য নয় তা খালি রাখুন।",
+ "Add any Extra items to add to the quotation, write Anything else (remarks), and attach files (menu references, floor plans) if you have them.": "কোটেশনে যোগ করার অতিরিক্ত আইটেম দিন, অন্যান্য (মন্তব্য) লিখুন, এবং থাকলে ফাইল সংযুক্ত করুন (মেনু রেফারেন্স, ফ্লোর প্ল্যান)।",
+ "Not answered": "উত্তর দেওয়া হয়নি",
+ "Create event from this request": "এই অনুরোধ থেকে ইভেন্ট তৈরি করুন",
+ "Opens New Event filled in with this request. Nothing is saved until you press Create Event.": "এই অনুরোধ দিয়ে পূরণ করা নতুন ইভেন্ট খোলে। Create Event চাপার আগে কিছুই সংরক্ষিত হয় না।",
+ "An event was made from this request:": "এই অনুরোধ থেকে একটি ইভেন্ট তৈরি হয়েছে:",
+ "Made from quotation request": "কোটেশন অনুরোধ থেকে তৈরি",
 };
 
 export default dictionary;

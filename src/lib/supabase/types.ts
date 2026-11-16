@@ -519,6 +519,9 @@ export type Database = {
           autocount_quotation_no: string | null
           autocount_invoice_no: string | null
           catering_setup: string | null
+          requirements: Json | null
+          additional: Json | null
+          extra_items: Json | null
           company_id: string
           created_at: string
           customer_id: string | null
@@ -557,6 +560,9 @@ export type Database = {
           autocount_quotation_no?: string | null
           autocount_invoice_no?: string | null
           catering_setup?: string | null
+          requirements?: Json | null
+          additional?: Json | null
+          extra_items?: Json | null
           company_id: string
           created_at?: string
           customer_id?: string | null
@@ -595,6 +601,9 @@ export type Database = {
           autocount_quotation_no?: string | null
           autocount_invoice_no?: string | null
           catering_setup?: string | null
+          requirements?: Json | null
+          additional?: Json | null
+          extra_items?: Json | null
           company_id?: string
           created_at?: string
           customer_id?: string | null

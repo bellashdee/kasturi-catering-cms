@@ -4479,6 +4479,19 @@ const dictionary: Record<string, string> = {
  "No data": "ဒေတာ မရှိ",
  "· sales (compared with the year before), expenses and what is still owed, from the recorded figures. What is owed is as it stands today. Each block links to the report with its detail.": "· အရောင်း (ယခင်နှစ်နှင့် နှိုင်းယှဉ်)၊ အသုံးစရိတ်နှင့် ပေးရန်ကျန်ငွေ၊ မှတ်တမ်းတင်ထားသော ကိန်းဂဏန်းများမှ။ ပေးရန်ကျန်ငွေသည် ယနေ့အခြေအနေအတိုင်း ဖြစ်သည်။ အပိုင်းတိုင်းသည် အသေးစိတ်အစီရင်ခံစာသို့ ချိတ်ဆက်ထားသည်။",
  "Sales, costs, profit and what is still owed: one month, or the whole year compared with last year, with the top products, key customers and where the money went.": "အရောင်း၊ ကုန်ကျစရိတ်၊ အမြတ်နှင့် ပေးရန်ကျန်ငွေ - တစ်လ၊ သို့မဟုတ် နှစ်တစ်နှစ်လုံးကို ယမန်နှစ်နှင့် နှိုင်းယှဉ်၍ ထိပ်တန်းထုတ်ကုန်များ၊ အဓိကဖောက်သည်များနှင့် ငွေသုံးစွဲရာနေရာများနှင့်အတူ။",
+ "What the customer needs": "ဖောက်သည်လိုအပ်ချက်များ",
+ "Fill in what the customer asked for. Leave a box empty when it does not apply.": "ဖောက်သည်တောင်းဆိုသည့်အရာကို ဖြည့်ပါ။ မသက်ဆိုင်သည့်အကွက်ကို ဗလာထားပါ။",
+ "What the catering team sets up on site": "ကက်တာရင်းအဖွဲ့က နေရာတွင် ပြင်ဆင်မည့်အရာ",
+ "e.g. canopy hire, equipment hire, service charge.": "ဥပမာ - တဲငှားခ၊ ပစ္စည်းငှားခ၊ ဝန်ဆောင်ခ။",
+ "(all days + additional requirement + extra items, for reference: the official quotation is made in AutoCount)": "(ရက်အားလုံး + အပိုလိုအပ်ချက် + အပိုပစ္စည်းများ၊ ကိုးကားရန်သာ: တရားဝင်စျေးနှုန်းကို AutoCount တွင် ပြုလုပ်သည်)",
+ "Attachments (optional)": "ပူးတွဲဖိုင်များ (ရွေးချယ်နိုင်)",
+ "Under What the customer needs, fill in only what the customer asked for (menu choices, food, special diets, equipment, serving, kitchen and catering set-up). Leave a box empty when it does not apply.": "ဖောက်သည်လိုအပ်ချက်များ အောက်တွင် ဖောက်သည်တောင်းဆိုသည့်အရာကိုသာ ဖြည့်ပါ (မီနူးရွေးချယ်မှု၊ အစားအစာ၊ အထူးအစားအသောက်၊ ပစ္စည်း၊ ဧည့်ခံကျွေးမွေးမှု၊ မီးဖိုချောင်နှင့် ကက်တာရင်း ပြင်ဆင်မှု)။ မသက်ဆိုင်သည့်အကွက်ကို ဗလာထားပါ။",
+ "Add any Extra items to add to the quotation, write Anything else (remarks), and attach files (menu references, floor plans) if you have them.": "စျေးနှုန်းတွင် ထည့်ရန် အပိုပစ္စည်းများ ထည့်ပါ၊ အခြား (မှတ်ချက်) ရေးပါ၊ ရှိလျှင် ဖိုင်များ (မီနူးကိုးကား၊ ကြမ်းခင်းပုံ) ပူးတွဲပါ။",
+ "Not answered": "မဖြေရသေး",
+ "Create event from this request": "ဤတောင်းဆိုချက်မှ ပွဲဖန်တီးရန်",
+ "Opens New Event filled in with this request. Nothing is saved until you press Create Event.": "ဤတောင်းဆိုချက်ဖြင့် ဖြည့်ထားသော ပွဲအသစ်ကို ဖွင့်သည်။ Create Event မနှိပ်မချင်း ဘာမှ မသိမ်းပါ။",
+ "An event was made from this request:": "ဤတောင်းဆိုချက်မှ ပွဲတစ်ခု ပြုလုပ်ပြီးပါပြီ:",
+ "Made from quotation request": "စျေးနှုန်းတောင်းဆိုချက်မှ ပြုလုပ်ထားသည်",
 };
 
 export default dictionary;

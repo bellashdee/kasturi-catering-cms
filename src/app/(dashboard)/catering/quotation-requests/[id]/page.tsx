@@ -7,15 +7,15 @@ import { EVENT_TYPE_LABEL, MEAL_TYPE_LABEL, SERVICE_TYPE_LABEL } from "@/lib/cat
 import { dayAmount, dayMainAmount, daySecondMenusAmount, dayPax, menuRows, secondMenuAmount, secondMenusOf, type EventDay } from "@/lib/catering/days";
 import {
   ATTACHMENT_BUCKET,
-  REQUIREMENT_FIELDS,
   TRACKING_STATUS_LABEL,
   TRACKING_STATUS_TONE,
   additionalRows,
-  additionalServiceLines,
   type AdditionalServices,
   type ExtraItem,
   type RequestRequirements,
 } from "@/lib/catering/quotationRequest";
+import { NEEDS_LABEL, typedExtras } from "@/lib/catering/customerNeeds";
+import { CustomerNeedsView } from "@/components/catering/CustomerNeedsView";
 import { formatCurrency, formatMalaysiaDate, formatMalaysiaDateTime, formatPrice, formatTime12 } from "@/lib/format";
 import { RequestDetailsEditor, RequestNotes, RequestTrackingForm } from "@/components/catering/QuotationRequestInbox";
 
@@ -46,13 +46,11 @@ export default async function QuotationRequestPage({ params, searchParams }: { p
   const extras = (r.extra_items as unknown as ExtraItem[]) ?? [];
   const additional = additionalRows(r.additional as AdditionalServices | null, extras);
   // the extra items the agent typed in (the additional requirement lines are listed above them)
-  const additionalNames = new Set(additionalServiceLines((r.additional as AdditionalServices | null) ?? undefined).map((l) => l.itemName));
-  const otherExtras = extras.filter((i) => !additionalNames.has(i.itemName));
+  const otherExtras = typedExtras(extras, r.additional as AdditionalServices | null);
   const total = days.reduce((t, d) => t + dayAmount(d), 0) + extras.reduce((t, i) => t + i.quantity * i.unitPrice, 0);
   const handlers = (people ?? []).map((p) => ({ id: p.user_id, name: p.full_name ?? "—" }));
   const { data: { user } } = await supabase.auth.getUser();
   const requirements = (r.requirements as RequestRequirements | null) ?? {};
-  const writtenRequirements = REQUIREMENT_FIELDS.filter((f) => requirements[f.key]);
   // download links last 10 minutes and are made with the viewer's own login, so the bucket's rules (inbox people only) apply
   const attachments = await Promise.all(
     (files ?? []).map(async (f) => {
@@ -73,10 +71,17 @@ export default async function QuotationRequestPage({ params, searchParams }: { p
           {r.event_name} · {r.customer_name} · sent by {r.sales_agent} on {formatMalaysiaDateTime(r.created_at)}
           {r.companies?.name ? ` · ${r.companies.name}` : ""}
         </p>
-        {r.catering_event_id && (
+        {r.catering_event_id ? (
           <p className="mt-1 text-[12.5px] text-text-muted">
-            An event was made from this request before the inbox was introduced: <Link href={`/catering/${r.catering_event_id}${query}`} className="font-semibold text-primary">open the event</Link>
+            An event was made from this request: <Link href={`/catering/${r.catering_event_id}${query}`} className="font-semibold text-primary">open the event</Link>
           </p>
+        ) : (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Link href={`/catering/new?fromRequest=${r.id}${company ? `&company=${company}` : ""}`} className="rounded-lg bg-primary px-4 py-2 text-[13px] font-semibold text-white">
+              Create event from this request
+            </Link>
+            <span className="text-[12px] text-text-muted">Opens New Event filled in with this request. Nothing is saved until you press Create Event.</span>
+          </div>
         )}
       </div>
 
@@ -166,25 +171,17 @@ export default async function QuotationRequestPage({ params, searchParams }: { p
             </div>
           </section>
 
-          {(requirements.menuOptions || writtenRequirements.length > 0) && (
-            <section className={card}>
-              <div className={heading}>Menu &amp; catering requirements</div>
-              <dl className="flex flex-col gap-2 text-[13px]">
-                {requirements.menuOptions && (
-                  <div>
-                    <dt className="text-[11.5px] font-semibold text-text-muted">Number of menu options</dt>
-                    <dd className="font-semibold text-text">{requirements.menuOptions}</dd>
-                  </div>
-                )}
-                {writtenRequirements.map((f) => (
-                  <div key={f.key}>
-                    <dt className="text-[11.5px] font-semibold text-text-muted">{f.label}</dt>
-                    <dd className="whitespace-pre-line text-text">{requirements[f.key]}</dd>
-                  </div>
-                ))}
-              </dl>
-            </section>
-          )}
+          <section className={card}>
+            <div className={heading}>{NEEDS_LABEL.section}</div>
+            <CustomerNeedsView
+              requirements={requirements}
+              additional={additional}
+              extras={otherExtras}
+              kitchenSetup={r.kitchen_setup}
+              cateringSetup={r.catering_setup}
+              remarks={r.remarks}
+            />
+          </section>
 
           {attachments.length > 0 && (
             <section className={card}>
@@ -207,25 +204,6 @@ export default async function QuotationRequestPage({ params, searchParams }: { p
             </section>
           )}
 
-          <section className={card}>
-            <div className={heading}>Additional requirement &amp; set-up</div>
-            <div className="flex flex-col gap-1 text-[13px]">
-              {additional.map((a) => (
-                <div key={a.label} className="flex gap-2">
-                  <span className="w-56 font-semibold text-text">{a.label}</span>
-                  <span className="text-text-secondary">{a.yes ? `Yes${a.detail ? ` · ${a.detail}` : ""}` : "No"}</span>
-                </div>
-              ))}
-              {otherExtras.length > 0 && (
-                <div className="mt-2 text-text-secondary">
-                  <span className="font-semibold text-text">Extra items:</span> {otherExtras.map((i) => `${i.itemName} (${i.quantity} × ${formatPrice(i.unitPrice)})`).join("; ")}
-                </div>
-              )}
-              {r.kitchen_setup && <div className="mt-2 whitespace-pre-line text-text-secondary"><span className="font-semibold text-text">Kitchen set-up:</span> {r.kitchen_setup}</div>}
-              {r.catering_setup && <div className="whitespace-pre-line text-text-secondary"><span className="font-semibold text-text">Catering set-up:</span> {r.catering_setup}</div>}
-              {r.remarks && <div className="whitespace-pre-line text-text-secondary"><span className="font-semibold text-text">Remarks:</span> {r.remarks}</div>}
-            </div>
-          </section>
         </div>
 
         <div className="flex flex-col gap-5">

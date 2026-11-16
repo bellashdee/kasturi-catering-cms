@@ -23,7 +23,9 @@ import {
 } from "@/lib/catering/constants";
 import { formatCurrency, formatMalaysiaDateTime, formatPrice, formatTime12 } from "@/lib/format";
 import { dayAmount, dayPax, menuRows } from "@/lib/catering/days";
-import { additionalRows, type AdditionalServices, type ExtraItem } from "@/lib/catering/quotationRequest";
+import { additionalRows } from "@/lib/catering/quotationRequest";
+import { NEEDS_LABEL, eventNeeds } from "@/lib/catering/customerNeeds";
+import { CustomerNeedsView } from "@/components/catering/CustomerNeedsView";
 import { toEventDays } from "@/lib/catering/queries";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SectionCard, EmptyRow } from "@/components/dashboard/SectionCard";
@@ -84,9 +86,11 @@ export default async function EventDetailPage({
     notFound();
   }
 
-  // an event made from a sales agent's quotation request shows what the agent ticked under "Additional requirement"
-  const { data: fromRequest } = await supabase.from("quotation_requests").select("sales_agent, additional, extra_items").eq("catering_event_id", id).maybeSingle();
-  const additional = fromRequest ? additionalRows(fromRequest.additional as AdditionalServices | null, (fromRequest.extra_items ?? []) as unknown as ExtraItem[]) : [];
+  // "What the customer needs": the event's own answers; an older event made from a quotation request reads them from that request
+  const { data: fromRequest } = await supabase.from("quotation_requests").select("id, request_code, requirements, additional, extra_items").eq("catering_event_id", id).maybeSingle();
+  const needs = eventNeeds(event, fromRequest);
+  const answered = needs.additional !== null || !!fromRequest;
+  const additional = answered ? additionalRows(needs.additional, needs.allLines) : [];
 
   const dayRowsData = await listEventDays(supabase, id);
   const eventDays = toEventDays(dayRowsData);
@@ -268,38 +272,22 @@ export default async function EventDetailPage({
         </SectionCard>
       )}
 
-      {additional.length > 0 && (
-        <SectionCard title="Additional requirement">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {additional.map((a) => (
-              <div key={a.label} className="rounded-lg border border-border bg-surface-alt px-4 py-3">
-                <div className="text-[12px] font-bold uppercase tracking-wide text-text-muted">{a.label}</div>
-                <div className="mt-1 flex items-center gap-2">
-                  <StatusBadge tone={a.yes ? "success" : "neutral"}>{a.yes ? "Yes" : "No"}</StatusBadge>
-                  {a.detail && <span className="text-[13px] font-semibold text-text">{a.detail}</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
-      )}
-
-      {(event.kitchen_setup || event.catering_setup) && (
-        <div className="grid grid-cols-2 gap-4">
-          {event.kitchen_setup && (
-            <div className="whitespace-pre-line rounded-xl border border-border bg-surface p-4 text-[13px] shadow-sm">
-              <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-text-muted">Kitchen set-up</div>
-              {event.kitchen_setup}
-            </div>
-          )}
-          {event.catering_setup && (
-            <div className="whitespace-pre-line rounded-xl border border-border bg-surface p-4 text-[13px] shadow-sm">
-              <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-text-muted">Catering set-up</div>
-              {event.catering_setup}
-            </div>
-          )}
-        </div>
-      )}
+      <SectionCard title={NEEDS_LABEL.section}>
+        {fromRequest && (
+          <p className="-mt-1 mb-3 text-xs text-text-muted">
+            Made from quotation request{" "}
+            <Link href={`/catering/quotation-requests/${fromRequest.id}${query}`} className="font-semibold text-primary">{fromRequest.request_code ?? "(open)"}</Link>
+          </p>
+        )}
+        <CustomerNeedsView
+          requirements={needs.requirements}
+          additional={additional}
+          extras={needs.extras}
+          kitchenSetup={event.kitchen_setup}
+          cateringSetup={event.catering_setup}
+          remarks={event.remarks}
+        />
+      </SectionCard>
 
       {(event.meal_types?.length > 0 || event.service_type) && (
         <div className="flex flex-wrap items-center gap-2 text-[12.5px]">
@@ -309,20 +297,11 @@ export default async function EventDetailPage({
         </div>
       )}
 
-      {(event.event_details || event.remarks) && (
-        <div className="grid grid-cols-2 gap-4">
-          {event.event_details && (
-            <div className="whitespace-pre-line rounded-xl border border-border bg-surface p-4 text-[13px] shadow-sm">
-              <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-text-muted">Event details</div>
-              {event.event_details}
-            </div>
-          )}
-          {event.remarks && (
-            <div className="whitespace-pre-line rounded-xl border border-border bg-surface p-4 text-[13px] shadow-sm">
-              <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-text-muted">Remarks</div>
-              {event.remarks}
-            </div>
-          )}
+      {/* the remarks are under "What the customer needs" */}
+      {event.event_details && (
+        <div className="whitespace-pre-line rounded-xl border border-border bg-surface p-4 text-[13px] shadow-sm">
+          <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-text-muted">Event details</div>
+          {event.event_details}
         </div>
       )}
 

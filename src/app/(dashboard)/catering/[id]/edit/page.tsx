@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { getEvent, listEventDays, toEventDays } from "@/lib/catering/queries";
 import { EventForm } from "@/components/catering/EventForm";
+import { eventNeeds, needsFormValue } from "@/lib/catering/customerNeeds";
 
 type PackageRow = { id: string; name: string; price_per_pax: number; minimum_pax: number; company_id: string; package_menu_items: { meal_type: string; item_name: string; sort_order: number }[] };
 
@@ -21,6 +22,9 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
   }
 
   const days = toEventDays(await listEventDays(supabase, id));
+  // an older event made from a quotation request starts from that request's answers
+  const { data: fromRequest } = await supabase.from("quotation_requests").select("requirements, additional, extra_items").eq("catering_event_id", id).maybeSingle();
+  const initialNeeds = needsFormValue(eventNeeds(event, fromRequest), { kitchenSetup: event.kitchen_setup, cateringSetup: event.catering_setup, remarks: event.remarks });
   const { data: allCompanies } = await supabase.from("companies").select("id, name").order("name");
   const { data: customers } = await supabase.from("customers").select("id, name, company_id").order("name");
   const { data: packageMenus } = await supabase
@@ -39,6 +43,7 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
           customers={customers ?? []}
           packageMenus={(packageMenus ?? []) as PackageRow[]}
           initialDays={days}
+          initialNeeds={initialNeeds}
           initial={{
             companyId: event.company_id,
             customerId: event.customer_id ?? undefined,

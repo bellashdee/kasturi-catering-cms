@@ -9,6 +9,9 @@ import { recordAudit } from "@/lib/audit";
 import { dayPax, normalizeMenu, type EventDay } from "@/lib/catering/days";
 import { validateDays, validateServiceDetails, validateTimes } from "@/lib/catering/validation";
 import { runAction, type ActionResult } from "@/lib/actionResult";
+import type { Json } from "@/lib/supabase/types";
+import type { AdditionalServices, ExtraItem, RequestRequirements } from "@/lib/catering/quotationRequest";
+import { sanitizeAdditional, sanitizeExtras, sanitizeRequirements } from "@/lib/catering/customerNeeds";
 
 type EventStatus = Database["public"]["Enums"]["event_status"];
 
@@ -64,7 +67,24 @@ export type EventInput = {
   days?: EventDay[];
   status: string;
   totalAmount?: number;
+  /** "What the customer needs": the same fields as a quotation request (see customerNeeds.ts). */
+  requirements?: RequestRequirements;
+  /** The additional requirement answers; null = an older event left unanswered. */
+  additional?: AdditionalServices | null;
+  /** The extra items to add to the quotation, typed in by hand. */
+  extraItems?: ExtraItem[];
+  /** New Event opened from a quotation request: the request is linked to the new event. */
+  fromRequestId?: string;
 };
+
+/** The customer needs columns, checked; an event edited from before the answers were kept may leave the additional requirement empty. */
+function needsColumns(input: EventInput, allowUnanswered: boolean) {
+  return {
+    requirements: sanitizeRequirements(input.requirements) as unknown as Json,
+    additional: sanitizeAdditional(input.additional, { allowUnanswered }) as unknown as Json,
+    extra_items: sanitizeExtras(input.extraItems) as unknown as Json,
+  };
+}
 
 function validateContact(input: Partial<EventInput>) {
   if (input.salesAgent && !SALES_AGENTS.includes(input.salesAgent)) throw new Error("Select a sales agent from the list.");
@@ -164,10 +184,15 @@ async function requireEventCreator(supabase: Awaited<ReturnType<typeof requireUs
   if (allowed !== true) throw new Error("Only Ms. Nabilah, Mr. Adlan and Ms. Penny can add events.");
 }
 
-export async function createEvent(input: EventInput) {
+export async function createEvent(input: EventInput): Promise<ActionResult<{ id: string }>> {
+  return runAction(() => createEventWork(input), "Could not create the event. Please try again.");
+}
+
+async function createEventWork(input: EventInput): Promise<{ id: string }> {
   const { supabase } = await requireUser();
   await requireEventCreator(supabase);
   validateEvent(input);
+  const needs = needsColumns(input, false);
   const { data, error } = await supabase
     .from("catering_events")
     .insert({
@@ -180,6 +205,7 @@ export async function createEvent(input: EventInput) {
       menu_description: input.menuDescription || null,
       special_requirements: input.specialRequirements || null,
       ...eventColumns(input),
+      ...needs,
       status: input.status as EventStatus,
       total_amount: input.totalAmount ?? null,
     })
@@ -197,8 +223,19 @@ export async function createEvent(input: EventInput) {
     }
   }
   await recordAudit({ companyId: input.companyId, relatedTable: "catering_events", relatedId: data.id, action: "created", newValue: input.eventName });
+
+  // made from a quotation request: the request points to its event (the event is already saved, so a failed link is only logged)
+  if (input.fromRequestId && /^[0-9a-f-]{36}$/i.test(input.fromRequestId)) {
+    const { error: linkError } = await supabase
+      .from("quotation_requests")
+      .update({ catering_event_id: data.id })
+      .eq("id", input.fromRequestId)
+      .is("catering_event_id", null);
+    if (linkError) console.warn("Event created; the quotation request could not be linked:", linkError.message);
+    revalidatePath(`/catering/quotation-requests/${input.fromRequestId}`);
+  }
   revalidatePath("/catering");
-  return data;
+  return { id: data.id };
 }
 
 /** The event fields whose changes are written to the edit history. */
@@ -228,12 +265,21 @@ const EDIT_LABEL: Record<string, string> = {
   catering_setup: "Catering set-up",
 };
 
-export async function updateEvent(eventId: string, input: EventInput) {
+export async function updateEvent(eventId: string, input: EventInput): Promise<ActionResult> {
+  return runAction(async () => {
+    await updateEventWork(eventId, input);
+    return {};
+  }, "Could not save the event. Please try again.");
+}
+
+async function updateEventWork(eventId: string, input: EventInput) {
   const { supabase } = await requireUser();
   validateEvent(input);
 
   const { data: existing, error: existingError } = await supabase.from("catering_events").select("*").eq("id", eventId).single();
   if (existingError) throw existingError;
+  // an event that already has answers must keep them answered; an older one may stay unanswered
+  const needs = needsColumns(input, existing.additional === null);
 
   const { error } = await supabase
     .from("catering_events")
@@ -246,6 +292,7 @@ export async function updateEvent(eventId: string, input: EventInput) {
       menu_description: input.menuDescription || null,
       special_requirements: input.specialRequirements || null,
       ...eventColumns(input),
+      ...needs,
       total_amount: input.totalAmount ?? null,
     })
     .eq("id", eventId);

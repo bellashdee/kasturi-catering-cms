@@ -4491,6 +4491,19 @@ const dictionary: Record<string, string> = {
  "No data": "无数据",
  "· sales (compared with the year before), expenses and what is still owed, from the recorded figures. What is owed is as it stands today. Each block links to the report with its detail.": "· 销售额（与上一年对比）、开支及未付款项，来自已记录的数据。未付款项以今天为准。每个板块都链接到对应的详细报告。",
  "Sales, costs, profit and what is still owed: one month, or the whole year compared with last year, with the top products, key customers and where the money went.": "销售额、成本、利润及未付款项：单月，或全年并与去年对比，附热门产品、主要客户及资金去向。",
+ "What the customer needs": "客户需求",
+ "Fill in what the customer asked for. Leave a box empty when it does not apply.": "填写客户要求的内容。不适用的栏位请留空。",
+ "What the catering team sets up on site": "餐饮团队在现场布置的内容",
+ "e.g. canopy hire, equipment hire, service charge.": "例如：帐篷租赁、设备租赁、服务费。",
+ "(all days + additional requirement + extra items, for reference: the official quotation is made in AutoCount)": "（所有日期 + 额外要求 + 额外项目，仅供参考：正式报价在 AutoCount 中制作）",
+ "Attachments (optional)": "附件（可选）",
+ "Under What the customer needs, fill in only what the customer asked for (menu choices, food, special diets, equipment, serving, kitchen and catering set-up). Leave a box empty when it does not apply.": "在“客户需求”下，只填写客户要求的内容（菜单选择、食物、特殊饮食、设备、上菜服务、厨房和餐饮布置）。不适用的栏位请留空。",
+ "Add any Extra items to add to the quotation, write Anything else (remarks), and attach files (menu references, floor plans) if you have them.": "如有需要，添加“报价额外项目”，填写“其他（备注）”，并附上文件（菜单参考、平面图）。",
+ "Not answered": "未回答",
+ "Create event from this request": "根据此请求创建活动",
+ "Opens New Event filled in with this request. Nothing is saved until you press Create Event.": "打开已填好此请求内容的“新活动”。按下 Create Event 之前不会保存任何内容。",
+ "An event was made from this request:": "已根据此请求创建活动：",
+ "Made from quotation request": "根据报价请求创建",
 };
 
 export default dictionary;

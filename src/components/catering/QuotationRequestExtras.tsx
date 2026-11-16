@@ -4,8 +4,11 @@ import { SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
 import { MealTypeSelect } from "@/components/catering/MealTypeSelect";
 import { secondMenuAmount, type SecondChoice } from "@/lib/catering/days";
 import { LUMP_SUM_LABEL, type AdditionalServices } from "@/lib/catering/quotationRequest";
+import type { ExtraRow } from "@/lib/catering/customerNeeds";
 import { ChoiceSelect } from "@/components/ui/ChoiceSelect";
 import { formatPrice } from "@/lib/format";
+
+export type { ExtraRow };
 
 const SERVICE_OPTIONS = Object.entries(SERVICE_TYPE_LABEL).map(([value, label]) => ({ value, label }));
 
@@ -58,10 +61,7 @@ export function SecondChoiceEditor({ value, onChange }: { value: SecondChoice; o
   );
 }
 
-/** One "Other extra item" as it is typed (quantity and price are text until the form is sent). */
-export type ExtraRow = { itemName: string; quantity: string; unitPrice: string };
-
-/** "Other extra items (optional)": anything else to quote, e.g. equipment hire, service charge. */
+/** "Extra items to add to the quotation": anything else to quote, e.g. equipment hire, service charge. */
 export function ExtraItemsEditor({ rows, onChange }: { rows: ExtraRow[]; onChange: (rows: ExtraRow[]) => void }) {
   const patch = (i: number, field: keyof ExtraRow, value: string) => onChange(rows.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)));
   return (
@@ -98,9 +98,12 @@ const answerOf = (yes: boolean | null, included: boolean | undefined) => (yes ==
 export function AdditionalServicesEditor({
   value,
   onChange,
+  required = true,
 }: {
   value: AdditionalServices;
   onChange: (v: AdditionalServices) => void;
+  /** false only for an event edited from before the answers were kept: it may stay unanswered */
+  required?: boolean;
 }) {
   const patch = (change: Partial<AdditionalServices>) => onChange({ ...value, ...change });
   const small = "h-9 w-36 rounded border border-border-strong px-2 text-[13px] outline-none disabled:bg-surface-alt disabled:opacity-50";
@@ -125,7 +128,7 @@ export function AdditionalServicesEditor({
       <div className={row}>
         <span className={labelCls}>{label}</span>
         <div className="w-60">
-          <ChoiceSelect required value={a} onChange={(v) => patch(set(v))} options={ANSWERS} placeholder="Search or choose" className={box} />
+          <ChoiceSelect required={required} value={a} onChange={(v) => patch(set(v))} options={ANSWERS} placeholder="Search or choose" className={box} />
         </div>
         <input type="number" min="0" step="0.01" disabled={a !== "yes"} value={a === "yes" ? (price ?? "") : ""} onChange={(e) => patch(setPrice(num(e.target.value)))} className={small} placeholder={pricePlaceholder} />
       </div>
@@ -142,7 +145,7 @@ export function AdditionalServicesEditor({
         <span className={labelCls}>{label}</span>
         <div className="w-60">
           <ChoiceSelect
-            required
+            required={required}
             value={a}
             onChange={(v) =>
               patch(

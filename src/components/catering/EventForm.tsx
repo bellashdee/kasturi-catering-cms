@@ -5,13 +5,13 @@ import { useRouter } from "next/navigation";
 import { createEvent, updateEvent, type EventInput } from "@/lib/catering/actions";
 import { ACTIVE_SALES_AGENTS, eventTypeOptions } from "@/lib/catering/constants";
 import { dayAmount, dayPax, normalizeMenu, type EventDay } from "@/lib/catering/days";
-import { additionalRows, additionalServiceLines, noAdditionalServices, withSecondMenusInRemarks, type AdditionalServices } from "@/lib/catering/quotationRequest";
+import { withSecondMenusInRemarks } from "@/lib/catering/quotationRequest";
+import { emptyCustomerNeeds, extraItemsOf, type CustomerNeedsValue } from "@/lib/catering/customerNeeds";
 import { hasPackagePrice } from "@/lib/kitchen/packages/format";
 import { EventDaysEditor, emptyDay } from "@/components/catering/EventDaysEditor";
-import { AdditionalServicesEditor, ExtraItemsEditor, type ExtraRow } from "@/components/catering/QuotationRequestExtras";
+import { CustomerNeedsSection } from "@/components/catering/CustomerNeedsSection";
 import { ChoiceSelect } from "@/components/ui/ChoiceSelect";
 import { Select } from "@/components/ui/Select";
-import { formatPrice } from "@/lib/format";
 
 type Company = { id: string; name: string };
 type Customer = { id: string; name: string; company_id: string };
@@ -57,6 +57,8 @@ export function EventForm({
   eventId,
   initial,
   initialDays = [],
+  initialNeeds,
+  fromRequest,
 }: {
   companies: Company[];
   defaultCompanyId?: string;
@@ -65,6 +67,10 @@ export function EventForm({
   eventId?: string;
   initial?: Partial<EventInput>;
   initialDays?: EventDay[];
+  /** "What the customer needs" of the event, or of the quotation request it is made from */
+  initialNeeds?: CustomerNeedsValue;
+  /** New Event opened from a quotation request: its id and code */
+  fromRequest?: { id: string; code: string };
 }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
@@ -73,8 +79,13 @@ export function EventForm({
   const [days, setDays] = useState<EventDay[]>(
     initialDays.length > 0 ? initialDays.map((d, i) => (i === initialDays.length - 1 ? { ...d, endTime: initial?.endTime } : d)) : eventId ? [dayFromEvent(initial)] : [emptyDay()],
   );
-  const [extras, setExtras] = useState<ExtraRow[]>([]);
-  const [additional, setAdditional] = useState<AdditionalServices>(noAdditionalServices());
+  const [needs, setNeeds] = useState<CustomerNeedsValue>(
+    initialNeeds ?? { ...emptyCustomerNeeds(), kitchenSetup: initial?.kitchenSetup ?? "", cateringSetup: initial?.cateringSetup ?? "", remarks: initial?.remarks ?? "" },
+  );
+  // an event edited from before the answers were kept may leave the additional requirement unanswered
+  const [answersRequired] = useState(
+    () => !eventId || [needs.additional.equipmentHandling, needs.additional.staffServing, needs.additional.transportation, needs.additional.domeSet].some((v) => v !== null),
+  );
   const [form, setForm] = useState<EventInput>({
     companyId: initial?.companyId ?? defaultCompanyId ?? companies[0]?.id ?? "",
     customerId: initial?.customerId,
@@ -113,12 +124,7 @@ export function EventForm({
     }
   }
 
-  const extraLines = extras
-    .map((r) => ({ itemName: r.itemName.trim(), quantity: Number(r.quantity) || 0, unitPrice: Number(r.unitPrice) || 0 }))
-    .filter((r) => r.itemName && r.quantity > 0);
-  const additionalLines = eventId ? [] : additionalServiceLines(additional);
-  const estimatedTotal =
-    days.reduce((t, d) => t + dayAmount(d), 0) + [...additionalLines, ...extraLines].reduce((t, i) => t + i.quantity * i.unitPrice, 0);
+  const daysTotal = days.reduce((t, d) => t + dayAmount(d), 0);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -129,51 +135,56 @@ export function EventForm({
     }
     setSaving(true);
     setError(null);
-    try {
-      const only = singleDay ? days[0] : null;
-      const payload: EventInput = only
-        ? {
-            ...form,
-            eventDate: only.dayDate,
-            eventTime: only.eventTime,
-            endTime: only.endTime,
-            setupTime: only.setupTime,
-            paxCount: dayPax(only),
-            mealTypes: only.mealTypes,
-            serviceType: only.serviceType,
-            servicePax: only.servicePax,
-            secondServiceType: only.secondServiceType,
-            secondServicePax: only.secondServicePax,
-            pricePerPax: only.pricePerPax,
-            menuDescription: normalizeMenu(only.menuDetails),
-            remarks: [withSecondMenusInRemarks(only).remarks, form.remarks].filter(Boolean).join("\n\n"),
-            days: [],
-          }
-        : { ...form, eventDate: days[0].dayDate, endTime: days[days.length - 1].endTime, packageMenuId: undefined, menuDescription: "", days: days.map(withSecondMenusInRemarks) };
+    const withNeeds: EventInput = {
+      ...form,
+      kitchenSetup: needs.kitchenSetup,
+      cateringSetup: needs.cateringSetup,
+      remarks: needs.remarks,
+      requirements: needs.requirements,
+      additional: needs.additional,
+      extraItems: extraItemsOf(needs.extras),
+      fromRequestId: fromRequest?.id,
+    };
+    const only = singleDay ? days[0] : null;
+    const payload: EventInput = only
+      ? {
+          ...withNeeds,
+          eventDate: only.dayDate,
+          eventTime: only.eventTime,
+          endTime: only.endTime,
+          setupTime: only.setupTime,
+          paxCount: dayPax(only),
+          mealTypes: only.mealTypes,
+          serviceType: only.serviceType,
+          servicePax: only.servicePax,
+          secondServiceType: only.secondServiceType,
+          secondServicePax: only.secondServicePax,
+          pricePerPax: only.pricePerPax,
+          menuDescription: normalizeMenu(only.menuDetails),
+          remarks: [withSecondMenusInRemarks(only).remarks, needs.remarks].filter(Boolean).join("\n\n"),
+          days: [],
+        }
+      : { ...withNeeds, eventDate: days[0].dayDate, endTime: days[days.length - 1].endTime, packageMenuId: undefined, menuDescription: "", days: days.map(withSecondMenusInRemarks) };
 
-      if (eventId) {
-        await updateEvent(eventId, payload);
-        router.push(`/catering/${eventId}`);
-      } else {
-        // the official quotation is made in AutoCount: the additional requirement and the extra items are kept in the event details
-        const asked = [
-          ...additionalRows(additional).filter((a) => a.yes).map((a) => `- ${a.label}: Yes${a.detail ? ` (${a.detail})` : ""}`),
-          ...extraLines.map((i) => `- ${i.itemName}: ${i.quantity} x RM ${i.unitPrice.toFixed(2)}`),
-        ];
-        const eventDetails = [form.eventDetails, asked.length > 0 ? `Additional requirement and extra items:\n${asked.join("\n")}` : ""].filter(Boolean).join("\n\n");
-        const created = await createEvent({ ...payload, eventDetails });
-        router.push(`/catering/${created.id}`);
-      }
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+    // the answers are kept in their own fields, the same as a quotation request; the official quotation is made in AutoCount
+    const result = eventId ? await updateEvent(eventId, payload) : await createEvent(payload);
+    if (!result.ok) {
+      setError(result.error);
       setSaving(false);
+      return;
     }
+    router.push(`/catering/${"id" in result ? result.id : eventId}`);
+    router.refresh();
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {error && <div className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">{error}</div>}
+      {fromRequest && (
+        <div className="rounded-lg border border-border bg-surface-alt px-3 py-2 text-[13px] text-text">
+          Filled in from quotation request <span className="font-bold">{fromRequest.code}</span>. Check every field, then press Create Event: the request is linked to the new event.
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -285,38 +296,8 @@ export function EventForm({
         <EventDaysEditor days={days} onChange={setDays} secondService={days.some((d) => !!d.secondServiceType)} secondChoice mealRequired endTime />
       </div>
 
-      {!eventId && (
-        <>
-          <div>
-            <div className="text-[14px] font-extrabold text-text">Additional requirement</div>
-            <p className="mb-2 text-xs text-text-muted">Search and choose for each one: Yes (add the price if you know it), No, or Included in the food price. Each Yes is written in the event details for the AutoCount quotation; Included means it is already in the price of the food.</p>
-            <AdditionalServicesEditor value={additional} onChange={setAdditional} />
-          </div>
-
-          <div>
-            <div className="text-[14px] font-extrabold text-text">Other extra items (optional)</div>
-            <p className="mb-2 text-xs text-text-muted">Anything else to quote, e.g. equipment hire, service charge.</p>
-            <ExtraItemsEditor rows={extras} onChange={setExtras} />
-          </div>
-        </>
-      )}
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className={labelClass}>Kitchen set-up</label>
-          <textarea value={form.kitchenSetup} onChange={(e) => set("kitchenSetup", e.target.value)} className={areaClass} placeholder="What the kitchen must prepare / set up" />
-        </div>
-        <div>
-          <label className={labelClass}>Catering set-up</label>
-          <textarea value={form.cateringSetup} onChange={(e) => set("cateringSetup", e.target.value)} className={areaClass} placeholder="Tables, buffet line, equipment, staff on site" />
-        </div>
-      </div>
-
-      <div>
-        <label className={labelClass}>Remarks</label>
-        <textarea value={form.remarks} onChange={(e) => set("remarks", e.target.value)} className={areaClass} placeholder="Any other note" />
-      </div>
-
+      {/* the same section, in the same order and words, as the sales agents' Quotation Request Form */}
+      <CustomerNeedsSection value={needs} onChange={setNeeds} daysTotal={daysTotal} answersRequired={answersRequired}>
       {/* these two are not on the Quotation Request Form: shown only when an event being edited already has them */}
       {eventId && initial?.eventDetails && (
         <div>
@@ -331,12 +312,7 @@ export function EventForm({
         </div>
       )}
 
-      {!eventId && (
-        <div className="rounded-lg border border-border bg-surface-alt px-4 py-3 text-[13px] text-text-secondary">
-          Estimated total: <span className="text-[15px] font-extrabold text-text">{formatPrice(estimatedTotal)}</span>
-          <span className="ml-2 text-xs text-text-muted">(all days + additional requirement + extra items, for reference: the official quotation is made in AutoCount)</span>
-        </div>
-      )}
+      </CustomerNeedsSection>
 
       <div className="mt-2 flex justify-end gap-2.5">
         <button type="button" onClick={() => router.back()} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13.5px] font-semibold text-text">

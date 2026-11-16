@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { requestAttachmentUpload, searchFormCustomers, submitQuotationRequest } from "@/lib/catering/quotationRequestActions";
 import { submitCustomerIntake } from "@/lib/catering/intakeActions";
@@ -12,32 +12,24 @@ import {
   ATTACHMENT_EXTENSIONS,
   ATTACHMENT_MAX_BYTES,
   MAX_ATTACHMENTS,
-  FORM_REQUIREMENT_FIELDS,
-  additionalServiceLines,
   attachmentExtension,
-  unansweredAdditionalServices,
-  type AdditionalServices,
-  type ExtraItem,
   type QuotationRequestInput,
   type RequestAttachment,
-  type RequestRequirements,
 } from "@/lib/catering/quotationRequest";
+import { emptyCustomerNeeds, extraItemsOf, type CustomerNeedsValue } from "@/lib/catering/customerNeeds";
 import { EventDaysEditor, emptyDay } from "@/components/catering/EventDaysEditor";
-import { AdditionalServicesEditor, ExtraItemsEditor, type ExtraRow } from "@/components/catering/QuotationRequestExtras";
+import { CustomerNeedsSection } from "@/components/catering/CustomerNeedsSection";
 import { ChoiceSelect } from "@/components/ui/ChoiceSelect";
-import { formatPrice } from "@/lib/format";
 
 const AGENT_OPTIONS = ACTIVE_SALES_AGENTS.map((a) => ({ value: a, label: a }));
 const TYPE_OPTIONS = EVENT_TYPE_OPTIONS.map(([value, label]) => ({ value, label }));
 
 const inputClass =
   "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
-const areaClass =
-  "mt-1.5 h-20 w-full resize-none rounded-lg border border-border-strong px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
 const labelClass = "text-[12.5px] font-semibold text-text-secondary";
 const sectionTitle = "text-[14px] font-extrabold text-text";
 
-type Header = Omit<QuotationRequestInput, "days" | "extraItems" | "additional" | "requirements" | "attachments">;
+type Header = Omit<QuotationRequestInput, "days" | "extraItems" | "additional" | "requirements" | "attachments" | "kitchenSetup" | "cateringSetup" | "remarks">;
 
 const emptyHeader: Header = {
   salesAgent: "",
@@ -51,9 +43,6 @@ const emptyHeader: Header = {
   contactEmail: "",
   companyAddress: "",
   eventAddress: "",
-  kitchenSetup: "",
-  cateringSetup: "",
-  remarks: "",
   website: "",
 };
 
@@ -120,9 +109,7 @@ export function PublicQuotationForm({ companySlug, fixedCustomer, fixedAgent }: 
     setCustomerMessage({ ok: true, text: "Customer saved and sent to the office. Continue with the request below." });
   }
   const [days, setDays] = useState<EventDay[]>([emptyDay()]);
-  const [extras, setExtras] = useState<ExtraRow[]>([]);
-  const [additional, setAdditional] = useState<AdditionalServices>(unansweredAdditionalServices());
-  const [requirements, setRequirements] = useState<RequestRequirements>({});
+  const [needs, setNeeds] = useState<CustomerNeedsValue>(emptyCustomerNeeds());
   const [files, setFiles] = useState<File[]>([]);
   const [step, setStep] = useState<"idle" | "uploading" | "saving">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -132,9 +119,7 @@ export function PublicQuotationForm({ companySlug, fixedCustomer, fixedAgent }: 
     setForm((f) => ({ ...f, [key]: value }));
   }
 
-  const extrasTotal = useMemo(() => extras.reduce((t, r) => t + (Number(r.quantity) || 0) * (Number(r.unitPrice) || 0), 0), [extras]);
   const daysTotal = days.reduce((t, d) => t + dayAmount(d), 0);
-  const additionalTotal = additionalServiceLines(additional).reduce((t, i) => t + i.quantity * i.unitPrice, 0);
 
   function addFiles(list: FileList | null) {
     setError(null);
@@ -176,8 +161,18 @@ export function PublicQuotationForm({ companySlug, fixedCustomer, fixedAgent }: 
       }
 
       setStep("saving");
-      const extraItems: ExtraItem[] = extras.map((r) => ({ itemName: r.itemName, quantity: Number(r.quantity) || 0, unitPrice: Number(r.unitPrice) || 0 }));
-      const result = await submitQuotationRequest(companySlug, { ...form, customerId: form.customerId || undefined, days, extraItems, additional, requirements, attachments });
+      const result = await submitQuotationRequest(companySlug, {
+        ...form,
+        customerId: form.customerId || undefined,
+        days,
+        extraItems: extraItemsOf(needs.extras),
+        additional: needs.additional,
+        requirements: needs.requirements,
+        kitchenSetup: needs.kitchenSetup,
+        cateringSetup: needs.cateringSetup,
+        remarks: needs.remarks,
+        attachments,
+      });
       if (!result.ok) {
         setError(result.error ?? "Something went wrong.");
       } else {
@@ -186,9 +181,7 @@ export function PublicQuotationForm({ companySlug, fixedCustomer, fixedAgent }: 
         setForm({ ...emptyHeader, salesAgent: form.salesAgent });
         setCustomerMessage(null);
         setDays([emptyDay()]);
-        setExtras([]);
-        setAdditional(unansweredAdditionalServices());
-        setRequirements({});
+        setNeeds(emptyCustomerNeeds());
         setFiles([]);
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
@@ -340,73 +333,28 @@ export function PublicQuotationForm({ companySlug, fixedCustomer, fixedAgent }: 
         <EventDaysEditor days={days} onChange={setDays} secondService={false} secondChoice mealRequired endTime />
       </div>
 
-      <div>
-        <div className={sectionTitle}>What the customer needs (optional)</div>
-        <p className="mb-2 text-xs text-text-muted">Fill in only what the customer asked for. Leave the rest empty.</p>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label className={labelClass}>How many menu choices to quote</label>
-            <input
-              type="number"
-              min="1"
-              max="20"
-              step="1"
-              value={requirements.menuOptions ?? ""}
-              onChange={(e) => setRequirements((r) => ({ ...r, menuOptions: e.target.value ? Number(e.target.value) : undefined }))}
-              className={inputClass}
-              placeholder="e.g. 2"
-            />
-          </div>
-          {FORM_REQUIREMENT_FIELDS.map((f) => (
-            <div key={f.key}>
-              <label className={labelClass}>{f.label}</label>
-              <textarea maxLength={1000} value={requirements[f.key] ?? ""} onChange={(e) => setRequirements((r) => ({ ...r, [f.key]: e.target.value }))} className={areaClass} placeholder={f.placeholder} />
-            </div>
-          ))}
-          <div className="sm:col-span-2">
-            <label className={labelClass}>Extra items to add to the quotation</label>
-            <p className="mb-1 text-xs text-text-muted">e.g. canopy hire, transport, service charge.</p>
-            <ExtraItemsEditor rows={extras} onChange={setExtras} />
-          </div>
-          <div className="sm:col-span-2">
-            <label className={labelClass}>Anything else (remarks)</label>
-            <textarea maxLength={2000} value={form.remarks} onChange={(e) => set("remarks", e.target.value)} className={areaClass} />
-          </div>
+      <CustomerNeedsSection value={needs} onChange={setNeeds} daysTotal={daysTotal}>
+        <div>
+          <div className={sectionTitle}>Attachments (optional)</div>
+          <p className="mb-2 text-xs text-text-muted">Menu references, floor plans or the customer&apos;s brief: up to {MAX_ATTACHMENTS} files, PDF, photo, Word or Excel, each smaller than 10 MB. Only the office can open them.</p>
+          {files.length > 0 && (
+            <ul className="mb-2 flex flex-col gap-1">
+              {files.map((f, i) => (
+                <li key={`${f.name}-${i}`} className="flex items-center justify-between rounded-lg border border-border bg-surface-alt px-3 py-1.5 text-[13px]">
+                  <span className="truncate text-text">{f.name} <span className="text-xs text-text-muted">({sizeText(f.size)})</span></span>
+                  <button type="button" onClick={() => setFiles((list) => list.filter((_, idx) => idx !== i))} className="ml-3 text-xs font-semibold text-danger">Remove</button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {files.length < MAX_ATTACHMENTS && (
+            <label className="inline-flex cursor-pointer items-center rounded-lg border border-border-strong bg-surface px-3 py-2 text-[12.5px] font-semibold text-primary">
+              + Attach files
+              <input type="file" multiple accept={ATTACHMENT_ACCEPT} className="hidden" onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
+            </label>
+          )}
         </div>
-      </div>
-
-      <div>
-        <div className={sectionTitle}>Attachments (optional)</div>
-        <p className="mb-2 text-xs text-text-muted">Menu references, floor plans or the customer&apos;s brief: up to {MAX_ATTACHMENTS} files, PDF, photo, Word or Excel, each smaller than 10 MB. Only the office can open them.</p>
-        {files.length > 0 && (
-          <ul className="mb-2 flex flex-col gap-1">
-            {files.map((f, i) => (
-              <li key={`${f.name}-${i}`} className="flex items-center justify-between rounded-lg border border-border bg-surface-alt px-3 py-1.5 text-[13px]">
-                <span className="truncate text-text">{f.name} <span className="text-xs text-text-muted">({sizeText(f.size)})</span></span>
-                <button type="button" onClick={() => setFiles((list) => list.filter((_, idx) => idx !== i))} className="ml-3 text-xs font-semibold text-danger">Remove</button>
-              </li>
-            ))}
-          </ul>
-        )}
-        {files.length < MAX_ATTACHMENTS && (
-          <label className="inline-flex cursor-pointer items-center rounded-lg border border-border-strong bg-surface px-3 py-2 text-[12.5px] font-semibold text-primary">
-            + Attach files
-            <input type="file" multiple accept={ATTACHMENT_ACCEPT} className="hidden" onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
-          </label>
-        )}
-      </div>
-
-      <div>
-        <div className={sectionTitle}>Additional requirement (answer each one) *</div>
-        <p className="mb-2 text-xs text-text-muted">Search and choose for each one: Yes (add the price if you know it), No, or Included in the food price. Each Yes is added to the quotation; Included means it is already in the price of the food.</p>
-        <AdditionalServicesEditor value={additional} onChange={setAdditional} />
-      </div>
-
-
-      <div className="rounded-lg border border-border bg-surface-alt px-4 py-3 text-[13px] text-text-secondary">
-        Estimated total: <span className="text-[15px] font-extrabold text-text">{formatPrice(daysTotal + extrasTotal + additionalTotal)}</span>
-        <span className="ml-2 text-xs text-text-muted">(first choice for all days + additional requirement + extra items; the office confirms the final quotation in AutoCount)</span>
-      </div>
+      </CustomerNeedsSection>
 
       {/* hidden honeypot field: people never see or fill it */}
       <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">

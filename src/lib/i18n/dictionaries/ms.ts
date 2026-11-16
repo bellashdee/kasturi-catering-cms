@@ -4591,6 +4591,19 @@ const dictionary: Record<string, string> = {
  "No data": "Tiada data",
  "· sales (compared with the year before), expenses and what is still owed, from the recorded figures. What is owed is as it stands today. Each block links to the report with its detail.": "· jualan (berbanding tahun sebelumnya), perbelanjaan dan baki terhutang, daripada angka yang direkodkan. Baki terhutang adalah setakat hari ini. Setiap blok dipautkan ke laporan dengan butirannya.",
  "Sales, costs, profit and what is still owed: one month, or the whole year compared with last year, with the top products, key customers and where the money went.": "Jualan, kos, keuntungan dan baki terhutang: satu bulan, atau sepanjang tahun berbanding tahun lepas, dengan produk teratas, pelanggan utama dan ke mana wang dibelanjakan.",
+ "What the customer needs": "Keperluan pelanggan",
+ "Fill in what the customer asked for. Leave a box empty when it does not apply.": "Isi apa yang pelanggan minta. Biarkan kotak kosong jika tidak berkaitan.",
+ "What the catering team sets up on site": "Apa yang pasukan katering sediakan di tapak",
+ "e.g. canopy hire, equipment hire, service charge.": "cth. sewaan kanopi, sewaan peralatan, caj perkhidmatan.",
+ "(all days + additional requirement + extra items, for reference: the official quotation is made in AutoCount)": "(semua hari + keperluan tambahan + item tambahan, untuk rujukan: sebut harga rasmi dibuat dalam AutoCount)",
+ "Attachments (optional)": "Lampiran (pilihan)",
+ "Under What the customer needs, fill in only what the customer asked for (menu choices, food, special diets, equipment, serving, kitchen and catering set-up). Leave a box empty when it does not apply.": "Di bawah Keperluan pelanggan, isi hanya apa yang pelanggan minta (pilihan menu, makanan, diet khas, peralatan, hidangan, persediaan dapur dan katering). Biarkan kotak kosong jika tidak berkaitan.",
+ "Add any Extra items to add to the quotation, write Anything else (remarks), and attach files (menu references, floor plans) if you have them.": "Tambah Item tambahan untuk sebut harga, tulis Lain-lain (catatan), dan lampirkan fail (rujukan menu, pelan lantai) jika ada.",
+ "Not answered": "Belum dijawab",
+ "Create event from this request": "Cipta acara daripada permintaan ini",
+ "Opens New Event filled in with this request. Nothing is saved until you press Create Event.": "Membuka Acara Baharu yang diisi dengan permintaan ini. Tiada apa-apa disimpan sehingga anda menekan Create Event.",
+ "An event was made from this request:": "Satu acara telah dibuat daripada permintaan ini:",
+ "Made from quotation request": "Dibuat daripada permintaan sebut harga",
 };
 
 export default dictionary;

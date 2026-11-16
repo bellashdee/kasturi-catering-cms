@@ -11,16 +11,14 @@ import {
   ATTACHMENT_MAX_BYTES,
   MAX_ATTACHMENTS,
   MAX_EXTRA_ITEMS,
-  REQUIREMENT_FIELDS,
   additionalServiceLines,
   attachmentExtension,
   type AdditionalServices,
-  type ExtraItem,
   type QuotationRequestInput,
   type RequestAttachment,
-  type RequestRequirements,
   type SecondChoice,
 } from "@/lib/catering/quotationRequest";
+import { sanitizeAdditional, sanitizeExtras, sanitizeRequirements } from "@/lib/catering/customerNeeds";
 import { validateDays } from "@/lib/catering/validation";
 import { MAX_SECOND_MENUS, secondMenusOf } from "@/lib/catering/days";
 import { QUOTATION_NOTIFY_EMAIL, SITE_URL } from "@/lib/catering/intake";
@@ -61,20 +59,6 @@ function sanitizeTime(v: string | undefined, label: string): string | undefined 
   if (!t) return undefined;
   if (!/^\d{2}:\d{2}(:\d{2})?$/.test(t)) throw new Error(`${label} is not a valid time.`);
   return t.slice(0, 5);
-}
-
-/** The menu and catering requirements: each one optional, trimmed and size-limited; menu options is a whole number from 1 to 20. */
-function sanitizeRequirements(r: RequestRequirements | undefined): RequestRequirements {
-  const out: RequestRequirements = {};
-  if (r?.menuOptions !== undefined) {
-    if (!Number.isInteger(r.menuOptions) || r.menuOptions < 1 || r.menuOptions > 20) throw new Error("Number of menu options: enter a whole number from 1 to 20.");
-    out.menuOptions = r.menuOptions;
-  }
-  for (const f of REQUIREMENT_FIELDS) {
-    const v = clean(r?.[f.key], 1000);
-    if (v) out[f.key] = v;
-  }
-  return out;
 }
 
 /** The folder of a company's request attachments; a file the browser names must be inside it. */
@@ -122,19 +106,6 @@ async function checkAttachments(admin: ReturnType<typeof createAdminClient>, com
   return checked;
 }
 
-function sanitizeExtras(items: ExtraItem[]): ExtraItem[] {
-  if (items.length > MAX_EXTRA_ITEMS) throw new Error(`At most ${MAX_EXTRA_ITEMS} extra items.`);
-  return items
-    .filter((i) => i.itemName?.trim() || i.unitPrice)
-    .map((i, n) => {
-      const name = clean(i.itemName, 200);
-      if (!name) throw new Error(`Extra item ${n + 1}: enter the item name.`);
-      if (!(i.quantity > 0)) throw new Error(`Extra item ${n + 1}: the quantity must be more than 0.`);
-      if (!(i.unitPrice >= 0)) throw new Error(`Extra item ${n + 1}: the price cannot be negative.`);
-      return { itemName: name, quantity: i.quantity, unitPrice: i.unitPrice };
-    });
-}
-
 /** A day's optional second menus (at most 5): an empty one is ignored, a started one needs a menu, pax and service type. */
 function sanitizeSecondMenus(d: EventDay, index: number): SecondChoice[] | undefined {
   const given = secondMenusOf(d);
@@ -156,60 +127,6 @@ function sanitizeSecondChoice(c: SecondChoice | undefined, label: string): Secon
   if (mealTypes.some((m) => !MEAL_TYPE_LABEL[m])) throw new Error(`${label}: select a valid meal type.`);
   if (c.pricePerMeal !== undefined && !(c.pricePerMeal >= 0)) throw new Error(`${label}: the price per meal cannot be negative.`);
   return { menu, pax: c.pax, mealTypes, serviceType: c.serviceType, pricePerMeal: c.pricePerMeal };
-}
-
-/** The answered additional services: Yes (with an optional price), No, or included in the food price (nothing is added). No price is compulsory. */
-function sanitizeAdditional(a: AdditionalServices | undefined): AdditionalServices {
-  // compulsory: every additional requirement must be answered Yes or No (not left out)
-  if (!a || typeof a.equipmentHandling !== "boolean") throw new Error("Additional requirement: answer Equipment handling (Yes, No or Included in the food price).");
-  if (typeof a.staffServing !== "boolean") throw new Error("Additional requirement: answer Staff serving (Yes, No or Included in the food price).");
-  if (typeof a.transportation !== "boolean") throw new Error("Additional requirement: answer Transportation (Yes, No or Included in the food price).");
-  if (typeof a.domeSet !== "boolean") throw new Error("Additional requirement: answer Dome set (Yes, No or Included in the food price).");
-  const price = (v: number | undefined, label: string, required: boolean) => {
-    if (v === undefined) {
-      if (required) throw new Error(`${label}: enter the price (RM).`);
-      return undefined;
-    }
-    if (!(v >= 0)) throw new Error(`${label}: the price cannot be negative.`);
-    return v;
-  };
-  const one = (yes: boolean, included: boolean | undefined, v: number | undefined, label: string) => ({
-    yes,
-    included: yes && included === true,
-    price: yes && included !== true ? price(v, label, false) : undefined,
-  });
-  const count = (n: number | undefined, message: string) => {
-    if (!(n !== undefined && Number.isInteger(n) && n >= 1 && n <= 1000)) throw new Error(message);
-    return n;
-  };
-  // delivery and equipment handling as one lump sum: one answer and one price for both
-  const lumpSum = a.deliveryEquipmentLumpSum === true;
-  const e = one(a.equipmentHandling, a.equipmentHandlingIncluded, lumpSum ? a.lumpSumPrice : a.equipmentHandlingPrice, lumpSum ? "Delivery & equipment handling" : "Equipment handling");
-  const s = one(a.staffServing, a.staffServingIncluded, a.staffServingPrice, "Staff serving");
-  const staff = s.yes ? count(a.staffServingQuantity, "Staff serving: enter how many staff.") : undefined;
-  const t = lumpSum ? e : one(a.transportation, a.transportationIncluded, a.transportationPrice, "Transportation");
-  const trips = !lumpSum && t.yes ? count(a.transportationTrips, "Transportation: enter how many trips.") : undefined;
-  const d = one(a.domeSet, a.domeSetIncluded, a.domeSetPrice, "Dome set");
-  const sets = d.yes ? count(a.domeSetQuantity, "Dome set: enter how many sets.") : undefined;
-  return {
-    deliveryEquipmentLumpSum: lumpSum,
-    lumpSumPrice: lumpSum ? e.price : undefined,
-    equipmentHandling: e.yes,
-    equipmentHandlingIncluded: e.included,
-    equipmentHandlingPrice: lumpSum ? undefined : e.price,
-    staffServing: s.yes,
-    staffServingIncluded: s.included,
-    staffServingQuantity: staff,
-    staffServingPrice: s.price,
-    transportation: t.yes,
-    transportationIncluded: t.included,
-    transportationTrips: trips,
-    transportationPrice: lumpSum ? undefined : t.price,
-    domeSet: d.yes,
-    domeSetIncluded: d.included,
-    domeSetQuantity: sets,
-    domeSetPrice: d.price,
-  };
 }
 
 /**
@@ -268,8 +185,8 @@ async function saveQuotationRequest(companySlug: string, input: QuotationRequest
   days.forEach((d, i) => {
     if (d.mealTypes.length === 0) throw new Error(`Day ${i + 1}: select at least one meal type.`);
   });
-  const additional = sanitizeAdditional(input.additional);
-  const extraItems = [...additionalServiceLines(additional), ...sanitizeExtras(input.extraItems ?? [])];
+  const additional = sanitizeAdditional(input.additional) as AdditionalServices;
+  const extraItems = [...additionalServiceLines(additional), ...sanitizeExtras(input.extraItems)];
   if (extraItems.length > MAX_EXTRA_ITEMS) throw new Error(`At most ${MAX_EXTRA_ITEMS} extra items.`);
   const hasPrice = days.some((d) => (d.pricePerPax ?? 0) > 0) || extraItems.some((i) => i.unitPrice > 0);
   if (!hasPrice) throw new Error("Enter the price per pax for at least one day (or an extra item with a price).");
