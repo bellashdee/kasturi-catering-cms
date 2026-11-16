@@ -16,13 +16,14 @@ import { chosenCategories, splitAddsUp, splitCells } from "@/lib/categorySplit";
 import { RecordActions } from "@/components/shared/RecordActions";
 import { BTN_GHOST, Dialog } from "@/components/priority/ui";
 import { CompanyChips } from "@/components/pettyCash/CompanyChips";
+import { INVOICE_NO_LABEL, INVOICE_NO_PLACEHOLDER, SPEND_GRID_2, SPEND_GRID_3, SPEND_HINT, SPEND_INPUT, SPEND_LABEL, SPEND_SAVE_BTN } from "@/components/spending/formStyles";
 
 type Company = { id: string; name: string };
 type Payer = { name: string; position: string };
-export type ClaimValues = { companyId: string; date: string; amount: string; payer: string; paymentMethod: string; category: string; description: string; /** what it was for, e.g. the event */ remarks?: string };
+export type ClaimValues = { companyId: string; date: string; amount: string; payer: string; paymentMethod: string; category: string; description: string; /** what it was for, e.g. the event */ remarks?: string; /** the invoice / receipt number as printed */ invoiceNo?: string };
 
-const inputClass = "mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px] outline-none focus:border-primary";
-const labelClass = "text-[12px] font-semibold text-text-secondary";
+const inputClass = SPEND_INPUT;
+const labelClass = SPEND_LABEL;
 
 /** The fields of a claim: used to send a new claim and to change one that is not paid yet. */
 function ClaimFields({
@@ -108,6 +109,7 @@ function ClaimFields({
         category: v.category || undefined,
         description: v.description || undefined,
         remarks: v.remarks?.trim() || undefined,
+        invoiceNo: v.invoiceNo?.trim() || undefined,
         documentId,
         extraDocumentIds,
         // split between companies (and categories): each part with its company; only categories: each part with its category
@@ -137,15 +139,15 @@ function ClaimFields({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {error && (
         <div role="alert" className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-xs text-danger">
           {error}
         </div>
       )}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className={SPEND_GRID_3}>
         <div>
-          <label className={labelClass}>{multiCompany ? "Company the bill is for * (choose one or more)" : "Company the bill is for *"}</label>
+          <label className={labelClass}>{multiCompany ? "Company * (choose one or more)" : "Company *"}</label>
           {multiCompany ? (
             <CompanyChips companies={companies} value={companyIds} onChange={(ids) => { setCompanyIds(ids); setShareText({}); }} />
           ) : (
@@ -158,7 +160,7 @@ function ClaimFields({
           )}
         </div>
         <div>
-          <label className={labelClass}>Date you bought it *</label>
+          <label className={labelClass}>Date *</label>
           <input type="date" required max={todayInMalaysia()} value={v.date} onChange={(e) => set({ date: e.target.value })} className={inputClass} />
         </div>
         <div>
@@ -166,9 +168,9 @@ function ClaimFields({
           <input type="number" min="0.01" step="0.01" required value={v.amount} onChange={(e) => { set({ amount: e.target.value }); setShareText({}); }} className={inputClass} />
         </div>
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className={SPEND_GRID_3}>
         <div>
-          <label className={labelClass}>You paid by *</label>
+          <label className={labelClass}>Paid by *</label>
           <Select value={v.paymentMethod} onChange={(e) => set({ paymentMethod: e.target.value })} required className={inputClass}>
             <option value="">Select cash or online transfer</option>
             {Object.entries(PAYMENT_METHOD_LABEL).map(([value, text]) => (
@@ -190,13 +192,19 @@ function ClaimFields({
           <MultiChoiceSelect options={PETTY_CASH_CATEGORIES} value={splitCategories(v.category)} onChange={(list) => set({ category: joinCategories(list) })} placeholder="Select category" searchPlaceholder="Search category" />
         </div>
       </div>
-      <div>
-        <label className={labelClass}>What did you buy?</label>
-        <DescriptionInput value={v.description} onChange={(text) => set({ description: text })} companyId={v.companyId} className={inputClass} placeholder="e.g. Cooking gas for the Ahmad wedding" />
+      <div className={SPEND_GRID_2}>
+        <div>
+          <label className={labelClass}>Description</label>
+          <DescriptionInput value={v.description} onChange={(text) => set({ description: text })} companyId={v.companyId} className={inputClass} placeholder="e.g. Cooking gas for the Ahmad wedding" />
+        </div>
+        <div>
+          <label className={labelClass}>{INVOICE_NO_LABEL}</label>
+          <input value={v.invoiceNo ?? ""} onChange={(e) => set({ invoiceNo: e.target.value })} maxLength={100} placeholder={INVOICE_NO_PLACEHOLDER} className={inputClass} />
+        </div>
       </div>
       <div>
-        <label className={labelClass}>Remarks (e.g. the event it was bought for)</label>
-        <input value={v.remarks ?? ""} onChange={(e) => set({ remarks: e.target.value })} maxLength={500} placeholder="e.g. JDT FC event, 12 Nov" className={inputClass} />
+        <label className={labelClass}>Remarks (optional)</label>
+        <input value={v.remarks ?? ""} onChange={(e) => set({ remarks: e.target.value })} maxLength={500} placeholder="e.g. the event it was for: JDT FC event, 12 Nov" className={inputClass} />
       </div>
       {canSplitCompanies && (
         <SplitChoice
@@ -204,7 +212,7 @@ function ClaimFields({
           checked={splitCompaniesOn}
           onChange={(on) => { setSplitCompaniesOn(on); setShareText({}); }}
           on="Each company gets its own part of the amount."
-          off="Not split: one claim with the whole amount, for all the companies chosen."
+          off="Not split: one claim for the whole amount, for all the chosen companies."
         />
       )}
       {canSplitCategories && (
@@ -213,7 +221,7 @@ function ClaimFields({
           checked={splitCategoriesOn}
           onChange={(on) => { setSplitCategoriesOn(on); setShareText({}); }}
           on="Each category gets its own part of the amount."
-          off="Not split: one claim with the whole amount, under all the categories chosen."
+          off="Not split: one claim for the whole amount, under all the chosen categories."
         />
       )}
       {(byCategory || byCompany) && (
@@ -227,9 +235,9 @@ function ClaimFields({
         />
       )}
       <div>
-        <label className={labelClass}>Receipt / photo of the receipt</label>
+        <label className={labelClass}>Receipt / photo</label>
         <input type="file" multiple accept={ANY_UPLOAD_ACCEPT} onChange={(e) => setReceipts(Array.from(e.target.files ?? []))} className="mt-1 block w-full text-[13px]" />
-        <p className="mt-1 text-[11.5px] text-text-muted">
+        <p className={SPEND_HINT}>
           {receipts.length > 1 ? `${receipts.length} files chosen. ` : ""}
           {hasReceipt ? "A receipt is already attached. Files chosen here are added to it." : "You can choose several files at once (hold Ctrl to pick more than one)."}
         </p>
@@ -240,7 +248,7 @@ function ClaimFields({
             Cancel
           </button>
         )}
-        <button type="submit" disabled={saving} className="rounded-lg bg-primary px-5 py-2 text-[13px] font-bold text-white disabled:opacity-60">
+        <button type="submit" disabled={saving} className={SPEND_SAVE_BTN}>
           {saving ? "Saving..." : submitLabel}
         </button>
       </div>
@@ -254,7 +262,7 @@ export function MyClaimForm({ companies, payers }: { companies: Company[]; payer
     <ClaimFields
       companies={companies}
       payers={payers}
-      initial={{ companyId: "", date: todayInMalaysia(), amount: "", payer: payers.length === 1 ? payers[0].name : "", paymentMethod: "", category: "", description: "", remarks: "" }}
+      initial={{ companyId: "", date: todayInMalaysia(), amount: "", payer: payers.length === 1 ? payers[0].name : "", paymentMethod: "", category: "", description: "", remarks: "", invoiceNo: "" }}
       multiCompany
       submitLabel="Send claim"
       onSubmit={submitMyClaim}

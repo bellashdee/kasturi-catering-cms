@@ -97,6 +97,7 @@ This invoice is saved into the accounts exactly as printed, so copy it line by l
 {
   "category": a short category name as best guess (e.g. "Utilities", "Rent & Facilities", "Supplies & Equipment", "Other"),
   "description": a short description of what this expense was for (e.g. vendor name + item),
+  "invoice_number": the invoice, bill or receipt number exactly as printed, else null,
   "amount": the total amount as a plain number (no currency symbol), else null,
   "expense_date": ISO date (YYYY-MM-DD) if visible, else null
 }

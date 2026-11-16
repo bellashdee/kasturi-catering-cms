@@ -18,6 +18,7 @@ import { MultiChoiceSelect } from "@/components/ui/MultiChoiceSelect";
 import { splitCompanies } from "@/lib/pettyCash/companies";
 import { chosenCategories, splitAddsUp, splitCells } from "@/lib/categorySplit";
 import { SplitAmountBox, SplitChoice } from "@/components/shared/SplitAmountBox";
+import { INVOICE_NO_LABEL, INVOICE_NO_PLACEHOLDER, SPEND_CANCEL_BTN, SPEND_GRID_2, SPEND_HINT, SPEND_INPUT, SPEND_LABEL, SPEND_SAVE_BTN } from "@/components/spending/formStyles";
 
 type Company = { id: string; name: string };
 type EntryKind = "expense" | "top_up" | "claim" | "claim_payment";
@@ -25,8 +26,8 @@ type EntryKind = "expense" | "top_up" | "claim" | "claim_payment";
 /** a staff claim that is still waiting to be paid (for the Staff claim payment) */
 export type PendingClaim = { id: string; label: string; claimant: string; amount: number; date: string; description: string; companyName: string };
 
-const inputClass = "mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px] outline-none focus:border-primary";
-const labelClass = "text-[12px] font-semibold text-text-secondary";
+const inputClass = SPEND_INPUT;
+const labelClass = SPEND_LABEL;
 
 /** What each Type is for, written for the person who fills the form (the Staff claim payment is shown only to the people who pay the claims). */
 function UsageGuide({ canPay, hasClaim }: { canPay: boolean; hasClaim: boolean }) {
@@ -35,26 +36,26 @@ function UsageGuide({ canPay, hasClaim }: { canPay: boolean; hasClaim: boolean }
       <summary className="cursor-pointer px-3 py-2 text-[13px] font-bold text-text">How to use this form (press to open)</summary>
       <ul className="flex flex-col gap-2 border-t border-border px-4 py-3 text-[12.5px] text-text-secondary">
         <li>
-          <strong className="text-text">Received</strong>: money given to the petty cash, for example the float from Ms. Penny. Choose the company (or both companies), the date, the amount and whether it was received by cash or online transfer.
+          <strong className="text-text">Received</strong>: money put into the petty cash, for example the float from Ms. Penny. Choose the company (or more than one), the date, the amount, and whether it came by cash or online transfer.
         </li>
         <li>
-          <strong className="text-text">Spent</strong>: money spent from the petty cash. Choose the category (one or more: the amount is then split by category, each part is its own record), whether it was paid by cash or online transfer, write what it was spent on and attach the receipt.
+          <strong className="text-text">Spent</strong>: money paid out of the petty cash. Choose the category (with more than one, the amount can be split so each part is its own record), how it was paid, what was bought and the invoice no. if there is one, then attach the receipt.
         </li>
         {hasClaim && (
           <li>
-            <strong className="text-text">Claimant</strong>:{" "}
+            <strong className="text-text">Staff claim</strong>:{" "}
             {canPay
-              ? "a staff member paid with their own money first and now claims it back. Choose the staff name, and under Claim from choose Penny Chan or Nabilah, who will pay. Staff can also send the claim themselves in My Claims."
-              : "for staff who paid with their own money first. Send it in My Claims (under Company Spending): you choose Penny Chan or Nabilah to pay you back."}
+              ? "a staff member paid with their own money and now claims it back. Choose the staff name, and under Claim from choose Penny Chan or Nabilah, who will pay it. Staff can also send their own claims in My Claims."
+              : "for staff who paid with their own money. Send it in My Claims (under Company Spending) and choose Penny Chan or Nabilah to pay you back."}
           </li>
         )}
         {canPay && (
           <li>
-            <strong className="text-text">Staff claim payment</strong>: when Penny Chan or Nabilah has paid a staff claim, choose the claim, then enter the payment date, whether it was paid by cash or online transfer, and the Reference ID. The staff name, amount and date of the claim are shown.
+            <strong className="text-text">Staff claim payment</strong>: when Penny Chan or Nabilah has paid a staff claim, choose the claim, then enter the payment date, how it was paid and the reference ID. The staff name, amount and date of the claim are shown.
           </li>
         )}
         <li>
-          <strong className="text-text">More than one company</strong>: tick all the companies the money is for. Received and Spent are keyed once with one amount. A Claimant is split: you write how much belongs to each company (and each category).
+          <strong className="text-text">More than one company</strong>: choose every company the money is for. Spending and staff claims can be split, so each company keeps its own part; otherwise it is one record for all of them.
         </li>
       </ul>
     </details>
@@ -117,6 +118,8 @@ export function PettyCashEntryForm({
   const [description, setDescription] = useState(editing?.description ?? "");
   // what it was for, e.g. the event the things were bought for
   const [remarks, setRemarks] = useState(editing?.remarks ?? "");
+  // the invoice / receipt number as printed (optional; not asked for money received)
+  const [invoiceNo, setInvoiceNo] = useState(editing?.invoice_no ?? "");
   const [personName, setPersonName] = useState(editing?.person_name ?? holderName);
   // the amount split between the categories (and the companies of a claim): what was typed for each part; empty = shared equally
   const [shareText, setShareText] = useState<Record<string, string>>({});
@@ -168,7 +171,7 @@ export function PettyCashEntryForm({
     e.preventDefault();
     if (isPayment) {
       if (!payClaimId) {
-        setError("Choose the staff claim that is paid.");
+        setError("Choose the staff claim that was paid.");
         return;
       }
       if (!paymentMethod) {
@@ -176,7 +179,7 @@ export function PettyCashEntryForm({
         return;
       }
       if (!paymentReference.trim()) {
-        setError("Enter the reference ID of the payment.");
+        setError("Enter the payment reference ID.");
         return;
       }
       setSaving(true);
@@ -200,15 +203,15 @@ export function PettyCashEntryForm({
       return;
     }
     if (!personName.trim()) {
-      setError("Choose whose petty cash this is: the name.");
+      setError("Choose whose petty cash this is.");
       return;
     }
     if (isClaim && !claimant.trim()) {
-      setError("Enter who is claiming this petty cash.");
+      setError("Enter the name of the staff member who is claiming.");
       return;
     }
     if (showSplit && !splitAddsUp(amount, cells)) {
-      setError(byCategory ? "The amounts of the categories must add up to the total amount." : "The shares of the companies must add up to the total amount of the claim.");
+      setError(byCategory ? "The category amounts must add up to the total." : "The company amounts must add up to the total.");
       return;
     }
     if (showSplit && cells.some((c) => c.amount <= 0)) {
@@ -224,6 +227,7 @@ export function PettyCashEntryForm({
     setSaving(true);
     setError(null);
     try {
+      const invoice = isReceived ? undefined : invoiceNo.trim() || undefined;
       const uploaded: string[] = [];
       for (const file of receipts) uploaded.push(await uploadReceipt(firstCompanyId, file));
       const documentId: string | undefined = uploaded[0];
@@ -235,6 +239,7 @@ export function PettyCashEntryForm({
             category: category || undefined,
             description: description || undefined,
             remarks: remarks.trim() || undefined,
+            invoiceNo: invoice,
             transactionDate: date,
             documentId,
             extraDocumentIds,
@@ -254,6 +259,7 @@ export function PettyCashEntryForm({
             category: category || undefined,
             description: description || undefined,
             remarks: remarks.trim() || undefined,
+            invoiceNo: invoice,
             amount: Number(amount),
             transactionDate: date,
             documentId,
@@ -262,8 +268,8 @@ export function PettyCashEntryForm({
             paymentMethod,
           })
         : editing
-          ? await updatePettyCashEntry(editing.id, { companyId: firstCompanyId, alsoCompanyIds, paymentMethod, categoryShares, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, remarks: remarks.trim() || undefined, amount: Number(amount), documentId, extraDocumentIds, personName: personName || undefined })
-          : await createPettyCashEntry({ companyId: firstCompanyId, alsoCompanyIds, paymentMethod, categoryShares, shares: companyShares, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, remarks: remarks.trim() || undefined, amount: Number(amount), documentId, extraDocumentIds, personName: personName || undefined });
+          ? await updatePettyCashEntry(editing.id, { companyId: firstCompanyId, alsoCompanyIds, paymentMethod, categoryShares, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, remarks: remarks.trim() || undefined, invoiceNo: invoice, amount: Number(amount), documentId, extraDocumentIds, personName: personName || undefined })
+          : await createPettyCashEntry({ companyId: firstCompanyId, alsoCompanyIds, paymentMethod, categoryShares, shares: companyShares, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, remarks: remarks.trim() || undefined, invoiceNo: invoice, amount: Number(amount), documentId, extraDocumentIds, personName: personName || undefined });
       if (!result.ok) {
         setError(result.error);
         return;
@@ -276,6 +282,7 @@ export function PettyCashEntryForm({
         setCategory("");
         setDescription("");
         setRemarks("");
+        setInvoiceNo("");
         setClaimant("");
         setShareText({});
         setDepartment("");
@@ -313,7 +320,7 @@ export function PettyCashEntryForm({
       <Select value={kind} disabled={!!editing} onChange={(e) => changeKind(e.target.value as EntryKind)} className={inputClass}>
         {kinds.includes("top_up") && <option value="top_up">Received</option>}
         {kinds.includes("expense") && <option value="expense">Spent</option>}
-        {kinds.includes("claim") && <option value="claim">Claimant</option>}
+        {kinds.includes("claim") && <option value="claim">Staff claim</option>}
         {kinds.includes("claim_payment") && <option value="claim_payment">Staff claim payment</option>}
       </Select>
     </div>
@@ -321,16 +328,16 @@ export function PettyCashEntryForm({
 
   if (isPayment) {
     return (
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-5 shadow-sm">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-5 shadow-sm">
         <div className="text-[15px] font-bold text-text">New entry</div>
         <UsageGuide canPay hasClaim={kinds.includes("claim")} />
         {error && <div role="alert" className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-xs text-danger">{error}</div>}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
           {typeField}
           <div className="sm:col-span-3">
-            <label className={labelClass}>Staff claim that is paid *</label>
+            <label className={labelClass}>Staff claim that was paid *</label>
             <Select value={payClaimId} onChange={(e) => setPayClaimId(e.target.value)} required className={inputClass}>
-              <option value="">{pendingClaims.length === 0 ? "No staff claim is waiting for payment" : "Select the staff claim"}</option>
+              <option value="">{pendingClaims.length === 0 ? "No staff claims are waiting for payment" : "Select the staff claim"}</option>
               {pendingClaims.map((c) => (
                 <option key={c.id} value={c.id}>{c.label}</option>
               ))}
@@ -352,12 +359,12 @@ export function PettyCashEntryForm({
               <div className="mt-1 text-[13.5px] font-bold text-text">{paidClaim.date}</div>
             </div>
             <div>
-              <div className={labelClass}>Bought / spent on</div>
+              <div className={labelClass}>Description</div>
               <div className="mt-1 text-[13.5px] text-text">{paidClaim.description}</div>
             </div>
           </div>
         )}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
           <div>
             <label className={labelClass}>Payment date *</label>
             <input type="date" required max={todayInMalaysia()} value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className={inputClass} />
@@ -373,7 +380,7 @@ export function PettyCashEntryForm({
           </div>
         </div>
         <div className="flex justify-end">
-          <button type="submit" disabled={saving || !payClaimId} className="rounded-lg bg-primary px-5 py-2 text-[13px] font-bold text-white disabled:opacity-60">
+          <button type="submit" disabled={saving || !payClaimId} className={SPEND_SAVE_BTN}>
             {saving ? "Saving..." : "Save payment"}
           </button>
         </div>
@@ -385,13 +392,13 @@ export function PettyCashEntryForm({
   // a claim is claimed from Penny Chan or Nabilah and is sent by the staff themselves in My Claims: the others are pointed there
   if (isClaim && lockName) {
     return (
-      <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-5 shadow-sm">
+      <div className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-5 shadow-sm">
         <div className="text-[15px] font-bold text-text">New entry</div>
         <UsageGuide canPay={allowPayClaims} hasClaim />
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">{typeField}</div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">{typeField}</div>
         <div className="rounded-lg border border-border bg-surface-alt p-4 text-[13px] text-text-secondary">
-          <div className="font-bold text-text">Claimant is sent in My Claims</div>
-          <p className="mt-1">If you paid with your own money first, send your claim in My Claims: choose Penny Chan or Nabilah to pay you back, add the receipt, and you can follow when it is paid.</p>
+          <div className="font-bold text-text">Staff claims are sent in My Claims</div>
+          <p className="mt-1">If you paid with your own money, send your claim in My Claims: choose Penny Chan or Nabilah to pay you back, attach the receipt, and follow it until it is paid.</p>
           <Link href="/spending/my-claims" className="mt-3 inline-block rounded-lg bg-primary px-4 py-2 text-[13px] font-bold text-white">
             Open My Claims
           </Link>
@@ -401,25 +408,17 @@ export function PettyCashEntryForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-5 shadow-sm">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-5 shadow-sm">
       <div className="text-[15px] font-bold text-text">{editing ? "Edit entry" : "New entry"}</div>
       {!editing && <UsageGuide canPay={allowPayClaims} hasClaim={kinds.includes("claim")} />}
       {error && <div role="alert" className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-xs text-danger">{error}</div>}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <div className="sm:col-span-4">
           <label className={labelClass}>Company * (choose one or more)</label>
           <CompanyChips companies={companies} value={companyIds} onChange={setCompanyIds} />
         </div>
-        <div>
-          <label className={labelClass}>Type *</label>
-          <Select value={kind} disabled={!!editing} onChange={(e) => changeKind(e.target.value as EntryKind)} className={inputClass}>
-            {kinds.includes("top_up") && <option value="top_up">Received</option>}
-            {kinds.includes("expense") && <option value="expense">Spent</option>}
-            {kinds.includes("claim") && <option value="claim">Claimant</option>}
-            {kinds.includes("claim_payment") && <option value="claim_payment">Staff claim payment</option>}
-          </Select>
-        </div>
+        {typeField}
         <div>
           <label className={labelClass}>Date *</label>
           <input type="date" required max={todayInMalaysia()} value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} />
@@ -431,9 +430,9 @@ export function PettyCashEntryForm({
         {methodField}
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className={SPEND_GRID_2}>
         <div>
-          <label className={labelClass}>{isReceived ? "Received by (choose the name) *" : isClaim ? "Claim from (the staff paid with their own money first) *" : "Spent by (choose the name) *"}</label>
+          <label className={labelClass}>{isReceived ? "Received by *" : isClaim ? "Claim from *" : "Spent by *"}</label>
           {lockName ? (
             <input value={personName} readOnly className={`${inputClass} cursor-not-allowed bg-surface-alt`} />
           ) : isClaim ? (
@@ -450,9 +449,9 @@ export function PettyCashEntryForm({
       </div>
 
       {isClaim && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className={SPEND_GRID_2}>
           <div>
-            <label className={labelClass}>Claimant / Requested By *</label>
+            <label className={labelClass}>Staff member claiming *</label>
             <SearchSelect
               value={claimant}
               onChange={setClaimant}
@@ -473,7 +472,7 @@ export function PettyCashEntryForm({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className={SPEND_GRID_2}>
         {!isReceived && (
           <div>
             <label className={labelClass}>Category (choose one or more)</label>
@@ -481,8 +480,21 @@ export function PettyCashEntryForm({
           </div>
         )}
         <div className={isReceived ? "sm:col-span-2" : ""}>
-          <label className={labelClass}>{isReceived ? "Description (e.g. who gave the money)" : isClaim ? "Purpose / Description" : "What was it spent on?"}</label>
+          <label className={labelClass}>Description</label>
           <DescriptionInput value={description} onChange={setDescription} companyId={firstCompanyId} className={inputClass} placeholder={isReceived ? "e.g. Float from Ms. Penny" : "e.g. Petrol for event delivery"} />
+        </div>
+      </div>
+
+      <div className={SPEND_GRID_2}>
+        {!isReceived && (
+          <div>
+            <label className={labelClass}>{INVOICE_NO_LABEL}</label>
+            <input value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} maxLength={100} placeholder={INVOICE_NO_PLACEHOLDER} className={inputClass} />
+          </div>
+        )}
+        <div className={isReceived ? "sm:col-span-2" : ""}>
+          <label className={labelClass}>Remarks (optional)</label>
+          <input value={remarks} onChange={(e) => setRemarks(e.target.value)} maxLength={500} placeholder="e.g. the event it was for: JDT FC event, 12 Nov" className={inputClass} />
         </div>
       </div>
 
@@ -492,7 +504,7 @@ export function PettyCashEntryForm({
           checked={splitBetweenCompanies}
           onChange={(on) => { setSplitBetweenCompanies(on); setShareText({}); }}
           on="Each company gets its own part of the amount."
-          off="Not split: one record with the whole amount, for all the companies chosen."
+          off="Not split: one record for the whole amount, for all the chosen companies."
         />
       )}
       {canSplitCategories && (
@@ -501,14 +513,9 @@ export function PettyCashEntryForm({
           checked={splitByCategories}
           onChange={(on) => { setSplitByCategories(on); setShareText({}); }}
           on="Each category gets its own part of the amount."
-          off="Not split: one record with the whole amount, under all the categories chosen."
+          off="Not split: one record for the whole amount, under all the chosen categories."
         />
       )}
-
-      <div>
-        <label className={labelClass}>Remarks (e.g. the event it was bought for)</label>
-        <input value={remarks} onChange={(e) => setRemarks(e.target.value)} maxLength={500} placeholder="e.g. JDT FC event, 12 Nov" className={inputClass} />
-      </div>
 
       {showSplit && (
         <SplitAmountBox
@@ -522,9 +529,9 @@ export function PettyCashEntryForm({
       )}
 
       <div>
-        <label className={labelClass}>Receipt / photo {isReceived ? "(optional)" : "(keep it with the record)"}</label>
+        <label className={labelClass}>Receipt / photo{isReceived ? " (optional)" : ""}</label>
         <input type="file" multiple accept={ANY_UPLOAD_ACCEPT} onChange={(e) => setReceipts(Array.from(e.target.files ?? []))} className="mt-1 block w-full text-[13px]" />
-        <p className="mt-1 text-[11.5px] text-text-muted">
+        <p className={SPEND_HINT}>
           {receipts.length > 1 ? `${receipts.length} files chosen. ` : ""}
           {editing && (editing.document_id || (editing.extra_document_ids ?? []).length > 0)
             ? `Receipts already attached: ${(editing.document_id ? 1 : 0) + (editing.extra_document_ids ?? []).length}. Files chosen here are added to them.`
@@ -534,12 +541,12 @@ export function PettyCashEntryForm({
 
       <div className="flex justify-end gap-2.5">
         {editing && (
-          <Link href={listHref} className="rounded-lg border border-border-strong bg-surface px-4 py-2 text-[13px] font-semibold text-text">
+          <Link href={listHref} className={SPEND_CANCEL_BTN}>
             Cancel
           </Link>
         )}
-        <button type="submit" disabled={saving} className="rounded-lg bg-primary px-5 py-2 text-[13px] font-bold text-white disabled:opacity-60">
-          {saving ? "Saving..." : editing ? "Save changes" : isClaim ? "Submit claim" : isReceived ? "Save top-up" : "Save spending"}
+        <button type="submit" disabled={saving} className={SPEND_SAVE_BTN}>
+          {saving ? "Saving..." : editing ? "Save changes" : isClaim ? "Save claim" : isReceived ? "Save money received" : "Save spending"}
         </button>
       </div>
     </form>

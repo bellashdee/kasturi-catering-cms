@@ -21,6 +21,7 @@ import { todayInMalaysia } from "@/lib/format";
 import { AREA, BTN, BTN_GHOST, Dialog, ErrorLine, FIELD, LABEL } from "@/components/priority/ui";
 import { RecordActions } from "@/components/shared/RecordActions";
 import { CompanyChips } from "@/components/pettyCash/CompanyChips";
+import { INVOICE_NO_LABEL, INVOICE_NO_PLACEHOLDER } from "@/components/spending/formStyles";
 import { MultiChoiceSelect } from "@/components/ui/MultiChoiceSelect";
 import { PETTY_CASH_CATEGORIES, joinCategories, splitCategories } from "@/lib/operationPettyCash/constants";
 import { splitCompanies } from "@/lib/pettyCash/companies";
@@ -183,7 +184,7 @@ export function CustomerPaymentActions({ payment }: { payment: { id: string; amo
   );
 }
 
-export type ClaimEditData = { id: string; type: "expense" | "top_up"; claimant: string; department: string; category: string; description: string; amount: string; date: string; companyId: string; sharedCompanyIds: string[]; /** a receipt is already attached */ hasReceipt?: boolean; /** what it was for, e.g. the event */ remarks?: string };
+export type ClaimEditData = { id: string; type: "expense" | "top_up"; claimant: string; department: string; category: string; description: string; amount: string; date: string; companyId: string; sharedCompanyIds: string[]; /** a receipt is already attached */ hasReceipt?: boolean; /** what it was for, e.g. the event */ remarks?: string; /** the invoice / receipt number as printed */ invoiceNo?: string };
 
 /** Edit (Save / Cancel) and Delete (Undo) of a petty cash staff claim or top-up in the Petty Cash list. */
 export function PettyCashClaimActions({ claim, companies }: { claim: ClaimEditData; companies: { id: string; name: string }[] }) {
@@ -207,7 +208,7 @@ export function PettyCashClaimActions({ claim, companies }: { claim: ClaimEditDa
       for (const file of receipts) uploaded.push(await uploadReceipt(where.companyId, file));
       const documentId: string | undefined = uploaded[0];
       const extraDocumentIds = uploaded.slice(1);
-      const r = await updatePettyCashClaim(claim.id, { claimantName: f.claimant, claimantDepartment: f.department, category: f.category, description: f.description, amount: Number(f.amount), transactionDate: f.date, documentId, extraDocumentIds, remarks: f.remarks ?? "", ...where });
+      const r = await updatePettyCashClaim(claim.id, { claimantName: f.claimant, claimantDepartment: f.department, category: f.category, description: f.description, amount: Number(f.amount), transactionDate: f.date, documentId, extraDocumentIds, remarks: f.remarks ?? "", invoiceNo: f.invoiceNo ?? "", ...where });
       if (!r.ok) {
         setError(r.error);
         return;
@@ -265,15 +266,21 @@ export function PettyCashClaimActions({ claim, companies }: { claim: ClaimEditDa
               </div>
             )}
             <div>
-              <label className={LABEL}>Description</label>
+              <label className={LABEL}>{claim.type === "expense" ? "What was bought?" : "Description"}</label>
               <input className={FIELD} value={f.description} onChange={(e) => set({ description: e.target.value })} />
             </div>
+            {claim.type === "expense" && (
+              <div>
+                <label className={LABEL}>{INVOICE_NO_LABEL}</label>
+                <input className={FIELD} maxLength={100} value={f.invoiceNo ?? ""} onChange={(e) => set({ invoiceNo: e.target.value })} placeholder={INVOICE_NO_PLACEHOLDER} />
+              </div>
+            )}
             <div className="sm:col-span-2">
-              <label className={LABEL}>Remarks (e.g. the event it was bought for)</label>
+              <label className={LABEL}>Remarks (optional, e.g. the event it was bought for)</label>
               <input className={FIELD} maxLength={500} value={f.remarks ?? ""} onChange={(e) => set({ remarks: e.target.value })} placeholder="e.g. JDT FC event, 12 Nov" />
             </div>
             <div className="sm:col-span-2">
-              <label className={LABEL}>Receipt / photo</label>
+              <label className={LABEL}>Receipt / photo (optional)</label>
               <input type="file" multiple accept={ANY_UPLOAD_ACCEPT} onChange={(e) => setReceipts(Array.from(e.target.files ?? []))} className="mt-1 block w-full text-[13px]" />
               <p className="mt-1 text-[11.5px] text-text-muted">
                 {claim.hasReceipt ? "A receipt is already attached. Files chosen here are added to it (several at once)." : "No receipt yet. Choose the photos or files of the receipt (several at once)."}

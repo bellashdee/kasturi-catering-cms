@@ -22,7 +22,7 @@ import { Select } from "@/components/ui/Select";
 import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
 import { readSort, sortBy } from "@/lib/listSort";
 
-const SORTS = { date: "Date", bought: "What you bought", amount: "Amount", status: "Status" };
+const SORTS = { date: "Date", bought: "Description", invoice: "Invoice No.", amount: "Amount", status: "Status" };
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -71,13 +71,14 @@ export default async function MyClaimsPage({ searchParams }: { searchParams: Pro
       (c) =>
         (month === "all" || c.transaction_date.startsWith(month)) &&
         (!sp.status || c.payment_status === sp.status) &&
-        (!q || [c.description, c.category, c.remarks].some((x) => x?.toLowerCase().includes(q))),
+        (!q || [c.description, c.category, c.invoice_no, c.remarks].some((x) => x?.toLowerCase().includes(q))),
     ),
     sort,
     dir,
     {
       date: [(c) => c.transaction_date, (c) => c.created_at],
       bought: [(c) => c.description, (c) => c.transaction_date],
+      invoice: [(c) => c.invoice_no, (c) => c.transaction_date],
       amount: (c) => Number(c.amount),
       status: [(c) => PETTY_CASH_PAYMENT_STATUS_LABEL[c.payment_status] ?? c.payment_status, (c) => c.transaction_date],
     },
@@ -91,12 +92,13 @@ export default async function MyClaimsPage({ searchParams }: { searchParams: Pro
   const companyLabel = (c: (typeof all)[number]) =>
     [c.company_id, ...(c.shared_company_ids ?? [])].map((id) => allCompanies.find((x) => x.id === id)?.name).filter(Boolean).join(" + ");
 
-  const exportHeaders = ["Date", "Company", "Category", "What you bought", "Remarks", "Claim from", "You paid by", "Status", "Payment date", "Amount (RM)"];
+  const exportHeaders = ["Date", "Company", "Category", "Description", "Invoice No.", "Remarks", "Claim from", "You paid by", "Status", "Payment date", "Amount (RM)"];
   const exportRows = shown.map((c): (string | number)[] => [
     c.transaction_date,
     companyLabel(c),
     c.category ?? "",
     c.description ?? "",
+    c.invoice_no ?? "",
     c.remarks ?? "",
     short(c.person_name),
     paymentMethodLabel(c.payment_method),
@@ -137,7 +139,7 @@ export default async function MyClaimsPage({ searchParams }: { searchParams: Pro
           </Select>
         </FilterField>
         <FilterField label="Search">
-          <input name="q" defaultValue={sp.q ?? ""} className={`${FILTER_INPUT} w-48`} />
+          <input name="q" defaultValue={sp.q ?? ""} placeholder="Description, category, invoice no. or remarks" className={`${FILTER_INPUT} w-60`} />
         </FilterField>
         <FilterField label="Status">
           <Select name="status" defaultValue={sp.status ?? ""} className={`${FILTER_INPUT} w-40`}>
@@ -180,14 +182,14 @@ export default async function MyClaimsPage({ searchParams }: { searchParams: Pro
         action={<ExportListButtons filenameBase={`my-claims-${month}`} headers={exportHeaders} rows={exportRows} moneyColumns={["Amount (RM)"]} summary={summary} />}
       >
         {shown.length === 0 ? (
-          <EmptyRow text={all.length === 0 ? "You have not sent any claim yet." : "No claim in this month."} />
+          <EmptyRow text={all.length === 0 ? "You have not sent any claims yet." : "No claims match this month or search."} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] border-collapse text-left">
               <thead>
                 <tr className="text-[11.5px] font-semibold uppercase text-text-muted">
                   <th className="whitespace-nowrap px-3 py-2">Date</th>
-                  <th className="px-3 py-2">What you bought</th>
+                  <th className="px-3 py-2">Description</th>
                   <th className="whitespace-nowrap px-3 py-2">Claim from</th>
                   <th className="whitespace-nowrap px-3 py-2 text-right">Amount</th>
                   <th className="whitespace-nowrap px-3 py-2">Status</th>
@@ -204,6 +206,7 @@ export default async function MyClaimsPage({ searchParams }: { searchParams: Pro
                       <td className="px-3 py-2.5">
                         <div className="font-semibold text-text">{c.description || "—"}</div>
                         {c.category && <div className="text-[11.5px] text-text-muted">{c.category}</div>}
+                        {c.invoice_no && <div className="text-[11.5px] font-semibold text-text-secondary">{`Invoice No.: ${c.invoice_no}`}</div>}
                         <div className="text-[11.5px] text-text-muted">{companyLabel(c)}</div>
                         {c.remarks && <div className="text-[11.5px] text-text-secondary">{`Remarks: ${c.remarks}`}</div>}
                         {c.payment_method && <div className="text-[11.5px] text-text-secondary">{`You paid by: ${paymentMethodLabel(c.payment_method)}`}</div>}
@@ -231,7 +234,7 @@ export default async function MyClaimsPage({ searchParams }: { searchParams: Pro
                       </td>
                       <td className="px-3 py-2.5">
                         <MyClaimActions
-                          claim={{ id: c.id, companyId: c.company_id, date: c.transaction_date, amount: String(c.amount), amountText: Number(c.amount).toFixed(2), payer: c.person_name ?? "", paymentMethod: c.payment_method ?? "", category: c.category ?? "", description: c.description ?? "", remarks: c.remarks ?? "", hasReceipt: receiptIds(c).length > 0 }}
+                          claim={{ id: c.id, companyId: c.company_id, date: c.transaction_date, amount: String(c.amount), amountText: Number(c.amount).toFixed(2), payer: c.person_name ?? "", paymentMethod: c.payment_method ?? "", category: c.category ?? "", description: c.description ?? "", remarks: c.remarks ?? "", invoiceNo: c.invoice_no ?? "", hasReceipt: receiptIds(c).length > 0 }}
                           companies={companies}
                           payers={payerList}
                         />

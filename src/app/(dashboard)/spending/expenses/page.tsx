@@ -16,7 +16,7 @@ import { Select } from "@/components/ui/Select";
 import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
 import { readSort, sortBy } from "@/lib/listSort";
 
-const SORTS = { date: "Date", category: "Category", department: "Department", amount: "Amount" };
+const SORTS = { date: "Date", category: "Category", invoice: "Invoice No.", department: "Department", amount: "Amount" };
 
 export default async function CompanyExpensesPage({
   searchParams,
@@ -45,16 +45,16 @@ export default async function CompanyExpensesPage({
   const spending = await listSpending(supabase, targetCompanyIds);
   const companyName = new Map(companies.map((c) => [c.id, c.name]));
   const everyExpense = spending
-    .map((r: CostRow) => ({ id: r.id, source: r.source, category: r.category, department: r.department, amount: r.amount, note: r.note ?? null, expense_date: r.date, notes: r.details, companies: { name: companyName.get(r.companyId) ?? "" } }))
+    .map((r: CostRow) => ({ id: r.id, source: r.source, category: r.category, department: r.department, amount: r.amount, note: r.note ?? null, invoiceNo: r.invoiceNo ?? null, expense_date: r.date, notes: r.details, companies: { name: companyName.get(r.companyId) ?? "" } }))
     .sort((a, b) => b.expense_date.localeCompare(a.expense_date) || a.source.localeCompare(b.source));
 
-  // search and filters: words in the category, notes, department, company or amount; the category and department; a date range
+  // search and filters: words in the category, notes, invoice no., department, company or amount; the category and department; a date range
   const words = q.trim().toUpperCase().split(/\s+/).filter(Boolean);
   const matching = everyExpense.filter((e) => {
     if (category && !sameLabel(e.category, category)) return false;
     if (department && !sameLabel(e.department, department)) return false;
     if (words.length === 0) return true;
-    const hay = `${e.source} ${e.category} ${e.department ?? ""} ${e.notes ?? ""} ${e.companies?.name ?? ""} ${e.expense_date} ${e.amount} ${Number(e.amount).toFixed(2)}`.toUpperCase();
+    const hay = `${e.source} ${e.category} ${e.invoiceNo ?? ""} ${e.department ?? ""} ${e.notes ?? ""} ${e.companies?.name ?? ""} ${e.expense_date} ${e.amount} ${Number(e.amount).toFixed(2)}`.toUpperCase();
     return words.every((w) => hay.includes(w));
   });
   // the month picker (by expense date) works together with the search, the filters and the date range; the monthly chart below keeps showing every month
@@ -62,6 +62,7 @@ export default async function CompanyExpensesPage({
   const expenses = sortBy(filterByMonth(matching.filter((e) => !(from && e.expense_date < from) && !(to && e.expense_date > to)), month, (e) => e.expense_date), sort, dir, {
     date: [(e) => e.expense_date, (e) => e.source],
     category: [(e) => e.category, (e) => e.expense_date],
+    invoice: [(e) => e.invoiceNo, (e) => e.expense_date],
     department: [(e) => e.department, (e) => e.expense_date],
     amount: (e) => Number(e.amount),
   });
@@ -99,7 +100,7 @@ export default async function CompanyExpensesPage({
 
       <ListFilters keep={{ company: requestedId, month: monthLabel ? month : "" }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={clearHref}>
         <FilterField label="Search">
-          <input name="q" defaultValue={q} placeholder="Category, notes, department, amount…" className={`${FILTER_INPUT} w-56`} />
+          <input name="q" defaultValue={q} placeholder="Category, invoice no., notes, amount…" className={`${FILTER_INPUT} w-56`} />
         </FilterField>
         <FilterField label="Category">
           <Select name="category" defaultValue={category} className={`${FILTER_INPUT} w-44`}>
@@ -140,6 +141,7 @@ export default async function CompanyExpensesPage({
               amount: Number(e.amount),
               expenseDate: e.expense_date,
               notes: e.notes,
+              invoiceNo: e.invoiceNo,
               note: e.note,
             }))}
           />

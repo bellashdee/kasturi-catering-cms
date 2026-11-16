@@ -35,6 +35,8 @@ export type CompanyExpenseInput = {
   amount: number;
   expenseDate: string;
   notes?: string;
+  /** the invoice / receipt number as printed (optional) */
+  invoiceNo?: string;
   documentId?: string;
   /** marked as a Credit Note (money back, counted as minus) or a Debit Note (an extra charge) */
   noteType?: "credit_note" | "debit_note" | null;
@@ -51,6 +53,7 @@ export async function createCompanyExpense(input: CompanyExpenseInput) {
       amount: part.amount,
       expense_date: input.expenseDate,
       notes: input.notes || null,
+      invoice_no: input.invoiceNo?.trim() || null,
       note_type: input.noteType === "credit_note" || input.noteType === "debit_note" ? input.noteType : null,
       document_id: input.documentId || null,
       created_by: userId,
@@ -78,6 +81,7 @@ export type CompanyExpenseRow = {
   amount: number;
   expense_date: string;
   notes: string | null;
+  invoice_no?: string | null;
   /** credit_note, debit_note or none */
   note_type?: string | null;
   document_id: string | null;
@@ -96,10 +100,10 @@ function revalidateExpenses() {
   revalidatePath("/");
 }
 
-/** Edit a company expense: category, department, amount, date and notes. */
+/** Edit a company expense: category, department, amount, date, invoice no. and notes. */
 export async function updateCompanyExpense(
   id: string,
-  input: { category: string; department?: string; amount: number; expenseDate: string; notes?: string },
+  input: { category: string; department?: string; amount: number; expenseDate: string; notes?: string; invoiceNo?: string },
 ) {
   const { supabase } = await requireUser();
   const { data: before, error: readError } = await supabase.from("expenses").select("*").eq("id", id).single();
@@ -110,7 +114,7 @@ export async function updateCompanyExpense(
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.expenseDate)) throw new Error("Choose the expense date.");
   const { error } = await supabase
     .from("expenses")
-    .update({ category: input.category.trim(), department: input.department?.trim() || null, amount: input.amount, expense_date: input.expenseDate, notes: input.notes?.trim() || null })
+    .update({ category: input.category.trim(), department: input.department?.trim() || null, amount: input.amount, expense_date: input.expenseDate, notes: input.notes?.trim() || null, invoice_no: input.invoiceNo?.trim() || null })
     .eq("id", id);
   if (error) throw new Error("Could not save the expense.");
   await recordAudit({
@@ -149,6 +153,7 @@ export async function deleteCompanyExpense(id: string): Promise<CompanyExpenseRo
     amount: Number(before.amount),
     expense_date: before.expense_date,
     notes: before.notes,
+    invoice_no: before.invoice_no,
     note_type: before.note_type,
     document_id: before.document_id,
     created_by: before.created_by,
@@ -191,6 +196,7 @@ export async function restoreCompanyExpense(row: CompanyExpenseRow) {
     amount: row.amount,
     expense_date: row.expense_date,
     notes: row.notes,
+    invoice_no: row.invoice_no ?? null,
     note_type: row.note_type ?? null,
     document_id: row.document_id,
     created_by: row.created_by,
@@ -299,6 +305,8 @@ export type PettyCashInput = {
   paymentMethod?: string;
   /** what it was for, e.g. the event the things were bought for */
   remarks?: string;
+  /** the invoice / receipt number as printed (optional) */
+  invoiceNo?: string;
 };
 
 export async function createPettyCashTransaction(input: PettyCashInput): Promise<ActionResult> {
@@ -326,6 +334,7 @@ export async function createPettyCashTransaction(input: PettyCashInput): Promise
     category: input.type === "expense" ? input.category || null : null,
     description: input.description || null,
     remarks: input.remarks?.trim().slice(0, 500) || null,
+    invoice_no: input.invoiceNo?.trim().slice(0, 100) || null,
     amount: input.amount,
     // the claim date: today (Malaysia) unless a date is given; the payment date is recorded separately when it is paid
     transaction_date: input.transactionDate || todayInMalaysia(),
@@ -374,6 +383,8 @@ export type SplitClaimInput = {
   extraDocumentIds?: string[];
   /** what it was for, e.g. the event the things were bought for */
   remarks?: string;
+  /** the invoice / receipt number as printed (optional) */
+  invoiceNo?: string;
 };
 
 /** A staff claim split between companies and/or categories: one claim for each part with its own amount, all saved together or not at all. */
@@ -406,6 +417,7 @@ export async function createSplitPettyCashClaims(input: SplitClaimInput): Promis
           category: s.category?.trim() || input.category || null,
           description: input.description || null,
           remarks: input.remarks?.trim().slice(0, 500) || null,
+          invoice_no: input.invoiceNo?.trim().slice(0, 100) || null,
           amount: s.amount,
           transaction_date: input.transactionDate || todayInMalaysia(),
           document_id: input.documentId || null,
@@ -853,7 +865,7 @@ export async function restoreCustomerPayment(row: CustomerPaymentRow): Promise<A
   }, "Could not put the payment back.");
 }
 
-export type PettyCashClaimEdit = { claimantName?: string; claimantDepartment?: string; category?: string; description?: string; amount: number; transactionDate: string; companyId?: string; alsoCompanyIds?: string[]; /** receipts added (they join the ones attached) */ documentId?: string; extraDocumentIds?: string[]; remarks?: string };
+export type PettyCashClaimEdit = { claimantName?: string; claimantDepartment?: string; category?: string; description?: string; amount: number; transactionDate: string; companyId?: string; alsoCompanyIds?: string[]; /** receipts added (they join the ones attached) */ documentId?: string; extraDocumentIds?: string[]; remarks?: string; /** the invoice / receipt number as printed (optional) */ invoiceNo?: string };
 
 /** Who may change a petty cash claim or top-up: the admins of the company, and the person who made it while it is still waiting for payment. */
 async function claimAccess(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], userId: string, row: PettyCashTransactionRow) {
@@ -881,6 +893,7 @@ export async function updatePettyCashClaim(id: string, input: PettyCashClaimEdit
         category: before.type === "expense" ? input.category?.trim() || null : null,
         description: input.description?.trim() || null,
         remarks: input.remarks?.trim().slice(0, 500) || null,
+        invoice_no: input.invoiceNo?.trim().slice(0, 100) || null,
         amount: input.amount,
         transaction_date: input.transactionDate,
         // the main company and the other companies it is also for (keyed once, counted once)

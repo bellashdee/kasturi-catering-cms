@@ -8,6 +8,7 @@ import { deleteCompanyExpense, markExpenseNote, restoreCompanyExpense, updateCom
 import { departmentChoices } from "@/lib/finance/constants";
 import { AREA, BTN, BTN_GHOST, BTN_SM_GHOST, Dialog, FIELD, LABEL } from "@/components/priority/ui";
 import { Select } from "@/components/ui/Select";
+import { INVOICE_NO_LABEL, INVOICE_NO_PLACEHOLDER } from "@/components/spending/formStyles";
 
 export type ExpenseListRow = {
   id: string;
@@ -19,13 +20,15 @@ export type ExpenseListRow = {
   amount: number;
   expenseDate: string;
   notes: string | null;
+  /** the invoice / receipt number keyed in with it */
+  invoiceNo?: string | null;
   /** marked as a credit note (money back, shown as minus) or a debit note */
   note?: "credit_note" | "debit_note" | null;
 };
 
 const NOTE_LABEL = { credit_note: "Credit Note", debit_note: "Debit Note" } as const;
 
-type Draft = { id: string; category: string; department: string; amount: string; expenseDate: string; notes: string };
+type Draft = { id: string; category: string; department: string; amount: string; expenseDate: string; invoiceNo: string; notes: string };
 
 /** Where a cost that is not keyed in on this page is changed. */
 const SOURCE_PAGE: Record<string, { href: string; label: string }> = {
@@ -51,7 +54,7 @@ export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow
 
   function edit(r: ExpenseListRow) {
     setError(null);
-    setDraft({ id: r.id, category: r.category, department: r.department ?? "", amount: String(r.amount), expenseDate: r.expenseDate, notes: r.notes ?? "" });
+    setDraft({ id: r.id, category: r.category, department: r.department ?? "", amount: String(r.amount), expenseDate: r.expenseDate, invoiceNo: r.invoiceNo ?? "", notes: r.notes ?? "" });
   }
 
   function save() {
@@ -64,6 +67,7 @@ export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow
           department: draft.department,
           amount: Number(draft.amount),
           expenseDate: draft.expenseDate,
+          invoiceNo: draft.invoiceNo,
           notes: draft.notes,
         });
         setDraft(null);
@@ -132,17 +136,18 @@ export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow
         </div>
       )}
 
-      <div className="grid grid-cols-[0.9fr_0.9fr_1fr_0.9fr_0.9fr_1.4fr_auto] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
+      <div className="grid grid-cols-[0.9fr_0.9fr_1fr_0.9fr_0.9fr_0.9fr_1.4fr_auto] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
         <div>Date</div>
         <div>From</div>
         <div>Category</div>
+        <div>Invoice No.</div>
         <div>Amount</div>
         <div>Department</div>
         <div>Company / Notes</div>
         <div>Action</div>
       </div>
       {rows.map((e) => (
-        <div key={`${e.source}-${e.id}`} className="grid grid-cols-[0.9fr_0.9fr_1fr_0.9fr_0.9fr_1.4fr_auto] items-center border-b border-border px-5 py-3 text-[13.5px] last:border-b-0">
+        <div key={`${e.source}-${e.id}`} className="grid grid-cols-[0.9fr_0.9fr_1fr_0.9fr_0.9fr_0.9fr_1.4fr_auto] items-center border-b border-border px-5 py-3 text-[13.5px] last:border-b-0">
           <div className="text-text-secondary">{e.expenseDate}</div>
           <div>
             <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${e.source === "Company Expenses" ? "bg-surface-alt text-text-secondary" : "bg-info-bg text-primary"}`}>{e.source}</span>
@@ -155,6 +160,7 @@ export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow
               </span>
             )}
           </div>
+          <div className="truncate text-text-secondary" title={e.invoiceNo ?? ""}>{e.invoiceNo || "—"}</div>
           <div className={e.note === "credit_note" ? "font-semibold text-success" : "text-text-secondary"}>{e.amount < 0 ? `− ${formatCurrency(Math.abs(e.amount))}` : formatCurrency(e.amount)}</div>
           <div className="text-text-secondary">{e.department ?? "—"}</div>
           <div className="truncate text-text-muted" title={e.notes ?? ""}>
@@ -214,7 +220,7 @@ export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow
                 </Select>
               </div>
               <div>
-                <label className={LABEL}>Expense Date *</label>
+                <label className={LABEL}>Date *</label>
                 <input required type="date" className={FIELD} value={draft.expenseDate} onChange={(e) => setDraft({ ...draft, expenseDate: e.target.value })} />
               </div>
               <div>
@@ -234,7 +240,11 @@ export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow
               </div>
             </div>
             <div>
-              <label className={LABEL}>Description / Notes</label>
+              <label className={LABEL}>{INVOICE_NO_LABEL}</label>
+              <input maxLength={100} className={FIELD} value={draft.invoiceNo} placeholder={INVOICE_NO_PLACEHOLDER} onChange={(e) => setDraft({ ...draft, invoiceNo: e.target.value })} />
+            </div>
+            <div>
+              <label className={LABEL}>Description</label>
               <textarea rows={3} className={AREA} value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} />
             </div>
             <div className="flex justify-end gap-2.5">
@@ -242,7 +252,7 @@ export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow
                 Cancel
               </button>
               <button type="submit" className={BTN} disabled={pending}>
-                {pending ? "Saving…" : "Save"}
+                {pending ? "Saving…" : "Save changes"}
               </button>
             </div>
           </form>

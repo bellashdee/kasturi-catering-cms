@@ -40,6 +40,8 @@ export type OperationPettyCashRow = {
   payment_method: string | null;
   /** what it was for, e.g. the event the things were bought for */
   remarks: string | null;
+  /** the invoice / receipt number as printed (optional) */
+  invoice_no?: string | null;
   /** the other companies this entry is also for (company_id is the main one); the amount is counted once */
   shared_company_ids: string[];
 };

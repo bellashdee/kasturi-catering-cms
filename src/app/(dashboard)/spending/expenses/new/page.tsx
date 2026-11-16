@@ -36,7 +36,7 @@ export default async function NewCompanyExpensePage({
   return (
     <div className="mx-auto max-w-3xl">
       <h1 className="text-[22px] font-extrabold text-text">New Company Expense</h1>
-      <p className="mt-1 text-[13px] text-text-secondary">Enter it manually, or upload a receipt/invoice for AI to read.</p>
+      <p className="mt-1 text-[13px] text-text-secondary">Key it in yourself, or upload the receipt or invoice and let the AI read it. Check every field before you save.</p>
       <div className="mt-5 rounded-xl border border-border bg-surface shadow-sm">
         <CompanyExpenseUploadReview
           companies={selectable}

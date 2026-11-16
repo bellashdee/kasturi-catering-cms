@@ -19,6 +19,8 @@ export type CostRow = {
   details: string | null;
   /** a company expense marked as a credit note (money back: its amount is counted as minus) or a debit note */
   note?: "credit_note" | "debit_note" | null;
+  /** the invoice / receipt number keyed in with it (company expenses, petty cash and staff claims), when there is one */
+  invoiceNo?: string | null;
 };
 
 /**
@@ -106,13 +108,13 @@ export async function listSpending(supabase: DB, companyIds: string[], from?: st
       .lte("pay_period_end", end),
     supabase
       .from("expenses")
-      .select("id, company_id, amount, category, department, expense_date, notes, note_type")
+      .select("id, company_id, amount, category, department, expense_date, notes, note_type, invoice_no")
       .in("company_id", companyIds)
       .gte("expense_date", start)
       .lte("expense_date", end),
     supabase
       .from("petty_cash_transactions")
-      .select("id, company_id, amount, category, type, transaction_date, description, claimant_name")
+      .select("id, company_id, amount, category, type, transaction_date, description, claimant_name, invoice_no")
       .in("company_id", companyIds)
       .eq("type", "expense")
       .gte("transaction_date", start)
@@ -120,7 +122,7 @@ export async function listSpending(supabase: DB, companyIds: string[], from?: st
     // the money spent from the petty cash book (an entry for more than one company is counted once, under its main company)
     supabase
       .from("operation_petty_cash")
-      .select("id, company_id, amount, category, entry_date, description")
+      .select("id, company_id, amount, category, entry_date, description, invoice_no")
       .in("company_id", companyIds)
       .eq("entry_type", "expense")
       .gte("entry_date", start)
@@ -217,6 +219,7 @@ export async function listSpending(supabase: DB, companyIds: string[], from?: st
       date: e.expense_date,
       details: e.notes ?? null,
       note: e.note_type === "credit_note" || e.note_type === "debit_note" ? e.note_type : null,
+      invoiceNo: e.invoice_no ?? null,
     });
   }
 
@@ -230,6 +233,7 @@ export async function listSpending(supabase: DB, companyIds: string[], from?: st
       id: pc.id,
       date: pc.transaction_date,
       details: [pc.description, pc.claimant_name ? `Staff claim: ${pc.claimant_name}` : null].filter(Boolean).join(" · ") || null,
+      invoiceNo: pc.invoice_no ?? null,
     });
   }
 
@@ -243,6 +247,7 @@ export async function listSpending(supabase: DB, companyIds: string[], from?: st
       id: pb.id,
       date: pb.entry_date,
       details: pb.description ?? null,
+      invoiceNo: pb.invoice_no ?? null,
     });
   }
 

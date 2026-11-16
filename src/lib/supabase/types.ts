@@ -2859,6 +2859,7 @@ export type Database = {
           document_id: string | null
           expense_date: string
           id: string
+          invoice_no: string | null
           note_type: string | null
           notes: string | null
           updated_at: string
@@ -2873,6 +2874,7 @@ export type Database = {
           document_id?: string | null
           expense_date: string
           id?: string
+          invoice_no?: string | null
           note_type?: string | null
           notes?: string | null
           updated_at?: string
@@ -2887,6 +2889,7 @@ export type Database = {
           document_id?: string | null
           expense_date?: string
           id?: string
+          invoice_no?: string | null
           note_type?: string | null
           notes?: string | null
           updated_at?: string
@@ -3942,6 +3945,7 @@ export type Database = {
           entry_date: string
           entry_type: string
           id: string
+          invoice_no: string | null
           payment_method: string | null
           remarks: string | null
           person_name: string | null
@@ -3961,6 +3965,7 @@ export type Database = {
           entry_date: string
           entry_type: string
           id?: string
+          invoice_no?: string | null
           payment_method?: string | null
           remarks?: string | null
           person_name?: string | null
@@ -3980,6 +3985,7 @@ export type Database = {
           entry_date?: string
           entry_type?: string
           id?: string
+          invoice_no?: string | null
           payment_method?: string | null
           remarks?: string | null
           person_name?: string | null
@@ -4503,6 +4509,7 @@ export type Database = {
           document_id: string | null
           extra_document_ids: string[]
           id: string
+          invoice_no: string | null
           paid_by: string | null
           payment_method: string | null
           remarks: string | null
@@ -4531,6 +4538,7 @@ export type Database = {
           document_id?: string | null
           extra_document_ids?: string[]
           id?: string
+          invoice_no?: string | null
           paid_by?: string | null
           payment_method?: string | null
           remarks?: string | null
@@ -4559,6 +4567,7 @@ export type Database = {
           document_id?: string | null
           extra_document_ids?: string[]
           id?: string
+          invoice_no?: string | null
           paid_by?: string | null
           payment_method?: string | null
           remarks?: string | null

@@ -12,23 +12,22 @@ import { Select } from "@/components/ui/Select";
 import { MultiChoiceSelect } from "@/components/ui/MultiChoiceSelect";
 import { SplitAmountBox, SplitChoice } from "@/components/shared/SplitAmountBox";
 import { splitAddsUp, splitCells } from "@/lib/categorySplit";
+import { INVOICE_NO_LABEL, INVOICE_NO_PLACEHOLDER, SPEND_GRID_2, SPEND_INPUT, SPEND_LABEL } from "@/components/spending/formStyles";
 
 type Company = { id: string; name: string };
 type CostCategory = { id: string; name: string };
 type UtilityAccount = { id: string; companyId: string; name: string; provider: string | null; accountNo: string | null };
 
-
-
 type ExtractedExpense = {
   category?: string;
   description?: string;
+  invoice_number?: string | null;
   amount?: number;
   expense_date?: string;
 };
 
-const inputClass =
-  "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
-const labelClass = "text-[12.5px] font-semibold text-text-secondary";
+const inputClass = SPEND_INPUT;
+const labelClass = SPEND_LABEL;
 
 export function CompanyExpenseUploadReview({
   companies,
@@ -53,7 +52,7 @@ export function CompanyExpenseUploadReview({
   const [noteType, setNoteType] = useState<"credit_note" | "debit_note" | null>(null);
   // one or more categories: with more than one, the amount is split between them and each part is saved as its own expense
   // the category is never filled in by itself (not even from a receipt read by the AI): the person chooses it
-  const [form, setForm] = useState<{ categories: string[]; description: string; amount: string; expenseDate: string }>({ categories: [], description: "", amount: "", expenseDate: "" });
+  const [form, setForm] = useState<{ categories: string[]; description: string; invoiceNo: string; amount: string; expenseDate: string }>({ categories: [], description: "", invoiceNo: "", amount: "", expenseDate: "" });
   const [shareText, setShareText] = useState<Record<string, string>>({});
   // more than one category: split the amount between them (each part its own expense) or keep one expense under all of them
   const [splitOn, setSplitOn] = useState(true);
@@ -80,6 +79,7 @@ export function CompanyExpenseUploadReview({
       setForm({
         categories: [],
         description: extracted.description ?? "",
+        invoiceNo: typeof extracted.invoice_number === "string" ? extracted.invoice_number.trim() : "",
         amount: extracted.amount?.toString() ?? "",
         expenseDate: extracted.expense_date ?? "",
       });
@@ -88,7 +88,7 @@ export function CompanyExpenseUploadReview({
 
   async function handleConfirm() {
     if (!form.amount || !form.expenseDate) {
-      flow.setError("Amount and date are required.");
+      flow.setError("Enter the amount and the date.");
       return;
     }
     if (form.categories.length === 0) {
@@ -96,7 +96,7 @@ export function CompanyExpenseUploadReview({
       return;
     }
     if (byCategory && (!splitAddsUp(form.amount, cells) || cells.some((c) => c.amount <= 0))) {
-      flow.setError("The amounts of the categories must add up to the total amount, each more than 0.");
+      flow.setError("The category amounts must add up to the total, each more than 0.");
       return;
     }
     try {
@@ -109,6 +109,7 @@ export function CompanyExpenseUploadReview({
           amount: Number(form.amount),
           expenseDate: form.expenseDate,
           notes: form.description || undefined,
+          invoiceNo: form.invoiceNo.trim() || undefined,
           documentId: flow.documentId || undefined,
           noteType,
         });
@@ -125,7 +126,7 @@ export function CompanyExpenseUploadReview({
       <ImportTabs tab={flow.tab} onSelect={flow.selectTab} pdfLabel="Upload File (PDF / Excel / CSV)" photoLabel="Photo / Screenshot" />
 
       <div className="p-6">
-        <div className="mb-4 grid grid-cols-2 gap-4">
+        <div className={`mb-4 ${SPEND_GRID_2}`}>
           <div>
             <label className={labelClass}>Company *</label>
             <Select
@@ -152,12 +153,12 @@ export function CompanyExpenseUploadReview({
             <FileDropZone
               file={flow.file}
               accept={flow.tab === "pdf" ? DOCUMENT_FILE_ACCEPT : "image/*"}
-              prompt={`Click to choose a ${flow.tab === "pdf" ? "PDF receipt" : "photo of the receipt"}`}
+              prompt={flow.tab === "pdf" ? "Click to choose the receipt or invoice (PDF, Excel or CSV)" : "Click to choose a photo or screenshot of the receipt"}
               onChange={flow.setFile}
             />
             <FormError error={flow.error} />
             <button onClick={handleUploadAndExtract} disabled={!flow.file || flow.uploading} className="rounded-lg bg-primary px-5 py-2.5 text-[13.5px] font-semibold text-white disabled:opacity-60">
-              {flow.uploading ? "Uploading & reading document..." : "Upload & Extract"}
+              {flow.uploading ? "Reading the document..." : "Upload and read"}
             </button>
           </div>
         )}
@@ -167,15 +168,15 @@ export function CompanyExpenseUploadReview({
             <ExtractionNotice notice={flow.notice} report={flow.report} />
             <FormError error={flow.error} />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className={SPEND_GRID_2}>
               <div>
                 <label className={labelClass}>Category * (choose one or more)</label>
-                <div className="mt-1.5">
+                <div>
                   <MultiChoiceSelect options={categories.map((c) => c.name)} value={form.categories} onChange={(list) => { setForm((f) => ({ ...f, categories: list })); setShareText({}); }} placeholder="Select category" searchPlaceholder="Search category" />
                 </div>
               </div>
               <div>
-                <label className={labelClass}>Expense Date *</label>
+                <label className={labelClass}>Date *</label>
                 <input type="date" value={form.expenseDate} onChange={(e) => setForm((f) => ({ ...f, expenseDate: e.target.value }))} className={inputClass} />
               </div>
             </div>
@@ -190,33 +191,43 @@ export function CompanyExpenseUploadReview({
               </div>
             )}
 
-            <div>
-              <label className={labelClass}>Description</label>
-              <DescriptionInput value={form.description} onChange={(v) => setForm((f) => ({ ...f, description: v }))} companyId={companyId} className={inputClass} placeholder="e.g. TNB electricity bill — September" />
+            <div className={SPEND_GRID_2}>
+              <div>
+                <label className={labelClass}>Description</label>
+                <DescriptionInput value={form.description} onChange={(v) => setForm((f) => ({ ...f, description: v }))} companyId={companyId} className={inputClass} placeholder="e.g. TNB electricity bill, September" />
+              </div>
+              <div>
+                <label className={labelClass}>{INVOICE_NO_LABEL}</label>
+                <input value={form.invoiceNo} onChange={(e) => setForm((f) => ({ ...f, invoiceNo: e.target.value }))} maxLength={100} placeholder={INVOICE_NO_PLACEHOLDER} className={inputClass} />
+              </div>
             </div>
 
-            <div>
-              <label className={labelClass}>Mark (optional)</label>
-              <div className="mt-1.5 mb-3 flex flex-wrap gap-2">
-                {([
-                  ["credit_note", "Credit Note", "money given back: counted as minus"],
-                  ["debit_note", "Debit Note", "an extra charge"],
-                ] as const).map(([value, text, hint]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    title={hint}
-                    aria-pressed={noteType === value}
-                    onClick={() => setNoteType(noteType === value ? null : value)}
-                    className={`rounded-lg border px-3.5 py-1.5 text-[13px] font-semibold ${noteType === value ? (value === "credit_note" ? "border-success bg-success-bg text-success" : "border-warning bg-warning-bg text-warning") : "border-border-strong bg-surface text-text-secondary"}`}
-                  >
-                    {noteType === value ? "✓ " : ""}
-                    {text}
-                  </button>
-                ))}
+            <div className={SPEND_GRID_2}>
+              <div>
+                <label className={labelClass}>{byCategory ? "Total amount (RM) *" : "Amount (RM) *"}</label>
+                <input type="number" step="0.01" min="0" value={form.amount} onChange={(e) => { setForm((f) => ({ ...f, amount: e.target.value })); setShareText({}); }} className={inputClass} />
               </div>
-              <label className={labelClass}>{byCategory ? "Total amount (RM) *" : "Amount (RM) *"}</label>
-              <input type="number" step="0.01" min="0" value={form.amount} onChange={(e) => { setForm((f) => ({ ...f, amount: e.target.value })); setShareText({}); }} className={inputClass} />
+              <div>
+                <label className={labelClass}>Mark (optional)</label>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {([
+                    ["credit_note", "Credit Note", "Money given back: counted as a minus"],
+                    ["debit_note", "Debit Note", "An extra charge"],
+                  ] as const).map(([value, text, hint]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      title={hint}
+                      aria-pressed={noteType === value}
+                      onClick={() => setNoteType(noteType === value ? null : value)}
+                      className={`h-9 rounded-lg border px-3.5 text-[13px] font-semibold ${noteType === value ? (value === "credit_note" ? "border-success bg-success-bg text-success" : "border-warning bg-warning-bg text-warning") : "border-border-strong bg-surface text-text-secondary"}`}
+                    >
+                      {noteType === value ? "✓ " : ""}
+                      {text}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {form.categories.length > 1 && (
@@ -225,14 +236,14 @@ export function CompanyExpenseUploadReview({
                 checked={splitOn}
                 onChange={(on) => { setSplitOn(on); setShareText({}); }}
                 on="Each category gets its own part of the amount."
-                off="Not split: one expense with the whole amount, under all the categories chosen."
+                off="Not split: one expense for the whole amount, under all the chosen categories."
               />
             )}
             {byCategory && (
               <SplitAmountBox title="Split the amount by category (RM) *" total={form.amount} cells={cells} onType={(key, text) => setShareText((p) => ({ ...p, [key]: text }))} onEqual={() => setShareText({})} />
             )}
 
-            <ConfirmActions onCancel={() => router.push(redirectTo)} onConfirm={handleConfirm} saving={flow.saving} />
+            <ConfirmActions onCancel={() => router.push(redirectTo)} onConfirm={handleConfirm} saving={flow.saving} label="Save expense" />
           </div>
         )}
       </div>
