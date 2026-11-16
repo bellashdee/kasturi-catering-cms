@@ -4,7 +4,6 @@ type PageContextEntry = { prefix: string; label: string; module: ModuleKey | "ge
 
 // Ordered most-specific prefix first — the first match wins.
 const PAGE_CONTEXT_MAP: PageContextEntry[] = [
-  { prefix: "/supplier-procurement/payments", label: "Supplier & Procurement → Payment Dashboard", module: "supplier-procurement" },
   { prefix: "/supplier-procurement/invoices", label: "Supplier & Procurement → Supplier Invoices", module: "supplier-procurement" },
   { prefix: "/supplier-procurement/orders", label: "Supplier & Procurement → Purchase Orders", module: "supplier-procurement" },
   { prefix: "/supplier-procurement/requests", label: "Supplier & Procurement → Purchase Orders (item requests)", module: "supplier-procurement" },

@@ -43,7 +43,6 @@ export const MODULE_SECTIONS: Record<string, Section[]> = {
     { key: "supplier-procurement:orders", label: "Purchase Orders", href: "/supplier-procurement/orders", prefixes: ["/supplier-procurement/orders", "/supplier-procurement/requests"] },
     { key: "supplier-procurement:invoices", label: "Invoices", href: "/supplier-procurement/invoices", prefixes: ["/supplier-procurement/invoices"] },
     { key: "supplier-procurement:notes", label: "Credit / Debit Notes", href: "/supplier-procurement/notes", prefixes: ["/supplier-procurement/notes"] },
-    { key: "supplier-procurement:payments", label: "Payments", href: "/supplier-procurement/payments", prefixes: ["/supplier-procurement/payments"] },
   ],
   "driver-logistics": [
     { key: "driver-logistics:deliveries", label: "Deliveries", href: "/driver-logistics", prefixes: [] },
@@ -65,12 +64,14 @@ export const MODULE_SECTIONS: Record<string, Section[]> = {
     { key: "finance-admin:event-pnl", label: "Event P&L", href: "/finance/event-pnl", prefixes: ["/finance/event-pnl"] },
     { key: "finance-admin:invoices", label: "Customer Invoices", href: "/finance/invoices", prefixes: ["/finance/invoices"] },
     { key: "finance-admin:payment-proofs", label: "Payments Received", href: "/finance/payment-proofs", prefixes: ["/finance/payment-proofs", "/finance/receive-payments"] },
-    { key: "finance-admin:outstanding", label: "Outstanding Payment", href: "/finance/outstanding", prefixes: ["/finance/outstanding"] },
-    { key: "finance-admin:payments", label: "Payment Dashboard", href: "/finance/payments", prefixes: ["/finance/payments", "/finance/payment-accounts"] },
-    { key: "finance-admin:checklist", label: "Payment Checklist", href: "/finance/payments/checklist", prefixes: ["/finance/payments/checklist"] },
-    { key: "finance-admin:supplier-payment", label: "Supplier Payment", href: "/finance/supplier-payment", prefixes: ["/finance/supplier-payment"] },
-    { key: "finance-admin:rental-payment", label: "Rental Payment", href: "/finance/rental-payment", prefixes: ["/finance/rental-payment"] },
-    { key: "finance-admin:utilities-payment", label: "Utilities Payment", href: "/finance/utilities-payment", prefixes: ["/finance/utilities-payment"] },
+    // the Payment Overview tab: three pages
+    { key: "finance-admin:payments", label: "Payment Overview: Payment Dashboard", href: "/finance/payments", prefixes: ["/finance/payments", "/finance/payment-accounts"] },
+    { key: "finance-admin:checklist", label: "Payment Overview: Payment Checklist", href: "/finance/payments/checklist", prefixes: ["/finance/payments/checklist"] },
+    { key: "finance-admin:outstanding", label: "Payment Overview: Outstanding Payment", href: "/finance/outstanding", prefixes: ["/finance/outstanding"] },
+    // the Supplier, Rental & Utilities tab: three pages
+    { key: "finance-admin:supplier-payment", label: "Supplier, Rental & Utilities: Supplier Payment", href: "/finance/supplier-payment", prefixes: ["/finance/supplier-payment"] },
+    { key: "finance-admin:rental-payment", label: "Supplier, Rental & Utilities: Rental Payment", href: "/finance/rental-payment", prefixes: ["/finance/rental-payment"] },
+    { key: "finance-admin:utilities-payment", label: "Supplier, Rental & Utilities: Utilities Payment", href: "/finance/utilities-payment", prefixes: ["/finance/utilities-payment"] },
   ],
 };
 

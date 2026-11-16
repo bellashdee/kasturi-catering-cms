@@ -32,7 +32,6 @@ export const MONTH_FILTER_PAGES = new Set([
   "/supplier-procurement/kitchen-requests",
   "/supplier-procurement/notes",
   "/supplier-procurement/orders",
-  "/supplier-procurement/payments",
   "/supplier-procurement/price-quotes",
 ]);
 export const thisMonthInMalaysia = () => new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 7);

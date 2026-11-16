@@ -11,7 +11,6 @@ const buttonClass = "h-9 rounded-lg border border-border-strong bg-surface px-3.
 const IMPORT_TARGETS: [prefix: string, href: string][] = [
   ["/supplier-procurement/invoices", "/supplier-procurement/invoices/new"],
   ["/supplier-procurement/items", "/supplier-procurement/invoices/new"],
-  ["/supplier-procurement/payments", "/supplier-procurement/invoices/new"],
   ["/supplier-procurement/orders", "/supplier-procurement/invoices/new"],
   ["/supplier-procurement/requests", "/supplier-procurement/invoices/new"],
 ];

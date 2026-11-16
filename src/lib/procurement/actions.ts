@@ -704,7 +704,6 @@ export async function createSupplierPayment(input: SupplierPaymentInput) {
 
   await supabase.from("supplier_payments").update({ approval_id: approval.id }).eq("id", payment.id);
 
-  revalidatePath("/supplier-procurement/payments");
   revalidatePath(`/supplier-procurement/invoices/${input.supplierInvoiceId}`);
   revalidatePath("/");
   return payment;
@@ -727,7 +726,6 @@ export async function decideSupplierPayment(paymentId: string, decision: "approv
     await supabase.from("approvals").update({ status: decision }).eq("id", payment.approval_id);
   }
 
-  revalidatePath("/supplier-procurement/payments");
   revalidatePath(`/supplier-procurement/invoices/${payment.supplier_invoice_id}`);
   revalidatePath("/");
 }
@@ -795,7 +793,6 @@ export async function recordPaymentExecution(paymentId: string, input: PaymentEx
     await supabase.from("supplier_invoices").update({ status: "paid" as InvoiceStatus }).eq("id", invoice.id);
   }
 
-  revalidatePath("/supplier-procurement/payments");
   revalidatePath(`/supplier-procurement/invoices/${payment.supplier_invoice_id}`);
   revalidatePath("/");
 }

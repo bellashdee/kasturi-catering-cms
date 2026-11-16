@@ -101,7 +101,7 @@ export const KNOWLEDGE_BASE: KBEntry[] = [
     title: "Requesting Payment",
     keywords: ["request payment", "supplier payment", "pay supplier", "payment request"],
     content:
-      "📌 How to Request a Supplier Payment\n1. Go to Supplier & Procurement → Supplier Invoice, and open the invoice you want to pay (it must not already be Paid).\n2. Click Request Payment.\n3. Confirm the amount and payment method.\n4. Submit — this creates a payment request that goes through the normal approval workflow.\n5. A Company Admin or authorized approver reviews it on the Payment Dashboard and approves or rejects it.\n6. Once approved, it's marked Paid and the invoice status updates automatically.\n\n💡 Tip: I can explain this process, but I can't submit or approve payments myself — that always has to happen through the actual buttons in the app, by someone with the right permission.",
+      "📌 How to Request a Supplier Payment\n1. Go to Supplier & Procurement → Supplier Invoice, and open the invoice you want to pay (it must not already be Paid).\n2. Click Request Payment.\n3. Confirm the amount and payment method.\n4. Submit — this creates a payment request that goes through the normal approval workflow.\n5. A Company Admin or authorized approver opens the same supplier invoice and approves or rejects the request.\n6. Once approved, it's marked Paid and the invoice status updates automatically.\n\n💡 Tip: I can explain this process, but I can't submit or approve payments myself — that always has to happen through the actual buttons in the app, by someone with the right permission.",
   },
   {
     id: "gs-10-check-outstanding-payments",
@@ -110,7 +110,7 @@ export const KNOWLEDGE_BASE: KBEntry[] = [
     title: "Checking Outstanding Payments",
     keywords: ["outstanding payments", "unpaid invoices", "check overdue payments", "payment dashboard"],
     content:
-      "📌 How to Check Outstanding Payments\n1. Go to Supplier & Procurement → Payment Dashboard for a live summary of what's owed, overdue, due today, and due this week.\n2. Or go to Reports → Supplier Outstanding Report for a filterable, exportable list of every unpaid invoice.\n3. For customer-side money owed to you, use Reports → Customer Outstanding Report or the Main Dashboard's Customer Outstanding card.\n\n💡 Tip: Ask me directly — I can look up your current supplier/customer outstanding totals and overdue counts for the companies you have access to.",
+      "📌 How to Check Outstanding Payments\n1. Go to Admin & Finance → Payment Overview → Outstanding Payment (Supplier Outstanding) for a live summary of what's owed, overdue, due today, and due this week.\n2. Or go to Reports → Supplier Outstanding Report for a filterable, exportable list of every unpaid invoice.\n3. For customer-side money owed to you, use Reports → Customer Outstanding Report or the Main Dashboard's Customer Outstanding card.\n\n💡 Tip: Ask me directly — I can look up your current supplier/customer outstanding totals and overdue counts for the companies you have access to.",
   },
   {
     id: "gs-11-creating-reports",
