@@ -108,7 +108,7 @@ export default async function DriverDashboardPage({
         {requestedId && <input type="hidden" name="company" value={requestedId} />}
         <div>
           <label className="text-[12px] font-semibold text-text-secondary">Driver</label>
-          <Select name="driver" defaultValue={driverId} className="mt-1 h-9 w-64 rounded-lg border border-border-strong px-2 text-[13px]">
+          <Select name="driver" defaultValue={driverId} className="mt-1 block h-9 w-64 rounded-lg border border-border-strong px-2 text-[13px]">
             {drivers.map((d) => <option key={d.id} value={d.id}>{d.full_name}</option>)}
           </Select>
         </div>

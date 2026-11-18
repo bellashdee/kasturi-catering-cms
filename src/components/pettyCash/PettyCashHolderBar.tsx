@@ -62,7 +62,7 @@ export function PettyCashHolderBar({
       </div>
       <div>
         <label className={labelClass} htmlFor="pc-month">Month</label>
-        <Select id="pc-month" name="month" defaultValue={month} className="mt-1 h-9 rounded-lg border border-border-strong bg-surface px-3 text-[13.5px] font-semibold">
+        <Select id="pc-month" name="month" defaultValue={month} className="mt-1 block h-9 rounded-lg border border-border-strong bg-surface px-3 text-[13.5px] font-semibold">
           {months.map((m) => (
             <option key={m} value={m}>{m}</option>
           ))}

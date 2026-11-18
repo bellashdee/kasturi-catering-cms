@@ -40,7 +40,7 @@ export function RecipePaxCalculator({
             min="1"
             value={targetPax}
             onChange={(e) => setTargetPax(e.target.value)}
-            className="mt-1.5 h-10 w-40 rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
+            className="mt-1.5 block h-10 w-40 rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
           />
         </div>
         <p className="pb-2.5 text-xs text-text-muted">Base recipe yields {yieldPax} pax — quantities below are scaled from that.</p>
