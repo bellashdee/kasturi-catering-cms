@@ -26,6 +26,8 @@ export type AccountRow = {
   defaultDueDay: number | null;
   notes: string | null;
   isActive: boolean;
+  /** suppliers: the companies that have this supplier (one row per supplier) */
+  companyNames?: string[];
 };
 
 const inputClass = "mt-1 h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]";
@@ -89,7 +91,11 @@ export function AccountsManager({ category, companies, accounts }: { category: P
         notes: draft.notes || undefined,
         isActive: draft.isActive,
       };
-      await saveAccount(input, draft.id);
+      const res = await saveAccount(input, draft.id);
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
       setDraft(null);
       router.refresh();
     } catch (err) {
@@ -113,17 +119,30 @@ export function AccountsManager({ category, companies, accounts }: { category: P
         <form onSubmit={save} className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 shadow-sm">
           {error && <div className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-xs text-danger">{error}</div>}
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelClass}>Company</label>
-              <Select value={draft.companyId} disabled={!!draft.id} onChange={(e) => setDraft({ ...draft, companyId: e.target.value })} className={inputClass}>
-                {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </Select>
-            </div>
+            {category === "supplier" ? (
+              <div>
+                <label className={labelClass}>Company</label>
+                <div className="mt-1 flex h-9 items-center rounded-lg border border-border bg-surface-alt px-2 text-[13px] text-text-secondary">All companies</div>
+              </div>
+            ) : (
+              <div>
+                <label className={labelClass}>Company</label>
+                <Select value={draft.companyId} disabled={!!draft.id} onChange={(e) => setDraft({ ...draft, companyId: e.target.value })} className={inputClass}>
+                  {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </Select>
+              </div>
+            )}
             <div>
               <label className={labelClass}>{nameLabel} *</label>
-              <input required value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} className={inputClass} />
+              <input
+                required
+                value={draft.name}
+                onChange={(e) => setDraft({ ...draft, name: category === "supplier" ? e.target.value.toUpperCase() : e.target.value })}
+                className={`${inputClass} ${category === "supplier" ? "uppercase" : ""}`}
+              />
             </div>
           </div>
+          {category === "supplier" && <p className="-mt-1 text-[12px] text-text-secondary">A supplier is saved for every company (Kasturi Indah, Signature Solution and O2 Life), and a change here changes it in each of them. Names are kept in capitals.</p>}
           {category === "utility" && (
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -195,7 +214,7 @@ export function AccountsManager({ category, companies, accounts }: { category: P
                 {category === "utility" && <td className="px-4 py-2.5">{a.provider ?? "—"}</td>}
                 <td className="px-4 py-2.5">{a.bankName ?? "—"}</td>
                 <td className="px-4 py-2.5">{accountDisplay(a.accountNo)}</td>
-                <td className="px-4 py-2.5">{a.companyName}</td>
+                <td className="px-4 py-2.5">{a.companyNames ? (a.companyNames.length >= companies.length ? "All companies" : a.companyNames.join(", ")) : a.companyName}</td>
                 <td className="px-4 py-2.5">{a.defaultDueDay ?? "—"}</td>
                 <td className="px-4 py-2.5 text-right"><button type="button" onClick={() => edit(a)} className="text-[12.5px] font-semibold text-primary">Edit</button></td>
               </tr>

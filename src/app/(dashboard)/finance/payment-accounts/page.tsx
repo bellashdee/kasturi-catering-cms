@@ -47,7 +47,7 @@ export default async function PaymentAccountsPage({ searchParams }: { searchPara
 
   const allowedCompanies = companies.filter((c) => adminIds.includes(c.id) && (category === "supplier" || c.name === RENTAL_UTILITY_COMPANY_NAME));
   const rows = await listPaymentAccounts(supabase, adminIds, category, true);
-  const accounts: AccountRow[] = rows.map((a) => ({
+  const all: AccountRow[] = rows.map((a) => ({
     id: a.id,
     companyId: a.company_id,
     companyName: a.companies?.name ?? "",
@@ -61,6 +61,22 @@ export default async function PaymentAccountsPage({ searchParams }: { searchPara
     notes: a.notes,
     isActive: a.is_active,
   }));
+  // a supplier is the same supplier in every company: one row each (the first company's details; an edit changes them all)
+  const key = (name: string) => name.trim().replace(/\s+/g, " ").toUpperCase();
+  const accounts: AccountRow[] =
+    category === "supplier"
+      ? Array.from(
+          all
+            .reduce((map, a) => {
+              const k = key(a.name);
+              const first = map.get(k);
+              if (first) first.companyNames = [...(first.companyNames ?? []), a.companyName];
+              else map.set(k, { ...a, name: k, companyNames: [a.companyName] });
+              return map;
+            }, new Map<string, AccountRow>())
+            .values(),
+        ).sort((a, b) => a.name.localeCompare(b.name))
+      : all;
 
   return (
     <div className="flex flex-col gap-5">

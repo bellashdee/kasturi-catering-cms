@@ -17,14 +17,6 @@ const TABS: Tab[] = [
   { href: "/finance/invoices", label: "Customer Invoices", match: (p) => p.startsWith("/finance/invoices") },
   { href: "/finance/payment-proofs", label: "Payments Received", match: (p) => p.startsWith("/finance/payment-proofs") || p.startsWith("/finance/receive-payments") },
   {
-    label: "Payment Overview",
-    pages: [
-      { href: "/finance/payments", label: "Payment Dashboard", match: (p) => p === "/finance/payments" },
-      { href: "/finance/payments/checklist", label: "Payment Checklist", match: (p) => p.startsWith("/finance/payments/checklist") },
-      { href: "/finance/outstanding", label: "Outstanding Payment", match: (p) => p.startsWith("/finance/outstanding") },
-    ],
-  },
-  {
     label: "Supplier, Rental & Utilities",
     pages: [
       { href: "/finance/supplier-payment", label: "Supplier Payment", match: (p, q) => p.startsWith("/finance/supplier-payment") || (p.startsWith("/finance/payment-accounts") && isCategory(q, "supplier")) },
@@ -33,6 +25,14 @@ const TABS: Tab[] = [
     ],
     // one payment opened from a list (/finance/payments/<id>)
     alsoMatch: (p) => /^\/finance\/payments\/(?!checklist)[^/]+/.test(p),
+  },
+  {
+    label: "Payment Overview",
+    pages: [
+      { href: "/finance/payments", label: "Payment Dashboard", match: (p) => p === "/finance/payments" },
+      { href: "/finance/payments/checklist", label: "Payment Checklist", match: (p) => p.startsWith("/finance/payments/checklist") },
+      { href: "/finance/outstanding", label: "Outstanding Payment", match: (p) => p.startsWith("/finance/outstanding") },
+    ],
   },
 ];
 

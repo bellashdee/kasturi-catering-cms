@@ -4594,6 +4594,8 @@ const dictionary: Record<string, string> = {
  "Event name / AutoCount Invoice No.": "活动名称 / AutoCount 发票号码",
  "no invoice yet": "尚无发票",
  "{0} (no invoice yet)": "{0}（尚无发票）",
+ "A supplier is saved for every company (Kasturi Indah, Signature Solution and O2 Life), and a change here changes it in each of them. Names are kept in capitals.": "供应商会保存到每家公司（Kasturi Indah、Signature Solution 和 O2 Life），在此修改会同时更改每家公司的记录。名称一律以大写保存。",
+ "Another supplier already has this name.": "已有其他供应商使用此名称。",
 };
 
 export default dictionary;

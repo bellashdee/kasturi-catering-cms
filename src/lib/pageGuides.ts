@@ -23,7 +23,7 @@ const TABS = {
   kitchen: "Use the tabs under the page title to move between: Production Schedule, Cooking Plan, Recipes, Package Menu, Stock, Purchase Requests and Daily Report.",
   procurement: "Use the tabs under the page title to move between: Suppliers, Items & Prices, Ingredient Matching, Kitchen Requests, Supplier Quotes, Purchase Orders, Invoices and Credit / Debit Notes.",
   operation: "Use the tabs under the page title to move between: Deliveries, Driver Dashboard, Drivers Information, Vehicles, Maintenance and Attendance (Clock In / Out).",
-  finance: "Use the tabs under the page title to move between: Monthly Costing, Event P&L, Customer Invoices, Payments Received, Payment Overview and Supplier, Rental & Utilities. Payment Overview and Supplier, Rental & Utilities each have a second row of tabs for their pages.",
+  finance: "Use the tabs under the page title to move between: Monthly Costing, Event P&L, Customer Invoices, Payments Received, Supplier, Rental & Utilities and Payment Overview. Supplier, Rental & Utilities and Payment Overview each have a second row of tabs for their pages.",
   spending: "Use the tabs under the page title to move between: Petty Cash, My Claims, Company Expenses and Budgets. The How to claim button explains how to claim what you paid with your own money.",
   marketing: "Use the tabs under the page title to move between: Campaigns, Content Calendar, Leads, Customers, Promotions, Expenses and Reports.",
 };

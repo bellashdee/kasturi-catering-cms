@@ -4582,6 +4582,8 @@ const dictionary: Record<string, string> = {
  "Event name / AutoCount Invoice No.": "ပွဲအမည် / AutoCount ငွေတောင်းခံလွှာ နံပါတ်",
  "no invoice yet": "ငွေတောင်းခံလွှာ မရှိသေးပါ",
  "{0} (no invoice yet)": "{0} (ငွေတောင်းခံလွှာ မရှိသေးပါ)",
+ "A supplier is saved for every company (Kasturi Indah, Signature Solution and O2 Life), and a change here changes it in each of them. Names are kept in capitals.": "ပေးသွင်းသူကို ကုမ္ပဏီတိုင်း (Kasturi Indah၊ Signature Solution နှင့် O2 Life) အတွက် သိမ်းဆည်းပြီး ဤနေရာတွင် ပြင်ဆင်ပါက ကုမ္ပဏီတိုင်းတွင် ပြောင်းလဲမည်။ အမည်များကို စာလုံးအကြီးဖြင့် သိမ်းထားသည်။",
+ "Another supplier already has this name.": "ဤအမည်ကို အခြား ပေးသွင်းသူတစ်ဦး အသုံးပြုပြီးဖြစ်သည်။",
 };
 
 export default dictionary;

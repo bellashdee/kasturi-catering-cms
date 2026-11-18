@@ -31,9 +31,10 @@ async function requireUser() {
 
 /** Finance / Admin of the company, or (for supplier payments only) a person on the supplier payment editors list. */
 async function requireFinanceAdmin(supabase: DB, companyId: string, category?: string) {
-  let { data, error } = await supabase.rpc("user_can_manage_payments", { target_company_id: companyId, target_category: category ?? "" });
+  const manage = await supabase.rpc("user_can_manage_payments", { target_company_id: companyId, target_category: category ?? "" });
+  let data = manage.data;
   // until the editors list is in the database, only the admin check applies
-  if (error) ({ data } = await supabase.rpc("user_is_company_admin", { target_company_id: companyId }));
+  if (manage.error) ({ data } = await supabase.rpc("user_is_company_admin", { target_company_id: companyId }));
   if (data !== true) throw new Error("Only Finance / Admin users of this company can manage payments and bank details.");
 }
 
@@ -130,7 +131,7 @@ async function rememberAccount(supabase: DB, input: PaymentInput, userId: string
 
   const { data: created } = await supabase
     .from("payment_accounts")
-    .insert({ company_id: input.companyId, category: "supplier", name: input.payeeName.trim(), bank_name: input.bankName?.trim() || null, account_no: input.accountNo?.trim() || null })
+    .insert({ company_id: input.companyId, category: "supplier", name: supplierName(input.payeeName), bank_name: input.bankName?.trim() || null, account_no: input.accountNo?.trim() || null })
     .select("id")
     .single();
   if (created) {
@@ -352,52 +353,96 @@ export type AccountInput = {
   isActive?: boolean;
 };
 
-/** Add or edit a reference account (supplier, rental payee, utility account). Bank changes are audited (masked). */
-export async function saveAccount(input: AccountInput, accountId?: string) {
-  const { supabase } = await requireUser();
-  if (!input.name?.trim()) throw new Error("Enter the name.");
-  await requireFinanceAdmin(supabase, input.companyId, input.category);
-  await assertCategoryAllowed(supabase, input.companyId, input.category);
+/** A supplier's name as it is kept: capitals, single spaces. */
+const supplierName = (name: string) => name.trim().replace(/\s+/g, " ").toUpperCase();
 
-  const row = {
-    company_id: input.companyId,
-    category: input.category,
-    name: input.name.trim(),
-    provider: input.provider?.trim() || null,
-    utility_type: input.utilityType ?? null,
-    bank_name: input.bankName?.trim() || null,
-    account_no: input.accountNo?.trim() || null,
-    default_due_day: input.defaultDueDay ?? null,
-    notes: input.notes?.trim() || null,
-    is_active: input.isActive ?? true,
-  };
-
-  if (accountId) {
-    const { data: before } = await supabase.from("payment_accounts").select("*").eq("id", accountId).maybeSingle();
-    if (!before) throw new Error("Account not found.");
-    const { error } = await supabase.from("payment_accounts").update(row).eq("id", accountId);
-    if (error) throw error;
-    const bankChanged = (before.bank_name ?? "") !== (row.bank_name ?? "") || (before.account_no ?? "") !== (row.account_no ?? "");
-    await logTaskAudit({ companyId: input.companyId, relatedTable: "payment_accounts", relatedId: accountId, action: "account_edited", newValue: row.name });
-    if (bankChanged) {
-      await logTaskAudit({
-        companyId: input.companyId,
-        relatedTable: "payment_accounts",
-        relatedId: accountId,
-        action: "bank_changed",
-        previousValue: `${before.bank_name ?? ""} ${maskAccount(before.account_no)}`.trim(),
-        newValue: `${row.bank_name ?? ""} ${maskAccount(row.account_no)}`.trim(),
-      });
+/** The companies where this user can manage supplier payments (a supplier is kept in each of them). */
+async function supplierCompanyIds(supabase: DB): Promise<string[]> {
+  const { data: companies } = await supabase.from("companies").select("id");
+  const ids: string[] = [];
+  for (const c of companies ?? []) {
+    try {
+      await requireFinanceAdmin(supabase, c.id, "supplier");
+      ids.push(c.id);
+    } catch {
+      // not a Finance / Admin user of this company
     }
-  } else {
-    const { data, error } = await supabase.from("payment_accounts").insert(row).select("id").single();
-    if (error) {
-      if (error.code === "23505") throw new Error("This account already exists in the list.");
-      throw error;
-    }
-    await logTaskAudit({ companyId: input.companyId, relatedTable: "payment_accounts", relatedId: data.id, action: "account_created", newValue: `${row.name} ${maskAccount(row.account_no)}` });
   }
-  revalidatePath("/finance/payment-accounts");
+  return ids;
+}
+
+/**
+ * Add or edit a reference account (supplier, rental payee, utility account). Bank changes are audited (masked).
+ * A supplier is one supplier for every company: its name is kept in capitals, and adding or editing it does the same in each company
+ * the user manages (Kasturi Indah, Signature Solution, O2 Life), adding it where it is missing.
+ */
+export async function saveAccount(input: AccountInput, accountId?: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    if (!input.name?.trim()) throw new Error("Enter the name.");
+    await requireFinanceAdmin(supabase, input.companyId, input.category);
+    await assertCategoryAllowed(supabase, input.companyId, input.category);
+
+    const fields = {
+      category: input.category,
+      name: input.category === "supplier" ? supplierName(input.name) : input.name.trim(),
+      provider: input.provider?.trim() || null,
+      utility_type: input.utilityType ?? null,
+      bank_name: input.bankName?.trim() || null,
+      account_no: input.accountNo?.trim() || null,
+      default_due_day: input.defaultDueDay ?? null,
+      notes: input.notes?.trim() || null,
+      is_active: input.isActive ?? true,
+    };
+
+    // the rows to change: this one account, or for a supplier the same supplier (same name) in every company the user manages
+    let before: Database["public"]["Tables"]["payment_accounts"]["Row"] | null = null;
+    if (accountId) {
+      const { data } = await supabase.from("payment_accounts").select("*").eq("id", accountId).maybeSingle();
+      if (!data) throw new Error("Account not found.");
+      before = data;
+    }
+    const companyIds = input.category === "supplier" ? await supplierCompanyIds(supabase) : [input.companyId];
+    if (!companyIds.includes(input.companyId)) companyIds.push(input.companyId);
+    const matchName = before ? before.name : fields.name;
+    const { data: sameRows } =
+      input.category === "supplier"
+        ? await supabase.from("payment_accounts").select("*").in("company_id", companyIds).eq("category", "supplier")
+        : { data: before ? [before] : [] };
+    const existing = (sameRows ?? []).filter((r) => (accountId && r.id === accountId) || (input.category === "supplier" && nameKey(r.name) === nameKey(matchName)));
+
+    for (const companyId of companyIds) {
+      const row = existing.find((r) => r.company_id === companyId);
+      if (row) {
+        if (!accountId) continue; // adding a supplier that this company already has: leave it as it is
+        const { error } = await supabase.from("payment_accounts").update({ ...fields, company_id: companyId }).eq("id", row.id);
+        if (error) {
+          if (error.code === "23505") throw new Error("Another supplier already has this name.");
+          throw error;
+        }
+        await logTaskAudit({ companyId, relatedTable: "payment_accounts", relatedId: row.id, action: "account_edited", newValue: fields.name });
+        if ((row.bank_name ?? "") !== (fields.bank_name ?? "") || (row.account_no ?? "") !== (fields.account_no ?? "")) {
+          await logTaskAudit({
+            companyId,
+            relatedTable: "payment_accounts",
+            relatedId: row.id,
+            action: "bank_changed",
+            previousValue: `${row.bank_name ?? ""} ${maskAccount(row.account_no)}`.trim(),
+            newValue: `${fields.bank_name ?? ""} ${maskAccount(fields.account_no)}`.trim(),
+          });
+        }
+      } else if (input.category === "supplier" || !accountId) {
+        const { data, error } = await supabase.from("payment_accounts").insert({ ...fields, company_id: companyId }).select("id").single();
+        if (error) {
+          if (error.code === "23505") throw new Error("This account already exists in the list.");
+          throw error;
+        }
+        await logTaskAudit({ companyId, relatedTable: "payment_accounts", relatedId: data.id, action: "account_created", newValue: `${fields.name} ${maskAccount(fields.account_no)}` });
+      }
+    }
+    revalidatePath("/finance/payment-accounts");
+    return {};
+  }, "Could not save.");
 }
 
 function revalidatePaymentPaths(paymentId?: string) {

@@ -2,6 +2,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { PushPayload } from "@/lib/push/send";
 
+/** Who gets the phone notification of a new quotation request: Ms. Nabilah and Mr. Adlan only. */
+const QUOTATION_REQUEST_NOTIFY = ["296343b8-f5a1-4226-9d0c-41c75c99bf2a", "0cebe546-3d50-44e8-ab51-e23d2082e23d"];
+
 type Row = Record<string, unknown>;
 export type PushEvent = { table: string; op: "INSERT" | "UPDATE"; record: Row; old: Row | null };
 type Plan = { userIds: string[]; payload: PushPayload } | null;
@@ -75,7 +78,8 @@ export async function planPush(event: PushEvent): Promise<Plan> {
     }
 
     case "quotation_requests": {
-      const ids = await listUserIds(admin, "quotation_request_access");
+      // only Ms. Nabilah and Mr. Adlan are told of a new quotation request (the inbox itself stays open to everyone with access)
+      const ids = QUOTATION_REQUEST_NOTIFY;
       const code = str(r.request_code);
       return { userIds: ids, payload: { title: `New quotation request${code ? ` ${code}` : ""}`, body: [str(r.customer_name), str(r.event_name)].filter(Boolean).join(" · "), url: `/catering/quotation-requests/${str(r.id)}`, tag: `qr-${str(r.id)}` } };
     }

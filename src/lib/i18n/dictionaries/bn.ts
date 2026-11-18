@@ -4588,6 +4588,8 @@ const dictionary: Record<string, string> = {
  "Event name / AutoCount Invoice No.": "ইভেন্টের নাম / AutoCount ইনভয়েস নং",
  "no invoice yet": "এখনও ইনভয়েস নেই",
  "{0} (no invoice yet)": "{0} (এখনও ইনভয়েস নেই)",
+ "A supplier is saved for every company (Kasturi Indah, Signature Solution and O2 Life), and a change here changes it in each of them. Names are kept in capitals.": "সরবরাহকারী প্রতিটি কোম্পানির জন্য সংরক্ষিত হয় (Kasturi Indah, Signature Solution ও O2 Life), এবং এখানে পরিবর্তন করলে প্রতিটিতে বদলে যায়। নাম বড় হাতের অক্ষরে রাখা হয়।",
+ "Another supplier already has this name.": "অন্য একটি সরবরাহকারী ইতিমধ্যে এই নাম ব্যবহার করছে।",
 };
 
 export default dictionary;
