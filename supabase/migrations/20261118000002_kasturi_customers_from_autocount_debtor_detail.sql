@@ -1,0 +1,16 @@
+-- Kasturi Indah: customer details filled from the AutoCount "Debtor Detail Report" (Debtor Full Detail - KASTURI.pdf, printed
+-- 18 Nov 2026, 202 debtors). Data change run on the database on 18 Nov 2026.
+--
+--  * 197 debtors matched a Kasturi customer (191 by debtor code in customers.account_code, 6 by name).
+--  * Only EMPTY fields were filled (coalesce(existing, pdf)); nothing already in the system was changed. 137 customers updated:
+--    delivery address 128, credit term 9, credit limit 9, billing address 8, area 8, sales agent 7 (written as the system already
+--    writes them: Zila, Ms. Hannah), debtor code 6 (e.g. "300-0015 (KI)"), contact person 5, phone 5.
+--  * Left alone: fields where the system and the PDF differ (7 billing addresses really differ, the rest only in format); the
+--    delivery address of NL MECHANICAL ENGINEERING and BNI VICTORY CHAPTER (two debtor codes with different addresses); delivery
+--    values that were only "-" or a postcode.
+--  * Not in the system (not created): 300-0019 SBS EVENT HALL (the system has "sbs hall permas jaya"), 300-0020 JOHDAYA KARYA
+--    SDN BHD, 300-D004 DE LUXE CIRCLE FRESH MART SDN BHD, 300-J007 JABATAN KESELAMATAN DAN KESIHATAN PEKERJAAN, 300-T012 THRIVE
+--    ADVISORY & RESOURCES (the system has "THRIVE ADVISORY & RESOURCES (KIV)").
+--  * A snapshot of the 144 customers' columns before the change is in the side-session notes folder
+--    (snapshot-kasturi-customers-before-debtor-fill-2026-11-18.csv).
+select 1;
