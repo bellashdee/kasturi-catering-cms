@@ -26,23 +26,26 @@ export function MonthFilter({ param = "month" }: { param?: string }) {
     change(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`);
   }
 
-  const btn = "flex h-10 w-9 items-center justify-center rounded-lg border border-border bg-surface text-text hover:bg-surface-alt";
+  const btn = "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border-strong bg-surface text-text hover:bg-surface-alt";
+  // the label above the boxes, like every field of the filter bars
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-[12.5px] font-semibold text-text-secondary">Month</span>
-      <button type="button" aria-label="Previous month" onClick={() => step(-1)} className={btn}>
-        ‹
-      </button>
-      <input
-        type="month"
-        value={value}
-        onChange={(e) => change(e.target.value)}
-        aria-label="Month"
-        className="h-10 rounded-lg border border-border bg-surface px-3 text-[13px] text-text outline-none focus:border-primary"
-      />
-      <button type="button" aria-label="Next month" onClick={() => step(1)} className={btn}>
-        ›
-      </button>
+    <div className="flex flex-col text-[12px] font-semibold text-text-secondary max-sm:w-full">
+      <span className="leading-4">Month</span>
+      <div className="mt-1 flex items-center gap-2">
+        <button type="button" aria-label="Previous month" onClick={() => step(-1)} className={btn}>
+          ‹
+        </button>
+        <input
+          type="month"
+          value={value}
+          onChange={(e) => change(e.target.value)}
+          aria-label="Month"
+          className="h-9 rounded-lg border border-border-strong bg-surface px-3 text-[13px] font-normal text-text outline-none focus:border-primary max-sm:min-w-0 max-sm:flex-1"
+        />
+        <button type="button" aria-label="Next month" onClick={() => step(1)} className={btn}>
+          ›
+        </button>
+      </div>
     </div>
   );
 }

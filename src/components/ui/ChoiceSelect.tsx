@@ -10,6 +10,19 @@ export type Choice = { value: string; label: string };
 const norm = (s: string) => s.trim().replace(/\s+/g, " ").toUpperCase();
 
 /**
+ * How the box sits in its line, from the classes given to it: a full-width box takes the whole width, a box that fills the rest of a row
+ * (`flex-1`) grows with the row, a box marked `block` sits on its own line under its label (as wide as the box), any other box stays in the
+ * line of the text around it.
+ */
+function wrapperLayout(className?: string): string {
+  const classes = (className ?? "").split(/\s+/);
+  if (classes.includes("w-full")) return "block w-full";
+  if (classes.includes("flex-1")) return "block min-w-0 flex-1";
+  if (classes.includes("block")) return "block w-fit max-w-full";
+  return "inline-block";
+}
+
+/**
  * A choice from a fixed list, searched by typing: click the box (or the arrow) to see the whole list, type to narrow it down, then pick one.
  * Unlike a free search box, only an option of the list is accepted: anything else that was typed is not a value, and the form refuses to be sent
  * until an option is chosen (when `required`). An option with the value "" (for example "None") is a valid choice too. The list opens above everything
@@ -110,7 +123,7 @@ export function ChoiceSelect({
   const sheetMatches = options.filter((o) => sheetWords.every((w) => norm(o.label).includes(w)));
 
   return (
-    <div className={`relative ${className?.includes("w-full") ? "block w-full" : "inline-block"}`}>
+    <div className={`relative ${wrapperLayout(className)}`}>
       <input
         ref={inputRef}
         id={id}
@@ -167,7 +180,7 @@ export function ChoiceSelect({
         role="combobox"
         aria-expanded={showList}
         aria-controls={listId}
-        className={`${className ?? ""} pr-9 disabled:bg-surface-alt disabled:opacity-60`}
+        className={`${className ?? ""} ${(className ?? "").split(/\s+/).includes("flex-1") ? "w-full" : ""} pr-9 disabled:bg-surface-alt disabled:opacity-60`}
       />
       {name && <input type="hidden" name={name} value={value} disabled={disabled} />}
       <button

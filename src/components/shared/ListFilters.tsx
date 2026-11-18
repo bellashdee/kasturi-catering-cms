@@ -6,11 +6,17 @@ import { SORT_DIR_LABEL, type SortDir } from "@/lib/listSort";
 /** The look of a box in the filter bar (text, date, number inputs). */
 export const FILTER_INPUT = "mt-1 block h-9 rounded-lg border border-border-strong bg-surface px-2 text-[13px] text-text";
 
-/** One labelled box of the filter bar. */
+/** The layout of one labelled field of the filter bar (also for a page that builds its own field): label above, box under it. */
+export const FILTER_FIELD = "flex flex-col text-[12px] font-semibold text-text-secondary max-sm:w-full max-sm:[&>div]:w-full max-sm:[&_input]:w-full";
+
+/**
+ * One labelled box of the filter bar: the label always sits above its box, so every field of the bar lines up the same way. On a phone each
+ * field takes the whole width of the bar (one field per line).
+ */
 export function FilterField({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label className="text-[12px] font-semibold text-text-secondary">
-      {label}
+    <label className={FILTER_FIELD}>
+      <span className="leading-4">{label}</span>
       {children}
     </label>
   );
@@ -57,8 +63,8 @@ export function ListFilters({
           </FilterField>
         </>
       )}
-      <div className="flex items-center gap-2">
-        <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply Filters</button>
+      <div className="flex items-center gap-2 max-sm:w-full">
+        <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white max-sm:flex-1">Apply Filters</button>
         <Link href={clearHref} className="flex h-9 items-center rounded-lg border border-border-strong px-3 text-[13px] font-semibold text-text-secondary hover:bg-surface-alt">Clear</Link>
       </div>
     </form>
