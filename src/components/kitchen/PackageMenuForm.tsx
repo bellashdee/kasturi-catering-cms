@@ -105,11 +105,11 @@ export function PackageMenuForm({ companies, defaultCompanyId, existing }: { com
         </div>
         <div className="flex flex-col gap-2">
           {items.map((item, i) => (
-            <div key={i} className="grid grid-cols-[1fr_2fr_auto] items-center gap-2">
-              <Select value={item.mealType} onChange={(e) => updateItem(i, "mealType", e.target.value)} className="h-9 rounded-lg border border-border-strong px-2 text-[13px]">
+            <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] items-center gap-2">
+              <Select value={item.mealType} onChange={(e) => updateItem(i, "mealType", e.target.value)} className="h-9 w-full min-w-0 rounded-lg border border-border-strong px-2 text-[13px]">
                 {MEAL_TYPES.map((m) => <option key={m} value={m}>{PACKAGE_MEAL_TYPE_LABEL[m]}</option>)}
               </Select>
-              <input value={item.itemName} onChange={(e) => updateItem(i, "itemName", e.target.value)} placeholder="Item name" className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
+              <input value={item.itemName} onChange={(e) => updateItem(i, "itemName", e.target.value)} placeholder="Item name" className="h-9 w-full min-w-0 rounded-lg border border-border-strong px-2 text-[13px]" />
               <button
                 type="button"
                 onClick={() => setItems((prev) => prev.filter((_, idx) => idx !== i))}

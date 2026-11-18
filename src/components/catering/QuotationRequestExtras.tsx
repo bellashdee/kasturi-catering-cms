@@ -67,10 +67,10 @@ export function ExtraItemsEditor({ rows, onChange }: { rows: ExtraRow[]; onChang
   return (
     <>
       {rows.map((row, i) => (
-        <div key={i} className="mb-2 grid grid-cols-[2fr_0.7fr_1fr_auto] items-center gap-2">
-          <input maxLength={200} value={row.itemName} onChange={(e) => patch(i, "itemName", e.target.value)} className="h-9 rounded border border-border-strong px-2 text-[13px] outline-none" placeholder="Item" />
-          <input type="number" min="0" step="0.5" value={row.quantity} onChange={(e) => patch(i, "quantity", e.target.value)} className="h-9 rounded border border-border-strong px-2 text-[13px] outline-none" placeholder="Qty" />
-          <input type="number" min="0" step="0.01" value={row.unitPrice} onChange={(e) => patch(i, "unitPrice", e.target.value)} className="h-9 rounded border border-border-strong px-2 text-[13px] outline-none" placeholder="Price (RM)" />
+        <div key={i} className="mb-2 grid grid-cols-[minmax(0,2fr)_minmax(0,0.7fr)_minmax(0,1fr)_auto] items-center gap-2">
+          <input maxLength={200} value={row.itemName} onChange={(e) => patch(i, "itemName", e.target.value)} className="h-9 w-full min-w-0 rounded border border-border-strong px-2 text-[13px] outline-none" placeholder="Item" />
+          <input type="number" min="0" step="0.5" value={row.quantity} onChange={(e) => patch(i, "quantity", e.target.value)} className="h-9 w-full min-w-0 rounded border border-border-strong px-2 text-[13px] outline-none" placeholder="Qty" />
+          <input type="number" min="0" step="0.01" value={row.unitPrice} onChange={(e) => patch(i, "unitPrice", e.target.value)} className="h-9 w-full min-w-0 rounded border border-border-strong px-2 text-[13px] outline-none" placeholder="Price (RM)" />
           <button type="button" onClick={() => onChange(rows.filter((_, idx) => idx !== i))} className="text-xs font-semibold text-danger">✕</button>
         </div>
       ))}

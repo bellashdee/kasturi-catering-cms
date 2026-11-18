@@ -210,7 +210,7 @@ export function RecipeForm({
         <div className="flex flex-col gap-2">
           {lines.map((line, i) => (
             <div key={i} className="flex flex-col gap-1.5">
-              <div className="grid grid-cols-[2fr_1fr_0.8fr_auto] items-center gap-2">
+              <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,0.8fr)_auto] items-center gap-2">
                 <div className="flex items-center gap-1.5">
                   <Select value={line.ingredientId} onChange={(e) => handleIngredientSelect(i, e.target.value)} className="h-9 min-w-0 flex-1 rounded-lg border border-border-strong px-2 text-[13px]">
                     <option value="">Select ingredient</option>
@@ -228,8 +228,8 @@ export function RecipeForm({
                     Edit
                   </button>
                 </div>
-                <input type="number" min="0" step="0.001" value={line.quantityPerYield} onChange={(e) => updateLine(i, "quantityPerYield", e.target.value)} placeholder="Quantity" className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
-                <Select value={normalizeUnit(line.unit)} onChange={(e) => updateLine(i, "unit", e.target.value)} className="h-9 rounded-lg border border-border-strong px-2 text-[13px]">
+                <input type="number" min="0" step="0.001" value={line.quantityPerYield} onChange={(e) => updateLine(i, "quantityPerYield", e.target.value)} placeholder="Quantity" className="h-9 w-full min-w-0 rounded-lg border border-border-strong px-2 text-[13px]" />
+                <Select value={normalizeUnit(line.unit)} onChange={(e) => updateLine(i, "unit", e.target.value)} className="h-9 w-full min-w-0 rounded-lg border border-border-strong px-2 text-[13px]">
                   <option value="">Unit</option>
                   {unitChoices(line.unit).map((u) => <option key={u} value={u}>{u}</option>)}
                 </Select>

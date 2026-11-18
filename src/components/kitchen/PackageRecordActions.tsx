@@ -80,13 +80,13 @@ export function PackageActions({ pkg, listHref }: { pkg: PackageEditData; listHr
               </div>
               <div className="flex flex-col gap-1.5">
                 {items.map((it, i) => (
-                  <div key={i} className="grid grid-cols-[1fr_3fr_3.5rem] items-center gap-1.5">
-                    <Select className="h-9 rounded-md border border-border-strong bg-surface px-2 text-[13px]" value={it.mealType} onChange={(e) => setItem(i, { mealType: e.target.value })} aria-label="Meal">
+                  <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,3fr)_3.5rem] items-center gap-1.5">
+                    <Select className="h-9 w-full min-w-0 rounded-md border border-border-strong bg-surface px-2 text-[13px]" value={it.mealType} onChange={(e) => setItem(i, { mealType: e.target.value })} aria-label="Meal">
                       {Object.entries(PACKAGE_MEAL_TYPE_LABEL).map(([k, v]) => (
                         <option key={k} value={k}>{v}</option>
                       ))}
                     </Select>
-                    <input className="h-9 rounded-md border border-border-strong px-2 text-[13px]" value={it.itemName} onChange={(e) => setItem(i, { itemName: e.target.value })} aria-label="Menu line" />
+                    <input className="h-9 w-full min-w-0 rounded-md border border-border-strong px-2 text-[13px]" value={it.itemName} onChange={(e) => setItem(i, { itemName: e.target.value })} aria-label="Menu line" />
                     <button type="button" className="text-right text-xs font-semibold text-danger" onClick={() => setItems((p) => p.filter((_, n) => n !== i))}>
                       Remove
                     </button>

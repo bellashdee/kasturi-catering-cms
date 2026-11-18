@@ -86,9 +86,9 @@ export function MenuForm({ companies, defaultCompanyId }: { companies: Company[]
         </div>
         <div className="flex flex-col gap-2">
           {items.map((item, i) => (
-            <div key={i} className="grid grid-cols-[2fr_1fr_1fr_auto] items-center gap-2">
-              <input value={item.name} onChange={(e) => updateItem(i, "name", e.target.value)} placeholder="Item name" className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
-              <Select value={item.category} onChange={(e) => updateItem(i, "category", e.target.value)} className="h-9 rounded-lg border border-border-strong px-2 text-[13px]">
+            <div key={i} className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2">
+              <input value={item.name} onChange={(e) => updateItem(i, "name", e.target.value)} placeholder="Item name" className="h-9 w-full min-w-0 rounded-lg border border-border-strong px-2 text-[13px]" />
+              <Select value={item.category} onChange={(e) => updateItem(i, "category", e.target.value)} className="h-9 w-full min-w-0 rounded-lg border border-border-strong px-2 text-[13px]">
                 <option value="appetizer">Appetizer</option>
                 <option value="main">Main</option>
                 <option value="side">Side</option>
@@ -96,7 +96,7 @@ export function MenuForm({ companies, defaultCompanyId }: { companies: Company[]
                 <option value="beverage">Beverage</option>
                 <option value="other">Other</option>
               </Select>
-              <input type="number" min="0" step="0.01" value={item.pricePerPax} onChange={(e) => updateItem(i, "pricePerPax", e.target.value)} placeholder="RM / pax" className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
+              <input type="number" min="0" step="0.01" value={item.pricePerPax} onChange={(e) => updateItem(i, "pricePerPax", e.target.value)} placeholder="RM / pax" className="h-9 w-full min-w-0 rounded-lg border border-border-strong px-2 text-[13px]" />
               <button
                 type="button"
                 onClick={() => setItems((prev) => prev.filter((_, idx) => idx !== i))}

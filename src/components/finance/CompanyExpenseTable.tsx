@@ -136,7 +136,7 @@ export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow
         </div>
       )}
 
-      <div className="grid grid-cols-[0.9fr_0.9fr_1fr_0.9fr_0.9fr_0.9fr_1.4fr_auto] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
+      <div className="grid grid-cols-[minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1.4fr)_15rem] gap-3 border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
         <div>Date</div>
         <div>From</div>
         <div>Category</div>
@@ -147,7 +147,7 @@ export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow
         <div>Action</div>
       </div>
       {rows.map((e) => (
-        <div key={`${e.source}-${e.id}`} className="grid grid-cols-[0.9fr_0.9fr_1fr_0.9fr_0.9fr_0.9fr_1.4fr_auto] items-center border-b border-border px-5 py-3 text-[13.5px] last:border-b-0">
+        <div key={`${e.source}-${e.id}`} className="grid grid-cols-[minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1.4fr)_15rem] items-center gap-3 border-b border-border px-5 py-3 text-[13.5px] last:border-b-0">
           <div className="text-text-secondary">{e.expenseDate}</div>
           <div>
             <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${e.source === "Company Expenses" ? "bg-surface-alt text-text-secondary" : "bg-info-bg text-primary"}`}>{e.source}</span>

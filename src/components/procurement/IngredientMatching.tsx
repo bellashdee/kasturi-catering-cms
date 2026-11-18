@@ -149,7 +149,7 @@ export function IngredientMatching({ companyId, ingredients, items, savedRows }:
       {error && <div role="alert" className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-[13px] text-danger">{error}</div>}
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
-        <div className="grid grid-cols-[1.2fr_2fr_1fr_1fr] border-b border-border bg-surface-alt px-5 py-2.5 text-[11px] font-bold uppercase tracking-wide text-text-muted">
+        <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] gap-2 border-b border-border bg-surface-alt px-5 py-2.5 text-[11px] font-bold uppercase tracking-wide text-text-muted">
           <div>Ingredient</div>
           <div>Supplier item</div>
           <div>Status</div>
@@ -157,7 +157,7 @@ export function IngredientMatching({ companyId, ingredients, items, savedRows }:
         </div>
         {shown.length === 0 && <div className="px-5 py-4 text-[13px] text-text-muted">Nothing to show.</div>}
         {shown.map((r) => (
-          <div key={r.key} className="grid grid-cols-[1.2fr_2fr_1fr_1fr] items-start gap-2 border-b border-border px-5 py-2.5 text-[13px] last:border-b-0">
+          <div key={r.key} className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] items-start gap-2 border-b border-border px-5 py-2.5 text-[13px] last:border-b-0">
             <div className="pt-2 font-semibold text-text">{r.name}</div>
             <div>
               <SupplierItemPicker ingredient={r.name} selected={r.current} suggestions={r.ranked} all={items} onPick={(key) => setChosen((c) => ({ ...c, [r.key]: key }))} />

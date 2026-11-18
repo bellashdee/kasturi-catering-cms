@@ -65,7 +65,7 @@ export function QuotationRecordActions({ quotation }: { quotation: QuotationEdit
     }
   }
 
-  const cell = "h-9 rounded-md border border-border-strong bg-surface px-2 text-[13px] outline-none focus:border-primary";
+  const cell = "h-9 w-full min-w-0 rounded-md border border-border-strong bg-surface px-2 text-[13px] outline-none focus:border-primary";
   return (
     <>
       <RecordActions<QuotationSnapshot>
@@ -91,11 +91,11 @@ export function QuotationRecordActions({ quotation }: { quotation: QuotationEdit
               </div>
               <div className="overflow-x-auto">
                 <div className="flex min-w-[560px] flex-col gap-1.5">
-                  <div className="grid grid-cols-[2.4fr_0.8fr_1fr_0.9fr_3.5rem] gap-1.5 text-[11.5px] font-bold text-text-secondary">
+                  <div className="grid grid-cols-[minmax(0,2.4fr)_minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,0.9fr)_3.5rem] gap-1.5 text-[11.5px] font-bold text-text-secondary">
                     <div>Item</div><div>Qty</div><div>Unit price (RM)</div><div>Discount %</div><div />
                   </div>
                   {items.map((it, i) => (
-                    <div key={i} className="grid grid-cols-[2.4fr_0.8fr_1fr_0.9fr_3.5rem] items-center gap-1.5">
+                    <div key={i} className="grid grid-cols-[minmax(0,2.4fr)_minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,0.9fr)_3.5rem] items-center gap-1.5">
                       <input className={cell} value={it.itemName} onChange={(e) => setItem(i, { itemName: e.target.value })} aria-label="Item" />
                       <input className={cell} type="number" step="any" min="0" value={it.quantity} onChange={(e) => setItem(i, { quantity: e.target.value })} aria-label="Qty" />
                       <input className={cell} type="number" step="any" min="0" value={it.unitPrice} onChange={(e) => setItem(i, { unitPrice: e.target.value })} aria-label="Unit price" />

@@ -172,14 +172,14 @@ export function MenuActions({ menu, listHref }: { menu: MenuEditData; listHref: 
               </div>
               <div className="flex flex-col gap-1.5">
                 {items.map((it, i) => (
-                  <div key={i} className="grid grid-cols-[2fr_1.2fr_0.9fr_3.5rem] items-center gap-1.5">
-                    <input className="h-9 rounded-md border border-border-strong px-2 text-[13px]" value={it.name} onChange={(e) => setItem(i, { name: e.target.value })} aria-label="Item" />
-                    <Select className="h-9 rounded-md border border-border-strong bg-surface px-2 text-[13px]" value={it.category} onChange={(e) => setItem(i, { category: e.target.value })} aria-label="Category">
+                  <div key={i} className="grid grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,0.9fr)_3.5rem] items-center gap-1.5">
+                    <input className="h-9 w-full min-w-0 rounded-md border border-border-strong px-2 text-[13px]" value={it.name} onChange={(e) => setItem(i, { name: e.target.value })} aria-label="Item" />
+                    <Select className="h-9 w-full min-w-0 rounded-md border border-border-strong bg-surface px-2 text-[13px]" value={it.category} onChange={(e) => setItem(i, { category: e.target.value })} aria-label="Category">
                       {Object.entries(MENU_CATEGORY_LABEL).map(([k, v]) => (
                         <option key={k} value={k}>{v}</option>
                       ))}
                     </Select>
-                    <input className="h-9 rounded-md border border-border-strong px-2 text-[13px]" type="number" step="any" min="0" placeholder="RM / pax" value={it.pricePerPax} onChange={(e) => setItem(i, { pricePerPax: e.target.value })} aria-label="Price per pax" />
+                    <input className="h-9 w-full min-w-0 rounded-md border border-border-strong px-2 text-[13px]" type="number" step="any" min="0" placeholder="RM / pax" value={it.pricePerPax} onChange={(e) => setItem(i, { pricePerPax: e.target.value })} aria-label="Price per pax" />
                     <button type="button" className="text-right text-xs font-semibold text-danger" onClick={() => setItems((p) => p.filter((_, n) => n !== i))}>
                       Remove
                     </button>
