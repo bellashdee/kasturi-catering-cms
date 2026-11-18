@@ -136,6 +136,8 @@ export default async function MyClaimsPage({ searchParams }: { searchParams: Pro
   // the printout / Excel carries the staff member's full name, the company, the period and the totals on top, and their sign-off at the end
   const sheetInfo = [
     { label: "Staff", value: `${sheetName}${sheetPosition ? ` (${sheetPosition})` : ""}` },
+    // the person printing or exporting the list (the signed-in user)
+    { label: "Printed by", value: own.name || session.fullName },
     { label: "Company", value: byCompany.map((b) => b.name).join(", ") || "-" },
     { label: "Period", value: monthLabel(month) },
     ...(sp.status ? [{ label: "Status", value: PETTY_CASH_PAYMENT_STATUS_LABEL[sp.status] ?? sp.status }] : []),

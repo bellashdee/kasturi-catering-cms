@@ -260,6 +260,8 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
   const sheetCompanies = Array.from(new Set(shown.flatMap((r) => r.companyName.split(" + ")).filter(Boolean)));
   const sheetInfo = [
     { label: "Staff", value: `${sheetName}${sheetPerson?.position ? ` (${sheetPerson.position})` : ""}` },
+    // the person printing or exporting the list (the signed-in user)
+    { label: "Printed by", value: own.name || session.fullName },
     ...(staff && who.name && staff.toUpperCase() !== who.name.toUpperCase() ? [{ label: "Petty cash of", value: who.name }] : []),
     { label: "Company", value: sheetCompanies.join(", ") || "-" },
     { label: "Period", value: monthLabel(month) },
