@@ -122,6 +122,8 @@ export function PaymentForm({
     setAccountId(id);
     const a = accounts.find((x) => x.id === id);
     if (!a) return;
+    // a saved payee belongs to one company: choosing it puts the payment under that company
+    if (a.companyId && a.companyId !== companyId) setCompanyId(a.companyId);
     setForm((f) => ({
       ...f,
       payeeName: a.name,
@@ -276,8 +278,12 @@ export function PaymentForm({
           <label className={labelClass}>Rental / Payee *</label>
           <Select value={accountId} onChange={(e) => pickAccount(e.target.value)} className={inputClass}>
             <option value="">Select rental / payee</option>
-            {accountsForCompany.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+            {/* every saved payee with its company (the chosen company's first); choosing one sets the company */}
+            {[...companies]
+              .sort((x, y) => Number(y.id === companyId) - Number(x.id === companyId))
+              .flatMap((c) => accounts.filter((a) => a.category === category && a.companyId === c.id).map((a) => <option key={a.id} value={a.id}>{`${a.name} · ${c.name}`}</option>))}
           </Select>
+          <p className="mt-1 text-[11.5px] text-text-muted">Choosing a payee puts the payment under that payee&apos;s company.</p>
         </div>
       )}
 
