@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { paymentCompanyIds, listPaymentAccounts } from "@/lib/finance/paymentQueries";
-import { PAYMENT_CATEGORY_LABEL, RENTAL_UTILITY_COMPANY_NAME, type PaymentCategory, type UtilityType } from "@/lib/finance/payments";
+import { PAYMENT_CATEGORY_LABEL, RENTAL_UTILITY_COMPANIES_LABEL, isRentalUtilityCompany, type PaymentCategory, type UtilityType } from "@/lib/finance/payments";
 import { malaysiaMonthNow } from "@/lib/driverAttendance/date";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { PaymentForm } from "@/components/finance/PaymentForm";
@@ -17,7 +17,7 @@ const PATH: Record<PaymentCategory, string> = {
   utility: "/finance/utilities-payment",
 };
 
-/** New payment page: upload a file (or key in), review, confirm. Rental and utilities are for Signature Solution only. */
+/** New payment page: upload a file (or key in), review, confirm. Rental and utilities are for Signature Solution and O2 Life. */
 export async function PaymentNewPage({ category, searchParams }: { category: PaymentCategory; searchParams: Promise<SearchParams> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -30,7 +30,7 @@ export async function PaymentNewPage({ category, searchParams }: { category: Pay
   const { accessibleIds } = resolveCompanyScope(session, companies, sp.company);
   const adminIds = await paymentCompanyIds(supabase, accessibleIds, category);
   let selectable = companies.filter((c) => adminIds.includes(c.id));
-  if (category !== "supplier") selectable = selectable.filter((c) => c.name === RENTAL_UTILITY_COMPANY_NAME);
+  if (category !== "supplier") selectable = selectable.filter((c) => isRentalUtilityCompany(c.name));
 
   const title = PAYMENT_CATEGORY_LABEL[category];
   const query = sp.company ? `?company=${sp.company}` : "";
@@ -38,7 +38,7 @@ export async function PaymentNewPage({ category, searchParams }: { category: Pay
   if (selectable.length === 0) {
     return (
       <div className="mx-auto max-w-3xl">
-        <EmptyRow text={category === "supplier" ? "Only Finance / Admin users can record payments." : `${title} is for ${RENTAL_UTILITY_COMPANY_NAME} and is only available to its Finance / Admin users.`} />
+        <EmptyRow text={category === "supplier" ? "Only Finance / Admin users can record payments." : `${title} is for ${RENTAL_UTILITY_COMPANIES_LABEL} and is only available to their Finance / Admin users.`} />
       </div>
     );
   }

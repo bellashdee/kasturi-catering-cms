@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { adminCompanyIds, listPaymentAccounts } from "@/lib/finance/paymentQueries";
-import { PAYMENT_CATEGORY_LABEL, RENTAL_UTILITY_COMPANY_NAME, type PaymentCategory, type UtilityType } from "@/lib/finance/payments";
+import { PAYMENT_CATEGORY_LABEL, isRentalUtilityCompany, type PaymentCategory, type UtilityType } from "@/lib/finance/payments";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { AccountsManager, type AccountRow } from "@/components/finance/AccountsManager";
@@ -45,7 +45,7 @@ export default async function PaymentAccountsPage({ searchParams }: { searchPara
     );
   }
 
-  const allowedCompanies = companies.filter((c) => adminIds.includes(c.id) && (category === "supplier" || c.name === RENTAL_UTILITY_COMPANY_NAME));
+  const allowedCompanies = companies.filter((c) => adminIds.includes(c.id) && (category === "supplier" || isRentalUtilityCompany(c.name)));
   const rows = await listPaymentAccounts(supabase, adminIds, category, true);
   const all: AccountRow[] = rows.map((a) => ({
     id: a.id,

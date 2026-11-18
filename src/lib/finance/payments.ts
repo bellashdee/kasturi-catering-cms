@@ -26,8 +26,10 @@ export const UTILITY_PROVIDER_BY_TYPE: Record<UtilityType, string> = {
 
 export const UTILITY_PROVIDERS = ["TNB", "SAJ", "Indah Water", "Landlord"] as const;
 
-/** Rental and utilities are only for this company. */
-export const RENTAL_UTILITY_COMPANY_NAME = "Signature Solution";
+/** Rental and utilities are paid by these companies (O2 Life has its own rentals, e.g. its hostels). */
+export const RENTAL_UTILITY_COMPANY_NAMES = ["Signature Solution", "O2 Life"] as const;
+export const RENTAL_UTILITY_COMPANIES_LABEL = RENTAL_UTILITY_COMPANY_NAMES.join(" and ");
+export const isRentalUtilityCompany = (name: string | null | undefined) => !!name && (RENTAL_UTILITY_COMPANY_NAMES as readonly string[]).includes(name);
 
 /** Rental is paid before the 7th of each month unless the agreement or invoice says otherwise. */
 export const DEFAULT_RENTAL_DUE_DAY = 7;

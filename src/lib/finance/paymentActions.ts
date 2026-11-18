@@ -11,7 +11,8 @@ import { todayInMalaysia } from "@/lib/driverAttendance/date";
 import { buildVoucherLines, monthLabel, nextMonthStart } from "@/lib/procurement/vouchers";
 import { nameKey } from "@/lib/finance/supplierMonth";
 import {
-  RENTAL_UTILITY_COMPANY_NAME,
+  RENTAL_UTILITY_COMPANIES_LABEL,
+  isRentalUtilityCompany,
   UTILITY_PROVIDER_BY_TYPE,
   maskAccount,
   type PaymentCategory,
@@ -38,12 +39,12 @@ async function requireFinanceAdmin(supabase: DB, companyId: string, category?: s
   if (data !== true) throw new Error("Only Finance / Admin users of this company can manage payments and bank details.");
 }
 
-/** Rental and utilities belong to Signature Solution only. */
+/** Rental and utilities belong to Signature Solution and O2 Life only. */
 async function assertCategoryAllowed(supabase: DB, companyId: string, category: PaymentCategory) {
   if (category === "supplier") return;
   const { data } = await supabase.from("companies").select("name").eq("id", companyId).maybeSingle();
-  if (data?.name !== RENTAL_UTILITY_COMPANY_NAME) {
-    throw new Error(`Rental and utilities payments are only for ${RENTAL_UTILITY_COMPANY_NAME}.`);
+  if (!isRentalUtilityCompany(data?.name)) {
+    throw new Error(`Rental and utilities payments are only for ${RENTAL_UTILITY_COMPANIES_LABEL}.`);
   }
 }
 
