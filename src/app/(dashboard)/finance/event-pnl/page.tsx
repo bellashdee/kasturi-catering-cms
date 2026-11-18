@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { eventPnlCompanyIds, eventPnlCompanies, eventPnlReviewItems, eventPnlTrend, listEventPnl } from "@/lib/finance/eventPnlQueries";
+import { eventPnlRowEditInfo, shownSlot } from "@/lib/finance/eventPnlRowEdit";
+import { EventPnlRowActions } from "@/components/finance/EventPnlRowActions";
 import { DATA_FLAG_LABEL, formatChange, formatMargin, percentChange, totalEventPnl, VERDICT_LABEL, VERDICT_TONE } from "@/lib/finance/eventPnl";
 import { MONTH_LABEL } from "@/lib/finance/constants";
 import { formatRM } from "@/lib/finance/payments";
@@ -74,6 +76,7 @@ export default async function MonthlyEventPnlPage({ searchParams }: { searchPara
     event: (r) => r.eventName,
     profit: (r) => r.pnl.netProfit,
   });
+  const editInfo = await eventPnlRowEditInfo(supabase, rows.map((r) => r.id));
   const totals = totalEventPnl(rows.map((r) => r.pnl));
   const companyName = sp.company && pnlCompanies.find((c) => c.id === sp.company)?.name;
   const scopeLabel = companyName ?? "Signature Solution + Kasturi Indah (consolidated)";
@@ -170,11 +173,11 @@ export default async function MonthlyEventPnlPage({ searchParams }: { searchPara
           <EmptyRow text={`No events with an event date in ${periodLabel}${sp.q || sp.customer || sp.status ? " match these filters" : ""}.`} />
         ) : (
           <div className="-mx-5 -mb-5 overflow-x-auto">
-            <table className="w-full min-w-[1100px] text-left text-[12.5px]">
+            <table className="w-full min-w-[1240px] text-left text-[12.5px]">
               <thead>
                 <tr className="border-b border-border bg-surface-alt text-[10.5px] font-bold uppercase tracking-wide text-text-muted">
-                  {["Event date", "Reference", "Event", "Company", "Customer", "Net revenue", "Direct costs", "Gross profit", "Additional", "Net profit", "Margin", "Status"].map((h, i) => (
-                    <th key={h} className={`px-3 py-2.5 ${i >= 5 && i <= 10 ? "text-right" : ""}`}>{h}</th>
+                  {["Event date", "Reference", "Event", "Company", "Customer", "Net revenue", "Direct costs", "Gross profit", "Additional", "Net profit", "Margin", "Status", "Actions"].map((h, i) => (
+                    <th key={h} className={`px-3 py-2.5 ${(i >= 5 && i <= 10) || i === 12 ? "text-right" : ""} ${i === 12 ? "print:hidden" : ""}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -196,6 +199,27 @@ export default async function MonthlyEventPnlPage({ searchParams }: { searchPara
                       <StatusBadge tone={VERDICT_TONE[r.pnl.verdict]}>{VERDICT_LABEL[r.pnl.verdict]}</StatusBadge>
                     </td>
                     <td className="px-3 py-2.5 text-text-secondary">{EVENT_STATUS_LABEL[r.status] ?? r.status}</td>
+                    <td className="px-3 py-2.5 print:hidden">
+                      <EventPnlRowActions
+                        row={{
+                          id: r.id,
+                          reference: r.eventReference,
+                          eventName: r.eventName,
+                          eventDate: r.eventDate,
+                          status: r.status,
+                          customerId: editInfo.get(r.id)?.customerId ?? null,
+                          customerName: r.customerName,
+                          netRevenue: r.pnl.netRevenue,
+                          directCosts: r.pnl.directCosts,
+                          additional: r.pnl.additionalExpenses,
+                          slots: {
+                            revenue: shownSlot(editInfo.get(r.id), "revenue", r.pnl.netRevenue),
+                            direct: shownSlot(editInfo.get(r.id), "direct", r.pnl.directCosts),
+                            additional: shownSlot(editInfo.get(r.id), "additional", r.pnl.additionalExpenses),
+                          },
+                        }}
+                      />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -209,6 +233,7 @@ export default async function MonthlyEventPnlPage({ searchParams }: { searchPara
                   <td className="px-3 py-2.5 text-right">{money(totals.netProfit)}</td>
                   <td className="px-3 py-2.5 text-right">{formatMargin(totals.margin)}</td>
                   <td className="px-3 py-2.5" />
+                  <td className="px-3 py-2.5 print:hidden" />
                 </tr>
               </tfoot>
             </table>
