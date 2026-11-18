@@ -5,6 +5,7 @@ import { getMonthlyCostBreakdown, getMonthlyRevenue, listSpending } from "@/lib/
 import { NOT_OWED_STATUSES, invoiceBalance } from "@/lib/finance/outstanding";
 import { listSupplierOwed } from "@/lib/finance/paymentQueries";
 import { computeEventPnl } from "@/lib/finance/eventPnl";
+import { salesByCompanyMonth, totalSalesByMonth } from "@/lib/reports/sales";
 
 type DB = SupabaseClient<Database>;
 
@@ -96,8 +97,8 @@ export async function getHRReportRows(supabase: DB, companyIds: string[], year: 
  */
 /**
  * Revenue and total cost of every month of a year (index 0 = January), for the summary picture. Months with no figures are 0.
- * Revenue = the sales keyed in (Finance > Monthly Sales, the figure Monthly Costing uses) of each company; a company with no sales keyed for a
- * month counts the payments it received that month. `received` is always the payments received.
+ * Revenue = the sales of each company by the one rule of every page (salesByCompanyMonth: keyed in, or the invoices issued when none is
+ * keyed). `received` is always the payments received.
  */
 export async function getYearMonthlySeries(supabase: DB, companyIds: string[], year: number) {
   // the whole year in one go (a few queries) instead of one set of queries for each of the twelve months
@@ -106,22 +107,12 @@ export async function getYearMonthlySeries(supabase: DB, companyIds: string[], y
   const [costs, payments, sales] = await Promise.all([
     listSpending(supabase, companyIds, start, end),
     supabase.from("customer_payments").select("company_id, amount, payment_date").in("company_id", companyIds).gte("payment_date", start).lte("payment_date", end),
-    supabase.from("monthly_sales").select("company_id, month, sales_amount").in("company_id", companyIds).eq("year", year),
+    salesByCompanyMonth(supabase, companyIds, year),
   ]);
   const received = Array<number>(12).fill(0);
   const cost = Array<number>(12).fill(0);
-  const keyed = new Map<string, number>(); // company + month -> sales keyed in
-  const receivedBy = new Map<string, number>(); // company + month -> payments received
-  for (const s of sales.data ?? []) keyed.set(`${s.company_id}|${s.month}`, (keyed.get(`${s.company_id}|${s.month}`) ?? 0) + Number(s.sales_amount));
-  for (const p of payments.data ?? []) {
-    const m = Number(p.payment_date.slice(5, 7));
-    received[m - 1] += Number(p.amount);
-    receivedBy.set(`${p.company_id}|${m}`, (receivedBy.get(`${p.company_id}|${m}`) ?? 0) + Number(p.amount));
-  }
-  const revenue = Array<number>(12).fill(0);
-  for (let m = 1; m <= 12; m++) {
-    for (const id of companyIds) revenue[m - 1] += keyed.has(`${id}|${m}`) ? keyed.get(`${id}|${m}`)! : receivedBy.get(`${id}|${m}`) ?? 0;
-  }
+  for (const p of payments.data ?? []) received[Number(p.payment_date.slice(5, 7)) - 1] += Number(p.amount);
+  const revenue = totalSalesByMonth(sales.by);
   for (const c of costs) {
     const m = Number(c.date.slice(5, 7)) - 1;
     if (m >= 0 && m < 12) cost[m] += c.amount;
@@ -132,11 +123,10 @@ export async function getYearMonthlySeries(supabase: DB, companyIds: string[], y
 export async function getCompanySummary(supabase: DB, companyIds: string[], year: number, month: number, range?: DateRange) {
   const { start, end } = resolvePeriod(year, month, range);
 
-  const [received, keyedSalesRes, receivedByCompanyRes, costBreakdown, headcountRes, campaignsRes, productionRes, deliveriesRes, supplierOutstandingRes, customerOutstandingRes] = await Promise.all([
+  const [received, sales, costBreakdown, headcountRes, campaignsRes, productionRes, deliveriesRes, supplierOutstandingRes, customerOutstandingRes] = await Promise.all([
     getMonthlyRevenue(supabase, companyIds, year, month, range),
-    // a custom day range cannot be cut out of a monthly figure, so it keeps to the payments received
-    range ? Promise.resolve({ data: [] as { company_id: string; sales_amount: number }[] }) : supabase.from("monthly_sales").select("company_id, sales_amount").in("company_id", companyIds).eq("year", year).eq("month", month),
-    range ? Promise.resolve({ data: [] as { company_id: string; amount: number }[] }) : supabase.from("customer_payments").select("company_id, amount").in("company_id", companyIds).gte("payment_date", start).lte("payment_date", end),
+    // sales by the one rule of every page; a custom day range cannot be cut out of a monthly figure, so it keeps to the payments received
+    range ? Promise.resolve(null) : salesByCompanyMonth(supabase, companyIds, year),
     getMonthlyCostBreakdown(supabase, companyIds, year, month, range),
     supabase.from("employees").select("id", { count: "exact", head: true }).in("company_id", companyIds).eq("status", "active"),
     supabase.from("campaigns").select("id", { count: "exact", head: true }).in("company_id", companyIds).eq("status", "active"),
@@ -147,15 +137,8 @@ export async function getCompanySummary(supabase: DB, companyIds: string[], year
     supabase.from("customer_invoices").select("amount, tax_amount, status, customer_payments(amount)").in("company_id", companyIds).not("status", "in", `(${NOT_OWED_STATUSES.join(",")})`),
   ]);
 
-  // revenue = the sales keyed in for the month; a company with none keyed counts the payments it received (all payments for a day range)
-  let revenue = received;
-  if (!range) {
-    const keyed = new Map<string, number>();
-    for (const s of keyedSalesRes.data ?? []) keyed.set(s.company_id, (keyed.get(s.company_id) ?? 0) + Number(s.sales_amount));
-    const receivedBy = new Map<string, number>();
-    for (const p of receivedByCompanyRes.data ?? []) receivedBy.set(p.company_id, (receivedBy.get(p.company_id) ?? 0) + Number(p.amount));
-    revenue = companyIds.reduce((t, id) => t + (keyed.has(id) ? keyed.get(id)! : receivedBy.get(id) ?? 0), 0);
-  }
+  // revenue = the sales of the month (keyed in, or the invoices issued when none is keyed); the payments received for a day range
+  const revenue = sales ? totalSalesByMonth(sales.by)[month - 1] : received;
 
   const totalCost = costBreakdown.reduce((t, r) => t + r.amount, 0);
   const bySource = new Map<string, number>();

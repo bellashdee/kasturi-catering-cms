@@ -7,6 +7,7 @@ import { resolveCompanyScope } from "@/lib/companyScope";
 import { listCustomerInvoices, listSpending } from "@/lib/finance/queries";
 import { daysOverdue, invoiceBalance, invoiceTotal, isOpenInvoice } from "@/lib/finance/outstanding";
 import { listSupplierOwed } from "@/lib/finance/paymentQueries";
+import { salesByCompanyMonth } from "@/lib/reports/sales";
 import { SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
 import { formatCurrency, malaysiaYearMonth, todayInMalaysia } from "@/lib/format";
 import { MONTH_LABEL } from "@/lib/finance/constants";
@@ -40,29 +41,14 @@ const getMonthlyPurchases = cache(async (ids: string, year: number) => {
   const { data } = await (await createClient()).from("monthly_purchases").select("month, purchase_amount").in("company_id", ids.split(",")).eq("year", year);
   return data ?? [];
 });
-const getMonthlySales = cache(async (ids: string, year: number) => {
-  const { data } = await (await createClient()).from("monthly_sales").select("company_id, month, sales_amount").in("company_id", ids.split(",")).eq("year", year);
-  return data ?? [];
-});
 
 /**
  * Sales of each company, month by month: the monthly sales keyed in for the company (the figure Monthly Costing and the Admin dashboard use);
  * a month with none keyed counts the invoices issued in it, tax included. The Sales card and the comparison with last year both use it.
  */
 const getSalesByCompany = cache(async (ids: string, year: number) => {
-  const [yearInvoices, monthlySales] = await Promise.all([getYearInvoices(ids, year), getMonthlySales(ids, year)]);
-  const by = new Map<string, number[]>(ids.split(",").map((id) => [id, Array<number>(12).fill(0)]));
-  const row = (id: string) => {
-    if (!by.has(id)) by.set(id, Array<number>(12).fill(0));
-    return by.get(id) as number[];
-  };
-  const keyed = new Set(monthlySales.map((s) => `${s.company_id}|${s.month}`));
-  for (const i of yearInvoices) {
-    const m = Number(i.invoice_date.slice(5, 7));
-    if (!keyed.has(`${i.company_id}|${m}`)) row(i.company_id)[m - 1] += invoiceTotal(i);
-  }
-  for (const s of monthlySales) row(s.company_id)[s.month - 1] += Number(s.sales_amount);
-  return { by, keyedAny: monthlySales.length > 0 };
+  const { by, keyed } = await salesByCompanyMonth(await createClient(), ids.split(","), year);
+  return { by, keyedAny: keyed.size > 0 };
 });
 const totalByMonth = (by: Map<string, number[]>) => Array.from({ length: 12 }, (_, m) => sum(Array.from(by.values(), (v) => v[m])));
 
@@ -173,21 +159,43 @@ async function SalesVsLastYear({ ids, year }: BlockProps) {
 
 /** The two rings: revenue by type of serving and the breakdown of expenses. */
 async function Rings({ ids, year, month, query }: BlockProps) {
-  const [events, spending] = await Promise.all([getEvents(ids, year), getSpending(ids, year)]);
+  const [events, spending, sales] = await Promise.all([getEvents(ids, year), getSpending(ids, year), getSalesByCompany(ids, year)]);
 
-  const productBy = new Map<string, { value: number; count: number }>();
+  // The ring adds up to the Sales of the period (the same figure as the Sales card): each month's sales are split by the type of serving of
+  // that month's events. Sales with no event behind them (months before events were kept here) show as "No event record"; when a month's
+  // events come to more than its sales (not yet invoiced or keyed in), its event types are counted in proportion to the sales.
+  const salesByMonth = totalByMonth(sales.by);
+  const perMonth = Array.from({ length: 12 }, () => new Map<string, { value: number; count: number }>());
   for (const e of events) {
-    if (e.status === "cancelled" || !inMonth(e.event_date, month)) continue;
+    if (e.status === "cancelled") continue;
     const label = e.service_type ? SERVICE_TYPE_LABEL[e.service_type] ?? e.service_type : "Not stated";
-    const c = productBy.get(label) ?? { value: 0, count: 0 };
+    const c = perMonth[Number(e.event_date.slice(5, 7)) - 1].get(label) ?? { value: 0, count: 0 };
     c.value += Number(e.total_amount ?? 0);
     c.count += 1;
-    productBy.set(label, c);
+    perMonth[Number(e.event_date.slice(5, 7)) - 1].set(label, c);
+  }
+  const productBy = new Map<string, { value: number; count: number }>();
+  let noEvent = 0;
+  let overSales = 0;
+  for (let m = 1; m <= 12; m++) {
+    if (!inMonth(`${year}-${String(m).padStart(2, "0")}-01`, month)) continue;
+    const eventTotal = sum(Array.from(perMonth[m - 1].values(), (c) => c.value));
+    const monthSales = salesByMonth[m - 1];
+    const factor = eventTotal > monthSales ? (eventTotal > 0 ? monthSales / eventTotal : 0) : 1;
+    if (eventTotal > monthSales) overSales += eventTotal - monthSales;
+    else noEvent += monthSales - eventTotal;
+    for (const [label, c] of perMonth[m - 1]) {
+      const t = productBy.get(label) ?? { value: 0, count: 0 };
+      t.value += c.value * factor;
+      t.count += c.count;
+      productBy.set(label, t);
+    }
   }
   const products: Slice[] = Array.from(productBy.entries())
     .filter(([, c]) => c.value > 0)
     .sort((a, b) => b[1].value - a[1].value)
     .map(([label, c]) => ({ label, value: c.value, note: `${c.count} event${c.count === 1 ? "" : "s"}` }));
+  if (noEvent > 0.005) products.push({ label: "No event record", value: noEvent, note: "sales with no event in the system", color: CHART_COLORS[6] });
 
   // expenses by category (the same names in other capitals count as one): the biggest six, the rest grouped as Other
   const catBy = new Map<string, number>();
@@ -203,8 +211,12 @@ async function Rings({ ids, year, month, query }: BlockProps) {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <SectionCard title={`Revenue by Type of Serving — ${periodOf(year, month)}`}>
-        <Note>Share of the {month ? "month" : "year"}&apos;s event revenue (cancelled events left out).</Note>
-        <DonutChart slices={products} centerLabel="Event revenue" empty="No events with revenue this year." />
+        <Note>
+          The {month ? "month" : "year"}&apos;s sales ({formatCurrency(sum(products.map((p) => p.value)))}, the same as the Sales card) by type of serving.
+          Cancelled events are left out.
+          {overSales > 0.005 && ` Events of ${formatCurrency(overSales)} are not in sales yet (not invoiced or keyed in), so those months count their events in proportion to their sales.`}
+        </Note>
+        <DonutChart slices={products} centerLabel="Sales" empty="No sales this year." />
         <More to={`/reports/catering${query}`}>Catering Report</More>
       </SectionCard>
       <SectionCard title={`Breakdown of Expenses — ${periodOf(year, month)}`}>

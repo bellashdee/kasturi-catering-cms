@@ -161,7 +161,7 @@ export default async function AdminPage({
               <div className="flex justify-between gap-2"><span>Daily</span><span>{formatCurrency(sales.split.daily)}</span></div>
             </div>
           )}
-          {!sales.recorded && <div className="mt-0.5 text-[11px] text-text-muted">From payments received (no monthly sales entered)</div>}
+          {!sales.recorded && <div className="mt-0.5 text-[11px] text-text-muted">From invoices issued (no monthly sales entered)</div>}
         </div>
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
           <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Monthly Costing</div>

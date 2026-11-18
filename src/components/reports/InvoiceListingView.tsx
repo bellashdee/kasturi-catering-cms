@@ -55,6 +55,22 @@ async function loadRows(supabase: Awaited<ReturnType<typeof createClient>>): Pro
   return out;
 }
 
+/**
+ * The sales keyed in for the listing's company in each month of the year (null = none keyed): Kasturi Indah's whole figure; for Signature
+ * Solution, its catering sales (the JDT game match invoices) or the rest.
+ */
+async function loadKeyedSales(supabase: Awaited<ReturnType<typeof createClient>>, entity: EntityKey): Promise<(number | null)[]> {
+  const { data } = await supabase.from("monthly_sales").select("month, sales_type, sales_amount, companies(name)").eq("year", YEAR);
+  const out: (number | null)[] = Array(12).fill(null);
+  for (const s of data ?? []) {
+    const company = s.companies?.name;
+    const mine =
+      entity === "kasturi" ? company === "Kasturi Indah" : company === "Signature Solution" && (entity === "ss-catering" ? s.sales_type === "catering" : s.sales_type !== "catering");
+    if (mine) out[s.month - 1] = (out[s.month - 1] ?? 0) + Number(s.sales_amount);
+  }
+  return out;
+}
+
 /** Invoices of the year, month by month: the exact amount is the tooltip. Plain SVG, so it prints as it looks. */
 function MonthBars({ values }: { values: number[] }) {
   const max = Math.max(...values, 0);
@@ -178,6 +194,14 @@ export async function InvoiceListingView({ entity: entityParam, month: monthPara
   const grand = (list: InvoiceListingRow[]) => sum(list, 6);
   const ssGroup = grand(data.ss) + grand(data["ss-catering"]);
 
+  // the sales keyed in from AutoCount (Finance > Monthly Sales) for this listing, month by month: where a month's invoices here do not reach
+  // that figure, invoices are still missing from the system, and the other pages (which count the keyed figure) will not match this listing
+  // (compared before tax: AutoCount's sales figures leave tax out)
+  const keyedByMonth = await loadKeyedSales(supabase, entityKey);
+  const gaps = keyedByMonth
+    .map((k, i) => ({ month: i + 1, keyed: k, invoiced: sum(entity.rows.filter((r) => monthOf(r) === i + 1), 4) }))
+    .filter((g) => g.keyed !== null && Math.abs((g.keyed as number) - g.invoiced) > 0.005 && (month === 0 || g.month === month));
+
   return (
     <SoftPage>
       <div>
@@ -219,6 +243,21 @@ export async function InvoiceListingView({ entity: entityParam, month: monthPara
         </ListFilters>
         <PrintButton />
       </div>
+
+      {gaps.length > 0 && (
+        <div className="rounded-2xl border border-warning bg-warning-bg px-4 py-3 text-[13px] print:hidden">
+          <div className="font-bold text-text">The invoices here do not match the sales recorded from AutoCount</div>
+          <ul className="mt-1.5 flex flex-col gap-1 text-text-secondary">
+            {gaps.map((g) => (
+              <li key={g.month}>
+                <span className="font-semibold text-text">{MONTH_LABEL[g.month - 1]}:</span> sales recorded {formatCurrency(g.keyed as number)} · invoices here (before tax) {formatCurrency(g.invoiced)} ·{" "}
+                {(g.keyed as number) > g.invoiced ? `${formatCurrency((g.keyed as number) - g.invoiced)} of invoices still to be added` : `${formatCurrency(g.invoiced - (g.keyed as number))} more than the sales recorded`}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-1.5 text-[12px] text-text-secondary">The other reports count the sales recorded. Add the missing invoices from AutoCount (or correct the sales in Monthly Sales) so every page shows the same figure.</div>
+        </div>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label={`Invoiced · ${periodLabel}`} value={formatCurrency(total)} sub={`${rows.length} invoice${rows.length === 1 ? "" : "s"}`} />

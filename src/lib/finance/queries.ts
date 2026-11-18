@@ -2,6 +2,7 @@ import { applyInvoiceDateFilter, type InvoiceDateFilter } from "@/lib/finance/da
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { resolvePeriod, type DateRange } from "@/lib/finance/constants";
+import { salesByCompanyMonth } from "@/lib/reports/sales";
 
 type DB = SupabaseClient<Database>;
 
@@ -372,23 +373,17 @@ export async function getCustomerInvoice(supabase: DB, id: string) {
 }
 
 /**
- * Total sales for the month. Uses the monthly sales figures recorded for the selected companies;
- * when none is recorded, falls back to customer payments received that month.
+ * Total sales for the month, by the same rule as every other page (see salesByCompanyMonth): for each company, the monthly sales keyed in
+ * for it, or the invoices issued that month when none is keyed. A custom day range cannot be cut out of a monthly figure, so it counts the
+ * customer payments received in the range.
  */
 export async function getMonthlySales(supabase: DB, companyIds: string[], year: number, month: number, range?: DateRange) {
-  const { data } = await supabase
-    .from("monthly_sales")
-    .select("company_id, sales_type, sales_amount")
-    .in("company_id", companyIds)
-    .eq("year", year)
-    .eq("month", month);
-  const recorded = data ?? [];
-  const sumOf = (type: string) => recorded.filter((r) => r.sales_type === type).reduce((t, r) => t + Number(r.sales_amount), 0);
-  const catering = sumOf("catering");
-  const daily = sumOf("daily");
-  const split = recorded.some((r) => r.sales_type !== "total") ? { catering, daily } : null;
-  if (recorded.length > 0) {
-    return { amount: recorded.reduce((t, r) => t + Number(r.sales_amount), 0), recorded: true, split };
-  }
-  return { amount: await getMonthlyRevenue(supabase, companyIds, year, month, range), recorded: false, split };
+  if (range) return { amount: await getMonthlyRevenue(supabase, companyIds, year, month, range), recorded: false, split: null };
+  const { by, keyed, split: splitBy } = await salesByCompanyMonth(supabase, companyIds, year);
+  const keys = companyIds.map((id) => `${id}|${month}`);
+  const amount = companyIds.reduce((t, id) => t + (by.get(id)?.[month - 1] ?? 0), 0);
+  const recorded = keys.some((k) => keyed.has(k));
+  const parts = keys.map((k) => splitBy.get(k)).filter((p): p is { catering: number; daily: number } => !!p && p.catering + p.daily > 0);
+  const split = parts.length > 0 ? { catering: parts.reduce((t, p) => t + p.catering, 0), daily: parts.reduce((t, p) => t + p.daily, 0) } : null;
+  return { amount, recorded, split };
 }
