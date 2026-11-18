@@ -8,7 +8,7 @@ import { listCustomerInvoices, listSpending } from "@/lib/finance/queries";
 import { daysOverdue, invoiceBalance, invoiceTotal, isOpenInvoice } from "@/lib/finance/outstanding";
 import { listSupplierOwed } from "@/lib/finance/paymentQueries";
 import { salesByCompanyMonth } from "@/lib/reports/sales";
-import { SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
+import { MEAL_TYPE_LABEL, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
 import { formatCurrency, malaysiaYearMonth, todayInMalaysia } from "@/lib/format";
 import { MONTH_LABEL } from "@/lib/finance/constants";
 import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
@@ -34,7 +34,7 @@ const getPayments = cache(async (ids: string, year: number) => {
   return data ?? [];
 });
 const getEvents = cache(async (ids: string, year: number) => {
-  const { data } = await (await createClient()).from("catering_events").select("service_type, total_amount, status, event_date").in("company_id", ids.split(",")).gte("event_date", `${year}-01-01`).lte("event_date", `${year}-12-31`);
+  const { data } = await (await createClient()).from("catering_events").select("service_type, meal_types, pax_count, total_amount, status, event_date").in("company_id", ids.split(",")).gte("event_date", `${year}-01-01`).lte("event_date", `${year}-12-31`);
   return data ?? [];
 });
 const getMonthlyPurchases = cache(async (ids: string, year: number) => {
@@ -228,6 +228,98 @@ async function Rings({ ids, year, month, query }: BlockProps) {
   );
 }
 
+/** Average prices of a group of events: per event (all of them) and per pax (only the events whose pax is filled in, so a blank pax does not skew it). */
+type PriceRow = { label: string; events: number; revenue: number; pax: number; paxRevenue: number };
+
+function PriceTable({ first, rows }: { first: string; rows: PriceRow[] }) {
+  if (rows.length === 0) return <EmptyRow text="No events to show." />;
+  const num = "whitespace-nowrap py-2 pl-3 text-right tabular-nums";
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[440px] text-[13px]">
+        <thead>
+          <tr className="border-b border-border text-left text-[11.5px] uppercase tracking-wider text-text-secondary">
+            <th className="py-2 pr-3 font-bold">{first}</th>
+            <th className="py-2 pl-3 text-right font-bold">Events</th>
+            <th className="py-2 pl-3 text-right font-bold">Pax</th>
+            <th className="py-2 pl-3 text-right font-bold">Average / pax</th>
+            <th className="py-2 pl-3 text-right font-bold">Average / event</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.label} className="border-b border-border last:border-b-0">
+              <td className="py-2 pr-3 font-semibold text-text">{r.label}</td>
+              <td className={`${num} text-text-secondary`}>{r.events}</td>
+              <td className={`${num} text-text-secondary`}>{r.pax > 0 ? r.pax.toLocaleString("en-MY") : "—"}</td>
+              <td className={`${num} font-bold text-text`}>{r.pax > 0 ? formatCurrency(r.paxRevenue / r.pax) : "—"}</td>
+              <td className={`${num} text-text`}>{formatCurrency(r.revenue / r.events)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/**
+ * Average price for each type of serving and each meal type, from the events themselves (their amount and pax; cancelled and RM 0 events
+ * left out). This is not the ring above, which is scaled to the Sales card. An event with several meal types counts in each of them.
+ */
+async function AveragePrices({ ids, year, month, query }: BlockProps) {
+  const events = (await getEvents(ids, year)).filter((e) => e.status !== "cancelled" && inMonth(e.event_date, month) && Number(e.total_amount ?? 0) > 0);
+  const byServing = new Map<string, PriceRow>();
+  const byMeal = new Map<string, PriceRow>();
+  const total: PriceRow = { label: "All events", events: 0, revenue: 0, pax: 0, paxRevenue: 0 };
+  const add = (r: PriceRow, amount: number, pax: number) => {
+    r.events += 1;
+    r.revenue += amount;
+    if (pax > 0) {
+      r.pax += pax;
+      r.paxRevenue += amount;
+    }
+  };
+  const rowOf = (map: Map<string, PriceRow>, label: string) => {
+    const r = map.get(label) ?? { label, events: 0, revenue: 0, pax: 0, paxRevenue: 0 };
+    map.set(label, r);
+    return r;
+  };
+  let withMeal = 0;
+  for (const e of events) {
+    const amount = Number(e.total_amount ?? 0);
+    const pax = Number(e.pax_count ?? 0);
+    add(total, amount, pax);
+    add(rowOf(byServing, e.service_type ? SERVICE_TYPE_LABEL[e.service_type] ?? e.service_type : "Not stated"), amount, pax);
+    const meals = Array.from(new Set((e.meal_types ?? []).filter(Boolean)));
+    if (meals.length > 0) withMeal += 1;
+    for (const m of meals) add(rowOf(byMeal, MEAL_TYPE_LABEL[m] ?? m), amount, pax);
+  }
+  const sorted = (map: Map<string, PriceRow>) => Array.from(map.values()).sort((a, b) => b.revenue - a.revenue);
+
+  return (
+    <SectionCard title={`Average Price — ${periodOf(year, month)}`}>
+      <Note>
+        {month
+          ? "From the events of the month, cancelled and RM 0 events left out. Average per pax = the event amounts over their pax (events with pax filled in); average per event = the amounts over the number of events."
+          : "From the events of the year, cancelled and RM 0 events left out. Average per pax = the event amounts over their pax (events with pax filled in); average per event = the amounts over the number of events."}{" "}
+        {total.pax > 0 && <b className="text-text">{`All events: ${formatCurrency(total.paxRevenue / total.pax)} per pax, ${formatCurrency(total.revenue / total.events)} per event.`}</b>}
+      </Note>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div>
+          <div className="mb-1 text-[12px] font-bold uppercase tracking-wider text-text-secondary">By type of serving</div>
+          <PriceTable first="Type of serving" rows={sorted(byServing)} />
+        </div>
+        <div>
+          <div className="mb-1 text-[12px] font-bold uppercase tracking-wider text-text-secondary">By meal type</div>
+          <PriceTable first="Meal type" rows={sorted(byMeal)} />
+          <p className="mt-2 text-[12px] text-text-secondary">{`${withMeal} of ${events.length} events have a meal type ticked. Tick the meal type on the event to count it here.`}</p>
+        </div>
+      </div>
+      <More to={`/reports/catering${query}`}>Catering Report</More>
+    </SectionCard>
+  );
+}
+
 /** The key customers by sales volume and the top sales agents. */
 async function People({ ids, year, month, query, requestedId }: BlockProps) {
   const yearInvoices = (await getYearInvoices(ids, year)).filter((i) => inMonth(i.invoice_date, month));
@@ -418,6 +510,7 @@ export default async function PerformanceDashboardPage({ searchParams }: { searc
       <Suspense fallback={<Skeleton height={420} />}><Headline {...props} /></Suspense>
       <Suspense fallback={<Skeleton height={520} />}><SalesVsLastYear {...props} /></Suspense>
       <Suspense fallback={<Skeleton />}><Rings {...props} /></Suspense>
+      <Suspense fallback={<Skeleton />}><AveragePrices {...props} /></Suspense>
       <Suspense fallback={<Skeleton />}><People {...props} /></Suspense>
       <Suspense fallback={<Skeleton height={340} />}><OwedToUs {...props} /></Suspense>
       <Suspense fallback={<Skeleton height={340} />}><OwedByUs {...props} /></Suspense>
