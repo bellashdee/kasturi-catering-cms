@@ -1,0 +1,17 @@
+-- JDT FC SDN BHD: invoices recorded as paid in cash (data change run on the database on 18 Nov 2026).
+--
+-- JDT FC SDN BHD normally pays in cash, so its payments never reach the AutoCount AR Receive Payment listing and the Customer
+-- Outstanding Report showed RM 2,988,905.99 owed, "310 days late". Ms. Nabilah confirmed (18 Nov 2026) that every unpaid JDT
+-- invoice is paid in cash, both the Signature Solution Catering match-food invoices (I-000xxx / I-SSC…, 55 invoices,
+-- RM 236,235.00) and the Signature Solution Sdn Bhd invoices (I-SS26xx/…, 64 invoices, RM 2,752,670.99).
+--
+--  * 119 customer_payments rows were added, one per invoice, for the whole balance (all 119 were 'issued' with no payment),
+--    payment date = invoice date, payment_reference 'TUNAI-JDT-20261118';
+--  * those 119 invoices were set to 'paid'; one task_audit_log row per invoice (action payment_recorded, previous value 'issued').
+--  * The 48 JDT invoices already paid (from the Summary Payment - Event sheets, Jun - Sep 2026) were not touched.
+--
+-- To undo:
+--   update customer_invoices set status = 'issued'
+--     where id in (select customer_invoice_id from customer_payments where payment_reference = 'TUNAI-JDT-20261118');
+--   delete from customer_payments where payment_reference = 'TUNAI-JDT-20261118';
+select 1;
