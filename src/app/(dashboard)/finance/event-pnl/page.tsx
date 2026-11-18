@@ -22,7 +22,7 @@ import { readSort, sortBy } from "@/lib/listSort";
 
 type SearchParams = { company?: string; year?: string; month?: string; q?: string; customer?: string; status?: string; sort?: string; dir?: string };
 
-const SORTS = { date: "Event date", customer: "Customer", reference: "Event reference", event: "Event name", profit: "Net profit" };
+const SORTS = { date: "Event date", customer: "Customer", reference: "AutoCount Invoice No.", event: "Event name", profit: "Net profit" };
 
 const money = (n: number) => formatRM(n);
 
@@ -122,8 +122,8 @@ export default async function MonthlyEventPnlPage({ searchParams }: { searchPara
             {pnlCompanies.filter((c) => adminIds.includes(c.id) || session.hasAllCompaniesAccess).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </Select>
         </FilterField>
-        <FilterField label="Event name / reference">
-          <input name="q" defaultValue={sp.q ?? ""} placeholder="e.g. EV-2610-001" className={`${FILTER_INPUT} w-44`} />
+        <FilterField label="Event name / AutoCount Invoice No.">
+          <input name="q" defaultValue={sp.q ?? ""} placeholder="e.g. INV-KI2611/004" className={`${FILTER_INPUT} w-52`} />
         </FilterField>
         <FilterField label="Customer">
           <input name="customer" defaultValue={sp.customer ?? ""} className={`${FILTER_INPUT} w-40`} />
@@ -176,7 +176,7 @@ export default async function MonthlyEventPnlPage({ searchParams }: { searchPara
             <table className="w-full min-w-[1240px] text-left text-[12.5px]">
               <thead>
                 <tr className="border-b border-border bg-surface-alt text-[10.5px] font-bold uppercase tracking-wide text-text-muted">
-                  {["Event date", "Reference", "Event", "Company", "Customer", "Net revenue", "Direct costs", "Gross profit", "Additional", "Net profit", "Margin", "Status", "Actions"].map((h, i) => (
+                  {["Event date", "AutoCount Invoice No.", "Event", "Company", "Customer", "Net revenue", "Direct costs", "Gross profit", "Additional", "Net profit", "Margin", "Status", "Actions"].map((h, i) => (
                     <th key={h} className={`px-3 py-2.5 ${(i >= 5 && i <= 10) || i === 12 ? "text-right" : ""} ${i === 12 ? "print:hidden" : ""}`}>{h}</th>
                   ))}
                 </tr>
@@ -185,7 +185,14 @@ export default async function MonthlyEventPnlPage({ searchParams }: { searchPara
                 {rows.map((r) => (
                   <tr key={r.id} className="border-b border-border hover:bg-surface-alt">
                     <td className="px-3 py-2.5 text-text-secondary">{r.eventDate.split("-").reverse().join("/")}</td>
-                    <td className="px-3 py-2.5 font-mono text-[11.5px] text-text-secondary">{r.autoCountNos.length > 0 ? <span className="font-semibold text-text">{r.autoCountNos.join(", ")}</span> : "—"}{r.eventReference && <div className="text-[10.5px] text-text-muted">{r.eventReference}</div>}</td>
+                    <td className="px-3 py-2.5 font-mono text-[11.5px] text-text-secondary">
+                      {/* the event's reference is its AutoCount invoice number; an event without an invoice yet shows its EV- reference in grey */}
+                      {r.autoCountNos.length > 0 ? (
+                        <span className="font-semibold text-text">{r.autoCountNos.join(", ")}</span>
+                      ) : (
+                        <span className="text-text-muted">{r.eventReference ?? "—"}<span className="block font-sans text-[10.5px] italic">no invoice yet</span></span>
+                      )}
+                    </td>
                     <td className="px-3 py-2.5 font-semibold text-text"><Link href={`/finance/event-pnl/${r.id}`} className="hover:text-primary hover:underline">{r.eventName}</Link></td>
                     <td className="px-3 py-2.5 text-text-secondary">{r.companyName}</td>
                     <td className="px-3 py-2.5 text-text-secondary">{r.customerName ?? "—"}</td>

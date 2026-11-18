@@ -4585,6 +4585,9 @@ const dictionary: Record<string, string> = {
  "Petty cash": "পেটি ক্যাশ",
  "AutoCount: {0}": "AutoCount: {0}",
  "AutoCount Invoice No.: {0}": "AutoCount ইনভয়েস নং: {0}",
+ "Event name / AutoCount Invoice No.": "ইভেন্টের নাম / AutoCount ইনভয়েস নং",
+ "no invoice yet": "এখনও ইনভয়েস নেই",
+ "{0} (no invoice yet)": "{0} (এখনও ইনভয়েস নেই)",
 };
 
 export default dictionary;

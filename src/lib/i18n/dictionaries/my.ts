@@ -4579,6 +4579,9 @@ const dictionary: Record<string, string> = {
  "Petty cash": "အသေးသုံးငွေ",
  "AutoCount: {0}": "AutoCount: {0}",
  "AutoCount Invoice No.: {0}": "AutoCount ငွေတောင်းခံလွှာ နံပါတ်: {0}",
+ "Event name / AutoCount Invoice No.": "ပွဲအမည် / AutoCount ငွေတောင်းခံလွှာ နံပါတ်",
+ "no invoice yet": "ငွေတောင်းခံလွှာ မရှိသေးပါ",
+ "{0} (no invoice yet)": "{0} (ငွေတောင်းခံလွှာ မရှိသေးပါ)",
 };
 
 export default dictionary;

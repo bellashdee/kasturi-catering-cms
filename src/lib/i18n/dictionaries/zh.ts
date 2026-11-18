@@ -4591,6 +4591,9 @@ const dictionary: Record<string, string> = {
  "Petty cash": "零用金",
  "AutoCount: {0}": "AutoCount：{0}",
  "AutoCount Invoice No.: {0}": "AutoCount 发票号码：{0}",
+ "Event name / AutoCount Invoice No.": "活动名称 / AutoCount 发票号码",
+ "no invoice yet": "尚无发票",
+ "{0} (no invoice yet)": "{0}（尚无发票）",
 };
 
 export default dictionary;

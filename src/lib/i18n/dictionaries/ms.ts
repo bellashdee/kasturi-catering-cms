@@ -4691,6 +4691,9 @@ const dictionary: Record<string, string> = {
  "Petty cash": "Petty cash",
  "AutoCount: {0}": "AutoCount: {0}",
  "AutoCount Invoice No.: {0}": "No. Invois AutoCount: {0}",
+ "Event name / AutoCount Invoice No.": "Nama acara / No. Invois AutoCount",
+ "no invoice yet": "belum ada invois",
+ "{0} (no invoice yet)": "{0} (belum ada invois)",
 };
 
 export default dictionary;

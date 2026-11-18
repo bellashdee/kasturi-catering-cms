@@ -109,7 +109,7 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
           <Link href={`/finance/event-pnl?year=${event.event_date.slice(0, 4)}&month=${Number(event.event_date.slice(5, 7))}`} className="text-[12.5px] font-semibold text-text-secondary print:hidden">← Monthly Event P&amp;L</Link>
           <h1 className="mt-1 text-[22px] font-extrabold text-text">{event.event_name}</h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">
-            {detail.invoices.length > 0 ? `${[...new Set(detail.invoices.map((i) => i.invoice_number))].join(", ")} · ` : ""}{event.event_reference ?? "—"} · {event.companies?.name} · {date(event.event_date)} · {EVENT_STATUS_LABEL[event.status] ?? event.status}
+            {detail.invoices.length > 0 ? [...new Set(detail.invoices.map((i) => i.invoice_number))].join(", ") : `${event.event_reference ?? "—"} (no invoice yet)`} · {event.companies?.name} · {date(event.event_date)} · {EVENT_STATUS_LABEL[event.status] ?? event.status}
             {event.customers?.name ? ` · ${event.customers.name}` : ""}{event.pax_count ? ` · ${event.pax_count} pax` : ""}
           </p>
           <p className="text-[11.5px] text-text-muted">Report generated {formatMalaysiaDateTime(new Date().toISOString())} · actual figures only</p>
