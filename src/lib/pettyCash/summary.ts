@@ -30,3 +30,11 @@ export function spendSummary(
 }
 
 export const formatRm = rm;
+
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/** "2026-11" gives "November 2026"; "all" gives "All months". */
+export const monthLabel = (ym: string) => (ym === "all" ? "All months" : `${MONTH_NAMES[Number(ym.slice(5, 7)) - 1] ?? ym} ${ym.slice(0, 4)}`);
+
+/** A name made safe for a file name: "Siti Aminah binti Ali" gives "siti-aminah-binti-ali". */
+export const fileSlug = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");

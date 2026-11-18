@@ -26,6 +26,10 @@ export type ExportTable = {
   landscape?: boolean;
   /** printed under the list: e.g. the total spent and the spending of each company */
   summary?: { label: string; value: string; bold?: boolean }[];
+  /** lines under the title, before the list: e.g. the staff member's name, the company, the month and the totals */
+  info?: { label: string; value: string }[];
+  /** sign-off boxes printed at the end: a line to sign on, the role under it and the name (e.g. the staff member) */
+  signatures?: { label: string; name?: string }[];
 };
 
 const fileBase = (t: ExportTable) => `${t.title.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase()}-${todayInMalaysia()}`;
@@ -50,8 +54,29 @@ export function buildTablePdf(t: ExportTable): jsPDF {
   doc.setTextColor(110, 100, 100);
   if (t.subtitle) doc.text(plain(t.subtitle), 14, 29);
 
+  // the details of the sheet (whose records, the company, the period, the totals) in two columns under the title
+  let startY = 34;
+  const info = t.info ?? [];
+  if (info.length > 0) {
+    const perColumn = Math.ceil(info.length / 2);
+    const colWidth = (w - 28) / 2;
+    info.forEach((line, i) => {
+      const x = 14 + (i < perColumn ? 0 : colWidth);
+      const y = 35 + (i % perColumn) * 5;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9.5);
+      doc.setTextColor(51, 38, 43);
+      const label = `${plain(line.label)}: `;
+      doc.text(label, x, y);
+      doc.setFont("helvetica", "normal");
+      const value = doc.splitTextToSize(plain(line.value), colWidth - doc.getTextWidth(label) - 4)[0] ?? "";
+      doc.text(value, x + doc.getTextWidth(label), y);
+    });
+    startY = 35 + perColumn * 5 + 1;
+  }
+
   autoTable(doc, {
-    startY: 34,
+    startY,
     head: [t.columns.map(plain)],
     body: t.rows.map((r) => r.map((c) => plain(c))),
     styles: { fontSize: 8.5, cellPadding: 2, textColor: [51, 38, 43], lineColor: [230, 215, 210], lineWidth: 0.15, valign: "top" },
@@ -61,7 +86,7 @@ export function buildTablePdf(t: ExportTable): jsPDF {
   });
 
   if (t.summary && t.summary.length > 0) {
-    const after = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? 34;
+    const after = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? startY;
     const lines = t.summary;
     autoTable(doc, {
       startY: after + 6,
@@ -75,6 +100,32 @@ export function buildTablePdf(t: ExportTable): jsPDF {
         if (data.section === "body" && lines[data.row.index]?.bold) data.cell.styles.fontStyle = "bold";
       },
       margin: { left: 14, right: 14, bottom: 14 },
+    });
+  }
+
+  // the sign-off: one box for each person who signs, side by side, after everything else (on a new page when there is no room left)
+  const signatures = t.signatures ?? [];
+  if (signatures.length > 0) {
+    let y = ((doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? startY) + 22;
+    if (y + 18 > h - 14) {
+      doc.addPage();
+      y = 34;
+    }
+    const gap = 10;
+    const boxWidth = Math.min(70, (w - 28 - gap * (signatures.length - 1)) / signatures.length);
+    signatures.forEach((s, i) => {
+      const x = 14 + i * (boxWidth + gap);
+      doc.setDrawColor(51, 38, 43);
+      doc.setLineWidth(0.3);
+      doc.line(x, y, x + boxWidth, y);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(51, 38, 43);
+      doc.text(plain(s.label), x, y + 5);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.5);
+      if (s.name) doc.text(doc.splitTextToSize(plain(s.name), boxWidth)[0] ?? "", x, y + 10);
+      doc.text("Date:", x, y + (s.name ? 15 : 10));
     });
   }
 

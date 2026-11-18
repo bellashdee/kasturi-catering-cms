@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import { getSessionContext } from "@/lib/auth";
 import { canAccessModule } from "@/lib/modules";
-import { pettyCashAccess } from "@/lib/pettyCash/access";
+import { ownIdentity, pettyCashAccess } from "@/lib/pettyCash/access";
+import { resolveCompanyScope } from "@/lib/companyScope";
 import { SoftHeader, SoftPage } from "@/components/ui/Soft";
 import { SpendingSubNav } from "@/components/spending/SpendingSubNav";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { claimPayers } from "@/lib/pettyCash/access";
-import { loadPersonOptions, shortNameIn } from "@/lib/pettyCash/people";
+import { likeExact, loadPersonOptions, shortNameIn } from "@/lib/pettyCash/people";
 import { createClient } from "@/lib/supabase/server";
 import { formatMalaysiaDate, formatPrice, todayInMalaysia } from "@/lib/format";
 import { PETTY_CASH_PAYMENT_STATUS_LABEL } from "@/lib/finance/constants";
@@ -16,7 +17,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 import { ExportListButtons } from "@/components/procurement/ExportListButtons";
 import { receiptIds } from "@/lib/documents/receipts";
-import { formatRm, spendSummary, spentByCompany } from "@/lib/pettyCash/summary";
+import { fileSlug, formatRm, monthLabel, spendSummary, spentByCompany } from "@/lib/pettyCash/summary";
 import { MyClaimActions, MyClaimForm } from "@/components/claims/MyClaims";
 import { Select } from "@/components/ui/Select";
 import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
@@ -25,16 +26,15 @@ import { readSort, sortBy } from "@/lib/listSort";
 const SORTS = { date: "Date", bought: "Description", invoice: "Invoice No.", amount: "Amount", status: "Status" };
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
-const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-const monthLabel = (ym: string) => (ym === "all" ? "All months" : `${MONTH_NAMES[Number(ym.slice(5, 7)) - 1] ?? ym} ${ym.slice(0, 4)}`);
 
 /**
  * My Claims: any staff member claims back, from Penny Chan or Nabilah, what they bought with their own money, and sees the history of
  * their purchases like the Petty Cash: by month, with the totals (claimed, paid, waiting) and the spending of each company, to export or
  * print. A person sees and works on only their own claims (the staff have no access to the petty cash records themselves, so this page
- * reads them with the service role and keeps to the claims the person made).
+ * reads them with the service role and keeps to the claims the person made). Admin & Finance can choose another staff member to see,
+ * print or export that person's claims (only in the companies they can open); they cannot change someone else's claims here.
  */
-export default async function MyClaimsPage({ searchParams }: { searchParams: Promise<{ month?: string; q?: string; status?: string; sort?: string; dir?: string }> }) {
+export default async function MyClaimsPage({ searchParams }: { searchParams: Promise<{ month?: string; q?: string; status?: string; sort?: string; dir?: string; staff?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
   const sp = await searchParams;
@@ -57,8 +57,35 @@ export default async function MyClaimsPage({ searchParams }: { searchParams: Pro
   const payerList = payers.map((p) => ({ name: p.name, position: people.find((x) => x.name === p.name)?.position ?? p.position }));
   const short = shortNameIn(people);
 
-  const { data: claims } = await admin.from("petty_cash_transactions").select("*").eq("created_by", session.userId).eq("type", "expense").order("transaction_date", { ascending: false }).order("created_at", { ascending: false });
-  const all = claims ?? [];
+  // whose claims: your own; Admin & Finance may choose another staff member (anyone who has a staff claim in a company they can open)
+  const own = ownIdentity(people, session.userId, session.fullName);
+  const { accessibleIds } = resolveCompanyScope(session, allCompanies, undefined);
+  let staffOptions: string[] = [];
+  if (hasFinance && accessibleIds.length > 0) {
+    const { data: claimants } = await admin.from("petty_cash_transactions").select("claimant_name").eq("type", "expense").in("company_id", accessibleIds).not("claimant_name", "is", null).limit(10000);
+    staffOptions = Array.from(new Map((claimants ?? []).map((c) => c.claimant_name?.trim() ?? "").filter(Boolean).map((n) => [n.toUpperCase(), n])).values())
+      .filter((n) => n.toUpperCase() !== own.name.toUpperCase())
+      .sort((a, b) => a.localeCompare(b));
+  }
+  const staff = staffOptions.find((n) => n.toUpperCase() === (sp.staff ?? "").trim().toUpperCase()) ?? "";
+  const staffPerson = staff ? people.find((p) => p.name.toUpperCase() === staff.toUpperCase()) : undefined;
+  const isOwn = !staff;
+  const sheetName = staff || own.name;
+  const sheetPosition = staff ? (staffPerson?.position ?? "") : own.position;
+
+  let all: ClaimRow[] = [];
+  if (isOwn) {
+    all = (await readOwnClaims(admin, session.userId)).data ?? [];
+  } else {
+    // another staff member's claims: the ones under their name, and the ones they sent themselves from their login
+    const [byName, byLogin] = await Promise.all([
+      admin.from("petty_cash_transactions").select("*").eq("type", "expense").in("company_id", accessibleIds).ilike("claimant_name", likeExact(staff)),
+      staffPerson?.userId ? admin.from("petty_cash_transactions").select("*").eq("type", "expense").in("company_id", accessibleIds).eq("created_by", staffPerson.userId) : Promise.resolve({ data: [] as ClaimRow[] }),
+    ]);
+    all = Array.from(new Map([...(byName.data ?? []), ...(byLogin.data ?? [])].map((c) => [c.id, c])).values()).sort(
+      (a, b) => b.transaction_date.localeCompare(a.transaction_date) || b.created_at.localeCompare(a.created_at),
+    );
+  }
 
   // the history by month (this month by default, or All months), like the Petty Cash
   const thisMonth = todayInMalaysia().slice(0, 7);
@@ -92,7 +119,7 @@ export default async function MyClaimsPage({ searchParams }: { searchParams: Pro
   const companyLabel = (c: (typeof all)[number]) =>
     [c.company_id, ...(c.shared_company_ids ?? [])].map((id) => allCompanies.find((x) => x.id === id)?.name).filter(Boolean).join(" + ");
 
-  const exportHeaders = ["Date", "Company", "Category", "Description", "Invoice No.", "Remarks", "Claim from", "You paid by", "Status", "Payment date", "Amount (RM)"];
+  const exportHeaders = ["Date", "Company", "Category", "Description", "Invoice No.", "Remarks", "Claim from", isOwn ? "You paid by" : "Staff paid by", "Status", "Payment date", "Amount (RM)"];
   const exportRows = shown.map((c): (string | number)[] => [
     c.transaction_date,
     companyLabel(c),
@@ -106,6 +133,17 @@ export default async function MyClaimsPage({ searchParams }: { searchParams: Pro
     c.payment_date ?? "",
     Math.round(Number(c.amount) * 100) / 100,
   ]);
+  // the printout / Excel carries the staff member's full name, the company, the period and the totals on top, and their sign-off at the end
+  const sheetInfo = [
+    { label: "Staff", value: `${sheetName}${sheetPosition ? ` (${sheetPosition})` : ""}` },
+    { label: "Company", value: byCompany.map((b) => b.name).join(", ") || "-" },
+    { label: "Period", value: monthLabel(month) },
+    ...(sp.status ? [{ label: "Status", value: PETTY_CASH_PAYMENT_STATUS_LABEL[sp.status] ?? sp.status }] : []),
+    { label: "Total claimed", value: formatRm(sum(shown)) },
+    { label: "Paid", value: formatRm(sum(paid)) },
+    { label: "Still pending", value: formatRm(sum(waiting)) },
+  ];
+  const sheetSignatures = [{ label: "Claimed by", name: sheetName }, { label: "Checked by" }, { label: "Approved by" }];
   const summary = spendSummary(spent, allCompanies, {
     totalLabel: "Total claimed (money spent)",
     after: [
@@ -116,10 +154,10 @@ export default async function MyClaimsPage({ searchParams }: { searchParams: Pro
 
   return (
     <SoftPage>
-      <SoftHeader title="My Claims" subtitle="Claim back what you bought for the company with your own money" />
+      <SoftHeader title="My Claims" subtitle={isOwn ? "Claim back what you bought for the company with your own money" : `The claims of ${staff}`} />
       <SpendingSubNav hideFinance={!hasFinance} hidePettyCash={!hasFinance && !access.isHolder} />
 
-      {companies.length === 0 ? (
+      {!isOwn ? null : companies.length === 0 ? (
         <EmptyRow text="Your staff record is not linked to your login yet. Please ask the HR admin to link it, then you can send your claims here." />
       ) : (
         <SectionCard title="New claim">
@@ -128,6 +166,16 @@ export default async function MyClaimsPage({ searchParams }: { searchParams: Pro
       )}
 
       <ListFilters sortOptions={SORTS} sort={sort} dir={dir} clearHref="/spending/my-claims">
+        {hasFinance && staffOptions.length > 0 && (
+          <FilterField label="Staff (to list, print or export)">
+            <Select name="staff" defaultValue={staff} className={`${FILTER_INPUT} w-64`}>
+              <option value="">{`My own claims${own.name ? ` (${own.name})` : ""}`}</option>
+              {staffOptions.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </Select>
+          </FilterField>
+        )}
         <FilterField label="Month">
           <Select name="month" defaultValue={month} className={`${FILTER_INPUT} w-44`}>
             <option value="all">All months</option>
@@ -178,11 +226,22 @@ export default async function MyClaimsPage({ searchParams }: { searchParams: Pro
       )}
 
       <SectionCard
-        title="My claims"
-        action={<ExportListButtons filenameBase={`my-claims-${month}`} headers={exportHeaders} rows={exportRows} moneyColumns={["Amount (RM)"]} summary={summary} />}
+        title={isOwn ? "My claims" : `Claims of ${staff}`}
+        action={
+          <ExportListButtons
+            filenameBase={`claims-${fileSlug(sheetName) || "staff"}-${month}`}
+            title={`Staff Claims - ${sheetName}`}
+            info={sheetInfo}
+            signatures={sheetSignatures}
+            headers={exportHeaders}
+            rows={exportRows}
+            moneyColumns={["Amount (RM)"]}
+            summary={summary}
+          />
+        }
       >
         {shown.length === 0 ? (
-          <EmptyRow text={all.length === 0 ? "You have not sent any claims yet." : "No claims match this month or search."} />
+          <EmptyRow text={all.length === 0 ? (isOwn ? "You have not sent any claims yet." : `${staff} has no claims yet.`) : "No claims match this month or search."} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] border-collapse text-left">
@@ -209,7 +268,7 @@ export default async function MyClaimsPage({ searchParams }: { searchParams: Pro
                         {c.invoice_no && <div className="text-[11.5px] font-semibold text-text-secondary">{`Invoice No.: ${c.invoice_no}`}</div>}
                         <div className="text-[11.5px] text-text-muted">{companyLabel(c)}</div>
                         {c.remarks && <div className="text-[11.5px] text-text-secondary">{`Remarks: ${c.remarks}`}</div>}
-                        {c.payment_method && <div className="text-[11.5px] text-text-secondary">{`You paid by: ${paymentMethodLabel(c.payment_method)}`}</div>}
+                        {c.payment_method && <div className="text-[11.5px] text-text-secondary">{`${isOwn ? "You" : "Staff"} paid by: ${paymentMethodLabel(c.payment_method)}`}</div>}
                       </td>
                       <td className="whitespace-nowrap px-3 py-2.5 text-text-secondary">{short(c.person_name) || "—"}</td>
                       <td className="whitespace-nowrap px-3 py-2.5 text-right font-semibold tabular-nums text-text">{formatPrice(Number(c.amount))}</td>
@@ -233,11 +292,15 @@ export default async function MyClaimsPage({ searchParams }: { searchParams: Pro
                         )}
                       </td>
                       <td className="px-3 py-2.5">
+                        {isOwn ? (
                         <MyClaimActions
                           claim={{ id: c.id, companyId: c.company_id, date: c.transaction_date, amount: String(c.amount), amountText: Number(c.amount).toFixed(2), payer: c.person_name ?? "", paymentMethod: c.payment_method ?? "", category: c.category ?? "", description: c.description ?? "", remarks: c.remarks ?? "", invoiceNo: c.invoice_no ?? "", autoCountInvoiceNo: c.autocount_invoice_no ?? "", hasReceipt: receiptIds(c).length > 0 }}
                           companies={companies}
                           payers={payerList}
                         />
+                        ) : (
+                          <span className="text-[12px] text-text-muted">—</span>
+                        )}
                       </td>
                     </tr>
                   );
@@ -250,3 +313,10 @@ export default async function MyClaimsPage({ searchParams }: { searchParams: Pro
     </SoftPage>
   );
 }
+
+/** The claims the signed-in person sent themselves (newest first). */
+function readOwnClaims(admin: ReturnType<typeof createAdminClient>, userId: string) {
+  return admin.from("petty_cash_transactions").select("*").eq("created_by", userId).eq("type", "expense").order("transaction_date", { ascending: false }).order("created_at", { ascending: false });
+}
+
+type ClaimRow = NonNullable<Awaited<ReturnType<typeof readOwnClaims>>["data"]>[number];

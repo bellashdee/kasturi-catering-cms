@@ -14,7 +14,7 @@ import { SpendingSubNav } from "@/components/spending/SpendingSubNav";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 import { receiptIds } from "@/lib/documents/receipts";
 import { ExportListButtons } from "@/components/procurement/ExportListButtons";
-import { formatRm, spendSummary } from "@/lib/pettyCash/summary";
+import { fileSlug, formatRm, monthLabel, spendSummary } from "@/lib/pettyCash/summary";
 import { PettyCashEntryForm } from "@/components/pettyCash/PettyCashEntryForm";
 import { PettyCashHolderBar } from "@/components/pettyCash/PettyCashHolderBar";
 import { PettyCashOverview } from "@/components/pettyCash/PettyCashOverview";
@@ -27,6 +27,7 @@ import { buildOverview } from "@/lib/pettyCash/overview";
 import { chosenHolder, holdersOnly, likeExact, loadHolderNames, loadPersonOptions, shortNameIn } from "@/lib/pettyCash/people";
 import { claimPayers, ownIdentity, pettyCashAccess } from "@/lib/pettyCash/access";
 import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
+import { Select } from "@/components/ui/Select";
 import { readSort, sortBy } from "@/lib/listSort";
 
 const SORTS = { date: "Date", company: "Company", details: "Details", invoice: "Invoice No.", amount: "Amount" };
@@ -55,6 +56,8 @@ type Row = {
   /** the event's AutoCount invoice no. (the cost counts in that event's P&L) */
   autoCountNo: string | null;
   person: string;
+  /** the full names on the record (who spent / received it, who claimed it): what the Staff filter matches */
+  names: string[];
   documentId: string | null;
   /** every receipt / photo of the record, the first one first */
   documentIds: string[];
@@ -70,7 +73,7 @@ type Row = {
  * the name is chosen at the top and nothing of anyone else's is mixed in. The cash book is private to the people who
  * hold a petty cash (and the Director of Finance); the claims follow Admin & Finance access.
  */
-export default async function PettyCashPage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string; edit?: string; holder?: string; position?: string; status?: string; all?: string; q?: string; sort?: string; dir?: string }> }) {
+export default async function PettyCashPage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string; edit?: string; holder?: string; position?: string; status?: string; all?: string; q?: string; sort?: string; dir?: string; staff?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
@@ -141,6 +144,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
       invoiceNo: e.invoice_no ?? null,
       autoCountNo: e.autocount_invoice_no ?? null,
       person: short(e.person_name),
+      names: [e.person_name?.trim() ?? ""].filter(Boolean),
       documentId: e.document_id,
       documentIds: receiptIds(e),
       bookId: e.id,
@@ -161,6 +165,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
       invoiceNo: t.invoice_no ?? null,
       autoCountNo: t.autocount_invoice_no ?? null,
       person: short(t.person_name),
+      names: [t.person_name?.trim() ?? "", t.claimant_name?.trim() ?? ""].filter(Boolean),
       documentId: t.document_id,
       documentIds: receiptIds(t),
       claim: t.type === "expense" ? { id: t.id, status: t.payment_status, paymentDate: t.payment_date, claimant: short(t.claimant_name), department: t.claimant_department, paidMethod: t.claim_payment_method, paymentReference: t.payment_reference, paymentRemarks: t.payment_remarks } : undefined,
@@ -190,11 +195,15 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
   const summary = summarizePettyCashClaims(claimsInMonth.map((r) => ({ amount: r.amount, payment_status: r.claim!.status })));
   const overdueCount = claimsInMonth.filter((r) => isPettyCashOverdue(r.date, r.claim!.status)).length;
   const statusParam = sp.status === "pending_payment" || sp.status === "paid" ? sp.status : undefined;
+  // the staff member whose records are listed, printed and exported: anyone named on a record (spent by, received by, claimed by)
+  const staffOptions = Array.from(new Map(rows.flatMap((r) => r.names).map((n) => [n.toUpperCase(), n])).values()).sort((a, b) => a.localeCompare(b));
+  const staff = staffOptions.find((n) => n.toUpperCase() === (sp.staff ?? "").trim().toUpperCase()) ?? "";
+  const ofStaff = (r: Row) => !staff || r.names.some((n) => n.toUpperCase() === staff.toUpperCase());
   // newest first by default; the search looks in the details, the category, the invoice no., the remarks and the names
   const q = sp.q?.trim().toLowerCase() ?? "";
   const { sort, dir } = readSort(sp, SORTS, "date", "desc");
   const shown = sortBy(
-    inMonth.filter((r) => (!statusParam || r.claim?.status === statusParam) && (!q || [r.title, r.category, r.invoiceNo, r.remarks, r.person, r.claim?.claimant].some((x) => x?.toLowerCase().includes(q)))),
+    inMonth.filter((r) => ofStaff(r) && (!statusParam || r.claim?.status === statusParam) && (!q || [r.title, r.category, r.invoiceNo, r.remarks, r.person, r.claim?.claimant].some((x) => x?.toLowerCase().includes(q)))),
     sort,
     dir,
     {
@@ -218,7 +227,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
     ? { id: editing.id, company_id: editing.company_id, entry_type: editing.entry_type as EntryType, entry_date: editing.entry_date, category: editing.category, description: editing.description, amount: Number(editing.amount), document_id: editing.document_id, extra_document_ids: editing.extra_document_ids ?? [], created_by: editing.created_by, person_name: editing.person_name, person_position: editing.person_position, payment_method: editing.payment_method, remarks: editing.remarks, invoice_no: editing.invoice_no, autocount_invoice_no: editing.autocount_invoice_no, shared_company_ids: editing.shared_company_ids ?? [] }
     : undefined;
 
-  const keep = new URLSearchParams({ ...(sp.company ? { company: sp.company } : {}), holder: who.name, month, ...(everyone ? { all: "1" } : {}), ...(sp.q ? { q: sp.q } : {}), ...(sp.sort ? { sort: sp.sort } : {}), ...(sp.dir ? { dir: sp.dir } : {}) });
+  const keep = new URLSearchParams({ ...(sp.company ? { company: sp.company } : {}), holder: who.name, month, ...(everyone ? { all: "1" } : {}), ...(staff ? { staff } : {}), ...(sp.q ? { q: sp.q } : {}), ...(sp.sort ? { sort: sp.sort } : {}), ...(sp.dir ? { dir: sp.dir } : {}) });
   const listHref = `/spending/petty-cash?${keep.toString()}`;
   const editHref = (id: string) => `${listHref}${statusParam ? `&status=${statusParam}` : ""}&edit=${id}`;
   const statusHref = (status?: string) => `${listHref}${status ? `&status=${status}` : ""}`;
@@ -242,6 +251,26 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
     r.kind === "out" ? round2(r.amount) : "",
     r.balance,
   ]);
+
+  // the printout / Excel is about one staff member: their full name, the company, the period and the totals on top, their sign-off at the end
+  const sheetName = staff || who.name || "Everyone";
+  const sheetPerson = people.find((p) => p.name.toUpperCase() === sheetName.toUpperCase());
+  const shownClaims = shown.filter((r) => r.claim);
+  const totalOf = (list: Row[]) => formatRm(list.reduce((t, r) => t + r.amount, 0));
+  const sheetCompanies = Array.from(new Set(shown.flatMap((r) => r.companyName.split(" + ")).filter(Boolean)));
+  const sheetInfo = [
+    { label: "Staff", value: `${sheetName}${sheetPerson?.position ? ` (${sheetPerson.position})` : ""}` },
+    ...(staff && who.name && staff.toUpperCase() !== who.name.toUpperCase() ? [{ label: "Petty cash of", value: who.name }] : []),
+    { label: "Company", value: sheetCompanies.join(", ") || "-" },
+    { label: "Period", value: monthLabel(month) },
+    ...(statusParam ? [{ label: "Records", value: statusParam === "paid" ? "Claims paid" : "Claims pending payment" }] : []),
+    { label: "Total received", value: totalOf(shown.filter((r) => r.kind === "in")) },
+    { label: "Total spent", value: totalOf(shown.filter((r) => r.kind === "out")) },
+    { label: "Total claimed", value: totalOf(shownClaims) },
+    { label: "Claims paid", value: totalOf(shownClaims.filter((r) => r.claim!.status === "paid")) },
+    { label: "Claims still pending", value: totalOf(shownClaims.filter((r) => r.claim!.status !== "paid")) },
+  ];
+  const sheetSignatures = [{ label: "Staff", name: sheetName }, { label: "Checked by" }, { label: "Approved by" }];
 
   return (
     <SoftPage>
@@ -276,6 +305,14 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
           dir={dir}
           clearHref={`/spending/petty-cash?${new URLSearchParams({ ...(sp.company ? { company: sp.company } : {}), holder: who.name, month, ...(everyone ? { all: "1" } : {}) }).toString()}`}
         >
+          <FilterField label="Staff (to list, print or export)">
+            <Select name="staff" defaultValue={staff} className={`${FILTER_INPUT} w-64`}>
+              <option value="">{everyone ? "Everyone" : `All on this petty cash`}</option>
+              {staffOptions.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </Select>
+          </FilterField>
           <FilterField label="Search">
             <input name="q" defaultValue={sp.q ?? ""} placeholder="Details, category, invoice no., remarks or name" className={`${FILTER_INPUT} w-60`} />
           </FilterField>
@@ -323,7 +360,10 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
       {shownScope && (
         <div className="rounded-xl border border-border bg-surface shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5">
-            <div className="text-[15px] font-bold text-text">Petty cash records</div>
+            <div className="text-[15px] font-bold text-text">
+              Petty cash records
+              {staff && <span className="ml-2 text-[13px] font-semibold text-primary">{`· ${staff}`}</span>}
+            </div>
             <div className="flex flex-wrap items-center gap-3">
               {canClaims && (
                 <div className="flex gap-1">
@@ -339,7 +379,10 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
                 </div>
               )}
               <ExportListButtons
-                filenameBase={`petty-cash-${month}`}
+                filenameBase={`petty-cash-${fileSlug(sheetName)}-${month}`}
+                title={`Petty Cash - ${sheetName}`}
+                info={sheetInfo}
+                signatures={sheetSignatures}
                 headers={exportHeaders}
                 rows={exportRows}
                 moneyColumns={moneyColumns}
@@ -356,7 +399,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
           </div>
 
           {shown.length === 0 ? (
-            <EmptyRow text="No petty cash records for this month yet." />
+            <EmptyRow text={staff ? `No petty cash records of ${staff} for this month.` : "No petty cash records for this month yet."} />
           ) : (
             // the list scrolls inside its own box (sideways and down) with the headings kept in view, instead of squeezing the columns or running down the page
             <div className="max-h-[75vh] overflow-auto">
