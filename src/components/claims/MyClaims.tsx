@@ -206,7 +206,7 @@ function ClaimFields({
       </div>
       <div>
         <label className={labelClass}>Remarks (optional)</label>
-        <input value={v.remarks ?? ""} onChange={(e) => set({ remarks: e.target.value })} maxLength={500} placeholder="e.g. the event it was for: JDT FC event, 12 Nov" className={inputClass} />
+        <input value={v.remarks ?? ""} onChange={(e) => set({ remarks: e.target.value })} maxLength={500} placeholder="Anything else to note (the event goes in AutoCount Invoice No. below)" className={inputClass} />
       </div>
       <AutoCountInvoiceField value={v.autoCountInvoiceNo ?? ""} onChange={(text) => set({ autoCountInvoiceNo: text })} inputClassName={inputClass} labelClassName={labelClass} />
       {canSplitCompanies && (
