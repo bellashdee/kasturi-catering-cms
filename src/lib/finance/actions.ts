@@ -14,6 +14,7 @@ import { checkCategoryShares, type CategoryShare } from "@/lib/categorySplit";
 import { addReceipts } from "@/lib/documents/receipts";
 import { DUPLICATE_INVOICE_MESSAGE } from "@/lib/finance/constants";
 import type { Database } from "@/lib/supabase/types";
+import { autoCountNoOnSave } from "@/lib/finance/autocountCosts";
 
 type InvoiceStatus = Database["public"]["Enums"]["invoice_status"];
 
@@ -37,6 +38,8 @@ export type CompanyExpenseInput = {
   notes?: string;
   /** the invoice / receipt number as printed (optional) */
   invoiceNo?: string;
+  /** the AutoCount (customer) invoice no. of the event this cost is for: the cost then counts in that event's P&L */
+  autoCountInvoiceNo?: string;
   documentId?: string;
   /** marked as a Credit Note (money back, counted as minus) or a Debit Note (an extra charge) */
   noteType?: "credit_note" | "debit_note" | null;
@@ -54,6 +57,7 @@ export async function createCompanyExpense(input: CompanyExpenseInput) {
       expense_date: input.expenseDate,
       notes: input.notes || null,
       invoice_no: input.invoiceNo?.trim() || null,
+      autocount_invoice_no: autoCountNoOnSave(input.autoCountInvoiceNo, null, input.notes),
       note_type: input.noteType === "credit_note" || input.noteType === "debit_note" ? input.noteType : null,
       document_id: input.documentId || null,
       created_by: userId,
@@ -82,6 +86,7 @@ export type CompanyExpenseRow = {
   expense_date: string;
   notes: string | null;
   invoice_no?: string | null;
+  autocount_invoice_no?: string | null;
   /** credit_note, debit_note or none */
   note_type?: string | null;
   document_id: string | null;
@@ -103,7 +108,7 @@ function revalidateExpenses() {
 /** Edit a company expense: category, department, amount, date, invoice no. and notes. */
 export async function updateCompanyExpense(
   id: string,
-  input: { category: string; department?: string; amount: number; expenseDate: string; notes?: string; invoiceNo?: string },
+  input: { category: string; department?: string; amount: number; expenseDate: string; notes?: string; invoiceNo?: string; autoCountInvoiceNo?: string },
 ) {
   const { supabase } = await requireUser();
   const { data: before, error: readError } = await supabase.from("expenses").select("*").eq("id", id).single();
@@ -114,7 +119,7 @@ export async function updateCompanyExpense(
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.expenseDate)) throw new Error("Choose the expense date.");
   const { error } = await supabase
     .from("expenses")
-    .update({ category: input.category.trim(), department: input.department?.trim() || null, amount: input.amount, expense_date: input.expenseDate, notes: input.notes?.trim() || null, invoice_no: input.invoiceNo?.trim() || null })
+    .update({ category: input.category.trim(), department: input.department?.trim() || null, amount: input.amount, expense_date: input.expenseDate, notes: input.notes?.trim() || null, invoice_no: input.invoiceNo?.trim() || null, autocount_invoice_no: autoCountNoOnSave(input.autoCountInvoiceNo, before.autocount_invoice_no, input.notes) })
     .eq("id", id);
   if (error) throw new Error("Could not save the expense.");
   await recordAudit({
@@ -154,6 +159,7 @@ export async function deleteCompanyExpense(id: string): Promise<CompanyExpenseRo
     expense_date: before.expense_date,
     notes: before.notes,
     invoice_no: before.invoice_no,
+    autocount_invoice_no: before.autocount_invoice_no,
     note_type: before.note_type,
     document_id: before.document_id,
     created_by: before.created_by,
@@ -197,6 +203,7 @@ export async function restoreCompanyExpense(row: CompanyExpenseRow) {
     expense_date: row.expense_date,
     notes: row.notes,
     invoice_no: row.invoice_no ?? null,
+    autocount_invoice_no: row.autocount_invoice_no ?? null,
     note_type: row.note_type ?? null,
     document_id: row.document_id,
     created_by: row.created_by,
@@ -307,6 +314,8 @@ export type PettyCashInput = {
   remarks?: string;
   /** the invoice / receipt number as printed (optional) */
   invoiceNo?: string;
+  /** the AutoCount (customer) invoice no. of the event this cost is for: the cost then counts in that event's P&L */
+  autoCountInvoiceNo?: string;
 };
 
 export async function createPettyCashTransaction(input: PettyCashInput): Promise<ActionResult> {
@@ -335,6 +344,7 @@ export async function createPettyCashTransaction(input: PettyCashInput): Promise
     description: input.description || null,
     remarks: input.remarks?.trim().slice(0, 500) || null,
     invoice_no: input.invoiceNo?.trim().slice(0, 100) || null,
+    autocount_invoice_no: autoCountNoOnSave(input.autoCountInvoiceNo, null, input.remarks),
     amount: input.amount,
     // the claim date: today (Malaysia) unless a date is given; the payment date is recorded separately when it is paid
     transaction_date: input.transactionDate || todayInMalaysia(),
@@ -385,6 +395,8 @@ export type SplitClaimInput = {
   remarks?: string;
   /** the invoice / receipt number as printed (optional) */
   invoiceNo?: string;
+  /** the AutoCount (customer) invoice no. of the event this cost is for: the cost then counts in that event's P&L */
+  autoCountInvoiceNo?: string;
 };
 
 /** A staff claim split between companies and/or categories: one claim for each part with its own amount, all saved together or not at all. */
@@ -418,6 +430,7 @@ export async function createSplitPettyCashClaims(input: SplitClaimInput): Promis
           description: input.description || null,
           remarks: input.remarks?.trim().slice(0, 500) || null,
           invoice_no: input.invoiceNo?.trim().slice(0, 100) || null,
+          autocount_invoice_no: autoCountNoOnSave(input.autoCountInvoiceNo, null, input.remarks),
           amount: s.amount,
           transaction_date: input.transactionDate || todayInMalaysia(),
           document_id: input.documentId || null,
@@ -910,7 +923,7 @@ export async function restoreCustomerPayment(row: CustomerPaymentRow): Promise<A
   }, "Could not put the payment back.");
 }
 
-export type PettyCashClaimEdit = { claimantName?: string; claimantDepartment?: string; category?: string; description?: string; amount: number; transactionDate: string; companyId?: string; alsoCompanyIds?: string[]; /** receipts added (they join the ones attached) */ documentId?: string; extraDocumentIds?: string[]; remarks?: string; /** the invoice / receipt number as printed (optional) */ invoiceNo?: string };
+export type PettyCashClaimEdit = { claimantName?: string; claimantDepartment?: string; category?: string; description?: string; amount: number; transactionDate: string; companyId?: string; alsoCompanyIds?: string[]; /** receipts added (they join the ones attached) */ documentId?: string; extraDocumentIds?: string[]; remarks?: string; /** the invoice / receipt number as printed (optional) */ invoiceNo?: string; /** the event's AutoCount invoice no. */ autoCountInvoiceNo?: string };
 
 /** Who may change a petty cash claim or top-up: the admins of the company, and the person who made it while it is still waiting for payment. */
 async function claimAccess(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], userId: string, row: PettyCashTransactionRow) {
@@ -939,6 +952,7 @@ export async function updatePettyCashClaim(id: string, input: PettyCashClaimEdit
         description: input.description?.trim() || null,
         remarks: input.remarks?.trim().slice(0, 500) || null,
         invoice_no: input.invoiceNo?.trim().slice(0, 100) || null,
+        autocount_invoice_no: before.type === "expense" ? autoCountNoOnSave(input.autoCountInvoiceNo, before.autocount_invoice_no, input.remarks) : null,
         amount: input.amount,
         transaction_date: input.transactionDate,
         // the main company and the other companies it is also for (keyed once, counted once)

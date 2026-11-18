@@ -11,7 +11,7 @@ import {
   type DataFlag,
   type EventPnl,
 } from "@/lib/finance/eventPnl";
-import { autoCountCostsOf, autoCountSupplierInvoices } from "@/lib/finance/autocountCosts";
+import { autoCountCosts, autoCountCostsOf } from "@/lib/finance/autocountCosts";
 
 type DB = SupabaseClient<Database>;
 
@@ -42,6 +42,8 @@ export type EventPnlRow = {
   company_id: string;
   companyName: string;
   eventReference: string | null;
+  /** The event's AutoCount (customer) invoice number(s): the event's reference, used to link costs to it. */
+  autoCountNos: string[];
   eventName: string;
   eventDate: string;
   customerName: string | null;
@@ -75,7 +77,12 @@ async function loadRows(supabase: DB, companyIds: string[], start: string, end: 
   if (filters.salesAgent) query = query.eq("sales_agent", filters.salesAgent);
   if (filters.search) {
     const s = filters.search.replace(/[%,()]/g, " ").trim();
-    if (s) query = query.or(`event_name.ilike.%${s}%,event_reference.ilike.%${s}%`);
+    if (s) {
+      // the AutoCount invoice number is the event's reference: searching for it finds the event its invoice is linked to
+      const { data: byInvoice } = await supabase.from("customer_invoices").select("catering_event_id").in("company_id", companyIds).ilike("invoice_number", `%${s}%`).not("catering_event_id", "is", null).limit(50);
+      const invoiceEventIds = [...new Set((byInvoice ?? []).map((i) => i.catering_event_id).filter((id): id is string => !!id))];
+      query = query.or([`event_name.ilike.%${s}%`, `event_reference.ilike.%${s}%`, ...(invoiceEventIds.length ? [`id.in.(${invoiceEventIds.join(",")})`] : [])].join(","));
+    }
   }
   const { data: events, error } = await query;
   if (error) throw error;
@@ -88,15 +95,16 @@ async function loadRows(supabase: DB, companyIds: string[], start: string, end: 
   if (list.length === 0) return [];
   const ids = list.map((e) => e.id);
 
-  const [revenue, costs, sheets, budgets, fromAutoCount] = await Promise.all([
+  const [revenue, costs, sheets, budgets, fromAutoCount, customerInvoices] = await Promise.all([
     supabase.from("event_revenue_entries").select("catering_event_id, entry_type, amount").in("catering_event_id", ids),
     supabase.from("event_cost_entries").select("catering_event_id, cost_class, cost_type, amount, cost_basis").in("catering_event_id", ids),
     supabase.from("event_costing").select("catering_event_id, food_cost, ingredient_cost, staff_cost, transport_cost, equipment_cost, other_cost").in("catering_event_id", ids),
     supabase.from("event_budgets").select("catering_event_id, budget_revenue, budget_direct_costs, budget_additional_costs").in("catering_event_id", ids),
-    // supplier invoices keyed in with the AutoCount invoice number of the event count as its direct costs straight away
-    autoCountSupplierInvoices(supabase, ids),
+    // supplier invoices, company expenses, petty cash and staff claims keyed in with the event's AutoCount invoice number count as its direct costs straight away
+    autoCountCosts(supabase, ids),
+    supabase.from("customer_invoices").select("catering_event_id, invoice_number").in("catering_event_id", ids).order("invoice_number"),
   ]);
-  for (const r of [revenue, costs, sheets, budgets]) if (r.error) throw r.error;
+  for (const r of [revenue, costs, sheets, budgets, customerInvoices]) if (r.error) throw r.error;
 
   return list.map((e) => {
     const pnl = computeEventPnl(
@@ -110,6 +118,7 @@ async function loadRows(supabase: DB, companyIds: string[], start: string, end: 
       company_id: e.company_id,
       companyName: e.companies?.name ?? "—",
       eventReference: e.event_reference,
+      autoCountNos: [...new Set((customerInvoices.data ?? []).filter((i) => i.catering_event_id === e.id).map((i) => i.invoice_number))],
       eventName: e.event_name,
       eventDate: e.event_date,
       customerName: e.customers?.name ?? null,
@@ -208,7 +217,7 @@ export async function getEventPnlDetail(supabase: DB, eventId: string) {
     supabase.from("customer_invoices").select("id, invoice_number, invoice_date, amount, tax_amount, status, description").eq("catering_event_id", eventId).order("invoice_date"),
     supabase.from("event_budgets").select("*").eq("catering_event_id", eventId).maybeSingle(),
     supabase.from("supplier_invoices").select("id, invoice_number, invoice_date, amount, status, suppliers(name), supplier_invoice_items(item_name, uom, quantity, line_total)").eq("company_id", event.company_id).order("invoice_date", { ascending: false }).limit(60),
-    autoCountSupplierInvoices(supabase, [eventId]),
+    autoCountCosts(supabase, [eventId]),
   ]);
   for (const r of [revenue, costs, sheets, invoices, budget, supplierInvoices]) if (r.error) throw r.error;
 
@@ -218,7 +227,7 @@ export async function getEventPnlDetail(supabase: DB, eventId: string) {
   );
   const sheet = combineSheets(sheets.data ?? []);
   const autoCountLinked = fromAutoCount.filter((s) => s.eventId === eventId);
-  const autoCountIds = new Set(autoCountLinked.map((s) => s.id));
+  const autoCountIds = new Set(autoCountLinked.filter((s) => s.source === "supplier_invoice").map((s) => s.id));
   const pnl = computeEventPnl(revenue.data ?? [], [...(costs.data ?? []), ...autoCountCostsOf(autoCountLinked, eventId)], sheet);
   return {
     event,
@@ -230,8 +239,8 @@ export async function getEventPnlDetail(supabase: DB, eventId: string) {
     pnl,
     budgetComparison: budgetVsActual(pnl, (budget.data as Budget) ?? null),
     flags: dataFlagsFor(pnl, event.status),
-    /** Supplier invoices keyed in with this event's AutoCount invoice number: already counted as direct costs above. */
-    autoCountSupplierInvoices: autoCountLinked,
+    /** Supplier invoices, company expenses, petty cash and staff claims keyed in with this event's AutoCount invoice number: already counted as direct costs. */
+    autoCountCosts: autoCountLinked,
     /** Supplier invoices of this company that are not yet the cost of any event. */
     availableSupplierInvoices: (supplierInvoices.data ?? []).filter((s) => !takenElsewhere.has(s.id) && !linkedSupplierIds.has(s.id) && !autoCountIds.has(s.id)),
   };

@@ -7,6 +7,7 @@ import { recordAudit } from "@/lib/audit";
 import { runAction, type ActionResult } from "@/lib/actionResult";
 import { claimPayers } from "@/lib/pettyCash/access";
 import { todayInMalaysia } from "@/lib/format";
+import { autoCountNoOnSave } from "@/lib/finance/autocountCosts";
 import type { PettyCashTransactionRow } from "@/lib/finance/actions";
 import { isPaymentMethod } from "@/lib/operationPettyCash/constants";
 import { checkCategoryShares, type CategoryShare } from "@/lib/categorySplit";
@@ -33,6 +34,8 @@ export type MyClaimInput = {
   remarks?: string;
   /** the invoice / receipt number as printed (optional) */
   invoiceNo?: string;
+  /** the AutoCount (customer) invoice no. of the event this cost is for: the cost then counts in that event's P&L */
+  autoCountInvoiceNo?: string;
   /** more receipts / photos, after documentId (on Edit they are added to the ones attached) */
   extraDocumentIds?: string[];
   /** bought for more than one category: how much is for each (each part is saved as its own claim, same receipt) */
@@ -114,6 +117,7 @@ export async function submitMyClaim(input: MyClaimInput): Promise<ActionResult> 
           description: input.description?.trim() || null,
           remarks: input.remarks?.trim().slice(0, 500) || null,
           invoice_no: input.invoiceNo?.trim().slice(0, 100) || null,
+          autocount_invoice_no: autoCountNoOnSave(input.autoCountInvoiceNo, null, input.remarks),
           amount: part.amount,
           transaction_date: input.date,
           document_id: input.documentId || null,
@@ -159,6 +163,7 @@ export async function updateMyClaim(id: string, input: MyClaimInput): Promise<Ac
         description: input.description?.trim() || null,
         remarks: input.remarks?.trim().slice(0, 500) || null,
         invoice_no: input.invoiceNo?.trim().slice(0, 100) || null,
+        autocount_invoice_no: autoCountNoOnSave(input.autoCountInvoiceNo, before.autocount_invoice_no, input.remarks),
         amount: first.amount,
         transaction_date: input.date,
         person_name: payer.name,
@@ -185,6 +190,7 @@ export async function updateMyClaim(id: string, input: MyClaimInput): Promise<Ac
             description: input.description?.trim() || null,
             remarks: input.remarks?.trim().slice(0, 500) || null,
             invoice_no: input.invoiceNo?.trim().slice(0, 100) || null,
+            autocount_invoice_no: autoCountNoOnSave(input.autoCountInvoiceNo, before.autocount_invoice_no, input.remarks),
             amount: part.amount,
             transaction_date: input.date,
             ...addReceipts(before, [input.documentId, ...(input.extraDocumentIds ?? [])].filter((id): id is string => !!id)),
@@ -234,6 +240,7 @@ export async function restoreMyClaim(row: PettyCashTransactionRow): Promise<Acti
       description: row.description,
       remarks: row.remarks ?? null,
       invoice_no: row.invoice_no ?? null,
+      autocount_invoice_no: row.autocount_invoice_no ?? null,
       amount: row.amount,
       transaction_date: row.transaction_date,
       document_id: row.document_id,

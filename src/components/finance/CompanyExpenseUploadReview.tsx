@@ -12,6 +12,7 @@ import { Select } from "@/components/ui/Select";
 import { MultiChoiceSelect } from "@/components/ui/MultiChoiceSelect";
 import { SplitAmountBox, SplitChoice } from "@/components/shared/SplitAmountBox";
 import { splitAddsUp, splitCells } from "@/lib/categorySplit";
+import { AutoCountInvoiceField } from "@/components/procurement/AutoCountInvoiceField";
 import { INVOICE_NO_LABEL, INVOICE_NO_PLACEHOLDER, SPEND_GRID_2, SPEND_INPUT, SPEND_LABEL } from "@/components/spending/formStyles";
 
 type Company = { id: string; name: string };
@@ -54,6 +55,8 @@ export function CompanyExpenseUploadReview({
   // the category is never filled in by itself (not even from a receipt read by the AI): the person chooses it
   const [form, setForm] = useState<{ categories: string[]; description: string; invoiceNo: string; amount: string; expenseDate: string }>({ categories: [], description: "", invoiceNo: "", amount: "", expenseDate: "" });
   const [shareText, setShareText] = useState<Record<string, string>>({});
+  // the event's AutoCount invoice no.: the cost then counts in that event's P&L
+  const [autoCountNo, setAutoCountNo] = useState("");
   // more than one category: split the amount between them (each part its own expense) or keep one expense under all of them
   const [splitOn, setSplitOn] = useState(true);
   const byCategory = form.categories.length > 1 && splitOn;
@@ -110,6 +113,7 @@ export function CompanyExpenseUploadReview({
           expenseDate: form.expenseDate,
           notes: form.description || undefined,
           invoiceNo: form.invoiceNo.trim() || undefined,
+          autoCountInvoiceNo: autoCountNo.trim(),
           documentId: flow.documentId || undefined,
           noteType,
         });
@@ -201,6 +205,8 @@ export function CompanyExpenseUploadReview({
                 <input value={form.invoiceNo} onChange={(e) => setForm((f) => ({ ...f, invoiceNo: e.target.value }))} maxLength={100} placeholder={INVOICE_NO_PLACEHOLDER} className={inputClass} />
               </div>
             </div>
+
+            <AutoCountInvoiceField value={autoCountNo} onChange={setAutoCountNo} inputClassName={inputClass} labelClassName={labelClass} />
 
             <div className={SPEND_GRID_2}>
               <div>

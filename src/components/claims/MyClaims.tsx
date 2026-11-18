@@ -16,11 +16,12 @@ import { chosenCategories, splitAddsUp, splitCells } from "@/lib/categorySplit";
 import { RecordActions } from "@/components/shared/RecordActions";
 import { BTN_GHOST, Dialog } from "@/components/priority/ui";
 import { CompanyChips } from "@/components/pettyCash/CompanyChips";
+import { AutoCountInvoiceField } from "@/components/procurement/AutoCountInvoiceField";
 import { INVOICE_NO_LABEL, INVOICE_NO_PLACEHOLDER, SPEND_GRID_2, SPEND_GRID_3, SPEND_HINT, SPEND_INPUT, SPEND_LABEL, SPEND_SAVE_BTN } from "@/components/spending/formStyles";
 
 type Company = { id: string; name: string };
 type Payer = { name: string; position: string };
-export type ClaimValues = { companyId: string; date: string; amount: string; payer: string; paymentMethod: string; category: string; description: string; /** what it was for, e.g. the event */ remarks?: string; /** the invoice / receipt number as printed */ invoiceNo?: string };
+export type ClaimValues = { companyId: string; date: string; amount: string; payer: string; paymentMethod: string; category: string; description: string; /** what it was for, e.g. the event */ remarks?: string; /** the invoice / receipt number as printed */ invoiceNo?: string; /** the event's AutoCount invoice no. (the cost then counts in that event's P&L) */ autoCountInvoiceNo?: string };
 
 const inputClass = SPEND_INPUT;
 const labelClass = SPEND_LABEL;
@@ -110,6 +111,7 @@ function ClaimFields({
         description: v.description || undefined,
         remarks: v.remarks?.trim() || undefined,
         invoiceNo: v.invoiceNo?.trim() || undefined,
+        autoCountInvoiceNo: v.autoCountInvoiceNo?.trim() ?? "",
         documentId,
         extraDocumentIds,
         // split between companies (and categories): each part with its company; only categories: each part with its category
@@ -206,6 +208,7 @@ function ClaimFields({
         <label className={labelClass}>Remarks (optional)</label>
         <input value={v.remarks ?? ""} onChange={(e) => set({ remarks: e.target.value })} maxLength={500} placeholder="e.g. the event it was for: JDT FC event, 12 Nov" className={inputClass} />
       </div>
+      <AutoCountInvoiceField value={v.autoCountInvoiceNo ?? ""} onChange={(text) => set({ autoCountInvoiceNo: text })} inputClassName={inputClass} labelClassName={labelClass} />
       {canSplitCompanies && (
         <SplitChoice
           label="Split the amount between the companies"
@@ -262,7 +265,7 @@ export function MyClaimForm({ companies, payers }: { companies: Company[]; payer
     <ClaimFields
       companies={companies}
       payers={payers}
-      initial={{ companyId: "", date: todayInMalaysia(), amount: "", payer: payers.length === 1 ? payers[0].name : "", paymentMethod: "", category: "", description: "", remarks: "", invoiceNo: "" }}
+      initial={{ companyId: "", date: todayInMalaysia(), amount: "", payer: payers.length === 1 ? payers[0].name : "", paymentMethod: "", category: "", description: "", remarks: "", invoiceNo: "", autoCountInvoiceNo: "" }}
       multiCompany
       submitLabel="Send claim"
       onSubmit={submitMyClaim}

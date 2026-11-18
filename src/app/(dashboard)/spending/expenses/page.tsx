@@ -45,7 +45,7 @@ export default async function CompanyExpensesPage({
   const spending = await listSpending(supabase, targetCompanyIds);
   const companyName = new Map(companies.map((c) => [c.id, c.name]));
   const everyExpense = spending
-    .map((r: CostRow) => ({ id: r.id, source: r.source, category: r.category, department: r.department, amount: r.amount, note: r.note ?? null, invoiceNo: r.invoiceNo ?? null, expense_date: r.date, notes: r.details, companies: { name: companyName.get(r.companyId) ?? "" } }))
+    .map((r: CostRow) => ({ id: r.id, source: r.source, category: r.category, department: r.department, amount: r.amount, note: r.note ?? null, invoiceNo: r.invoiceNo ?? null, autoCountNo: r.autoCountNo ?? null, expense_date: r.date, notes: r.details, companies: { name: companyName.get(r.companyId) ?? "" } }))
     .sort((a, b) => b.expense_date.localeCompare(a.expense_date) || a.source.localeCompare(b.source));
 
   // search and filters: words in the category, notes, invoice no., department, company or amount; the category and department; a date range
@@ -142,6 +142,7 @@ export default async function CompanyExpensesPage({
               expenseDate: e.expense_date,
               notes: e.notes,
               invoiceNo: e.invoiceNo,
+              autoCountNo: e.autoCountNo,
               note: e.note,
             }))}
           />

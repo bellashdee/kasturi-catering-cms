@@ -5,7 +5,7 @@ import { getMonthlyCostBreakdown, getMonthlyRevenue, listSpending } from "@/lib/
 import { NOT_OWED_STATUSES, invoiceBalance } from "@/lib/finance/outstanding";
 import { listSupplierOwed } from "@/lib/finance/paymentQueries";
 import { computeEventPnl } from "@/lib/finance/eventPnl";
-import { autoCountCostsOf, autoCountSupplierInvoices } from "@/lib/finance/autocountCosts";
+import { autoCountCosts, autoCountCostsOf } from "@/lib/finance/autocountCosts";
 import { salesByCompanyMonth, totalSalesByMonth } from "@/lib/reports/sales";
 
 type DB = SupabaseClient<Database>;
@@ -41,8 +41,8 @@ export async function getCateringReportRows(supabase: DB, companyIds: string[], 
     supabase.from("event_costing").select("catering_event_id, food_cost, ingredient_cost, staff_cost, transport_cost, equipment_cost, other_cost").in("catering_event_id", ids),
     supabase.from("event_revenue_entries").select("catering_event_id, entry_type, amount").in("catering_event_id", ids),
     supabase.from("event_cost_entries").select("catering_event_id, cost_class, cost_type, amount, cost_basis").in("catering_event_id", ids),
-    // supplier invoices keyed in with the event's AutoCount invoice number (only for people who may see the Event P&L)
-    autoCountSupplierInvoices(supabase, eventIds).catch(() => []),
+    // costs keyed in with the event's AutoCount invoice number (only for people who may see the Event P&L)
+    autoCountCosts(supabase, eventIds).catch(() => []),
   ]);
 
   return (events ?? []).map((e) => {

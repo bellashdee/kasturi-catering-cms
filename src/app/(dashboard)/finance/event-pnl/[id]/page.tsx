@@ -19,6 +19,7 @@ import {
   VERDICT_TONE,
 } from "@/lib/finance/eventPnl";
 import { formatRM } from "@/lib/finance/payments";
+import { AUTOCOUNT_SOURCE_LABEL, autoCountSourceHref } from "@/lib/finance/autocountCosts";
 import { EVENT_STATUS_LABEL } from "@/lib/catering/constants";
 import { formatMalaysiaDateTime } from "@/lib/format";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
@@ -108,7 +109,7 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
           <Link href={`/finance/event-pnl?year=${event.event_date.slice(0, 4)}&month=${Number(event.event_date.slice(5, 7))}`} className="text-[12.5px] font-semibold text-text-secondary print:hidden">← Monthly Event P&amp;L</Link>
           <h1 className="mt-1 text-[22px] font-extrabold text-text">{event.event_name}</h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">
-            {event.event_reference ?? "—"} · {event.companies?.name} · {date(event.event_date)} · {EVENT_STATUS_LABEL[event.status] ?? event.status}
+            {detail.invoices.length > 0 ? `${[...new Set(detail.invoices.map((i) => i.invoice_number))].join(", ")} · ` : ""}{event.event_reference ?? "—"} · {event.companies?.name} · {date(event.event_date)} · {EVENT_STATUS_LABEL[event.status] ?? event.status}
             {event.customers?.name ? ` · ${event.customers.name}` : ""}{event.pax_count ? ` · ${event.pax_count} pax` : ""}
           </p>
           <p className="text-[11.5px] text-text-muted">Report generated {formatMalaysiaDateTime(new Date().toISOString())} · actual figures only</p>
@@ -223,17 +224,18 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
         </details>
       </SectionCard>
 
-      {detail.autoCountSupplierInvoices.length > 0 && (
-        <SectionCard title={`Supplier invoices with this event's AutoCount invoice no. (${detail.autoCountSupplierInvoices.length})`}>
-          <p className="mb-2 text-[12px] text-text-muted">Keyed in under Supplier &amp; Procurement with the AutoCount Invoice No. of this event, so they are counted as direct costs above (by category from the item names; what the lines do not cover is under Others). To change one, edit the supplier invoice.</p>
+      {detail.autoCountCosts.length > 0 && (
+        <SectionCard title={`Costs keyed in with this event's AutoCount invoice no. (${detail.autoCountCosts.length})`}>
+          <p className="mb-2 text-[12px] text-text-muted">Supplier invoices, company expenses, petty cash and staff claims keyed in with the AutoCount Invoice No. of this event (or with it in their remarks), so they are counted as direct costs above (by category from the item names; what is not recognised is under Others). To change one, edit the record itself.</p>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-[12.5px]">
-              <thead><tr className="text-[10.5px] font-bold uppercase tracking-wide text-text-muted"><th className="py-2">Date</th><th className="py-2">Supplier / invoice</th><th className="py-2">AutoCount no.</th><th className="py-2">Categories</th><th className="py-2 text-right">Total</th></tr></thead>
+            <table className="w-full min-w-[820px] text-left text-[12.5px]">
+              <thead><tr className="text-[10.5px] font-bold uppercase tracking-wide text-text-muted"><th className="py-2">Date</th><th className="py-2">Source</th><th className="py-2">Supplier / paid by</th><th className="py-2">AutoCount no.</th><th className="py-2">Categories</th><th className="py-2 text-right">Total</th></tr></thead>
               <tbody>
-                {detail.autoCountSupplierInvoices.map((s) => (
-                  <tr key={s.id} className="border-t border-border align-top">
-                    <td className="py-2">{date(s.invoiceDate)}</td>
-                    <td className="py-2">{s.supplierName ?? "—"}<div><Link href={`/supplier-procurement/invoices/${s.id}`} className="text-[11.5px] font-semibold text-primary hover:underline">{s.invoiceNumber} →</Link></div></td>
+                {detail.autoCountCosts.map((s) => (
+                  <tr key={`${s.source}-${s.id}`} className="border-t border-border align-top">
+                    <td className="py-2">{date(s.date)}</td>
+                    <td className="py-2"><Link href={autoCountSourceHref(s.source, s.id)} className="font-semibold text-primary hover:underline">{AUTOCOUNT_SOURCE_LABEL[s.source]}</Link><div className="text-[11px] text-text-muted">{s.companyName}</div></td>
+                    <td className="py-2">{s.partyName ?? "—"}{s.reference ? <div className="text-[11.5px]">{s.reference}</div> : null}</td>
                     <td className="py-2">{s.autoCountNo}</td>
                     <td className="py-2 text-text-secondary">{s.costs.map((c) => `${ANY_DIRECT_COST_TYPE_LABEL[c.cost_type] ?? c.cost_type} ${money(c.amount)}`).join(" · ")}</td>
                     <td className="py-2 text-right font-semibold">{money(s.amount)}</td>

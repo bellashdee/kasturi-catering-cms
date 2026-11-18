@@ -234,7 +234,7 @@ export default async function MyClaimsPage({ searchParams }: { searchParams: Pro
                       </td>
                       <td className="px-3 py-2.5">
                         <MyClaimActions
-                          claim={{ id: c.id, companyId: c.company_id, date: c.transaction_date, amount: String(c.amount), amountText: Number(c.amount).toFixed(2), payer: c.person_name ?? "", paymentMethod: c.payment_method ?? "", category: c.category ?? "", description: c.description ?? "", remarks: c.remarks ?? "", invoiceNo: c.invoice_no ?? "", hasReceipt: receiptIds(c).length > 0 }}
+                          claim={{ id: c.id, companyId: c.company_id, date: c.transaction_date, amount: String(c.amount), amountText: Number(c.amount).toFixed(2), payer: c.person_name ?? "", paymentMethod: c.payment_method ?? "", category: c.category ?? "", description: c.description ?? "", remarks: c.remarks ?? "", invoiceNo: c.invoice_no ?? "", autoCountInvoiceNo: c.autocount_invoice_no ?? "", hasReceipt: receiptIds(c).length > 0 }}
                           companies={companies}
                           payers={payerList}
                         />

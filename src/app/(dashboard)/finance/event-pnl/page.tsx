@@ -72,7 +72,7 @@ export default async function MonthlyEventPnlPage({ searchParams }: { searchPara
   const rows = sortBy(loaded, sort, dir, {
     date: [(r) => r.eventDate, (r) => r.eventName],
     customer: [(r) => r.customerName, (r) => r.eventDate],
-    reference: (r) => r.eventReference,
+    reference: [(r) => r.autoCountNos[0] ?? r.eventReference, (r) => r.eventReference],
     event: (r) => r.eventName,
     profit: (r) => r.pnl.netProfit,
   });
@@ -185,7 +185,7 @@ export default async function MonthlyEventPnlPage({ searchParams }: { searchPara
                 {rows.map((r) => (
                   <tr key={r.id} className="border-b border-border hover:bg-surface-alt">
                     <td className="px-3 py-2.5 text-text-secondary">{r.eventDate.split("-").reverse().join("/")}</td>
-                    <td className="px-3 py-2.5 font-mono text-[11.5px] text-text-secondary">{r.eventReference ?? "—"}</td>
+                    <td className="px-3 py-2.5 font-mono text-[11.5px] text-text-secondary">{r.autoCountNos.length > 0 ? <span className="font-semibold text-text">{r.autoCountNos.join(", ")}</span> : "—"}{r.eventReference && <div className="text-[10.5px] text-text-muted">{r.eventReference}</div>}</td>
                     <td className="px-3 py-2.5 font-semibold text-text"><Link href={`/finance/event-pnl/${r.id}`} className="hover:text-primary hover:underline">{r.eventName}</Link></td>
                     <td className="px-3 py-2.5 text-text-secondary">{r.companyName}</td>
                     <td className="px-3 py-2.5 text-text-secondary">{r.customerName ?? "—"}</td>

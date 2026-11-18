@@ -42,6 +42,7 @@ export type OperationPettyCashRow = {
   remarks: string | null;
   /** the invoice / receipt number as printed (optional) */
   invoice_no?: string | null;
+  autocount_invoice_no?: string | null;
   /** the other companies this entry is also for (company_id is the main one); the amount is counted once */
   shared_company_ids: string[];
 };

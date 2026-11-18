@@ -4571,6 +4571,14 @@ const dictionary: Record<string, string> = {
  "Supplier / invoice": "ပေးသွင်းသူ / ငွေတောင်းခံလွှာ",
  "AutoCount no.": "AutoCount နံပါတ်",
  "Categories": "အမျိုးအစားများ",
+ "Costs keyed in with this event's AutoCount invoice no. ({0})": "ဤပွဲ၏ AutoCount ငွေတောင်းခံလွှာ နံပါတ်ဖြင့် ထည့်သွင်းထားသော ကုန်ကျစရိတ်များ ({0})",
+ "Supplier invoices, company expenses, petty cash and staff claims keyed in with the AutoCount Invoice No. of this event (or with it in their remarks), so they are counted as direct costs above (by category from the item names; what is not recognised is under Others). To change one, edit the record itself.": "ဤပွဲ၏ AutoCount ငွေတောင်းခံလွှာ နံပါတ်ဖြင့် (သို့မဟုတ် မှတ်ချက်တွင် ၎င်းကိုရေးထားသော) ပေးသွင်းသူ ငွေတောင်းခံလွှာများ၊ ကုမ္ပဏီ အသုံးစရိတ်များ၊ အသေးသုံးငွေနှင့် ဝန်ထမ်းတောင်းခံမှုများကို အထက်ပါ တိုက်ရိုက်ကုန်ကျစရိတ်အဖြစ် ထည့်တွက်ထားသည် (ပစ္စည်းအမည်များအလိုက် အမျိုးအစားခွဲထားပြီး မသိရှိသည်များကို အခြား အောက်တွင် ထားသည်)။ ပြောင်းလဲရန် မှတ်တမ်းကိုယ်တိုင်ကို ပြင်ဆင်ပါ။",
+ "Supplier / paid by": "ပေးသွင်းသူ / ပေးချေသူ",
+ "Supplier invoice": "ပေးသွင်းသူ ငွေတောင်းခံလွှာ",
+ "Company expense": "ကုမ္ပဏီ အသုံးစရိတ်",
+ "Petty cash": "အသေးသုံးငွေ",
+ "AutoCount: {0}": "AutoCount: {0}",
+ "AutoCount Invoice No.: {0}": "AutoCount ငွေတောင်းခံလွှာ နံပါတ်: {0}",
 };
 
 export default dictionary;

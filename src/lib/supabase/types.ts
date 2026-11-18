@@ -2860,6 +2860,7 @@ export type Database = {
       expenses: {
         Row: {
           amount: number
+          autocount_invoice_no: string | null
           category: string
           company_id: string
           created_at: string
@@ -2875,6 +2876,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          autocount_invoice_no?: string | null
           category: string
           company_id: string
           created_at?: string
@@ -2890,6 +2892,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          autocount_invoice_no?: string | null
           category?: string
           company_id?: string
           created_at?: string
@@ -3944,6 +3947,7 @@ export type Database = {
       operation_petty_cash: {
         Row: {
           amount: number
+          autocount_invoice_no: string | null
           category: string | null
           company_id: string
           created_at: string
@@ -3964,6 +3968,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          autocount_invoice_no?: string | null
           category?: string | null
           company_id: string
           created_at?: string
@@ -3984,6 +3989,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          autocount_invoice_no?: string | null
           category?: string | null
           company_id?: string
           created_at?: string
@@ -4506,6 +4512,7 @@ export type Database = {
       petty_cash_transactions: {
         Row: {
           amount: number
+          autocount_invoice_no: string | null
           category: string | null
           claim_payment_method: string | null
           claimant_department: string | null
@@ -4535,6 +4542,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          autocount_invoice_no?: string | null
           category?: string | null
           claim_payment_method?: string | null
           claimant_department?: string | null
@@ -4564,6 +4572,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          autocount_invoice_no?: string | null
           category?: string | null
           claim_payment_method?: string | null
           claimant_department?: string | null
@@ -6769,6 +6778,10 @@ export type Database = {
       find_autocount_customer_invoice: {
         Args: { p_number: string }
         Returns: { customer_invoice_id: string; invoice_number: string; company_name: string; customer_name: string | null; catering_event_id: string | null; event_name: string | null; event_reference: string | null; event_date: string | null }[]
+      }
+      event_autocount_costs: {
+        Args: { p_event_ids: string[] }
+        Returns: { catering_event_id: string; source: string; source_id: string; reference: string | null; cost_date: string; amount: number; autocount_invoice_no: string; party_name: string | null; company_name: string; category_text: string | null; items: { item_name: string; line_total: number }[] }[]
       }
       event_autocount_supplier_invoices: {
         Args: { p_event_ids: string[] }

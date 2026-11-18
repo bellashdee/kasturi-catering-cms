@@ -4683,6 +4683,14 @@ const dictionary: Record<string, string> = {
  "Supplier / invoice": "Pembekal / invois",
  "AutoCount no.": "No. AutoCount",
  "Categories": "Kategori",
+ "Costs keyed in with this event's AutoCount invoice no. ({0})": "Kos yang dimasukkan dengan no. invois AutoCount acara ini ({0})",
+ "Supplier invoices, company expenses, petty cash and staff claims keyed in with the AutoCount Invoice No. of this event (or with it in their remarks), so they are counted as direct costs above (by category from the item names; what is not recognised is under Others). To change one, edit the record itself.": "Invois pembekal, perbelanjaan syarikat, petty cash dan tuntutan staf yang dimasukkan dengan No. Invois AutoCount acara ini (atau yang menulisnya dalam remarks), jadi ia dikira sebagai kos langsung di atas (mengikut kategori daripada nama item; yang tidak dikenali dimasukkan di bawah Lain-lain). Untuk mengubahnya, edit rekod itu sendiri.",
+ "Supplier / paid by": "Pembekal / dibayar oleh",
+ "Supplier invoice": "Invois pembekal",
+ "Company expense": "Perbelanjaan syarikat",
+ "Petty cash": "Petty cash",
+ "AutoCount: {0}": "AutoCount: {0}",
+ "AutoCount Invoice No.: {0}": "No. Invois AutoCount: {0}",
 };
 
 export default dictionary;

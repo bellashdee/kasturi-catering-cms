@@ -18,6 +18,7 @@ import { MultiChoiceSelect } from "@/components/ui/MultiChoiceSelect";
 import { splitCompanies } from "@/lib/pettyCash/companies";
 import { chosenCategories, splitAddsUp, splitCells } from "@/lib/categorySplit";
 import { SplitAmountBox, SplitChoice } from "@/components/shared/SplitAmountBox";
+import { AutoCountInvoiceField } from "@/components/procurement/AutoCountInvoiceField";
 import { INVOICE_NO_LABEL, INVOICE_NO_PLACEHOLDER, SPEND_CANCEL_BTN, SPEND_GRID_2, SPEND_HINT, SPEND_INPUT, SPEND_LABEL, SPEND_SAVE_BTN } from "@/components/spending/formStyles";
 
 type Company = { id: string; name: string };
@@ -120,6 +121,7 @@ export function PettyCashEntryForm({
   const [remarks, setRemarks] = useState(editing?.remarks ?? "");
   // the invoice / receipt number as printed (optional; not asked for money received)
   const [invoiceNo, setInvoiceNo] = useState(editing?.invoice_no ?? "");
+  const [autoCountNo, setAutoCountNo] = useState(editing?.autocount_invoice_no ?? "");
   const [personName, setPersonName] = useState(editing?.person_name ?? holderName);
   // the amount split between the categories (and the companies of a claim): what was typed for each part; empty = shared equally
   const [shareText, setShareText] = useState<Record<string, string>>({});
@@ -228,6 +230,8 @@ export function PettyCashEntryForm({
     setError(null);
     try {
       const invoice = isReceived ? undefined : invoiceNo.trim() || undefined;
+      // the event's AutoCount invoice no.: the cost then counts in that event's P&L (money received has none)
+      const autoCountInvoiceNo = isReceived ? undefined : autoCountNo.trim();
       const uploaded: string[] = [];
       for (const file of receipts) uploaded.push(await uploadReceipt(firstCompanyId, file));
       const documentId: string | undefined = uploaded[0];
@@ -240,6 +244,7 @@ export function PettyCashEntryForm({
             description: description || undefined,
             remarks: remarks.trim() || undefined,
             invoiceNo: invoice,
+            autoCountInvoiceNo,
             transactionDate: date,
             documentId,
             extraDocumentIds,
@@ -260,6 +265,7 @@ export function PettyCashEntryForm({
             description: description || undefined,
             remarks: remarks.trim() || undefined,
             invoiceNo: invoice,
+            autoCountInvoiceNo,
             amount: Number(amount),
             transactionDate: date,
             documentId,
@@ -268,8 +274,8 @@ export function PettyCashEntryForm({
             paymentMethod,
           })
         : editing
-          ? await updatePettyCashEntry(editing.id, { companyId: firstCompanyId, alsoCompanyIds, paymentMethod, categoryShares, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, remarks: remarks.trim() || undefined, invoiceNo: invoice, amount: Number(amount), documentId, extraDocumentIds, personName: personName || undefined })
-          : await createPettyCashEntry({ companyId: firstCompanyId, alsoCompanyIds, paymentMethod, categoryShares, shares: companyShares, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, remarks: remarks.trim() || undefined, invoiceNo: invoice, amount: Number(amount), documentId, extraDocumentIds, personName: personName || undefined });
+          ? await updatePettyCashEntry(editing.id, { companyId: firstCompanyId, alsoCompanyIds, paymentMethod, categoryShares, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, remarks: remarks.trim() || undefined, invoiceNo: invoice, autoCountInvoiceNo, amount: Number(amount), documentId, extraDocumentIds, personName: personName || undefined })
+          : await createPettyCashEntry({ companyId: firstCompanyId, alsoCompanyIds, paymentMethod, categoryShares, shares: companyShares, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, remarks: remarks.trim() || undefined, invoiceNo: invoice, autoCountInvoiceNo, amount: Number(amount), documentId, extraDocumentIds, personName: personName || undefined });
       if (!result.ok) {
         setError(result.error);
         return;
@@ -497,6 +503,8 @@ export function PettyCashEntryForm({
           <input value={remarks} onChange={(e) => setRemarks(e.target.value)} maxLength={500} placeholder="e.g. the event it was for: JDT FC event, 12 Nov" className={inputClass} />
         </div>
       </div>
+
+      {!isReceived && <AutoCountInvoiceField value={autoCountNo} onChange={setAutoCountNo} inputClassName={inputClass} labelClassName={labelClass} />}
 
       {canSplitCompanies && (
         <SplitChoice

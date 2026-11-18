@@ -18,6 +18,7 @@ import {
 import { MONTH_LABEL } from "@/lib/finance/constants";
 import { EVENT_STATUS_LABEL } from "@/lib/catering/constants";
 import { malaysiaMonthNow } from "@/lib/driverAttendance/date";
+import { AUTOCOUNT_SOURCE_LABEL } from "@/lib/finance/autocountCosts";
 
 export const runtime = "nodejs";
 
@@ -57,6 +58,7 @@ export async function GET(request: Request) {
       ["Event P&L"],
       ["Company", event.companies?.name ?? ""],
       ["Event", event.event_name],
+      ["AutoCount invoice no.", [...new Set(detail.invoices.map((i) => i.invoice_number))].join(", ")],
       ["Event reference", event.event_reference ?? ""],
       ["Event date", event.event_date],
       ["Customer", event.customers?.name ?? ""],
@@ -86,9 +88,9 @@ export async function GET(request: Request) {
       ...[...detail.costs]
         .sort((a, b) => (ANY_DIRECT_COST_TYPE_LABEL[a.cost_type] ?? ADDITIONAL_COST_TYPE_LABEL[a.cost_type] ?? "").localeCompare(ANY_DIRECT_COST_TYPE_LABEL[b.cost_type] ?? ADDITIONAL_COST_TYPE_LABEL[b.cost_type] ?? "") || a.cost_date.localeCompare(b.cost_date))
         .map((c): Cell[] => [c.cost_date, c.cost_class === "direct" ? "Direct" : "Additional", ANY_DIRECT_COST_TYPE_LABEL[c.cost_type] ?? ADDITIONAL_COST_TYPE_LABEL[c.cost_type], COST_BASIS_LABEL[c.cost_basis], c.supplier_name, c.reference_no, c.description, Number(c.amount), c.notes]),
-      // supplier invoices keyed in with this event's AutoCount invoice number (counted as actual direct costs)
-      ...detail.autoCountSupplierInvoices.flatMap((s) =>
-        s.costs.map((c): Cell[] => [s.invoiceDate, "Direct", ANY_DIRECT_COST_TYPE_LABEL[c.cost_type] ?? c.cost_type, COST_BASIS_LABEL.actual, s.supplierName, s.invoiceNumber, `Supplier invoice with AutoCount no. ${s.autoCountNo}`, c.amount, null]),
+      // costs keyed in with this event's AutoCount invoice number (counted as actual direct costs)
+      ...detail.autoCountCosts.flatMap((s) =>
+        s.costs.map((c): Cell[] => [s.date, "Direct", ANY_DIRECT_COST_TYPE_LABEL[c.cost_type] ?? c.cost_type, COST_BASIS_LABEL.actual, s.partyName, s.reference, `${AUTOCOUNT_SOURCE_LABEL[s.source]} with AutoCount no. ${s.autoCountNo}`, c.amount, null]),
       ),
     ];
     if (detail.flags.length) rows.splice(9, 0, ["Warnings", detail.flags.map((f) => DATA_FLAG_LABEL[f]).join("; ")]);
@@ -118,9 +120,9 @@ export async function GET(request: Request) {
     ["Report generated", generated()],
     ["Basis", "Events counted by event date; actual revenue and costs only; customer/supplier payments are not added"],
     [],
-    ["Event date", "Reference", "Event", "Company", "Customer", "Net revenue (RM)", "Direct costs (RM)", "Gross profit (RM)", "Additional expenses (RM)", "Net event profit (RM)", "Margin", "Result", "Event status"],
-    ...rowsData.map((r): Cell[] => [r.eventDate, r.eventReference, r.eventName, r.companyName, r.customerName, r.pnl.netRevenue, r.pnl.directCosts, r.pnl.grossProfit, r.pnl.additionalExpenses, r.pnl.netProfit, formatMargin(r.pnl.margin), VERDICT_LABEL[r.pnl.verdict], EVENT_STATUS_LABEL[r.status] ?? r.status]),
-    [`TOTAL (${totals.events} events)`, null, null, null, null, totals.netRevenue, totals.directCosts, totals.grossProfit, totals.additionalExpenses, totals.netProfit, formatMargin(totals.margin), `${totals.lossMaking} loss-making`, null],
+    ["Event date", "AutoCount invoice no.", "Event reference", "Event", "Company", "Customer", "Net revenue (RM)", "Direct costs (RM)", "Gross profit (RM)", "Additional expenses (RM)", "Net event profit (RM)", "Margin", "Result", "Event status"],
+    ...rowsData.map((r): Cell[] => [r.eventDate, r.autoCountNos.join(", ") || null, r.eventReference, r.eventName, r.companyName, r.customerName, r.pnl.netRevenue, r.pnl.directCosts, r.pnl.grossProfit, r.pnl.additionalExpenses, r.pnl.netProfit, formatMargin(r.pnl.margin), VERDICT_LABEL[r.pnl.verdict], EVENT_STATUS_LABEL[r.status] ?? r.status]),
+    [`TOTAL (${totals.events} events)`, null, null, null, null, null, totals.netRevenue, totals.directCosts, totals.grossProfit, totals.additionalExpenses, totals.netProfit, formatMargin(totals.margin), `${totals.lossMaking} loss-making`, null],
     [],
     ["Monthly margin = total net event profit / total net event revenue (not an average of event margins)"],
   ];

@@ -52,6 +52,8 @@ type Row = {
   remarks: string | null;
   /** the invoice / receipt number keyed in with it */
   invoiceNo: string | null;
+  /** the event's AutoCount invoice no. (the cost counts in that event's P&L) */
+  autoCountNo: string | null;
   person: string;
   documentId: string | null;
   /** every receipt / photo of the record, the first one first */
@@ -60,7 +62,7 @@ type Row = {
   /** a staff claim; paidMethod is how the claim was paid back to the staff member */
   claim?: { id: string; status: string; paymentDate: string | null; claimant: string | null; department: string | null; paidMethod: string | null; paymentReference: string | null; paymentRemarks: string | null };
   /** a row that comes from the claims / top-ups table (it can be edited and deleted here) */
-  tx?: { id: string; type: "expense" | "top_up"; claimant: string; department: string; category: string; description: string; companyId: string; sharedCompanyIds: string[]; hasReceipt: boolean; remarks: string; invoiceNo: string };
+  tx?: { id: string; type: "expense" | "top_up"; claimant: string; department: string; category: string; description: string; companyId: string; sharedCompanyIds: string[]; hasReceipt: boolean; remarks: string; invoiceNo: string; autoCountNo: string };
 };
 
 /**
@@ -137,6 +139,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
       method: e.payment_method,
       remarks: e.remarks,
       invoiceNo: e.invoice_no ?? null,
+      autoCountNo: e.autocount_invoice_no ?? null,
       person: short(e.person_name),
       documentId: e.document_id,
       documentIds: receiptIds(e),
@@ -156,11 +159,12 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
       method: t.payment_method,
       remarks: t.remarks,
       invoiceNo: t.invoice_no ?? null,
+      autoCountNo: t.autocount_invoice_no ?? null,
       person: short(t.person_name),
       documentId: t.document_id,
       documentIds: receiptIds(t),
       claim: t.type === "expense" ? { id: t.id, status: t.payment_status, paymentDate: t.payment_date, claimant: short(t.claimant_name), department: t.claimant_department, paidMethod: t.claim_payment_method, paymentReference: t.payment_reference, paymentRemarks: t.payment_remarks } : undefined,
-      tx: { id: t.id, type: t.type === "expense" ? "expense" : "top_up", claimant: t.claimant_name ?? "", department: t.claimant_department ?? "", category: t.category ?? "", description: t.description ?? "", companyId: t.company_id, sharedCompanyIds: t.shared_company_ids ?? [], hasReceipt: receiptIds(t).length > 0, remarks: t.remarks ?? "", invoiceNo: t.invoice_no ?? "" },
+      tx: { id: t.id, type: t.type === "expense" ? "expense" : "top_up", claimant: t.claimant_name ?? "", department: t.claimant_department ?? "", category: t.category ?? "", description: t.description ?? "", companyId: t.company_id, sharedCompanyIds: t.shared_company_ids ?? [], hasReceipt: receiptIds(t).length > 0, remarks: t.remarks ?? "", invoiceNo: t.invoice_no ?? "", autoCountNo: t.autocount_invoice_no ?? "" },
     })),
   ].sort((a, b) => a.date.localeCompare(b.date) || a.created.localeCompare(b.created));
 
@@ -211,7 +215,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
 
   const editing = sp.edit ? book.find((e) => e.id === sp.edit) : undefined;
   const editingRow: OperationPettyCashRow | undefined = editing
-    ? { id: editing.id, company_id: editing.company_id, entry_type: editing.entry_type as EntryType, entry_date: editing.entry_date, category: editing.category, description: editing.description, amount: Number(editing.amount), document_id: editing.document_id, extra_document_ids: editing.extra_document_ids ?? [], created_by: editing.created_by, person_name: editing.person_name, person_position: editing.person_position, payment_method: editing.payment_method, remarks: editing.remarks, invoice_no: editing.invoice_no, shared_company_ids: editing.shared_company_ids ?? [] }
+    ? { id: editing.id, company_id: editing.company_id, entry_type: editing.entry_type as EntryType, entry_date: editing.entry_date, category: editing.category, description: editing.description, amount: Number(editing.amount), document_id: editing.document_id, extra_document_ids: editing.extra_document_ids ?? [], created_by: editing.created_by, person_name: editing.person_name, person_position: editing.person_position, payment_method: editing.payment_method, remarks: editing.remarks, invoice_no: editing.invoice_no, autocount_invoice_no: editing.autocount_invoice_no, shared_company_ids: editing.shared_company_ids ?? [] }
     : undefined;
 
   const keep = new URLSearchParams({ ...(sp.company ? { company: sp.company } : {}), holder: who.name, month, ...(everyone ? { all: "1" } : {}), ...(sp.q ? { q: sp.q } : {}), ...(sp.sort ? { sort: sp.sort } : {}), ...(sp.dir ? { dir: sp.dir } : {}) });
@@ -382,6 +386,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
                           <div className="font-semibold text-text">{r.title}</div>
                           {r.category && <div className="text-[11.5px] text-text-muted">{r.category}</div>}
                           {r.invoiceNo && <div className="text-[11.5px] font-semibold text-text-secondary">{`Invoice No.: ${r.invoiceNo}`}</div>}
+                          {r.autoCountNo && <div className="text-[11.5px] font-semibold text-primary">{`AutoCount Invoice No.: ${r.autoCountNo}`}</div>}
                           {r.remarks && <div className="text-[11.5px] text-text-secondary">{`Remarks: ${r.remarks}`}</div>}
                           {r.method && (
                             <div className="flex gap-1 text-[11.5px] font-semibold text-text-secondary">

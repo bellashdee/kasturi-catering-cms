@@ -87,7 +87,7 @@ export default async function EventReportPage({ searchParams }: { searchParams: 
   const rows = sortBy(loaded, sort, dir, {
     date: [(r) => r.eventDate, (r) => r.eventName],
     customer: [(r) => r.customerName, (r) => r.eventDate],
-    reference: (r) => r.eventReference,
+    reference: [(r) => r.autoCountNos[0] ?? r.eventReference, (r) => r.eventReference],
     event: [(r) => r.eventName, (r) => r.eventDate],
     agent: [(r) => r.salesAgent, (r) => r.eventDate],
     status: [(r) => STATUS_ORDER.indexOf(r.status), (r) => r.eventDate],
@@ -210,7 +210,7 @@ export default async function EventReportPage({ searchParams }: { searchParams: 
                   <tr key={r.id} className="align-top hover:bg-surface-alt/60">
                     <td className="whitespace-nowrap px-4 py-3">
                       <div className="font-semibold text-text">{r.eventDate}</div>
-                      <div className="mt-0.5 text-[11.5px] text-text-muted">{r.eventReference ?? "—"}</div>
+                      <div className="mt-0.5 text-[11.5px] text-text-muted">{r.autoCountNos.length > 0 ? `${r.autoCountNos.join(", ")} · ${r.eventReference ?? ""}` : r.eventReference ?? "—"}</div>
                     </td>
                     <td className="min-w-[220px] px-4 py-3">
                       <Link href={`/catering/${r.id}`} className="font-semibold text-primary">{r.eventName}</Link>

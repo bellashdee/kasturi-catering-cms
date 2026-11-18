@@ -8,6 +8,7 @@ import { deleteCompanyExpense, markExpenseNote, restoreCompanyExpense, updateCom
 import { departmentChoices } from "@/lib/finance/constants";
 import { AREA, BTN, BTN_GHOST, BTN_SM_GHOST, Dialog, FIELD, LABEL } from "@/components/priority/ui";
 import { Select } from "@/components/ui/Select";
+import { AutoCountInvoiceField } from "@/components/procurement/AutoCountInvoiceField";
 import { INVOICE_NO_LABEL, INVOICE_NO_PLACEHOLDER } from "@/components/spending/formStyles";
 
 export type ExpenseListRow = {
@@ -22,13 +23,15 @@ export type ExpenseListRow = {
   notes: string | null;
   /** the invoice / receipt number keyed in with it */
   invoiceNo?: string | null;
+  /** the event's AutoCount invoice no. (the cost counts in that event's P&L) */
+  autoCountNo?: string | null;
   /** marked as a credit note (money back, shown as minus) or a debit note */
   note?: "credit_note" | "debit_note" | null;
 };
 
 const NOTE_LABEL = { credit_note: "Credit Note", debit_note: "Debit Note" } as const;
 
-type Draft = { id: string; category: string; department: string; amount: string; expenseDate: string; invoiceNo: string; notes: string };
+type Draft = { id: string; category: string; department: string; amount: string; expenseDate: string; invoiceNo: string; autoCountNo: string; notes: string };
 
 /** Where a cost that is not keyed in on this page is changed. */
 const SOURCE_PAGE: Record<string, { href: string; label: string }> = {
@@ -54,7 +57,7 @@ export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow
 
   function edit(r: ExpenseListRow) {
     setError(null);
-    setDraft({ id: r.id, category: r.category, department: r.department ?? "", amount: String(r.amount), expenseDate: r.expenseDate, invoiceNo: r.invoiceNo ?? "", notes: r.notes ?? "" });
+    setDraft({ id: r.id, category: r.category, department: r.department ?? "", amount: String(r.amount), expenseDate: r.expenseDate, invoiceNo: r.invoiceNo ?? "", autoCountNo: r.autoCountNo ?? "", notes: r.notes ?? "" });
   }
 
   function save() {
@@ -68,6 +71,7 @@ export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow
           amount: Number(draft.amount),
           expenseDate: draft.expenseDate,
           invoiceNo: draft.invoiceNo,
+          autoCountInvoiceNo: draft.autoCountNo,
           notes: draft.notes,
         });
         setDraft(null);
@@ -160,7 +164,7 @@ export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow
               </span>
             )}
           </div>
-          <div className="truncate text-text-secondary" title={e.invoiceNo ?? ""}>{e.invoiceNo || "—"}</div>
+          <div className="truncate text-text-secondary" title={e.invoiceNo ?? ""}>{e.invoiceNo || "—"}{e.autoCountNo && <div className="truncate text-[11px] font-semibold text-primary" title={`AutoCount: ${e.autoCountNo}`}>{`AutoCount: ${e.autoCountNo}`}</div>}</div>
           <div className={e.note === "credit_note" ? "font-semibold text-success" : "text-text-secondary"}>{e.amount < 0 ? `− ${formatCurrency(Math.abs(e.amount))}` : formatCurrency(e.amount)}</div>
           <div className="text-text-secondary">{e.department ?? "—"}</div>
           <div className="truncate text-text-muted" title={e.notes ?? ""}>
@@ -243,6 +247,7 @@ export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow
               <label className={LABEL}>{INVOICE_NO_LABEL}</label>
               <input maxLength={100} className={FIELD} value={draft.invoiceNo} placeholder={INVOICE_NO_PLACEHOLDER} onChange={(e) => setDraft({ ...draft, invoiceNo: e.target.value })} />
             </div>
+            <AutoCountInvoiceField value={draft.autoCountNo} onChange={(text) => setDraft({ ...draft, autoCountNo: text })} inputClassName={FIELD} labelClassName={LABEL} />
             <div>
               <label className={LABEL}>Description</label>
               <textarea rows={3} className={AREA} value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} />

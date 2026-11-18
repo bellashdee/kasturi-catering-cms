@@ -4577,6 +4577,14 @@ const dictionary: Record<string, string> = {
  "Supplier / invoice": "সরবরাহকারী / ইনভয়েস",
  "AutoCount no.": "AutoCount নং",
  "Categories": "ক্যাটাগরি",
+ "Costs keyed in with this event's AutoCount invoice no. ({0})": "এই ইভেন্টের AutoCount ইনভয়েস নং দিয়ে এন্ট্রি করা খরচ ({0})",
+ "Supplier invoices, company expenses, petty cash and staff claims keyed in with the AutoCount Invoice No. of this event (or with it in their remarks), so they are counted as direct costs above (by category from the item names; what is not recognised is under Others). To change one, edit the record itself.": "এই ইভেন্টের AutoCount ইনভয়েস নং দিয়ে (বা রিমার্কসে সেটি লিখে) এন্ট্রি করা সরবরাহকারী ইনভয়েস, কোম্পানির খরচ, পেটি ক্যাশ ও স্টাফ ক্লেইম, তাই এগুলো উপরে সরাসরি খরচ হিসেবে গণনা হয়েছে (আইটেমের নাম অনুযায়ী ক্যাটাগরি; যা চেনা যায়নি তা অন্যান্য-এর অধীনে)। পরিবর্তন করতে রেকর্ডটি নিজেই এডিট করুন।",
+ "Supplier / paid by": "সরবরাহকারী / পরিশোধকারী",
+ "Supplier invoice": "সরবরাহকারী ইনভয়েস",
+ "Company expense": "কোম্পানির খরচ",
+ "Petty cash": "পেটি ক্যাশ",
+ "AutoCount: {0}": "AutoCount: {0}",
+ "AutoCount Invoice No.: {0}": "AutoCount ইনভয়েস নং: {0}",
 };
 
 export default dictionary;

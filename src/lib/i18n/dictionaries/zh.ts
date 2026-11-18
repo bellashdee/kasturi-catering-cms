@@ -4583,6 +4583,14 @@ const dictionary: Record<string, string> = {
  "Supplier / invoice": "供应商 / 发票",
  "AutoCount no.": "AutoCount 号码",
  "Categories": "类别",
+ "Costs keyed in with this event's AutoCount invoice no. ({0})": "以此活动的 AutoCount 发票号码录入的费用（{0}）",
+ "Supplier invoices, company expenses, petty cash and staff claims keyed in with the AutoCount Invoice No. of this event (or with it in their remarks), so they are counted as direct costs above (by category from the item names; what is not recognised is under Others). To change one, edit the record itself.": "以此活动的 AutoCount 发票号码录入（或在备注中写明该号码）的供应商发票、公司开支、零用金和员工报销，因此计入上方的直接成本（按项目名称分类；无法识别的归入“其他”）。如需更改，请编辑该记录本身。",
+ "Supplier / paid by": "供应商 / 付款人",
+ "Supplier invoice": "供应商发票",
+ "Company expense": "公司开支",
+ "Petty cash": "零用金",
+ "AutoCount: {0}": "AutoCount：{0}",
+ "AutoCount Invoice No.: {0}": "AutoCount 发票号码：{0}",
 };
 
 export default dictionary;

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
-import { suggestItemCostType, type CostEntry } from "@/lib/finance/eventPnl";
+import { DIRECT_COST_TYPE_LABEL, suggestItemCostType, type CostEntry } from "@/lib/finance/eventPnl";
 
 type DB = SupabaseClient<Database>;
 
@@ -9,23 +9,75 @@ export function normalizeAutoCountNo(value: string | null | undefined): string {
   return (value ?? "").replace(/\s+/g, "").toUpperCase();
 }
 
+/** An AutoCount customer invoice number written inside a text, e.g. "for event INV-KI2611/004" or "I-SSC2610/015". */
+const AUTOCOUNT_IN_TEXT = /\b(?:INV|I)\s*-\s*[A-Z]{1,6}\s*\d{4}\s*\/\s*\d{3,4}\b/i;
+
+/**
+ * The AutoCount invoice number of a cost: the one typed in its own field, or else the first one found in its remarks / notes
+ * (so "key in the event's invoice no. in the remark" also links the cost to the event). "" when there is none.
+ */
+export function autoCountNoFrom(typed: string | null | undefined, ...texts: (string | null | undefined)[]): string {
+  const own = normalizeAutoCountNo(typed);
+  if (own) return own;
+  for (const t of texts) {
+    const m = t ? AUTOCOUNT_IN_TEXT.exec(t) : null;
+    if (m) return normalizeAutoCountNo(m[0]);
+  }
+  return "";
+}
+
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-/** A supplier invoice counted as a direct cost of an event through its AutoCount Invoice No. */
-export type AutoCountSupplierInvoice = {
+export type AutoCountSource = "supplier_invoice" | "expense" | "petty_cash" | "staff_claim";
+
+export const AUTOCOUNT_SOURCE_LABEL: Record<AutoCountSource, string> = {
+  supplier_invoice: "Supplier invoice",
+  expense: "Company expense",
+  petty_cash: "Petty cash",
+  staff_claim: "Staff claim",
+};
+
+/** Where each kind of record opens. */
+export function autoCountSourceHref(source: AutoCountSource, id: string): string {
+  if (source === "supplier_invoice") return `/supplier-procurement/invoices/${id}`;
+  if (source === "expense") return "/spending/expenses";
+  // petty cash entries and staff claims are both on the Petty Cash page
+  return "/spending/petty-cash";
+}
+
+/** A cost (supplier invoice, company expense, petty cash or staff claim) counted in an event through its AutoCount Invoice No. */
+export type AutoCountCost = {
   eventId: string;
+  source: AutoCountSource;
   id: string;
-  invoiceNumber: string;
-  invoiceDate: string;
+  /** the supplier's invoice / receipt number */
+  reference: string | null;
+  date: string;
   amount: number;
   autoCountNo: string;
-  supplierName: string | null;
+  /** supplier, or the person who paid */
+  partyName: string | null;
   companyName: string;
-  /** The invoice as direct costs: its lines by category (as proposed from the item names); what the lines do not cover is "Others". */
+  /** The record as actual direct costs: by category, as proposed from the item names / category; what is not recognised is "Others". */
   costs: (CostEntry & { cost_class: "direct"; cost_basis: "actual"; amount: number })[];
 };
 
-function costsOf(amount: number, items: { item_name: string; line_total: number }[]): AutoCountSupplierInvoice["costs"] {
+/** The P&L category of an expense / petty cash category ("FRUITS", "DRY GOODS", "TRANSPORTATION & DELIVERY"), else from its words. */
+function costTypeOfCategory(categoryText: string | null): string {
+  if (!categoryText) return "others";
+  const words = (t: string) => t.toUpperCase().replace(/[^A-Z]+/g, " ").trim();
+  // the first category of the record, compared word by word with the names of the P&L categories
+  const first = words(categoryText.split(/[|,]/)[0] ?? "");
+  if (first.length >= 3) {
+    for (const [type, label] of Object.entries(DIRECT_COST_TYPE_LABEL)) {
+      const name = words(label);
+      if (type !== "others" && (first === name || first.startsWith(`${name} `) || name.startsWith(`${first} `))) return type;
+    }
+  }
+  return suggestItemCostType(categoryText) || "others";
+}
+
+function costsOf(amount: number, items: { item_name: string; line_total: number }[], categoryText: string | null): AutoCountCost["costs"] {
   const byType = new Map<string, number>();
   for (const it of items) {
     const type = suggestItemCostType(it.item_name ?? "") || "others";
@@ -33,32 +85,46 @@ function costsOf(amount: number, items: { item_name: string; line_total: number 
   }
   const covered = [...byType.values()].reduce((t, v) => t + v, 0);
   const rest = round2(amount - covered);
-  if (Math.abs(rest) >= 0.01) byType.set("others", (byType.get("others") ?? 0) + rest);
+  if (Math.abs(rest) >= 0.01) {
+    const type = costTypeOfCategory(categoryText);
+    byType.set(type, (byType.get(type) ?? 0) + rest);
+  }
   return [...byType.entries()].filter(([, v]) => round2(v) !== 0).map(([cost_type, v]) => ({ cost_class: "direct", cost_type, cost_basis: "actual", amount: round2(v) }));
 }
 
 /**
- * The supplier invoices whose AutoCount Invoice No. is a customer invoice of these events (and that are not already an event cost
- * entry), so they count in the Event P&L straight away. The database checks the person may see the P&L of each event.
+ * Every cost keyed in with the AutoCount invoice number of these events (supplier invoices not already an event cost entry,
+ * company expenses, petty cash spent and staff claims), so they count in the Event P&L straight away. The database checks the
+ * person may see the P&L of each event.
  */
-export async function autoCountSupplierInvoices(supabase: DB, eventIds: string[]): Promise<AutoCountSupplierInvoice[]> {
+export async function autoCountCosts(supabase: DB, eventIds: string[]): Promise<AutoCountCost[]> {
   if (eventIds.length === 0) return [];
-  const { data, error } = await supabase.rpc("event_autocount_supplier_invoices", { p_event_ids: eventIds });
+  const { data, error } = await supabase.rpc("event_autocount_costs", { p_event_ids: eventIds });
   if (error) throw error;
   return (data ?? []).map((r) => ({
     eventId: r.catering_event_id,
-    id: r.supplier_invoice_id,
-    invoiceNumber: r.invoice_number,
-    invoiceDate: r.invoice_date,
+    source: r.source as AutoCountSource,
+    id: r.source_id,
+    reference: r.reference,
+    date: r.cost_date,
     amount: Number(r.amount),
     autoCountNo: r.autocount_invoice_no,
-    supplierName: r.supplier_name,
+    partyName: r.party_name,
     companyName: r.company_name,
-    costs: costsOf(Number(r.amount), Array.isArray(r.items) ? r.items : []),
+    costs: costsOf(Number(r.amount), Array.isArray(r.items) ? r.items : [], r.category_text),
   }));
 }
 
-/** The direct costs of one event that come from supplier invoices with its AutoCount invoice number. */
-export function autoCountCostsOf(list: AutoCountSupplierInvoice[], eventId: string) {
+/** The direct costs of one event that come from records with its AutoCount invoice number. */
+export function autoCountCostsOf(list: AutoCountCost[], eventId: string) {
   return list.filter((s) => s.eventId === eventId).flatMap((s) => s.costs);
+}
+
+/**
+ * The AutoCount Invoice No. to save on a record: what is typed (or, when blank, the one found in its remarks). A form that does not
+ * send the field (undefined) keeps what the record had.
+ */
+export function autoCountNoOnSave(typed: string | null | undefined, before: string | null | undefined, ...texts: (string | null | undefined)[]): string | null {
+  if (typed === undefined) return before || autoCountNoFrom(null, ...texts) || null;
+  return autoCountNoFrom(typed, ...texts) || null;
 }
