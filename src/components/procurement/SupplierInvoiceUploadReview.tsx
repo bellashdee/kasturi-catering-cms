@@ -1,7 +1,7 @@
 "use client";
 
 import { DOCUMENT_FILE_ACCEPT } from "@/lib/documents/upload";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDocumentUpload } from "@/lib/importFlow/useDocumentUpload";
 import { ImportTabs, FileDropZone, ExtractionNotice, FormError, ConfirmActions, DuplicateCheckPanel } from "@/components/shared/import/ImportFlowAtoms";
@@ -27,7 +27,9 @@ type ExtractedInvoice = {
 
 const inputClass =
   "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
-const labelClass = "text-[12.5px] font-semibold text-text-secondary";
+const labelClass = "block text-[12.5px] font-semibold text-text-secondary";
+/** a box of one invoice line: fills its column exactly, so it lines up with the header above it */
+const cellClass = "h-9 w-full min-w-0 rounded-lg border border-border-strong px-2 text-[13px]";
 
 function emptyItem(): Item {
   return { itemCode: "", itemName: "", uom: "", quantity: "", unitPrice: "", discount: "", lineTotal: "", auto: true };
@@ -184,7 +186,7 @@ export function SupplierInvoiceUploadReview({
       <ImportTabs tab={flow.tab} onSelect={selectTab} pdfLabel="Upload File (PDF / Excel / CSV)" photoLabel="Photo / Screenshot" />
 
       <div className="p-6">
-        <div className="mb-4 grid grid-cols-2 gap-4">
+        <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className={labelClass}>Company *</label>
             <Select
@@ -223,7 +225,7 @@ export function SupplierInvoiceUploadReview({
             <ExtractionNotice notice={flow.notice} report={flow.report} />
             <FormError error={flow.error} />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>Supplier *</label>
                 <Select value={supplierId} onChange={(e) => { setSupplierId(e.target.value); flow.resetDuplicateState(); }} className={inputClass}>
@@ -234,7 +236,7 @@ export function SupplierInvoiceUploadReview({
               <AutoCountInvoiceField value={autoCountNo} onChange={setAutoCountNo} inputClassName={inputClass} labelClassName={labelClass} />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>Invoice Number *</label>
                 <input value={form.invoiceNumber} onChange={(e) => { setForm((f) => ({ ...f, invoiceNumber: e.target.value })); flow.resetDuplicateState(); }} className={inputClass} />
@@ -245,7 +247,7 @@ export function SupplierInvoiceUploadReview({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>Invoice Date *</label>
                 <input type="date" value={form.invoiceDate} onChange={(e) => { setForm((f) => ({ ...f, invoiceDate: e.target.value })); flow.resetDuplicateState(); }} className={inputClass} />
@@ -265,35 +267,30 @@ export function SupplierInvoiceUploadReview({
               </div>
               <p className="mb-2 text-[12px] text-text-muted">Saved exactly as printed on the invoice: nothing is rounded, renamed or completed.</p>
               <div className="overflow-x-auto">
-                <div className="flex min-w-[760px] flex-col gap-2">
-                  <div className="grid grid-cols-[0.9fr_2.2fr_0.6fr_0.8fr_0.9fr_0.8fr_1fr_auto] gap-2 text-[11px] font-bold uppercase tracking-wide text-text-muted">
-                    <div>Code</div>
-                    <div>Item (as printed)</div>
-                    <div>UOM</div>
-                    <div>Qty</div>
-                    <div>Unit price</div>
-                    <div>Discount</div>
-                    <div>Amount</div>
-                    <div className="w-14" />
-                  </div>
+                {/* one grid for the headers and every line, so each header sits exactly above its box */}
+                <div className="grid min-w-[600px] grid-cols-[minmax(0,0.9fr)_minmax(0,2.2fr)_minmax(0,0.6fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,1fr)_3.5rem] items-center gap-x-2 gap-y-2">
+                  {["Code", "Item (as printed)", "UOM", "Qty", "Unit price", "Discount", "Amount"].map((h) => (
+                    <div key={h} className="truncate px-1 text-[11px] font-bold uppercase tracking-wide text-text-muted">{h}</div>
+                  ))}
+                  <div />
                   {items.map((item, i) => (
-                    <div key={i} className="grid grid-cols-[0.9fr_2.2fr_0.6fr_0.8fr_0.9fr_0.8fr_1fr_auto] items-center gap-2">
-                      <input value={item.itemCode} onChange={(e) => updateItem(i, "itemCode", e.target.value)} className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
-                      <input value={item.itemName} onChange={(e) => updateItem(i, "itemName", e.target.value)} className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
-                      <input value={item.uom} onChange={(e) => updateItem(i, "uom", e.target.value)} className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
-                      <input type="number" step="any" value={item.quantity} onChange={(e) => updateItem(i, "quantity", e.target.value)} className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
-                      <input type="number" step="any" value={item.unitPrice} onChange={(e) => updateItem(i, "unitPrice", e.target.value)} className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
-                      <input type="number" step="any" value={item.discount} onChange={(e) => updateItem(i, "discount", e.target.value)} className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
-                      <input type="number" step="any" value={item.lineTotal} onChange={(e) => updateItem(i, "lineTotal", e.target.value)} className="h-9 rounded-lg border border-border-strong px-2 text-[13px]" />
+                    <Fragment key={i}>
+                      <input aria-label="Code" value={item.itemCode} onChange={(e) => updateItem(i, "itemCode", e.target.value)} className={cellClass} />
+                      <input aria-label="Item (as printed)" value={item.itemName} onChange={(e) => updateItem(i, "itemName", e.target.value)} className={cellClass} />
+                      <input aria-label="UOM" value={item.uom} onChange={(e) => updateItem(i, "uom", e.target.value)} className={cellClass} />
+                      <input aria-label="Qty" type="number" step="any" value={item.quantity} onChange={(e) => updateItem(i, "quantity", e.target.value)} className={cellClass} />
+                      <input aria-label="Unit price" type="number" step="any" value={item.unitPrice} onChange={(e) => updateItem(i, "unitPrice", e.target.value)} className={cellClass} />
+                      <input aria-label="Discount" type="number" step="any" value={item.discount} onChange={(e) => updateItem(i, "discount", e.target.value)} className={cellClass} />
+                      <input aria-label="Amount" type="number" step="any" value={item.lineTotal} onChange={(e) => updateItem(i, "lineTotal", e.target.value)} className={cellClass} />
                       <button
                         type="button"
                         onClick={() => setItems((prev) => prev.filter((_, idx) => idx !== i))}
                         disabled={items.length === 1}
-                        className="w-14 text-xs font-semibold text-danger disabled:opacity-40"
+                        className="text-xs font-semibold text-danger disabled:opacity-40"
                       >
                         Remove
                       </button>
-                    </div>
+                    </Fragment>
                   ))}
                 </div>
               </div>
