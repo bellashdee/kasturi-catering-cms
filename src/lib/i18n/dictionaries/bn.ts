@@ -4564,6 +4564,19 @@ const dictionary: Record<string, string> = {
  "Amounts must be 0 or more.": "পরিমাণ অবশ্যই 0 বা তার বেশি হতে হবে।",
  "Select the event date.": "ইভেন্টের তারিখ বেছে নিন।",
  "Could not load the customers.": "গ্রাহকদের লোড করা যায়নি।",
+ "AutoCount Invoice No.": "AutoCount ইনভয়েস নং",
+ "e.g. INV-KI2611/004": "যেমন INV-KI2611/004",
+ "The customer invoice no. in AutoCount of the event this cost is for. The cost then goes straight into that event's P&L.": "এই খরচ যে ইভেন্টের, AutoCount-এ সেই ইভেন্টের গ্রাহক ইনভয়েস নং। খরচটি তখন সরাসরি সেই ইভেন্টের P&L-এ যায়।",
+ "{0} ({1}) is in the system but not linked to any event yet, so this cost is not in any event P&L until that invoice is linked to its event.": "{0} ({1}) সিস্টেমে আছে কিন্তু এখনও কোনো ইভেন্টের সাথে যুক্ত নয়, তাই ইনভয়েসটি তার ইভেন্টের সাথে যুক্ত না হওয়া পর্যন্ত এই খরচ কোনো ইভেন্টের P&L-এ নেই।",
+ "There is no AutoCount invoice {0} in the system yet. You can still save: this cost goes into the event's P&L as soon as that AutoCount invoice is uploaded.": "সিস্টেমে এখনও AutoCount ইনভয়েস {0} নেই। আপনি তবুও সেভ করতে পারেন: সেই AutoCount ইনভয়েস আপলোড হওয়া মাত্র এই খরচ ইভেন্টের P&L-এ যাবে।",
+ "Not linked to an event.": "কোনো ইভেন্টের সাথে যুক্ত নয়।",
+ "This AutoCount invoice is not linked to any event yet.": "এই AutoCount ইনভয়েস এখনও কোনো ইভেন্টের সাথে যুক্ত নয়।",
+ "Not in the system yet: counts in the event P&L once that AutoCount invoice is uploaded.": "এখনও সিস্টেমে নেই: সেই AutoCount ইনভয়েস আপলোড হলেই ইভেন্টের P&L-এ গণনা হবে।",
+ "Supplier invoices with this event's AutoCount invoice no. ({0})": "এই ইভেন্টের AutoCount ইনভয়েস নং সহ সরবরাহকারী ইনভয়েস ({0})",
+ "Keyed in under Supplier & Procurement with the AutoCount Invoice No. of this event, so they are counted as direct costs above (by category from the item names; what the lines do not cover is under Others). To change one, edit the supplier invoice.": "এই ইভেন্টের AutoCount ইনভয়েস নং দিয়ে সরবরাহকারী ও ক্রয়-এ এন্ট্রি করা হয়েছে, তাই এগুলো উপরে সরাসরি খরচ হিসেবে গণনা হয়েছে (আইটেমের নাম অনুযায়ী ক্যাটাগরি; লাইনগুলোতে যা নেই তা অন্যান্য-এর অধীনে)। পরিবর্তন করতে সরবরাহকারী ইনভয়েসটি এডিট করুন।",
+ "Supplier / invoice": "সরবরাহকারী / ইনভয়েস",
+ "AutoCount no.": "AutoCount নং",
+ "Categories": "ক্যাটাগরি",
 };
 
 export default dictionary;

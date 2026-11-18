@@ -11,6 +11,7 @@ import {
   type DataFlag,
   type EventPnl,
 } from "@/lib/finance/eventPnl";
+import { autoCountCostsOf, autoCountSupplierInvoices } from "@/lib/finance/autocountCosts";
 
 type DB = SupabaseClient<Database>;
 
@@ -87,18 +88,20 @@ async function loadRows(supabase: DB, companyIds: string[], start: string, end: 
   if (list.length === 0) return [];
   const ids = list.map((e) => e.id);
 
-  const [revenue, costs, sheets, budgets] = await Promise.all([
+  const [revenue, costs, sheets, budgets, fromAutoCount] = await Promise.all([
     supabase.from("event_revenue_entries").select("catering_event_id, entry_type, amount").in("catering_event_id", ids),
     supabase.from("event_cost_entries").select("catering_event_id, cost_class, cost_type, amount, cost_basis").in("catering_event_id", ids),
     supabase.from("event_costing").select("catering_event_id, food_cost, ingredient_cost, staff_cost, transport_cost, equipment_cost, other_cost").in("catering_event_id", ids),
     supabase.from("event_budgets").select("catering_event_id, budget_revenue, budget_direct_costs, budget_additional_costs").in("catering_event_id", ids),
+    // supplier invoices keyed in with the AutoCount invoice number of the event count as its direct costs straight away
+    autoCountSupplierInvoices(supabase, ids),
   ]);
   for (const r of [revenue, costs, sheets, budgets]) if (r.error) throw r.error;
 
   return list.map((e) => {
     const pnl = computeEventPnl(
       (revenue.data ?? []).filter((r) => r.catering_event_id === e.id),
-      (costs.data ?? []).filter((c) => c.catering_event_id === e.id),
+      [...(costs.data ?? []).filter((c) => c.catering_event_id === e.id), ...autoCountCostsOf(fromAutoCount, e.id)],
       combineSheets((sheets.data ?? []).filter((s) => s.catering_event_id === e.id)),
     );
     const budget = (budgets.data ?? []).find((b) => b.catering_event_id === e.id) as Budget | undefined;
@@ -198,13 +201,14 @@ export async function getEventPnlDetail(supabase: DB, eventId: string) {
   if (error) throw error;
   if (!event) return null;
 
-  const [revenue, costs, sheets, invoices, budget, supplierInvoices] = await Promise.all([
+  const [revenue, costs, sheets, invoices, budget, supplierInvoices, fromAutoCount] = await Promise.all([
     supabase.from("event_revenue_entries").select("*").eq("catering_event_id", eventId).order("entry_date").order("created_at"),
     supabase.from("event_cost_entries").select("*").eq("catering_event_id", eventId).order("cost_date").order("created_at"),
     supabase.from("event_costing").select("food_cost, ingredient_cost, staff_cost, transport_cost, equipment_cost, other_cost").eq("catering_event_id", eventId),
     supabase.from("customer_invoices").select("id, invoice_number, invoice_date, amount, tax_amount, status, description").eq("catering_event_id", eventId).order("invoice_date"),
     supabase.from("event_budgets").select("*").eq("catering_event_id", eventId).maybeSingle(),
     supabase.from("supplier_invoices").select("id, invoice_number, invoice_date, amount, status, suppliers(name), supplier_invoice_items(item_name, uom, quantity, line_total)").eq("company_id", event.company_id).order("invoice_date", { ascending: false }).limit(60),
+    autoCountSupplierInvoices(supabase, [eventId]),
   ]);
   for (const r of [revenue, costs, sheets, invoices, budget, supplierInvoices]) if (r.error) throw r.error;
 
@@ -213,7 +217,9 @@ export async function getEventPnlDetail(supabase: DB, eventId: string) {
     ((await supabase.from("event_cost_entries").select("supplier_invoice_id").not("supplier_invoice_id", "is", null)).data ?? []).map((r) => r.supplier_invoice_id),
   );
   const sheet = combineSheets(sheets.data ?? []);
-  const pnl = computeEventPnl(revenue.data ?? [], costs.data ?? [], sheet);
+  const autoCountLinked = fromAutoCount.filter((s) => s.eventId === eventId);
+  const autoCountIds = new Set(autoCountLinked.map((s) => s.id));
+  const pnl = computeEventPnl(revenue.data ?? [], [...(costs.data ?? []), ...autoCountCostsOf(autoCountLinked, eventId)], sheet);
   return {
     event,
     revenue: revenue.data ?? [],
@@ -224,7 +230,9 @@ export async function getEventPnlDetail(supabase: DB, eventId: string) {
     pnl,
     budgetComparison: budgetVsActual(pnl, (budget.data as Budget) ?? null),
     flags: dataFlagsFor(pnl, event.status),
+    /** Supplier invoices keyed in with this event's AutoCount invoice number: already counted as direct costs above. */
+    autoCountSupplierInvoices: autoCountLinked,
     /** Supplier invoices of this company that are not yet the cost of any event. */
-    availableSupplierInvoices: (supplierInvoices.data ?? []).filter((s) => !takenElsewhere.has(s.id) && !linkedSupplierIds.has(s.id)),
+    availableSupplierInvoices: (supplierInvoices.data ?? []).filter((s) => !takenElsewhere.has(s.id) && !linkedSupplierIds.has(s.id) && !autoCountIds.has(s.id)),
   };
 }

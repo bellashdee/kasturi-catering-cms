@@ -223,6 +223,28 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
         </details>
       </SectionCard>
 
+      {detail.autoCountSupplierInvoices.length > 0 && (
+        <SectionCard title={`Supplier invoices with this event's AutoCount invoice no. (${detail.autoCountSupplierInvoices.length})`}>
+          <p className="mb-2 text-[12px] text-text-muted">Keyed in under Supplier &amp; Procurement with the AutoCount Invoice No. of this event, so they are counted as direct costs above (by category from the item names; what the lines do not cover is under Others). To change one, edit the supplier invoice.</p>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] text-left text-[12.5px]">
+              <thead><tr className="text-[10.5px] font-bold uppercase tracking-wide text-text-muted"><th className="py-2">Date</th><th className="py-2">Supplier / invoice</th><th className="py-2">AutoCount no.</th><th className="py-2">Categories</th><th className="py-2 text-right">Total</th></tr></thead>
+              <tbody>
+                {detail.autoCountSupplierInvoices.map((s) => (
+                  <tr key={s.id} className="border-t border-border align-top">
+                    <td className="py-2">{date(s.invoiceDate)}</td>
+                    <td className="py-2">{s.supplierName ?? "—"}<div><Link href={`/supplier-procurement/invoices/${s.id}`} className="text-[11.5px] font-semibold text-primary hover:underline">{s.invoiceNumber} →</Link></div></td>
+                    <td className="py-2">{s.autoCountNo}</td>
+                    <td className="py-2 text-text-secondary">{s.costs.map((c) => `${ANY_DIRECT_COST_TYPE_LABEL[c.cost_type] ?? c.cost_type} ${money(c.amount)}`).join(" · ")}</td>
+                    <td className="py-2 text-right font-semibold">{money(s.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
       <SectionCard title={`Cost entries (${detail.costs.length})`}>
         {detail.costs.length === 0 ? <EmptyRow text="No costs recorded for this event yet." /> : (
           <div className="overflow-x-auto">

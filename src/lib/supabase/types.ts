@@ -6089,6 +6089,7 @@ export type Database = {
       supplier_invoices: {
         Row: {
           amount: number
+          autocount_invoice_no: string | null
           company_id: string
           created_at: string
           department: string | null
@@ -6104,6 +6105,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          autocount_invoice_no?: string | null
           company_id: string
           created_at?: string
           department?: string | null
@@ -6119,6 +6121,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          autocount_invoice_no?: string | null
           company_id?: string
           created_at?: string
           department?: string | null
@@ -6763,6 +6766,14 @@ export type Database = {
       user_is_local_staff: { Args: never; Returns: boolean }
       user_has_quotation_request_access: { Args: never; Returns: boolean }
       user_can_manage_event_pnl: { Args: { target_company_id: string }; Returns: boolean }
+      find_autocount_customer_invoice: {
+        Args: { p_number: string }
+        Returns: { customer_invoice_id: string; invoice_number: string; company_name: string; customer_name: string | null; catering_event_id: string | null; event_name: string | null; event_reference: string | null; event_date: string | null }[]
+      }
+      event_autocount_supplier_invoices: {
+        Args: { p_event_ids: string[] }
+        Returns: { catering_event_id: string; supplier_invoice_id: string; invoice_number: string; invoice_date: string; amount: number; autocount_invoice_no: string; supplier_name: string | null; company_name: string; items: { item_name: string; line_total: number }[] }[]
+      }
       quotation_request_people: { Args: never; Returns: { user_id: string; full_name: string | null }[] }
       user_has_company_access: {
         Args: { target_company_id: string }

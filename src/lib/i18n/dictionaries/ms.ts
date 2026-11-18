@@ -4670,6 +4670,19 @@ const dictionary: Record<string, string> = {
  "Amounts must be 0 or more.": "Jumlah mesti 0 atau lebih.",
  "Select the event date.": "Pilih tarikh acara.",
  "Could not load the customers.": "Pelanggan tidak dapat dimuatkan.",
+ "AutoCount Invoice No.": "No. Invois AutoCount",
+ "e.g. INV-KI2611/004": "cth. INV-KI2611/004",
+ "The customer invoice no. in AutoCount of the event this cost is for. The cost then goes straight into that event's P&L.": "No. invois pelanggan dalam AutoCount bagi acara kos ini. Kos ini kemudian terus masuk ke P&L acara tersebut.",
+ "{0} ({1}) is in the system but not linked to any event yet, so this cost is not in any event P&L until that invoice is linked to its event.": "{0} ({1}) ada dalam sistem tetapi belum dipautkan kepada mana-mana acara, jadi kos ini tidak masuk ke P&L mana-mana acara sehingga invois itu dipautkan kepada acaranya.",
+ "There is no AutoCount invoice {0} in the system yet. You can still save: this cost goes into the event's P&L as soon as that AutoCount invoice is uploaded.": "Belum ada invois AutoCount {0} dalam sistem. Anda masih boleh simpan: kos ini akan masuk ke P&L acara sebaik sahaja invois AutoCount itu dimuat naik.",
+ "Not linked to an event.": "Tidak dipautkan kepada acara.",
+ "This AutoCount invoice is not linked to any event yet.": "Invois AutoCount ini belum dipautkan kepada mana-mana acara.",
+ "Not in the system yet: counts in the event P&L once that AutoCount invoice is uploaded.": "Belum ada dalam sistem: dikira dalam P&L acara sebaik sahaja invois AutoCount itu dimuat naik.",
+ "Supplier invoices with this event's AutoCount invoice no. ({0})": "Invois pembekal dengan no. invois AutoCount acara ini ({0})",
+ "Keyed in under Supplier & Procurement with the AutoCount Invoice No. of this event, so they are counted as direct costs above (by category from the item names; what the lines do not cover is under Others). To change one, edit the supplier invoice.": "Dimasukkan di Pembekal & Perolehan dengan No. Invois AutoCount acara ini, jadi ia dikira sebagai kos langsung di atas (mengikut kategori daripada nama item; baki yang tidak diliputi oleh baris dimasukkan di bawah Lain-lain). Untuk mengubahnya, edit invois pembekal itu.",
+ "Supplier / invoice": "Pembekal / invois",
+ "AutoCount no.": "No. AutoCount",
+ "Categories": "Kategori",
 };
 
 export default dictionary;

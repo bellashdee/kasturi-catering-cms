@@ -7,7 +7,7 @@ import { SupplierInvoiceUploadReview } from "@/components/procurement/SupplierIn
 export default async function NewSupplierInvoicePage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; po?: string }>;
+  searchParams: Promise<{ company?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -22,10 +22,7 @@ export default async function NewSupplierInvoicePage({
   const defaultCompanyId = requestedId && accessibleIds.includes(requestedId) ? requestedId : selectable[0]?.id;
   const query = requestedId ? `?company=${requestedId}` : "";
 
-  const [{ data: suppliers }, { data: purchaseOrders }] = await Promise.all([
-    supabase.from("suppliers").select("id, name, company_id").in("company_id", accessibleIds).order("name"),
-    supabase.from("purchase_orders").select("id, po_number, company_id, supplier_id").in("company_id", accessibleIds).order("order_date", { ascending: false }),
-  ]);
+  const { data: suppliers } = await supabase.from("suppliers").select("id, name, company_id").in("company_id", accessibleIds).order("name");
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -36,7 +33,6 @@ export default async function NewSupplierInvoicePage({
           companies={selectable}
           defaultCompanyId={defaultCompanyId}
           suppliers={suppliers ?? []}
-          purchaseOrders={purchaseOrders ?? []}
           redirectTo={`/supplier-procurement/invoices${query}`}
         />
       </div>

@@ -18,6 +18,7 @@ import {
 } from "@/lib/procurement/actions";
 import { AREA, BTN, BTN_GHOST, Dialog, ErrorLine, FIELD, LABEL } from "@/components/priority/ui";
 import { RecordActions } from "@/components/shared/RecordActions";
+import { AutoCountInvoiceField } from "@/components/procurement/AutoCountInvoiceField";
 
 /** Delete (and Undo) of a supplier on its page; the supplier list is shown again when the bar is closed. */
 export function SupplierDeleteAction({ supplierId, name, listHref }: { supplierId: string; name: string; listHref: string }) {
@@ -39,6 +40,7 @@ export type InvoiceEditData = {
   dueDate: string;
   amount: string;
   department: string;
+  autoCountInvoiceNo: string;
   items: { itemCode: string; itemName: string; uom: string; quantity: string; unitPrice: string; discount: string; lineTotal: string }[];
 };
 
@@ -53,6 +55,7 @@ export function InvoiceActions({ invoice, listHref }: { invoice: InvoiceEditData
   const [due, setDue] = useState(invoice.dueDate);
   const [amount, setAmount] = useState(invoice.amount);
   const [department, setDepartment] = useState(invoice.department);
+  const [autoCountNo, setAutoCountNo] = useState(invoice.autoCountInvoiceNo);
   const [items, setItems] = useState(invoice.items);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +73,7 @@ export function InvoiceActions({ invoice, listHref }: { invoice: InvoiceEditData
         dueDate: due,
         amount: num(amount),
         department,
+        autoCountInvoiceNo: autoCountNo,
         items: items.map((i) => ({ itemCode: i.itemCode, itemName: i.itemName, uom: i.uom, quantity: num(i.quantity), unitPrice: num(i.unitPrice), discount: i.discount.trim() === "" ? undefined : num(i.discount), lineTotal: num(i.lineTotal) })),
       });
       if (!r.ok) {
@@ -116,10 +120,11 @@ export function InvoiceActions({ invoice, listHref }: { invoice: InvoiceEditData
                 <label className={LABEL}>Due date *</label>
                 <input required type="date" className={FIELD} value={due} onChange={(e) => setDue(e.target.value)} />
               </div>
-              <div className="sm:col-span-2">
+              <div>
                 <label className={LABEL}>Department</label>
                 <input className={FIELD} value={department} onChange={(e) => setDepartment(e.target.value)} />
               </div>
+              <AutoCountInvoiceField value={autoCountNo} onChange={setAutoCountNo} inputClassName={FIELD} labelClassName={LABEL} />
             </div>
             <div>
               <div className="mb-1.5 flex items-center justify-between">

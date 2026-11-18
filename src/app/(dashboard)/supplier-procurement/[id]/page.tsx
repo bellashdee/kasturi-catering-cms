@@ -3,7 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { getSupplier } from "@/lib/procurement/queries";
-import { SUPPLIER_STATUS_LABEL, INVOICE_STATUS_LABEL, PO_STATUS_LABEL } from "@/lib/procurement/constants";
+import { SUPPLIER_STATUS_LABEL, PO_STATUS_LABEL } from "@/lib/procurement/constants";
 import { formatCurrency, formatMalaysiaDate, formatUnitPrice } from "@/lib/format";
 import { listPurchaseLines, summariseSupplierItems } from "@/lib/procurement/purchaseLines";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -165,7 +165,6 @@ export default async function SupplierDetailPage({
                 <span className="font-semibold text-text">{i.invoice_number}</span>
                 <div className="flex items-center gap-3">
                   <span className="text-text-secondary">{formatCurrency(Number(i.amount))} · due {i.due_date}</span>
-                  <StatusBadge tone={i.status === "paid" ? "success" : "warning"}>{INVOICE_STATUS_LABEL[i.status] ?? i.status}</StatusBadge>
                 </div>
               </Link>
             ))}

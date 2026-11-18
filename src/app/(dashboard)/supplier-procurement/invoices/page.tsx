@@ -4,10 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listSupplierInvoices } from "@/lib/procurement/queries";
-import { INVOICE_STATUS_LABEL, isOverdue } from "@/lib/procurement/constants";
 import { formatCurrency, formatMalaysiaDate } from "@/lib/format";
 import { parseInvoiceDateFilter } from "@/lib/finance/dateFilter";
-import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SupplierProcurementSubNav } from "@/components/procurement/SupplierProcurementSubNav";
 import { MonthFilter } from "@/components/MonthFilter";
@@ -16,19 +14,12 @@ import { Select } from "@/components/ui/Select";
 import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
 import { natural, readSort, sortBy } from "@/lib/listSort";
 
-const SORTS = { date: "Invoice date", month: "Month", invoice: "Invoice No.", supplier: "Supplier", due: "Due date", amount: "Amount" };
-
-function statusTone(status: string, overdue: boolean): "success" | "warning" | "danger" | "neutral" {
-  if (status === "paid") return "success";
-  if (overdue) return "danger";
-  if (status === "disputed") return "danger";
-  return "warning";
-}
+const SORTS = { date: "Invoice date", month: "Month", invoice: "Invoice No.", supplier: "Supplier", due: "Due date", amount: "Amount", autocount: "AutoCount Invoice No." };
 
 export default async function SupplierInvoicesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; dateField?: string; from?: string; to?: string; month?: string; supplier?: string; status?: string; sort?: string; dir?: string }>;
+  searchParams: Promise<{ company?: string; dateField?: string; from?: string; to?: string; month?: string; supplier?: string; sort?: string; dir?: string }>;
 }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
@@ -38,7 +29,7 @@ export default async function SupplierInvoicesPage({
   const companies = allCompanies ?? [];
 
   const sp = await searchParams;
-  const { company: requestedId, dateField, from, to, month, supplier, status } = sp;
+  const { company: requestedId, dateField, from, to, month, supplier } = sp;
   const { sort, dir } = readSort(sp, SORTS, "date", "desc");
   const dateFilter = parseInvoiceDateFilter({ dateField, from, to });
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
@@ -54,7 +45,7 @@ export default async function SupplierInvoicesPage({
   // the suppliers of the invoices in this period, for the supplier filter
   const supplierOptions = Array.from(new Map(inPeriod.filter((inv) => inv.supplier_id).map((inv) => [inv.supplier_id as string, inv.suppliers?.name ?? "—"])).entries()).sort((a, b) => natural(a[1], b[1]));
   const invoices = sortBy(
-    inPeriod.filter((inv) => (!supplier || inv.supplier_id === supplier) && (!status || inv.status === status)),
+    inPeriod.filter((inv) => !supplier || inv.supplier_id === supplier),
     sort,
     dir,
     {
@@ -64,12 +55,13 @@ export default async function SupplierInvoicesPage({
       supplier: [(inv) => inv.suppliers?.name, (inv) => inv.invoice_number],
       due: [(inv) => inv.due_date, (inv) => inv.invoice_number],
       amount: (inv) => Number(inv.amount),
+      autocount: [(inv) => inv.autocount_invoice_no, (inv) => inv.invoice_number],
     },
   );
   // a column header link that keeps every filter and sorts by that column (a second click turns the order round)
   const sortHref = (key: keyof typeof SORTS) => {
     const q = new URLSearchParams();
-    for (const [k, v] of Object.entries({ company: requestedId, dateField, from, to, month, supplier, status })) if (v) q.set(k, v);
+    for (const [k, v] of Object.entries({ company: requestedId, dateField, from, to, month, supplier })) if (v) q.set(k, v);
     q.set("sort", key);
     q.set("dir", sort === key && dir === "asc" ? "desc" : "asc");
     return `/supplier-procurement/invoices?${q.toString()}`;
@@ -99,12 +91,6 @@ export default async function SupplierInvoicesPage({
             {supplierOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
           </Select>
         </FilterField>
-        <FilterField label="Status">
-          <Select name="status" defaultValue={status ?? ""} className={`${FILTER_INPUT} w-40`}>
-            <option value="">All statuses</option>
-            {Object.entries(INVOICE_STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-          </Select>
-        </FilterField>
         <FilterField label="Filter by">
           <Select name="dateField" defaultValue={dateFilter.field} className={`${FILTER_INPUT} w-36`}>
             <option value="invoice_date">Invoice date</option>
@@ -122,7 +108,7 @@ export default async function SupplierInvoicesPage({
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {invoices.length === 0 ? (
-          <EmptyRow text={supplier || status ? "No invoices match these filters." : monthLabel ? "No invoices in this month." : dateFilter.active ? "No invoices match this date filter." : "No invoices yet."} />
+          <EmptyRow text={supplier ? "No invoices match these filters." : monthLabel ? "No invoices in this month." : dateFilter.active ? "No invoices match this date filter." : "No invoices yet."} />
         ) : (
           <div>
             <div className="grid grid-cols-[1.2fr_1.2fr_1fr_1fr_1fr_1fr_1fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
@@ -131,11 +117,10 @@ export default async function SupplierInvoicesPage({
               <Link href={sortHref("date")} className={sort === "date" ? "text-primary" : "hover:text-text"}>Invoice Date{arrow("date")}</Link>
               <Link href={sortHref("due")} className={sort === "due" ? "text-primary" : "hover:text-text"}>Due Date{arrow("due")}</Link>
               <Link href={sortHref("amount")} className={sort === "amount" ? "text-primary" : "hover:text-text"}>Amount{arrow("amount")}</Link>
+              <Link href={sortHref("autocount")} className={sort === "autocount" ? "text-primary" : "hover:text-text"}>AutoCount Invoice No.{arrow("autocount")}</Link>
               <div>Company</div>
-              <div>Status</div>
             </div>
             {invoices.map((inv) => {
-              const overdue = isOverdue(inv.due_date, inv.status);
               return (
                 <Link
                   key={inv.id}
@@ -147,11 +132,8 @@ export default async function SupplierInvoicesPage({
                   <div className="text-text-secondary">{formatMalaysiaDate(inv.invoice_date)}</div>
                   <div className="text-text-secondary">{formatMalaysiaDate(inv.due_date)}</div>
                   <div className="text-text-secondary">{formatCurrency(Number(inv.amount))}</div>
+                  <div className={inv.autocount_invoice_no ? "font-semibold text-text" : "text-text-muted"}>{inv.autocount_invoice_no ?? "—"}</div>
                   <div className="text-text-secondary">{inv.companies?.name}</div>
-                  <div className="flex items-center gap-1.5">
-                    <StatusBadge tone={statusTone(inv.status, overdue)}>{INVOICE_STATUS_LABEL[inv.status] ?? inv.status}</StatusBadge>
-                    {overdue && <StatusBadge tone="danger">Overdue</StatusBadge>}
-                  </div>
                 </Link>
               );
             })}

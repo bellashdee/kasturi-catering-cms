@@ -86,6 +86,10 @@ export async function GET(request: Request) {
       ...[...detail.costs]
         .sort((a, b) => (ANY_DIRECT_COST_TYPE_LABEL[a.cost_type] ?? ADDITIONAL_COST_TYPE_LABEL[a.cost_type] ?? "").localeCompare(ANY_DIRECT_COST_TYPE_LABEL[b.cost_type] ?? ADDITIONAL_COST_TYPE_LABEL[b.cost_type] ?? "") || a.cost_date.localeCompare(b.cost_date))
         .map((c): Cell[] => [c.cost_date, c.cost_class === "direct" ? "Direct" : "Additional", ANY_DIRECT_COST_TYPE_LABEL[c.cost_type] ?? ADDITIONAL_COST_TYPE_LABEL[c.cost_type], COST_BASIS_LABEL[c.cost_basis], c.supplier_name, c.reference_no, c.description, Number(c.amount), c.notes]),
+      // supplier invoices keyed in with this event's AutoCount invoice number (counted as actual direct costs)
+      ...detail.autoCountSupplierInvoices.flatMap((s) =>
+        s.costs.map((c): Cell[] => [s.invoiceDate, "Direct", ANY_DIRECT_COST_TYPE_LABEL[c.cost_type] ?? c.cost_type, COST_BASIS_LABEL.actual, s.supplierName, s.invoiceNumber, `Supplier invoice with AutoCount no. ${s.autoCountNo}`, c.amount, null]),
+      ),
     ];
     if (detail.flags.length) rows.splice(9, 0, ["Warnings", detail.flags.map((f) => DATA_FLAG_LABEL[f]).join("; ")]);
     return respond(rows, format, `event-pnl-${event.event_reference ?? event.id}`, "Event P&L");

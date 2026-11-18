@@ -5,6 +5,7 @@ import { getMonthlyCostBreakdown, getMonthlyRevenue, listSpending } from "@/lib/
 import { NOT_OWED_STATUSES, invoiceBalance } from "@/lib/finance/outstanding";
 import { listSupplierOwed } from "@/lib/finance/paymentQueries";
 import { computeEventPnl } from "@/lib/finance/eventPnl";
+import { autoCountCostsOf, autoCountSupplierInvoices } from "@/lib/finance/autocountCosts";
 import { salesByCompanyMonth, totalSalesByMonth } from "@/lib/reports/sales";
 
 type DB = SupabaseClient<Database>;
@@ -36,10 +37,12 @@ export async function getCateringReportRows(supabase: DB, companyIds: string[], 
   const eventIds = (events ?? []).map((e) => e.id);
   const ids = eventIds.length > 0 ? eventIds : ["00000000-0000-0000-0000-000000000000"];
   // the same three sources as the Event P&L (Finance), so the two always tally: the costing sheet of the event, and the revenue and cost entries kept in the P&L
-  const [costingsRes, revenueRes, costEntriesRes] = await Promise.all([
+  const [costingsRes, revenueRes, costEntriesRes, fromAutoCount] = await Promise.all([
     supabase.from("event_costing").select("catering_event_id, food_cost, ingredient_cost, staff_cost, transport_cost, equipment_cost, other_cost").in("catering_event_id", ids),
     supabase.from("event_revenue_entries").select("catering_event_id, entry_type, amount").in("catering_event_id", ids),
     supabase.from("event_cost_entries").select("catering_event_id, cost_class, cost_type, amount, cost_basis").in("catering_event_id", ids),
+    // supplier invoices keyed in with the event's AutoCount invoice number (only for people who may see the Event P&L)
+    autoCountSupplierInvoices(supabase, eventIds).catch(() => []),
   ]);
 
   return (events ?? []).map((e) => {
@@ -53,7 +56,7 @@ export async function getCateringReportRows(supabase: DB, companyIds: string[], 
       other_cost: sheets.reduce((t, r) => t + Number(r.other_cost), 0),
     };
     const revenueEntries = (revenueRes.data ?? []).filter((r) => r.catering_event_id === e.id);
-    const pnl = computeEventPnl(revenueEntries, (costEntriesRes.data ?? []).filter((c) => c.catering_event_id === e.id), sheet);
+    const pnl = computeEventPnl(revenueEntries, [...(costEntriesRes.data ?? []).filter((c) => c.catering_event_id === e.id), ...autoCountCostsOf(fromAutoCount, e.id)], sheet);
     const cost = pnl.directCosts + pnl.additionalExpenses;
     // the revenue recorded in the Event P&L; an event with none recorded there keeps the amount of the event itself
     const revenue = revenueEntries.length > 0 ? pnl.netRevenue : Number(e.total_amount ?? 0);

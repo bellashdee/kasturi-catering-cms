@@ -9,6 +9,7 @@ import { logTaskAudit } from "@/lib/taskProofs/actions";
 import { recordAudit } from "@/lib/audit";
 import { confirmedPaymentDate, todayInMalaysia } from "@/lib/format";
 import type { Database } from "@/lib/supabase/types";
+import { normalizeAutoCountNo } from "@/lib/finance/autocountCosts";
 
 type InvoiceStatus = Database["public"]["Enums"]["invoice_status"];
 
@@ -437,6 +438,8 @@ export type SupplierInvoiceEdit = {
   dueDate: string;
   amount: number;
   department?: string;
+  /** the AutoCount customer invoice number of the event this cost belongs to ("" = none) */
+  autoCountInvoiceNo?: string;
   /** every line exactly as printed on the invoice: nothing is recalculated */
   items: { itemCode?: string; itemName: string; uom?: string; quantity: number; unitPrice: number; discount?: number; lineTotal: number }[];
 };
@@ -458,7 +461,8 @@ export async function updateSupplierInvoice(id: string, input: SupplierInvoiceEd
     const { data: same } = await supabase.from("supplier_invoices").select("id").eq("company_id", before.company_id).eq("supplier_id", before.supplier_id).ilike("invoice_number", number.replace(/[\\%_]/g, "\\$&")).neq("id", id).limit(1);
     if ((same ?? []).length > 0) throw new Error("Another invoice of this supplier has the same invoice number.");
 
-    const { error } = await supabase.from("supplier_invoices").update({ invoice_number: number, invoice_date: input.invoiceDate, due_date: input.dueDate, amount: input.amount, department: input.department?.trim() || null }).eq("id", id);
+    const autoCountNo = input.autoCountInvoiceNo === undefined ? before.autocount_invoice_no : normalizeAutoCountNo(input.autoCountInvoiceNo) || null;
+    const { error } = await supabase.from("supplier_invoices").update({ invoice_number: number, invoice_date: input.invoiceDate, due_date: input.dueDate, amount: input.amount, department: input.department?.trim() || null, autocount_invoice_no: autoCountNo }).eq("id", id);
     if (error) throw error;
     const { error: deleteError } = await supabase.from("supplier_invoice_items").delete().eq("supplier_invoice_id", id);
     if (deleteError) throw deleteError;
@@ -471,8 +475,9 @@ export async function updateSupplierInvoice(id: string, input: SupplierInvoiceEd
         throw insertError;
       }
     }
-    await recordAudit({ companyId: before.company_id, relatedTable: "supplier_invoices", relatedId: id, action: "edited", previousValue: `${before.invoice_number} · RM ${before.amount} · due ${before.due_date}`, newValue: `${number} · RM ${input.amount} · due ${input.dueDate}` });
+    await recordAudit({ companyId: before.company_id, relatedTable: "supplier_invoices", relatedId: id, action: "edited", previousValue: `${before.invoice_number} · RM ${before.amount} · due ${before.due_date} · AutoCount ${before.autocount_invoice_no ?? "—"}`, newValue: `${number} · RM ${input.amount} · due ${input.dueDate} · AutoCount ${autoCountNo ?? "—"}` });
     revalidatePath("/supplier-procurement/invoices");
+    revalidatePath("/finance/event-pnl", "layout");
     revalidatePath(`/supplier-procurement/invoices/${id}`);
     revalidatePath("/");
     return {};
@@ -598,7 +603,8 @@ export type SupplierInvoiceInput = {
   dueDate: string;
   amount: number;
   department?: string;
-  purchaseOrderId?: string;
+  /** the AutoCount customer invoice number of the event this cost belongs to: the cost then counts in that event's P&L */
+  autoCountInvoiceNo?: string;
   documentId?: string;
   /** every line exactly as printed on the invoice */
   items: { itemCode?: string; itemName: string; uom?: string; quantity: number; unitPrice: number; discount?: number; lineTotal: number }[];
@@ -617,9 +623,10 @@ async function createSupplierInvoiceImpl(input: SupplierInvoiceInput) {
       due_date: input.dueDate,
       amount: input.amount,
       department: input.department || null,
-      purchase_order_id: input.purchaseOrderId || null,
+      autocount_invoice_no: normalizeAutoCountNo(input.autoCountInvoiceNo) || null,
       document_id: input.documentId || null,
-      status: "pending_review" as InvoiceStatus,
+      // valid as soon as it is keyed in: no review or approval step
+      status: "issued" as InvoiceStatus,
     })
     .select("id")
     .single();
@@ -656,8 +663,44 @@ async function createSupplierInvoiceImpl(input: SupplierInvoiceInput) {
   }
 
   revalidatePath("/supplier-procurement/invoices");
+  revalidatePath("/finance/event-pnl", "layout");
   revalidatePath("/");
   return invoice;
+}
+
+export type AutoCountMatch = {
+  invoiceNumber: string;
+  companyName: string;
+  customerName: string | null;
+  eventId: string | null;
+  eventName: string | null;
+  eventReference: string | null;
+  eventDate: string | null;
+};
+
+/**
+ * The customer invoice in AutoCount with this number (in the person's companies) and the event it belongs to, shown under the
+ * AutoCount Invoice No. field. An empty list means it is not in the system yet (it can still be saved and links when it is uploaded).
+ */
+export async function findAutoCountInvoice(number: string): Promise<ActionResult<{ matches: AutoCountMatch[] }>> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const wanted = normalizeAutoCountNo(number);
+    if (!wanted) return { matches: [] };
+    const { data, error } = await supabase.rpc("find_autocount_customer_invoice", { p_number: wanted });
+    if (error) throw error;
+    return {
+      matches: (data ?? []).map((m) => ({
+        invoiceNumber: m.invoice_number,
+        companyName: m.company_name,
+        customerName: m.customer_name,
+        eventId: m.catering_event_id,
+        eventName: m.event_name,
+        eventReference: m.event_reference,
+        eventDate: m.event_date,
+      })),
+    };
+  }, "Could not look up the AutoCount invoice.");
 }
 
 /** Saves the invoice exactly as entered. Returns `{ ok: false, error }` instead of throwing (a thrown message is hidden in production). */

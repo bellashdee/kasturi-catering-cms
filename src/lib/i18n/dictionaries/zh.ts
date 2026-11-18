@@ -4570,6 +4570,19 @@ const dictionary: Record<string, string> = {
  "Amounts must be 0 or more.": "金额必须为 0 或以上。",
  "Select the event date.": "请选择活动日期。",
  "Could not load the customers.": "无法加载客户。",
+ "AutoCount Invoice No.": "AutoCount 发票号码",
+ "e.g. INV-KI2611/004": "例如 INV-KI2611/004",
+ "The customer invoice no. in AutoCount of the event this cost is for. The cost then goes straight into that event's P&L.": "此费用所属活动在 AutoCount 中的客户发票号码。该费用随即直接计入该活动的损益表。",
+ "{0} ({1}) is in the system but not linked to any event yet, so this cost is not in any event P&L until that invoice is linked to its event.": "{0}（{1}）已在系统中，但尚未关联任何活动，因此在该发票关联到其活动之前，此费用不会计入任何活动的损益表。",
+ "There is no AutoCount invoice {0} in the system yet. You can still save: this cost goes into the event's P&L as soon as that AutoCount invoice is uploaded.": "系统中还没有 AutoCount 发票 {0}。您仍然可以保存：一旦上传该 AutoCount 发票，此费用就会计入该活动的损益表。",
+ "Not linked to an event.": "未关联到活动。",
+ "This AutoCount invoice is not linked to any event yet.": "此 AutoCount 发票尚未关联任何活动。",
+ "Not in the system yet: counts in the event P&L once that AutoCount invoice is uploaded.": "尚未在系统中：该 AutoCount 发票上传后即计入活动损益表。",
+ "Supplier invoices with this event's AutoCount invoice no. ({0})": "带有此活动 AutoCount 发票号码的供应商发票（{0}）",
+ "Keyed in under Supplier & Procurement with the AutoCount Invoice No. of this event, so they are counted as direct costs above (by category from the item names; what the lines do not cover is under Others). To change one, edit the supplier invoice.": "已在供应商与采购中以此活动的 AutoCount 发票号码录入，因此计入上方的直接成本（按项目名称分类；明细行未涵盖的金额归入“其他”）。如需更改，请编辑该供应商发票。",
+ "Supplier / invoice": "供应商 / 发票",
+ "AutoCount no.": "AutoCount 号码",
+ "Categories": "类别",
 };
 
 export default dictionary;

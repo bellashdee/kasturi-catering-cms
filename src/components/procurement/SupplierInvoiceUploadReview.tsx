@@ -9,10 +9,10 @@ import { createSupplierInvoice } from "@/lib/procurement/actions";
 import { checkDuplicateInvoiceAction } from "@/lib/procurement/checkDuplicate";
 import type { DuplicateMatch } from "@/lib/importFlow/types";
 import { Select } from "@/components/ui/Select";
+import { AutoCountInvoiceField } from "@/components/procurement/AutoCountInvoiceField";
 
 type Company = { id: string; name: string };
 type Supplier = { id: string; name: string; company_id: string };
-type PurchaseOrder = { id: string; po_number: string; company_id: string; supplier_id: string };
 /** One invoice line, every value as text exactly as printed / typed. `auto` = the amount of a hand-typed line follows quantity × price. */
 type Item = { itemCode: string; itemName: string; uom: string; quantity: string; unitPrice: string; discount: string; lineTotal: string; auto: boolean };
 
@@ -49,13 +49,11 @@ export function SupplierInvoiceUploadReview({
   companies,
   defaultCompanyId,
   suppliers,
-  purchaseOrders,
   redirectTo,
 }: {
   companies: Company[];
   defaultCompanyId?: string;
   suppliers: Supplier[];
-  purchaseOrders: PurchaseOrder[];
   redirectTo: string;
 }) {
   const router = useRouter();
@@ -63,13 +61,12 @@ export function SupplierInvoiceUploadReview({
 
   const [companyId, setCompanyId] = useState(defaultCompanyId ?? companies[0]?.id ?? "");
   const [supplierId, setSupplierId] = useState("");
-  const [purchaseOrderId, setPurchaseOrderId] = useState("");
+  const [autoCountNo, setAutoCountNo] = useState("");
   const [department, setDepartment] = useState("");
   const [form, setForm] = useState({ invoiceNumber: "", invoiceDate: "", dueDate: "", amount: "" });
   const [items, setItems] = useState<Item[]>([emptyItem()]);
 
   const suppliersForCompany = suppliers.filter((s) => s.company_id === companyId);
-  const posForSupplier = purchaseOrders.filter((po) => po.company_id === companyId && po.supplier_id === supplierId);
 
   function selectTab(next: Parameters<typeof flow.selectTab>[0]) {
     flow.selectTab(next);
@@ -118,7 +115,7 @@ export function SupplierInvoiceUploadReview({
         amount: Number(form.amount),
         invoiceDate: form.invoiceDate,
       });
-      return matches.map((m) => ({ id: m.id, label: m.invoice_number, meta: `RM ${m.amount} · ${m.invoice_date} · status: ${m.status}` }));
+      return matches.map((m) => ({ id: m.id, label: m.invoice_number, meta: `RM ${m.amount} · ${m.invoice_date}` }));
     });
   }
 
@@ -161,7 +158,7 @@ export function SupplierInvoiceUploadReview({
           dueDate: form.dueDate,
           amount: Number(form.amount),
           department: department || undefined,
-          purchaseOrderId: purchaseOrderId || undefined,
+          autoCountInvoiceNo: autoCountNo.trim() || undefined,
           documentId: flow.documentId || undefined,
           items: lines.map((i) => ({
             itemCode: i.itemCode.trim() || undefined,
@@ -194,7 +191,7 @@ export function SupplierInvoiceUploadReview({
               required
               disabled={flow.documentId !== null}
               value={companyId}
-              onChange={(e) => { setCompanyId(e.target.value); setSupplierId(""); setPurchaseOrderId(""); }}
+              onChange={(e) => { setCompanyId(e.target.value); setSupplierId(""); }}
               className={`${inputClass} disabled:bg-surface-alt disabled:text-text-muted`}
             >
               {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -229,18 +226,12 @@ export function SupplierInvoiceUploadReview({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelClass}>Supplier *</label>
-                <Select value={supplierId} onChange={(e) => { setSupplierId(e.target.value); setPurchaseOrderId(""); flow.resetDuplicateState(); }} className={inputClass}>
+                <Select value={supplierId} onChange={(e) => { setSupplierId(e.target.value); flow.resetDuplicateState(); }} className={inputClass}>
                   <option value="">Select supplier</option>
                   {suppliersForCompany.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </Select>
               </div>
-              <div>
-                <label className={labelClass}>Related Purchase Order</label>
-                <Select value={purchaseOrderId} onChange={(e) => setPurchaseOrderId(e.target.value)} className={inputClass}>
-                  <option value="">Not linked to a PO</option>
-                  {posForSupplier.map((po) => <option key={po.id} value={po.id}>{po.po_number}</option>)}
-                </Select>
-              </div>
+              <AutoCountInvoiceField value={autoCountNo} onChange={setAutoCountNo} inputClassName={inputClass} labelClassName={labelClass} />
             </div>
 
             <div className="grid grid-cols-2 gap-4">

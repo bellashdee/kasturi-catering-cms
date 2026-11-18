@@ -280,7 +280,7 @@ export const KNOWLEDGE_BASE: KBEntry[] = [
     title: "Payment Status",
     keywords: ["payment status", "what does invoice status mean", "invoice status"],
     content:
-      "Invoice status moves through: Draft → Pending Review → Approved → Paid (or Overdue if the due date passes unpaid, or Disputed if there's a problem with it). Supplier payment requests move through: Pending Approval → Approved — Ready to Pay → Paid (or Rejected).",
+      "Invoice status moves through: Draft → Pending Review → Approved → Paid (or Overdue if the due date passes unpaid, or Disputed if there's a problem with it). Supplier payment requests move through: Pending Approval → Approved — Ready to Pay → Paid (or Rejected). Supplier invoices keyed in under Supplier & Procurement have no status or approval step: they are valid as soon as they are keyed in, and one with an AutoCount Invoice No. counts straight away as a direct cost in that event's Event P&L.",
   },
   {
     id: "def-due-date",

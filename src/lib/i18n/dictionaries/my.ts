@@ -4558,6 +4558,19 @@ const dictionary: Record<string, string> = {
  "Amounts must be 0 or more.": "ပမာဏသည် 0 သို့မဟုတ် ထို့ထက်ပို ဖြစ်ရမည်။",
  "Select the event date.": "ပွဲရက်စွဲကို ရွေးပါ။",
  "Could not load the customers.": "ဖောက်သည်များကို ဖွင့်၍ မရပါ။",
+ "AutoCount Invoice No.": "AutoCount ငွေတောင်းခံလွှာ နံပါတ်",
+ "e.g. INV-KI2611/004": "ဥပမာ INV-KI2611/004",
+ "The customer invoice no. in AutoCount of the event this cost is for. The cost then goes straight into that event's P&L.": "ဤကုန်ကျစရိတ်ပိုင်သော ပွဲ၏ AutoCount ရှိ ဖောက်သည်ငွေတောင်းခံလွှာ နံပါတ်။ ထို့နောက် ကုန်ကျစရိတ်သည် ထိုပွဲ၏ အမြတ်အရှုံးစာရင်းထဲသို့ တိုက်ရိုက်ဝင်သည်။",
+ "{0} ({1}) is in the system but not linked to any event yet, so this cost is not in any event P&L until that invoice is linked to its event.": "{0} ({1}) သည် စနစ်ထဲတွင် ရှိသော်လည်း မည်သည့်ပွဲနှင့်မျှ မချိတ်ဆက်ရသေးပါ၊ ထို့ကြောင့် ထိုငွေတောင်းခံလွှာကို ၎င်း၏ပွဲနှင့် မချိတ်ဆက်မချင်း ဤကုန်ကျစရိတ်သည် မည်သည့်ပွဲ၏ အမြတ်အရှုံးစာရင်းတွင်မျှ မပါပါ။",
+ "There is no AutoCount invoice {0} in the system yet. You can still save: this cost goes into the event's P&L as soon as that AutoCount invoice is uploaded.": "စနစ်ထဲတွင် AutoCount ငွေတောင်းခံလွှာ {0} မရှိသေးပါ။ သိမ်းဆည်းနိုင်ပါသေးသည်- ထို AutoCount ငွေတောင်းခံလွှာကို တင်ပြီးသည်နှင့် ဤကုန်ကျစရိတ်သည် ပွဲ၏ အမြတ်အရှုံးစာရင်းထဲသို့ ဝင်ပါမည်။",
+ "Not linked to an event.": "ပွဲနှင့် မချိတ်ဆက်ထားပါ။",
+ "This AutoCount invoice is not linked to any event yet.": "ဤ AutoCount ငွေတောင်းခံလွှာကို မည်သည့်ပွဲနှင့်မျှ မချိတ်ဆက်ရသေးပါ။",
+ "Not in the system yet: counts in the event P&L once that AutoCount invoice is uploaded.": "စနစ်ထဲတွင် မရှိသေးပါ- ထို AutoCount ငွေတောင်းခံလွှာကို တင်ပြီးသည်နှင့် ပွဲ၏ အမြတ်အရှုံးစာရင်းတွင် ထည့်တွက်ပါမည်။",
+ "Supplier invoices with this event's AutoCount invoice no. ({0})": "ဤပွဲ၏ AutoCount ငွေတောင်းခံလွှာ နံပါတ်ပါသော ပေးသွင်းသူ ငွေတောင်းခံလွှာများ ({0})",
+ "Keyed in under Supplier & Procurement with the AutoCount Invoice No. of this event, so they are counted as direct costs above (by category from the item names; what the lines do not cover is under Others). To change one, edit the supplier invoice.": "ပေးသွင်းသူနှင့် ဝယ်ယူရေးတွင် ဤပွဲ၏ AutoCount ငွေတောင်းခံလွှာ နံပါတ်ဖြင့် ထည့်သွင်းထားသောကြောင့် အထက်ပါ တိုက်ရိုက်ကုန်ကျစရိတ်အဖြစ် ထည့်တွက်ထားသည် (ပစ္စည်းအမည်များအလိုက် အမျိုးအစားခွဲထားပြီး စာကြောင်းများ မဖုံးလွှမ်းသည့်ပမာဏကို အခြား အောက်တွင် ထားသည်)။ ပြောင်းလဲရန် ပေးသွင်းသူ ငွေတောင်းခံလွှာကို ပြင်ဆင်ပါ။",
+ "Supplier / invoice": "ပေးသွင်းသူ / ငွေတောင်းခံလွှာ",
+ "AutoCount no.": "AutoCount နံပါတ်",
+ "Categories": "အမျိုးအစားများ",
 };
 
 export default dictionary;

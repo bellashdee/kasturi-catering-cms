@@ -3,7 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { getSupplierInvoice } from "@/lib/procurement/queries";
-import { INVOICE_STATUS_LABEL, PAYMENT_STATUS_LABEL, isOverdue } from "@/lib/procurement/constants";
+import { PAYMENT_STATUS_LABEL } from "@/lib/procurement/constants";
 import { formatCurrency, formatUnitPrice } from "@/lib/format";
 import { PrintDocumentButton } from "@/components/shared/PrintDocumentButton";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -35,7 +35,10 @@ export default async function SupplierInvoiceDetailPage({
     notFound();
   }
 
-  const overdue = isOverdue(invoice.due_date, invoice.status);
+  // the AutoCount customer invoice (and its event) this cost belongs to: the cost counts in that event's P&L
+  const { data: autoCountMatches } = invoice.autocount_invoice_no ? await supabase.rpc("find_autocount_customer_invoice", { p_number: invoice.autocount_invoice_no }) : { data: null };
+  const autoCountEvent = (autoCountMatches ?? []).find((m) => m.catering_event_id) ?? null;
+  const autoCountOnly = (autoCountMatches ?? [])[0] ?? null;
 
   return (
     <div className="flex flex-col gap-5">
@@ -48,21 +51,9 @@ export default async function SupplierInvoiceDetailPage({
           <div className="text-[13px] text-text-secondary">
             {invoice.companies?.name} · {invoice.suppliers?.name}
             {invoice.department && ` · ${invoice.department}`}
-            {invoice.purchase_orders?.po_number && (
-              <>
-                {" · "}
-                <Link href={`/supplier-procurement/orders/${invoice.purchase_orders.id}${query}`} className="underline">
-                  {invoice.purchase_orders.po_number}
-                </Link>
-              </>
-            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <StatusBadge tone={invoice.status === "paid" ? "success" : overdue ? "danger" : "warning"}>
-            {INVOICE_STATUS_LABEL[invoice.status] ?? invoice.status}
-          </StatusBadge>
-          {overdue && <StatusBadge tone="danger">Overdue</StatusBadge>}
           <PrintDocumentButton
             document={{
               type: "PURCHASE INVOICE",
@@ -72,7 +63,7 @@ export default async function SupplierInvoiceDetailPage({
               terms: invoice.suppliers?.payment_terms,
               company: { name: invoice.companies?.legal_name || invoice.companies?.name || "", registrationNo: invoice.companies?.registration_no },
               party: { label: "FROM (SUPPLIER)", name: invoice.suppliers?.name ?? "", address: invoice.suppliers?.billing_address, phone: invoice.suppliers?.phone, registrationNo: invoice.suppliers?.registration_no },
-              reference: invoice.purchase_orders?.po_number,
+              reference: invoice.autocount_invoice_no,
               lines: invoice.supplier_invoice_items.map((i) => ({ code: i.item_code, description: i.item_name, quantity: Number(i.quantity), uom: i.uom, unitPrice: Number(i.unit_price), discount: Number(i.discount ?? 0), amount: Number(i.line_total) })),
             }}
           />
@@ -85,13 +76,14 @@ export default async function SupplierInvoiceDetailPage({
               dueDate: invoice.due_date,
               amount: String(invoice.amount),
               department: invoice.department ?? "",
+              autoCountInvoiceNo: invoice.autocount_invoice_no ?? "",
               items: invoice.supplier_invoice_items.map((i) => ({ itemCode: i.item_code ?? "", itemName: i.item_name, uom: i.uom ?? "", quantity: String(i.quantity), unitPrice: String(i.unit_price), discount: i.discount === null ? "" : String(i.discount), lineTotal: String(i.line_total) })),
             }}
           />
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
           <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Amount</div>
           <div className="mt-1 text-xl font-extrabold text-text">{formatCurrency(Number(invoice.amount))}</div>
@@ -107,6 +99,26 @@ export default async function SupplierInvoiceDetailPage({
               <span className="font-semibold text-primary">{invoice.documents.original_filename}</span>
             ) : (
               <span className="text-text-muted">None</span>
+            )}
+          </div>
+        </div>
+        <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
+          <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">AutoCount Invoice No.</div>
+          <div className="mt-1 text-[15px] font-extrabold text-text">{invoice.autocount_invoice_no ?? "—"}</div>
+          <div className="mt-1 text-[12px]">
+            {!invoice.autocount_invoice_no ? (
+              <span className="text-text-muted">Not linked to an event.</span>
+            ) : autoCountEvent ? (
+              <>
+                <Link href={`/finance/event-pnl/${autoCountEvent.catering_event_id}`} className="font-semibold text-primary hover:underline">
+                  {`${autoCountEvent.event_reference ? `${autoCountEvent.event_reference} · ` : ""}${autoCountEvent.event_name ?? ""}`}
+                </Link>
+                <span className="block text-text-secondary">{`Customer: ${autoCountEvent.customer_name ?? "—"}`}</span>
+              </>
+            ) : autoCountOnly ? (
+              <span className="font-semibold text-warning">This AutoCount invoice is not linked to any event yet.</span>
+            ) : (
+              <span className="font-semibold text-warning">Not in the system yet: counts in the event P&amp;L once that AutoCount invoice is uploaded.</span>
             )}
           </div>
         </div>
