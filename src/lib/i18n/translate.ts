@@ -15,7 +15,7 @@ type Pattern = { regex: RegExp; target: string; weight: number; /** the longest 
  * Builds a translator from a dictionary whose keys are the English texts. A key with {0}, {1} ... is a pattern: it matches
  * text with those parts filled in ("{0} overdue supplier invoice(s)") and puts the same parts into the translation.
  */
-export function createTranslator(dict: Dictionary | null): Translator {
+export function createTranslator(dict: Dictionary | null, finish?: (text: string) => string): Translator {
   if (!dict) return { translate: (text) => text };
 
   const exact = new Map<string, string>();
@@ -61,7 +61,8 @@ export function createTranslator(dict: Dictionary | null): Translator {
         }
       }
     }
-    const final = result ?? core;
+    // `finish` puts the language's own touch on the result (month names inside a sentence), whether or not the text was in the dictionary
+    const final = finish ? finish(result ?? core) : (result ?? core);
     if (cache.size < 5000) cache.set(core, final);
     return lead + final + trail;
   }

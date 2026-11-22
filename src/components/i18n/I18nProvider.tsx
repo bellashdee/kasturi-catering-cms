@@ -6,6 +6,7 @@ import { DICTIONARY_LOADERS } from "@/lib/i18n/dictionaries";
 import { startDomTranslation } from "@/lib/i18n/dom";
 import { saveLanguage } from "@/lib/i18n/actions";
 import { createTranslator, fillVars, type Translator } from "@/lib/i18n/translate";
+import { localizeMonthsMs } from "@/lib/i18n/months";
 
 type I18nValue = {
   lang: Language;
@@ -34,7 +35,7 @@ export function I18nProvider({ initialLanguage, children }: { initialLanguage: L
     const loader = DICTIONARY_LOADERS[lang];
     let translator = IDENTITY;
     try {
-      translator = createTranslator(loader ? await loader() : null);
+      translator = createTranslator(loader ? await loader() : null, lang === "ms" ? localizeMonthsMs : undefined);
     } catch {
       // the dictionary could not be loaded: the page stays in English instead of breaking
     }
@@ -54,6 +55,25 @@ export function I18nProvider({ initialLanguage, children }: { initialLanguage: L
     const stop = startDomTranslation(active.translator, active.lang === "en");
     document.documentElement.dataset.i18n = "ready";
     return stop;
+  }, [active]);
+
+  // The browser's own pop-ups (the "Delete this ...?" question of confirm(), alert()) are not part of the page text, so the translation of the page
+  // never reaches them. Their message is translated here, line by line, so every page asks in the language that was chosen.
+  useEffect(() => {
+    if (!active.ready) return;
+    const native = { confirm: window.confirm.bind(window), alert: window.alert.bind(window) };
+    const translateMessage = (message: unknown) =>
+      String(message ?? "")
+        .split("\n")
+        .map((line) => (line.trim() ? active.translator.translate(line) : line))
+        .join("\n");
+    const saved = { confirm: window.confirm, alert: window.alert };
+    window.confirm = (message?: string) => native.confirm(translateMessage(message));
+    window.alert = (message?: unknown) => native.alert(translateMessage(message));
+    return () => {
+      window.confirm = saved.confirm;
+      window.alert = saved.alert;
+    };
   }, [active]);
 
   const setLanguage = useCallback(
