@@ -19,6 +19,7 @@ import {
 import { AREA, BTN, BTN_GHOST, Dialog, ErrorLine, FIELD, LABEL } from "@/components/priority/ui";
 import { RecordActions } from "@/components/shared/RecordActions";
 import { AutoCountInvoiceField } from "@/components/procurement/AutoCountInvoiceField";
+import { RESTAURANT_COMPANY_NAME } from "@/lib/restaurantView";
 
 /** Delete (and Undo) of a supplier on its page; the supplier list is shown again when the bar is closed. */
 export function SupplierDeleteAction({ supplierId, name, listHref }: { supplierId: string; name: string; listHref: string }) {
@@ -41,6 +42,8 @@ export type InvoiceEditData = {
   amount: string;
   department: string;
   autoCountInvoiceNo: string;
+  /** the company of the invoice: O2 Life (the restaurant) has no AutoCount Invoice No. */
+  companyName?: string;
   remarks: string;
   items: { itemCode: string; itemName: string; uom: string; quantity: string; unitPrice: string; discount: string; lineTotal: string }[];
 };
@@ -75,7 +78,7 @@ export function InvoiceActions({ invoice, listHref }: { invoice: InvoiceEditData
         dueDate: due,
         amount: num(amount),
         department,
-        autoCountInvoiceNo: autoCountNo,
+        autoCountInvoiceNo: invoice.companyName === RESTAURANT_COMPANY_NAME ? "" : autoCountNo,
         remarks,
         items: items.map((i) => ({ itemCode: i.itemCode, itemName: i.itemName, uom: i.uom, quantity: num(i.quantity), unitPrice: num(i.unitPrice), discount: i.discount.trim() === "" ? undefined : num(i.discount), lineTotal: num(i.lineTotal) })),
       });
@@ -127,7 +130,7 @@ export function InvoiceActions({ invoice, listHref }: { invoice: InvoiceEditData
                 <label className={LABEL}>Department</label>
                 <input className={FIELD} value={department} onChange={(e) => setDepartment(e.target.value)} />
               </div>
-              <AutoCountInvoiceField value={autoCountNo} onChange={setAutoCountNo} inputClassName={FIELD} labelClassName={LABEL} />
+              {invoice.companyName !== RESTAURANT_COMPANY_NAME && <AutoCountInvoiceField value={autoCountNo} onChange={setAutoCountNo} inputClassName={FIELD} labelClassName={LABEL} />}
               <div className="sm:col-span-2">
                 <label className={LABEL}>Remarks (for the GENERAL SUPPLIER: the name of the supplier)</label>
                 <input className={FIELD} value={remarks} onChange={(e) => setRemarks(e.target.value)} maxLength={300} />

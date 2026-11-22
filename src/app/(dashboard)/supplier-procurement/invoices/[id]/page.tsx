@@ -7,6 +7,7 @@ import { PAYMENT_STATUS_LABEL } from "@/lib/procurement/constants";
 import { formatCurrency, formatUnitPrice } from "@/lib/format";
 import { PrintDocumentButton } from "@/components/shared/PrintDocumentButton";
 import { StatusBadge } from "@/components/StatusBadge";
+import { RESTAURANT_COMPANY_NAME } from "@/lib/restaurantView";
 import { InvoiceActions } from "@/components/procurement/ProcurementRecordActions";
 import { SectionCard, EmptyRow } from "@/components/dashboard/SectionCard";
 import { SupplierPaymentActions } from "@/components/procurement/SupplierPaymentActions";
@@ -78,6 +79,7 @@ export default async function SupplierInvoiceDetailPage({
               amount: String(invoice.amount),
               department: invoice.department ?? "",
               autoCountInvoiceNo: invoice.autocount_invoice_no ?? "",
+              companyName: invoice.companies?.name,
               remarks: invoice.remarks ?? "",
               items: invoice.supplier_invoice_items.map((i) => ({ itemCode: i.item_code ?? "", itemName: i.item_name, uom: i.uom ?? "", quantity: String(i.quantity), unitPrice: String(i.unit_price), discount: i.discount === null ? "" : String(i.discount), lineTotal: String(i.line_total) })),
             }}
@@ -104,6 +106,7 @@ export default async function SupplierInvoiceDetailPage({
             )}
           </div>
         </div>
+        {invoice.companies?.name !== RESTAURANT_COMPANY_NAME && (
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
           <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">AutoCount Invoice No.</div>
           <div className="mt-1 text-[15px] font-extrabold text-text">{invoice.autocount_invoice_no ?? "—"}</div>
@@ -124,6 +127,7 @@ export default async function SupplierInvoiceDetailPage({
             )}
           </div>
         </div>
+        )}
       </div>
 
       <SectionCard title="Items">

@@ -13,8 +13,11 @@ import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
 import { Select } from "@/components/ui/Select";
 import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
 import { natural, readSort, sortBy } from "@/lib/listSort";
+import { isRestaurantScope } from "@/lib/restaurantView";
 
 const SORTS = { date: "Invoice date", month: "Month", invoice: "Invoice No.", supplier: "Supplier", due: "Due date", amount: "Amount", autocount: "AutoCount Invoice No." };
+/** O2 Life (the restaurant) has no events: no AutoCount Invoice No. */
+const SORTS_RESTAURANT = Object.fromEntries(Object.entries(SORTS).filter(([k]) => k !== "autocount"));
 
 export default async function SupplierInvoicesPage({
   searchParams,
@@ -30,6 +33,8 @@ export default async function SupplierInvoicesPage({
 
   const sp = await searchParams;
   const { company: requestedId, dateField, from, to, month, supplier } = sp;
+  const { targetCompanyIds: scopeIds } = resolveCompanyScope(session, companies, sp.company);
+  const restaurant = isRestaurantScope(companies, scopeIds);
   const { sort, dir } = readSort(sp, SORTS, "date", "desc");
   const dateFilter = parseInvoiceDateFilter({ dateField, from, to });
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
@@ -66,6 +71,7 @@ export default async function SupplierInvoicesPage({
     q.set("dir", sort === key && dir === "asc" ? "desc" : "asc");
     return `/supplier-procurement/invoices?${q.toString()}`;
   };
+  const gridCols = restaurant ? "grid-cols-[1.2fr_1.2fr_1fr_1fr_1fr_1fr]" : "grid-cols-[1.2fr_1.2fr_1fr_1fr_1fr_1fr_1fr]";
   const arrow = (key: keyof typeof SORTS) => (sort === key ? (dir === "asc" ? " ▲" : " ▼") : "");
 
   return (
@@ -84,7 +90,7 @@ export default async function SupplierInvoicesPage({
 
       <MonthFilter />
 
-      <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/supplier-procurement/invoices${query}`}>
+      <ListFilters keep={{ company: requestedId, month }} sortOptions={restaurant ? SORTS_RESTAURANT : SORTS} sort={sort} dir={dir} clearHref={`/supplier-procurement/invoices${query}`}>
         <FilterField label="Supplier">
           <Select name="supplier" defaultValue={supplier ?? ""} className={`${FILTER_INPUT} w-64`}>
             <option value="">All suppliers</option>
@@ -111,13 +117,13 @@ export default async function SupplierInvoicesPage({
           <EmptyRow text={supplier ? "No invoices match these filters." : monthLabel ? "No invoices in this month." : dateFilter.active ? "No invoices match this date filter." : "No invoices yet."} />
         ) : (
           <div>
-            <div className="grid grid-cols-[1.2fr_1.2fr_1fr_1fr_1fr_1fr_1fr] border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted">
+            <div className={`grid ${gridCols} border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted`}>
               <Link href={sortHref("invoice")} className={sort === "invoice" ? "text-primary" : "hover:text-text"}>Invoice No.{arrow("invoice")}</Link>
               <Link href={sortHref("supplier")} className={sort === "supplier" ? "text-primary" : "hover:text-text"}>Supplier{arrow("supplier")}</Link>
               <Link href={sortHref("date")} className={sort === "date" ? "text-primary" : "hover:text-text"}>Invoice Date{arrow("date")}</Link>
               <Link href={sortHref("due")} className={sort === "due" ? "text-primary" : "hover:text-text"}>Due Date{arrow("due")}</Link>
               <Link href={sortHref("amount")} className={sort === "amount" ? "text-primary" : "hover:text-text"}>Amount{arrow("amount")}</Link>
-              <Link href={sortHref("autocount")} className={sort === "autocount" ? "text-primary" : "hover:text-text"}>AutoCount Invoice No.{arrow("autocount")}</Link>
+              {!restaurant && <Link href={sortHref("autocount")} className={sort === "autocount" ? "text-primary" : "hover:text-text"}>AutoCount Invoice No.{arrow("autocount")}</Link>}
               <div>Company</div>
             </div>
             {invoices.map((inv) => {
@@ -125,14 +131,14 @@ export default async function SupplierInvoicesPage({
                 <Link
                   key={inv.id}
                   href={`/supplier-procurement/invoices/${inv.id}${query}`}
-                  className="grid grid-cols-[1.2fr_1.2fr_1fr_1fr_1fr_1fr_1fr] border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0 hover:bg-surface-alt"
+                  className={`grid ${gridCols} border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0 hover:bg-surface-alt`}
                 >
                   <div className="font-semibold text-text">{inv.invoice_number}</div>
                   <div className="text-text-secondary">{inv.suppliers?.name}{inv.remarks && <span className="block text-[12px] text-text-muted">{inv.remarks}</span>}</div>
                   <div className="text-text-secondary">{formatMalaysiaDate(inv.invoice_date)}</div>
                   <div className="text-text-secondary">{formatMalaysiaDate(inv.due_date)}</div>
                   <div className="text-text-secondary">{formatCurrency(Number(inv.amount))}</div>
-                  <div className={inv.autocount_invoice_no ? "font-semibold text-text" : "text-text-muted"}>{inv.autocount_invoice_no ?? "—"}</div>
+                  {!restaurant && <div className={inv.autocount_invoice_no ? "font-semibold text-text" : "text-text-muted"}>{inv.autocount_invoice_no ?? "—"}</div>}
                   <div className="text-text-secondary">{inv.companies?.name}</div>
                 </Link>
               );

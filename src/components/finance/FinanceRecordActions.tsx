@@ -23,6 +23,7 @@ import { RecordActions } from "@/components/shared/RecordActions";
 import { CompanyChips } from "@/components/pettyCash/CompanyChips";
 import { INVOICE_NO_LABEL, INVOICE_NO_PLACEHOLDER } from "@/components/spending/formStyles";
 import { AutoCountInvoiceField } from "@/components/procurement/AutoCountInvoiceField";
+import { useAllRestaurant } from "@/components/layout/RestaurantView";
 import { MultiChoiceSelect } from "@/components/ui/MultiChoiceSelect";
 import { PETTY_CASH_CATEGORIES, joinCategories, splitCategories } from "@/lib/operationPettyCash/constants";
 import { splitCompanies } from "@/lib/pettyCash/companies";
@@ -193,6 +194,8 @@ export function PettyCashClaimActions({ claim, companies }: { claim: ClaimEditDa
   const [open, setOpen] = useState(false);
   const [f, setF] = useState(claim);
   const [companyIds, setCompanyIds] = useState<string[]>([claim.companyId, ...claim.sharedCompanyIds]);
+  // O2 Life is the restaurant: no events, so no AutoCount Invoice No.
+  const noAutoCount = useAllRestaurant(companyIds);
   // receipts / photos added here (several at once), they join the ones attached
   const [receipts, setReceipts] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
@@ -209,7 +212,7 @@ export function PettyCashClaimActions({ claim, companies }: { claim: ClaimEditDa
       for (const file of receipts) uploaded.push(await uploadReceipt(where.companyId, file));
       const documentId: string | undefined = uploaded[0];
       const extraDocumentIds = uploaded.slice(1);
-      const r = await updatePettyCashClaim(claim.id, { claimantName: f.claimant, claimantDepartment: f.department, category: f.category, description: f.description, amount: Number(f.amount), transactionDate: f.date, documentId, extraDocumentIds, remarks: f.remarks ?? "", invoiceNo: f.invoiceNo ?? "", autoCountInvoiceNo: claim.type === "expense" ? f.autoCountNo ?? "" : undefined, ...where });
+      const r = await updatePettyCashClaim(claim.id, { claimantName: f.claimant, claimantDepartment: f.department, category: f.category, description: f.description, amount: Number(f.amount), transactionDate: f.date, documentId, extraDocumentIds, remarks: f.remarks ?? "", invoiceNo: f.invoiceNo ?? "", autoCountInvoiceNo: claim.type === "expense" ? (noAutoCount ? "" : f.autoCountNo ?? "") : undefined, ...where });
       if (!r.ok) {
         setError(r.error);
         return;
@@ -276,7 +279,7 @@ export function PettyCashClaimActions({ claim, companies }: { claim: ClaimEditDa
                 <input className={FIELD} maxLength={100} value={f.invoiceNo ?? ""} onChange={(e) => set({ invoiceNo: e.target.value })} placeholder={INVOICE_NO_PLACEHOLDER} />
               </div>
             )}
-            {claim.type === "expense" && (
+            {claim.type === "expense" && !noAutoCount && (
               <div className="sm:col-span-2">
                 <AutoCountInvoiceField value={f.autoCountNo ?? ""} onChange={(text) => set({ autoCountNo: text })} inputClassName={FIELD} labelClassName={LABEL} />
               </div>

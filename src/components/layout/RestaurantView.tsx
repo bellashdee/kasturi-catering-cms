@@ -24,6 +24,15 @@ export function useRestaurantView(): boolean {
   return target.length === 1 && target[0] === o2Id;
 }
 
+/**
+ * True when every one of these companies is O2 Life (the restaurant): the AutoCount Invoice No. (the customer invoice of an event) is then
+ * not asked, and nothing is sent for it. Use the company picked in the form, not the one viewed.
+ */
+export function useAllRestaurant(companyIds: string[]): boolean {
+  const { o2Id } = useContext(RestaurantViewContext);
+  return !!o2Id && companyIds.length > 0 && companyIds.every((id) => id === o2Id);
+}
+
 /** Whether the member may open this module (null = every module). */
 export function useCanOpenModule(key: string): boolean {
   const { allowedModules } = useContext(RestaurantViewContext);

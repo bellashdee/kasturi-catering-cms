@@ -13,6 +13,7 @@ import { MultiChoiceSelect } from "@/components/ui/MultiChoiceSelect";
 import { SplitAmountBox, SplitChoice } from "@/components/shared/SplitAmountBox";
 import { splitAddsUp, splitCells } from "@/lib/categorySplit";
 import { AutoCountInvoiceField } from "@/components/procurement/AutoCountInvoiceField";
+import { useAllRestaurant } from "@/components/layout/RestaurantView";
 import { INVOICE_NO_LABEL, INVOICE_NO_PLACEHOLDER, SPEND_GRID_2, SPEND_INPUT, SPEND_LABEL } from "@/components/spending/formStyles";
 
 type Company = { id: string; name: string };
@@ -57,6 +58,8 @@ export function CompanyExpenseUploadReview({
   const [shareText, setShareText] = useState<Record<string, string>>({});
   // the event's AutoCount invoice no.: the cost then counts in that event's P&L
   const [autoCountNo, setAutoCountNo] = useState("");
+  // O2 Life is the restaurant: no events, so no AutoCount Invoice No.
+  const noAutoCount = useAllRestaurant([companyId]);
   // more than one category: split the amount between them (each part its own expense) or keep one expense under all of them
   const [splitOn, setSplitOn] = useState(true);
   const byCategory = form.categories.length > 1 && splitOn;
@@ -113,7 +116,7 @@ export function CompanyExpenseUploadReview({
           expenseDate: form.expenseDate,
           notes: form.description || undefined,
           invoiceNo: form.invoiceNo.trim() || undefined,
-          autoCountInvoiceNo: autoCountNo.trim(),
+          autoCountInvoiceNo: noAutoCount ? "" : autoCountNo.trim(),
           documentId: flow.documentId || undefined,
           noteType,
         });
@@ -206,7 +209,7 @@ export function CompanyExpenseUploadReview({
               </div>
             </div>
 
-            <AutoCountInvoiceField value={autoCountNo} onChange={setAutoCountNo} inputClassName={inputClass} labelClassName={labelClass} />
+            {!noAutoCount && <AutoCountInvoiceField value={autoCountNo} onChange={setAutoCountNo} inputClassName={inputClass} labelClassName={labelClass} />}
 
             <div className={SPEND_GRID_2}>
               <div>

@@ -10,6 +10,7 @@ import { checkDuplicateInvoiceAction } from "@/lib/procurement/checkDuplicate";
 import type { DuplicateMatch } from "@/lib/importFlow/types";
 import { Select } from "@/components/ui/Select";
 import { AutoCountInvoiceField } from "@/components/procurement/AutoCountInvoiceField";
+import { useAllRestaurant } from "@/components/layout/RestaurantView";
 
 type Company = { id: string; name: string };
 type Supplier = { id: string; name: string; company_id: string };
@@ -64,6 +65,8 @@ export function SupplierInvoiceUploadReview({
   const [companyId, setCompanyId] = useState(defaultCompanyId ?? companies[0]?.id ?? "");
   const [supplierId, setSupplierId] = useState("");
   const [autoCountNo, setAutoCountNo] = useState("");
+  // O2 Life is the restaurant: no events, so no AutoCount Invoice No.
+  const noAutoCount = useAllRestaurant([companyId]);
   const [remarks, setRemarks] = useState("");
   const [department, setDepartment] = useState("");
   const [form, setForm] = useState({ invoiceNumber: "", invoiceDate: "", dueDate: "", amount: "" });
@@ -167,7 +170,7 @@ export function SupplierInvoiceUploadReview({
           dueDate: form.dueDate,
           amount: Number(form.amount),
           department: department || undefined,
-          autoCountInvoiceNo: autoCountNo.trim() || undefined,
+          autoCountInvoiceNo: noAutoCount ? undefined : autoCountNo.trim() || undefined,
           remarks: remarks.trim() || undefined,
           documentId: flow.documentId || undefined,
           items: lines.map((i) => ({
@@ -241,7 +244,7 @@ export function SupplierInvoiceUploadReview({
                   {suppliersForCompany.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </Select>
               </div>
-              <AutoCountInvoiceField value={autoCountNo} onChange={setAutoCountNo} inputClassName={inputClass} labelClassName={labelClass} />
+              {!noAutoCount && <AutoCountInvoiceField value={autoCountNo} onChange={setAutoCountNo} inputClassName={inputClass} labelClassName={labelClass} />}
             </div>
 
             <div>

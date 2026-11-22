@@ -17,6 +17,7 @@ import { RecordActions } from "@/components/shared/RecordActions";
 import { BTN_GHOST, Dialog } from "@/components/priority/ui";
 import { CompanyChips } from "@/components/pettyCash/CompanyChips";
 import { AutoCountInvoiceField } from "@/components/procurement/AutoCountInvoiceField";
+import { useAllRestaurant } from "@/components/layout/RestaurantView";
 import { INVOICE_NO_LABEL, INVOICE_NO_PLACEHOLDER, SPEND_GRID_2, SPEND_GRID_3, SPEND_HINT, SPEND_INPUT, SPEND_LABEL, SPEND_SAVE_BTN } from "@/components/spending/formStyles";
 
 type Company = { id: string; name: string };
@@ -63,6 +64,8 @@ function ClaimFields({
   const [companyIds, setCompanyIds] = useState<string[]>(initial.companyId ? [initial.companyId] : []);
   const chosenCompanies = companies.filter((c) => companyIds.includes(c.id));
   const companyId = multiCompany ? (chosenCompanies[0]?.id ?? "") : v.companyId;
+  // O2 Life is the restaurant: no events, so no AutoCount Invoice No.
+  const noAutoCount = useAllRestaurant(multiCompany ? companyIds : [v.companyId]);
   // more than one company or category: the amount is split between them, each part is its own claim
   const [shareText, setShareText] = useState<Record<string, string>>({});
   // whether to split: between the companies, and by category (not split: one claim for all of them)
@@ -111,7 +114,7 @@ function ClaimFields({
         description: v.description || undefined,
         remarks: v.remarks?.trim() || undefined,
         invoiceNo: v.invoiceNo?.trim() || undefined,
-        autoCountInvoiceNo: v.autoCountInvoiceNo?.trim() ?? "",
+        autoCountInvoiceNo: noAutoCount ? "" : v.autoCountInvoiceNo?.trim() ?? "",
         documentId,
         extraDocumentIds,
         // split between companies (and categories): each part with its company; only categories: each part with its category
@@ -208,7 +211,7 @@ function ClaimFields({
         <label className={labelClass}>Remarks (optional)</label>
         <input value={v.remarks ?? ""} onChange={(e) => set({ remarks: e.target.value })} maxLength={500} placeholder="Anything else to note" className={inputClass} />
       </div>
-      <AutoCountInvoiceField value={v.autoCountInvoiceNo ?? ""} onChange={(text) => set({ autoCountInvoiceNo: text })} inputClassName={inputClass} labelClassName={labelClass} />
+      {!noAutoCount && <AutoCountInvoiceField value={v.autoCountInvoiceNo ?? ""} onChange={(text) => set({ autoCountInvoiceNo: text })} inputClassName={inputClass} labelClassName={labelClass} />}
       {canSplitCompanies && (
         <SplitChoice
           label="Split the amount between the companies"

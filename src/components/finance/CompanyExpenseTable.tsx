@@ -9,6 +9,7 @@ import { departmentChoices } from "@/lib/finance/constants";
 import { AREA, BTN, BTN_GHOST, BTN_SM_GHOST, Dialog, FIELD, LABEL } from "@/components/priority/ui";
 import { Select } from "@/components/ui/Select";
 import { AutoCountInvoiceField } from "@/components/procurement/AutoCountInvoiceField";
+import { RESTAURANT_COMPANY_NAME } from "@/lib/restaurantView";
 import { INVOICE_NO_LABEL, INVOICE_NO_PLACEHOLDER } from "@/components/spending/formStyles";
 
 export type ExpenseListRow = {
@@ -31,7 +32,7 @@ export type ExpenseListRow = {
 
 const NOTE_LABEL = { credit_note: "Credit Note", debit_note: "Debit Note" } as const;
 
-type Draft = { id: string; category: string; department: string; amount: string; expenseDate: string; invoiceNo: string; autoCountNo: string; notes: string };
+type Draft = { id: string; category: string; department: string; amount: string; expenseDate: string; invoiceNo: string; autoCountNo: string; notes: string; /** O2 Life (the restaurant): no AutoCount Invoice No. */ noAutoCount: boolean };
 
 /** Where a cost that is not keyed in on this page is changed. */
 const SOURCE_PAGE: Record<string, { href: string; label: string }> = {
@@ -57,7 +58,7 @@ export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow
 
   function edit(r: ExpenseListRow) {
     setError(null);
-    setDraft({ id: r.id, category: r.category, department: r.department ?? "", amount: String(r.amount), expenseDate: r.expenseDate, invoiceNo: r.invoiceNo ?? "", autoCountNo: r.autoCountNo ?? "", notes: r.notes ?? "" });
+    setDraft({ id: r.id, category: r.category, department: r.department ?? "", amount: String(r.amount), expenseDate: r.expenseDate, invoiceNo: r.invoiceNo ?? "", autoCountNo: r.autoCountNo ?? "", notes: r.notes ?? "", noAutoCount: r.companyName === RESTAURANT_COMPANY_NAME });
   }
 
   function save() {
@@ -71,7 +72,7 @@ export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow
           amount: Number(draft.amount),
           expenseDate: draft.expenseDate,
           invoiceNo: draft.invoiceNo,
-          autoCountInvoiceNo: draft.autoCountNo,
+          autoCountInvoiceNo: draft.noAutoCount ? "" : draft.autoCountNo,
           notes: draft.notes,
         });
         setDraft(null);
@@ -247,7 +248,7 @@ export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow
               <label className={LABEL}>{INVOICE_NO_LABEL}</label>
               <input maxLength={100} className={FIELD} value={draft.invoiceNo} placeholder={INVOICE_NO_PLACEHOLDER} onChange={(e) => setDraft({ ...draft, invoiceNo: e.target.value })} />
             </div>
-            <AutoCountInvoiceField value={draft.autoCountNo} onChange={(text) => setDraft({ ...draft, autoCountNo: text })} inputClassName={FIELD} labelClassName={LABEL} />
+            {!draft.noAutoCount && <AutoCountInvoiceField value={draft.autoCountNo} onChange={(text) => setDraft({ ...draft, autoCountNo: text })} inputClassName={FIELD} labelClassName={LABEL} />}
             <div>
               <label className={LABEL}>Description</label>
               <textarea rows={3} className={AREA} value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} />

@@ -19,6 +19,7 @@ import { splitCompanies } from "@/lib/pettyCash/companies";
 import { chosenCategories, splitAddsUp, splitCells } from "@/lib/categorySplit";
 import { SplitAmountBox, SplitChoice } from "@/components/shared/SplitAmountBox";
 import { AutoCountInvoiceField } from "@/components/procurement/AutoCountInvoiceField";
+import { useAllRestaurant } from "@/components/layout/RestaurantView";
 import { INVOICE_NO_LABEL, INVOICE_NO_PLACEHOLDER, SPEND_CANCEL_BTN, SPEND_GRID_2, SPEND_HINT, SPEND_INPUT, SPEND_LABEL, SPEND_SAVE_BTN } from "@/components/spending/formStyles";
 
 type Company = { id: string; name: string };
@@ -138,6 +139,8 @@ export function PettyCashEntryForm({
 
   const chosenCompanies = companies.filter((c) => companyIds.includes(c.id));
   const { companyId: firstCompanyId, alsoCompanyIds } = splitCompanies(chosenCompanies.map((c) => c.id), editing?.company_id);
+  // O2 Life is the restaurant: no events, so no AutoCount Invoice No.
+  const noAutoCount = useAllRestaurant(chosenCompanies.map((c) => c.id));
   const isClaim = kind === "claim";
   const isReceived = kind === "top_up";
   // more than one category: the amount is split between them, each part saved as its own record (money received has no category)
@@ -231,7 +234,7 @@ export function PettyCashEntryForm({
     try {
       const invoice = isReceived ? undefined : invoiceNo.trim() || undefined;
       // the event's AutoCount invoice no.: the cost then counts in that event's P&L (money received has none)
-      const autoCountInvoiceNo = isReceived ? undefined : autoCountNo.trim();
+      const autoCountInvoiceNo = isReceived ? undefined : noAutoCount ? "" : autoCountNo.trim();
       const uploaded: string[] = [];
       for (const file of receipts) uploaded.push(await uploadReceipt(firstCompanyId, file));
       const documentId: string | undefined = uploaded[0];
@@ -504,7 +507,7 @@ export function PettyCashEntryForm({
         </div>
       </div>
 
-      {!isReceived && <AutoCountInvoiceField value={autoCountNo} onChange={setAutoCountNo} inputClassName={inputClass} labelClassName={labelClass} />}
+      {!isReceived && !noAutoCount && <AutoCountInvoiceField value={autoCountNo} onChange={setAutoCountNo} inputClassName={inputClass} labelClassName={labelClass} />}
 
       {canSplitCompanies && (
         <SplitChoice
