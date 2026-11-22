@@ -64,11 +64,14 @@ export function SupplierInvoiceUploadReview({
   const [companyId, setCompanyId] = useState(defaultCompanyId ?? companies[0]?.id ?? "");
   const [supplierId, setSupplierId] = useState("");
   const [autoCountNo, setAutoCountNo] = useState("");
+  const [remarks, setRemarks] = useState("");
   const [department, setDepartment] = useState("");
   const [form, setForm] = useState({ invoiceNumber: "", invoiceDate: "", dueDate: "", amount: "" });
   const [items, setItems] = useState<Item[]>([emptyItem()]);
 
   const suppliersForCompany = suppliers.filter((s) => s.company_id === companyId);
+  // the GENERAL SUPPLIER stands for any supplier that is not in the list: the real name is written in the remarks
+  const isGeneral = suppliersForCompany.find((s) => s.id === supplierId)?.name.trim().toUpperCase() === "GENERAL SUPPLIER";
 
   function selectTab(next: Parameters<typeof flow.selectTab>[0]) {
     flow.selectTab(next);
@@ -141,6 +144,10 @@ export function SupplierInvoiceUploadReview({
       flow.setError("Supplier, invoice number, dates and amount are all required.");
       return;
     }
+    if (isGeneral && !remarks.trim()) {
+      flow.setError("For the GENERAL SUPPLIER, write the real supplier's name in the remarks.");
+      return;
+    }
     // every line is saved exactly as shown: a line that is missing a figure is reported, never completed or dropped
     const lines = items.filter((i) => !isBlank(i));
     for (const [n, i] of lines.entries()) {
@@ -161,6 +168,7 @@ export function SupplierInvoiceUploadReview({
           amount: Number(form.amount),
           department: department || undefined,
           autoCountInvoiceNo: autoCountNo.trim() || undefined,
+          remarks: remarks.trim() || undefined,
           documentId: flow.documentId || undefined,
           items: lines.map((i) => ({
             itemCode: i.itemCode.trim() || undefined,
@@ -234,6 +242,18 @@ export function SupplierInvoiceUploadReview({
                 </Select>
               </div>
               <AutoCountInvoiceField value={autoCountNo} onChange={setAutoCountNo} inputClassName={inputClass} labelClassName={labelClass} />
+            </div>
+
+            <div>
+              <label className={labelClass}>{isGeneral ? "Remarks: name of the supplier *" : "Remarks (optional)"}</label>
+              <input
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                maxLength={300}
+                placeholder={isGeneral ? "Write the real supplier's name" : "Anything else to note"}
+                className={`${inputClass} ${isGeneral && !remarks.trim() ? "border-warning" : ""}`}
+              />
+              {isGeneral && <p className="mt-1 text-[12px] text-text-muted">GENERAL SUPPLIER is for a supplier that is not in the list yet. Write who it really is here.</p>}
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

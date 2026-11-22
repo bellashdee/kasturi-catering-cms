@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/Select";
 import { todayInMalaysia } from "@/lib/format";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -73,12 +74,12 @@ export function PettyCashPaymentAction({ transactionId, paymentStatus, paid }: {
       </div>
       <div>
         <label className="text-[11px] font-semibold text-text-secondary">Claim paid by *</label>
-        <select required value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="mt-0.5 h-8 w-full rounded-md border border-border-strong bg-white px-2 text-[12.5px]">
+        <Select required value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="mt-0.5 h-8 w-full rounded-md border border-border-strong bg-white px-2 text-[12.5px]">
           <option value="">Cash or online transfer</option>
           {Object.entries(PAYMENT_METHOD_LABEL).map(([value, text]) => (
             <option key={value} value={value}>{text}</option>
           ))}
-        </select>
+        </Select>
       </div>
       <div>
         <label className="text-[11px] font-semibold text-text-secondary">Payment Reference (optional)</label>

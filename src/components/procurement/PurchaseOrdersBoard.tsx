@@ -1,5 +1,6 @@
 "use client";
 
+import { SearchSelect } from "@/components/ui/SearchSelect";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -251,7 +252,7 @@ function OrderBlock({ order, supplier, query, onDeleted }: { order: BoardOrder; 
               <div key={i} className="grid grid-cols-[minmax(0,2.4fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,1fr)_4.5rem] items-center gap-2">
                 <input value={item.itemName} onChange={(e) => setItem(i, { itemName: e.target.value })} aria-label="Item" className={inputClass} />
                 <input type="number" min="0" step="0.001" value={item.quantity} onChange={(e) => setItem(i, { quantity: e.target.value })} aria-label="Qty" className={inputClass} />
-                <input list="board-units" maxLength={20} value={item.unit} onChange={(e) => setItem(i, { unit: e.target.value })} aria-label="Unit" className={inputClass} />
+                <SearchSelect options={COMMON_UNITS} maxLength={20} value={item.unit} onChange={(v) => setItem(i, { unit: v })} ariaLabel="Unit" className={inputClass} />
                 <input type="number" min="0" step="0.01" value={item.unitPrice} onChange={(e) => setItem(i, { unitPrice: e.target.value })} aria-label="Unit price (RM)" className={inputClass} />
                 <div className="text-right text-[13px] font-bold tabular-nums text-text">{((Number(item.quantity) || 0) * (Number(item.unitPrice) || 0)).toFixed(2)}</div>
                 <button type="button" onClick={() => setItems((prev) => prev.filter((_, n) => n !== i))} disabled={items.length === 1} className="text-right text-xs font-semibold text-danger disabled:opacity-40">
@@ -259,9 +260,6 @@ function OrderBlock({ order, supplier, query, onDeleted }: { order: BoardOrder; 
                 </button>
               </div>
             ))}
-            <datalist id="board-units">
-              {COMMON_UNITS.map((u) => <option key={u} value={u} />)}
-            </datalist>
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">

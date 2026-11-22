@@ -128,7 +128,7 @@ export default async function SupplierInvoicesPage({
                   className="grid grid-cols-[1.2fr_1.2fr_1fr_1fr_1fr_1fr_1fr] border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0 hover:bg-surface-alt"
                 >
                   <div className="font-semibold text-text">{inv.invoice_number}</div>
-                  <div className="text-text-secondary">{inv.suppliers?.name}</div>
+                  <div className="text-text-secondary">{inv.suppliers?.name}{inv.remarks && <span className="block text-[12px] text-text-muted">{inv.remarks}</span>}</div>
                   <div className="text-text-secondary">{formatMalaysiaDate(inv.invoice_date)}</div>
                   <div className="text-text-secondary">{formatMalaysiaDate(inv.due_date)}</div>
                   <div className="text-text-secondary">{formatCurrency(Number(inv.amount))}</div>

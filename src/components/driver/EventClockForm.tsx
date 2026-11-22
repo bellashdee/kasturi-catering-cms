@@ -1,5 +1,6 @@
 "use client";
 
+import { SearchSelect } from "@/components/ui/SearchSelect";
 import { useEffect, useState } from "react";
 import { getCurrentPosition } from "@/lib/driverAttendance/geo";
 import { submitEventClock } from "@/lib/eventAttendance/actions";
@@ -119,12 +120,7 @@ export function EventClockForm({
 
       <div>
         <label className={labelClass} htmlFor="ec-location">Event location</label>
-        <input id="ec-location" className={inputClass} list="ec-locations" value={eventLocation} onChange={(e) => setEventLocation(e.target.value)} maxLength={300} placeholder="Venue name and address" required />
-        <datalist id="ec-locations">
-          {locationHints.map((l) => (
-            <option key={l} value={l} />
-          ))}
-        </datalist>
+        <SearchSelect id="ec-location" className={inputClass} options={locationHints} value={eventLocation} onChange={setEventLocation} maxLength={300} placeholder="Venue name and address" required />
       </div>
 
       <div className="grid grid-cols-2 gap-2" role="group" aria-label="Clock in or clock out">

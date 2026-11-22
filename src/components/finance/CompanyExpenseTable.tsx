@@ -173,7 +173,7 @@ export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow
           </div>
           {e.source === "Company Expenses" ? (
             <div className="flex items-center gap-1.5">
-              <select
+              <Select
                 aria-label="Mark as credit note or debit note"
                 value={e.note ?? ""}
                 disabled={pending}
@@ -184,7 +184,7 @@ export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow
                 <option value="credit_note">Credit Note</option>
                 <option value="debit_note">Debit Note</option>
                 {e.note && <option value="none">Remove mark</option>}
-              </select>
+              </Select>
               <button type="button" className={BTN_SM_GHOST} onClick={() => edit(e)}>
                 Edit
               </button>

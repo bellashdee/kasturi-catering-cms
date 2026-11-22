@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/Select";
 import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -200,9 +201,9 @@ export function RequestWorkspace({
                     </td>
                     <td className="px-3 py-2 align-top">
                       {kitchenEdit ? (
-                        <select value={r.unit} onChange={(e) => setRows((x) => x.map((y, j) => (j === i ? { ...y, unit: e.target.value } : y)))} className={cellInput} aria-label="Unit">
+                        <Select value={r.unit} onChange={(e) => setRows((x) => x.map((y, j) => (j === i ? { ...y, unit: e.target.value } : y)))} className={cellInput} aria-label="Unit">
                           {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
-                        </select>
+                        </Select>
                       ) : (
                         <span className="text-text-secondary">{r.unit}</span>
                       )}
@@ -265,14 +266,14 @@ export function RequestWorkspace({
                   )}
                   {pricing && (
                     <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_9rem_1fr_auto]">
-                      <select value={draft.supplierId} onChange={(e) => setPriceDraft((d) => ({ ...d, [item.id]: { ...draft, supplierId: e.target.value } }))} className={input} aria-label="Supplier">
+                      <Select value={draft.supplierId} onChange={(e) => setPriceDraft((d) => ({ ...d, [item.id]: { ...draft, supplierId: e.target.value } }))} className={input} aria-label="Supplier">
                         <option value="">Supplier...</option>
                         {suppliers.map((s) => (
                           <option key={s.id} value={s.id}>
                             {s.name}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                       <input inputMode="decimal" value={draft.price} onChange={(e) => setPriceDraft((d) => ({ ...d, [item.id]: { ...draft, price: e.target.value.replace(/[^\d.]/g, "") } }))} placeholder={`RM / ${item.unit}`} className={input} aria-label="Price per unit" />
                       <input value={draft.note} onChange={(e) => setPriceDraft((d) => ({ ...d, [item.id]: { ...draft, note: e.target.value } }))} placeholder="Note (optional)" className={input} />
                       <button

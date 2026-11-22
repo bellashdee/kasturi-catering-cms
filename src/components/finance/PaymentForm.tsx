@@ -1,5 +1,6 @@
 "use client";
 
+import { SearchSelect } from "@/components/ui/SearchSelect";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DOCUMENT_FILE_ACCEPT, uploadDocument, fileTypeFromMime } from "@/lib/documents/upload";
@@ -291,18 +292,17 @@ export function PaymentForm({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Pay To (supplier) *</label>
-            <input
-              list="supplier-names"
+            <SearchSelect
+              options={accountsForCompany.map((a) => a.name)}
               value={form.payeeName}
-              onChange={(e) => {
-                set("payeeName", e.target.value);
-                const known = accountsForCompany.find((a) => a.name.toLowerCase() === e.target.value.trim().toLowerCase());
+              onChange={(value) => {
+                set("payeeName", value);
+                const known = accountsForCompany.find((a) => a.name.toLowerCase() === value.trim().toLowerCase());
                 if (known) pickAccount(known.id); else setAccountId("");
               }}
               className={inputClass}
               placeholder="Choose a saved supplier or type a new name"
             />
-            <datalist id="supplier-names">{accountsForCompany.map((a) => <option key={a.id} value={a.name} />)}</datalist>
           </div>
           <div>
             <label className={labelClass}>In payment of</label>

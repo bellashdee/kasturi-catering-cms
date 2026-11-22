@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
 import { I18nProvider } from "@/components/i18n/I18nProvider";
@@ -22,6 +22,9 @@ export const metadata: Metadata = {
   icons: { icon: [{ url: "/favicon.ico?v=2", sizes: "any" }], apple: "/icons/apple-touch-icon.png?v=2" },
   appleWebApp: { capable: true, title: "Kasturi Catering", statusBarStyle: "default" },
 };
+
+// Phones: never zoom out to fit a wide page (the page then shrinks to a tiny desktop view): the screen width is the page width.
+export const viewport: Viewport = { width: "device-width", initialScale: 1, minimumScale: 1 };
 
 export default async function RootLayout({
   children,

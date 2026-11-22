@@ -500,7 +500,7 @@ export function PettyCashEntryForm({
         )}
         <div className={isReceived ? "sm:col-span-2" : ""}>
           <label className={labelClass}>Remarks (optional)</label>
-          <input value={remarks} onChange={(e) => setRemarks(e.target.value)} maxLength={500} placeholder="Anything else to note (the event goes in AutoCount Invoice No. below)" className={inputClass} />
+          <input value={remarks} onChange={(e) => setRemarks(e.target.value)} maxLength={500} placeholder="Anything else to note" className={inputClass} />
         </div>
       </div>
 

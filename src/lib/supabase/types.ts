@@ -6099,6 +6099,7 @@ export type Database = {
         Row: {
           amount: number
           autocount_invoice_no: string | null
+          remarks: string | null
           company_id: string
           created_at: string
           department: string | null
@@ -6115,6 +6116,7 @@ export type Database = {
         Insert: {
           amount: number
           autocount_invoice_no?: string | null
+          remarks?: string | null
           company_id: string
           created_at?: string
           department?: string | null
@@ -6131,6 +6133,7 @@ export type Database = {
         Update: {
           amount?: number
           autocount_invoice_no?: string | null
+          remarks?: string | null
           company_id?: string
           created_at?: string
           department?: string | null

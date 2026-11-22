@@ -57,7 +57,7 @@ export async function createCompanyExpense(input: CompanyExpenseInput) {
       expense_date: input.expenseDate,
       notes: input.notes || null,
       invoice_no: input.invoiceNo?.trim() || null,
-      autocount_invoice_no: autoCountNoOnSave(input.autoCountInvoiceNo, null, input.notes),
+      autocount_invoice_no: autoCountNoOnSave(input.autoCountInvoiceNo, null),
       note_type: input.noteType === "credit_note" || input.noteType === "debit_note" ? input.noteType : null,
       document_id: input.documentId || null,
       created_by: userId,
@@ -119,7 +119,7 @@ export async function updateCompanyExpense(
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.expenseDate)) throw new Error("Choose the expense date.");
   const { error } = await supabase
     .from("expenses")
-    .update({ category: input.category.trim(), department: input.department?.trim() || null, amount: input.amount, expense_date: input.expenseDate, notes: input.notes?.trim() || null, invoice_no: input.invoiceNo?.trim() || null, autocount_invoice_no: autoCountNoOnSave(input.autoCountInvoiceNo, before.autocount_invoice_no, input.notes) })
+    .update({ category: input.category.trim(), department: input.department?.trim() || null, amount: input.amount, expense_date: input.expenseDate, notes: input.notes?.trim() || null, invoice_no: input.invoiceNo?.trim() || null, autocount_invoice_no: autoCountNoOnSave(input.autoCountInvoiceNo, before.autocount_invoice_no) })
     .eq("id", id);
   if (error) throw new Error("Could not save the expense.");
   await recordAudit({
@@ -344,7 +344,7 @@ export async function createPettyCashTransaction(input: PettyCashInput): Promise
     description: input.description || null,
     remarks: input.remarks?.trim().slice(0, 500) || null,
     invoice_no: input.invoiceNo?.trim().slice(0, 100) || null,
-    autocount_invoice_no: autoCountNoOnSave(input.autoCountInvoiceNo, null, input.remarks),
+    autocount_invoice_no: autoCountNoOnSave(input.autoCountInvoiceNo, null),
     amount: input.amount,
     // the claim date: today (Malaysia) unless a date is given; the payment date is recorded separately when it is paid
     transaction_date: input.transactionDate || todayInMalaysia(),
@@ -430,7 +430,7 @@ export async function createSplitPettyCashClaims(input: SplitClaimInput): Promis
           description: input.description || null,
           remarks: input.remarks?.trim().slice(0, 500) || null,
           invoice_no: input.invoiceNo?.trim().slice(0, 100) || null,
-          autocount_invoice_no: autoCountNoOnSave(input.autoCountInvoiceNo, null, input.remarks),
+          autocount_invoice_no: autoCountNoOnSave(input.autoCountInvoiceNo, null),
           amount: s.amount,
           transaction_date: input.transactionDate || todayInMalaysia(),
           document_id: input.documentId || null,
@@ -952,7 +952,7 @@ export async function updatePettyCashClaim(id: string, input: PettyCashClaimEdit
         description: input.description?.trim() || null,
         remarks: input.remarks?.trim().slice(0, 500) || null,
         invoice_no: input.invoiceNo?.trim().slice(0, 100) || null,
-        autocount_invoice_no: before.type === "expense" ? autoCountNoOnSave(input.autoCountInvoiceNo, before.autocount_invoice_no, input.remarks) : null,
+        autocount_invoice_no: before.type === "expense" ? autoCountNoOnSave(input.autoCountInvoiceNo, before.autocount_invoice_no) : null,
         amount: input.amount,
         transaction_date: input.transactionDate,
         // the main company and the other companies it is also for (keyed once, counted once)

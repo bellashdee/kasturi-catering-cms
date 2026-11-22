@@ -1,5 +1,6 @@
 "use client";
 
+import { SearchSelect } from "@/components/ui/SearchSelect";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createTask, deleteTask, setTaskStatus, updateTask, type TaskInput } from "@/lib/priority/taskActions";
@@ -139,12 +140,7 @@ export function TaskForm({
         </div>
         <div>
           <label className={LABEL} htmlFor="task-department">Department</label>
-          <input id="task-department" className={FIELD} list="task-departments" value={department} onChange={(e) => setDepartment(e.target.value)} />
-          <datalist id="task-departments">
-            {DEPARTMENTS.map((d) => (
-              <option key={d} value={d} />
-            ))}
-          </datalist>
+          <SearchSelect id="task-department" className={FIELD} options={DEPARTMENTS} value={department} onChange={setDepartment} />
         </div>
         <div>
           <label className={LABEL} htmlFor="task-responsible">Responsible person</label>

@@ -440,6 +440,8 @@ export type SupplierInvoiceEdit = {
   department?: string;
   /** the AutoCount customer invoice number of the event this cost belongs to ("" = none) */
   autoCountInvoiceNo?: string;
+  /** a note; for the GENERAL SUPPLIER it is the real supplier's name ("" = none) */
+  remarks?: string;
   /** every line exactly as printed on the invoice: nothing is recalculated */
   items: { itemCode?: string; itemName: string; uom?: string; quantity: number; unitPrice: number; discount?: number; lineTotal: number }[];
 };
@@ -462,7 +464,8 @@ export async function updateSupplierInvoice(id: string, input: SupplierInvoiceEd
     if ((same ?? []).length > 0) throw new Error("Another invoice of this supplier has the same invoice number.");
 
     const autoCountNo = input.autoCountInvoiceNo === undefined ? before.autocount_invoice_no : normalizeAutoCountNo(input.autoCountInvoiceNo) || null;
-    const { error } = await supabase.from("supplier_invoices").update({ invoice_number: number, invoice_date: input.invoiceDate, due_date: input.dueDate, amount: input.amount, department: input.department?.trim() || null, autocount_invoice_no: autoCountNo }).eq("id", id);
+    const remarks = input.remarks === undefined ? before.remarks : input.remarks.trim() || null;
+    const { error } = await supabase.from("supplier_invoices").update({ invoice_number: number, invoice_date: input.invoiceDate, due_date: input.dueDate, amount: input.amount, department: input.department?.trim() || null, autocount_invoice_no: autoCountNo, remarks }).eq("id", id);
     if (error) throw error;
     const { error: deleteError } = await supabase.from("supplier_invoice_items").delete().eq("supplier_invoice_id", id);
     if (deleteError) throw deleteError;
@@ -605,6 +608,8 @@ export type SupplierInvoiceInput = {
   department?: string;
   /** the AutoCount customer invoice number of the event this cost belongs to: the cost then counts in that event's P&L */
   autoCountInvoiceNo?: string;
+  /** a note; for the GENERAL SUPPLIER it is the real supplier's name */
+  remarks?: string;
   documentId?: string;
   /** every line exactly as printed on the invoice */
   items: { itemCode?: string; itemName: string; uom?: string; quantity: number; unitPrice: number; discount?: number; lineTotal: number }[];
@@ -624,6 +629,7 @@ async function createSupplierInvoiceImpl(input: SupplierInvoiceInput) {
       amount: input.amount,
       department: input.department || null,
       autocount_invoice_no: normalizeAutoCountNo(input.autoCountInvoiceNo) || null,
+      remarks: input.remarks?.trim() || null,
       document_id: input.documentId || null,
       // valid as soon as it is keyed in: no review or approval step
       status: "issued" as InvoiceStatus,

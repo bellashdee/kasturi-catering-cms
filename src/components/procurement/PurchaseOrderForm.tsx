@@ -1,5 +1,6 @@
 "use client";
 
+import { SearchSelect } from "@/components/ui/SearchSelect";
 import { todayInMalaysia } from "@/lib/format";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -176,7 +177,7 @@ export function PurchaseOrderForm({
               <div key={i} data-row={i} className="grid grid-cols-[minmax(0,2.4fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,1.1fr)_4.5rem] items-center gap-2">
                 <ItemNameInput value={item.itemName} onChange={(v) => updateItem(i, "itemName", v)} onPick={(s) => pickSuggestion(i, s)} suggestions={suggestionsForCompany} supplierId={supplierId} />
                 <input type="number" min="0" step="0.001" value={item.quantity} onChange={(e) => updateItem(i, "quantity", e.target.value)} placeholder="Qty" aria-label="Qty" className="h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]" />
-                <input list="po-units" maxLength={20} value={item.unit} onChange={(e) => updateItem(i, "unit", e.target.value)} placeholder="kg, pcs..." aria-label="Unit" className="h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]" />
+                <SearchSelect options={COMMON_UNITS} maxLength={20} value={item.unit} onChange={(v) => updateItem(i, "unit", v)} placeholder="kg, pcs..." ariaLabel="Unit" className="h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]" />
                 <input type="number" min="0" step="0.01" value={item.unitPrice} onChange={(e) => updateItem(i, "unitPrice", e.target.value)} placeholder="0.00" aria-label="Unit price (RM)" className="h-9 w-full rounded-lg border border-border-strong px-2 text-[13px]" />
                 <div className="text-right text-[14px] font-bold tabular-nums text-text">{((Number(item.quantity) || 0) * (Number(item.unitPrice) || 0)).toFixed(2)}</div>
                 <button
@@ -189,9 +190,6 @@ export function PurchaseOrderForm({
                 </button>
               </div>
             ))}
-            <datalist id="po-units">
-              {COMMON_UNITS.map((u) => <option key={u} value={u} />)}
-            </datalist>
           </div>
         </div>
         <p className="mt-1 text-xs text-text-muted">Shortcuts: Enter = next box (a new row after the last box) · Tab = complete the item · Insert or Alt+N = new row · Ctrl+Delete = remove row · Ctrl+S = save. Start typing an item (e.g. &quot;bawang&quot;) to see items ordered before, stock items and menu ingredients. You can also type a new item.</p>

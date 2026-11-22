@@ -281,10 +281,10 @@ export function PurchasePlanner({ companyId, companyName, events, recipeOptions,
               </label>
               <label className="text-[12px] font-semibold text-text-secondary">
                 Sort by
-                <select value={eventSort} onChange={(e) => setEventSort(e.target.value as "date" | "customer")} className={`${inputClass} mt-1 block w-44`}>
+                <Select value={eventSort} onChange={(e) => setEventSort(e.target.value as "date" | "customer")} className={`${inputClass} mt-1 block w-44`}>
                   <option value="date">Event date</option>
                   <option value="customer">Customer name</option>
-                </select>
+                </Select>
               </label>
               <label className="min-w-[14rem] flex-1 text-[12px] font-semibold text-text-secondary">
                 Search

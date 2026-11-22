@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/Select";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveReferenceRecipe, suggestRecipe, type SuggestedRecipe } from "@/lib/kitchenPurchase/recipeActions";
@@ -83,13 +84,13 @@ export function RecipeSuggest({ companies }: { companies: { id: string; name: st
         <div className="grid gap-3 sm:grid-cols-[1fr_16rem_auto]">
           <input value={menu} onChange={(e) => setMenu(e.target.value)} placeholder="Menu name (for example Chicken Chop)" className={input} aria-label="Menu name" />
           {companies.length > 1 ? (
-            <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={input} aria-label="Company">
+            <Select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={input} aria-label="Company">
               {companies.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
               ))}
-            </select>
+            </Select>
           ) : (
             <div className="flex h-11 items-center text-[14px] font-semibold text-text-secondary">{companies[0]?.name}</div>
           )}
@@ -139,13 +140,13 @@ export function RecipeSuggest({ companies }: { companies: { id: string; name: st
             {lines.map((l, i) => (
               <div key={l.key} className="grid grid-cols-[1fr_7rem] gap-2 sm:grid-cols-[1fr_7rem_8rem_auto]">
                 <input value={l.name} onChange={(e) => setLines((x) => x.map((y, j) => (j === i ? { ...y, name: e.target.value } : y)))} className={`${input} col-span-2 sm:col-span-1`} aria-label="Ingredient" />
-                <select value={l.unit} onChange={(e) => setLines((x) => x.map((y, j) => (j === i ? { ...y, unit: e.target.value } : y)))} className={input} aria-label="Unit">
+                <Select value={l.unit} onChange={(e) => setLines((x) => x.map((y, j) => (j === i ? { ...y, unit: e.target.value } : y)))} className={input} aria-label="Unit">
                   {UNITS.map((u) => (
                     <option key={u} value={u}>
                       {u}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <input inputMode="decimal" value={l.quantity} onChange={(e) => setLines((x) => x.map((y, j) => (j === i ? { ...y, quantity: e.target.value.replace(/[^\d.]/g, "") } : y)))} placeholder="Qty (optional)" className={input} aria-label="Quantity for the base yield (optional)" />
                 <button type="button" onClick={() => setLines((x) => x.filter((_, j) => j !== i))} className="h-11 rounded-lg border border-danger px-3 text-[13px] font-bold text-danger hover:bg-danger-bg">
                   Delete

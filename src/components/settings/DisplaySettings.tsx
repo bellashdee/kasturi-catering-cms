@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/Select";
 import { BASE_FONT_SIZE, FONT_OPTIONS, MAX_FONT_SIZE, MIN_FONT_SIZE, setFont, setFontSize, useFont, useFontSize, type FontChoice } from "@/lib/displayPrefs";
 
 /** The font and the text size (10 to 25) of every page, kept on this device (the pages read it before they are shown). */
@@ -13,7 +14,7 @@ export function DisplaySettings() {
       <div>
         <label htmlFor="display-font" className="text-[13px] font-bold text-text">Font</label>
         <p className="mt-0.5 text-[12.5px] text-text-secondary">Choose the letters you find easiest to read. Every page changes.</p>
-        <select
+        <Select
           id="display-font"
           value={font}
           onChange={(e) => setFont(e.target.value as FontChoice)}
@@ -22,7 +23,7 @@ export function DisplaySettings() {
           {FONT_OPTIONS.map((f) => (
             <option key={f.value} value={f.value}>{f.label}</option>
           ))}
-        </select>
+        </Select>
       </div>
 
       <div>

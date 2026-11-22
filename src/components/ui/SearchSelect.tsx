@@ -19,6 +19,8 @@ export function SearchSelect({
   required,
   id,
   name,
+  maxLength,
+  ariaLabel,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -29,6 +31,8 @@ export function SearchSelect({
   required?: boolean;
   id?: string;
   name?: string;
+  maxLength?: number;
+  ariaLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
@@ -55,6 +59,8 @@ export function SearchSelect({
         id={id}
         name={name}
         required={required}
+        maxLength={maxLength}
+        aria-label={ariaLabel}
         value={value}
         onChange={(e) => {
           onChange(e.target.value);

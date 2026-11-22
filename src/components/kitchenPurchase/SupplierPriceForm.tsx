@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/Select";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { recordSupplierPrice } from "@/lib/kitchenPurchase/quoteActions";
@@ -37,22 +38,22 @@ export function SupplierPriceForm({ suppliers }: { suppliers: { id: string; name
     <form onSubmit={save} className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
       <div className="text-[14px] font-bold text-text">Enter a price offered by a supplier</div>
       <div className="grid gap-3 sm:grid-cols-[1fr_1fr_8rem_9rem]">
-        <select value={f.supplierId} onChange={(e) => set("supplierId", e.target.value)} className={input} aria-label="Supplier">
+        <Select value={f.supplierId} onChange={(e) => set("supplierId", e.target.value)} className={input} aria-label="Supplier">
           <option value="">Supplier...</option>
           {suppliers.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
             </option>
           ))}
-        </select>
+        </Select>
         <input value={f.itemName} onChange={(e) => set("itemName", e.target.value)} placeholder="Item name (for example Butter)" className={input} />
-        <select value={f.unit} onChange={(e) => set("unit", e.target.value)} className={input} aria-label="Unit">
+        <Select value={f.unit} onChange={(e) => set("unit", e.target.value)} className={input} aria-label="Unit">
           {UNITS.map((u) => (
             <option key={u} value={u}>
               {u}
             </option>
           ))}
-        </select>
+        </Select>
         <input inputMode="decimal" value={f.price} onChange={(e) => set("price", e.target.value.replace(/[^\d.]/g, ""))} placeholder="RM per unit" className={input} />
       </div>
       <input value={f.note} onChange={(e) => set("note", e.target.value)} placeholder="Note (optional)" className={input} />

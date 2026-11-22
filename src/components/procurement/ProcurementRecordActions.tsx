@@ -41,6 +41,7 @@ export type InvoiceEditData = {
   amount: string;
   department: string;
   autoCountInvoiceNo: string;
+  remarks: string;
   items: { itemCode: string; itemName: string; uom: string; quantity: string; unitPrice: string; discount: string; lineTotal: string }[];
 };
 
@@ -56,6 +57,7 @@ export function InvoiceActions({ invoice, listHref }: { invoice: InvoiceEditData
   const [amount, setAmount] = useState(invoice.amount);
   const [department, setDepartment] = useState(invoice.department);
   const [autoCountNo, setAutoCountNo] = useState(invoice.autoCountInvoiceNo);
+  const [remarks, setRemarks] = useState(invoice.remarks);
   const [items, setItems] = useState(invoice.items);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +76,7 @@ export function InvoiceActions({ invoice, listHref }: { invoice: InvoiceEditData
         amount: num(amount),
         department,
         autoCountInvoiceNo: autoCountNo,
+        remarks,
         items: items.map((i) => ({ itemCode: i.itemCode, itemName: i.itemName, uom: i.uom, quantity: num(i.quantity), unitPrice: num(i.unitPrice), discount: i.discount.trim() === "" ? undefined : num(i.discount), lineTotal: num(i.lineTotal) })),
       });
       if (!r.ok) {
@@ -125,6 +128,10 @@ export function InvoiceActions({ invoice, listHref }: { invoice: InvoiceEditData
                 <input className={FIELD} value={department} onChange={(e) => setDepartment(e.target.value)} />
               </div>
               <AutoCountInvoiceField value={autoCountNo} onChange={setAutoCountNo} inputClassName={FIELD} labelClassName={LABEL} />
+              <div className="sm:col-span-2">
+                <label className={LABEL}>Remarks (for the GENERAL SUPPLIER: the name of the supplier)</label>
+                <input className={FIELD} value={remarks} onChange={(e) => setRemarks(e.target.value)} maxLength={300} />
+              </div>
             </div>
             <div>
               <div className="mb-1.5 flex items-center justify-between">

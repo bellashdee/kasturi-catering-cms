@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/Select";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createRequestFromMenus } from "@/lib/kitchenPurchase/actions";
@@ -52,7 +53,7 @@ export function MenuSelector({ eventId, dayId, dishes, recipes, pax }: { eventId
               <input type="checkbox" checked={r.on} disabled={!r.recipeId} onChange={(e) => setRows((x) => x.map((y, j) => (j === i ? { ...y, on: e.target.checked } : y)))} className="mt-1 h-5 w-5 accent-[#a85d6b]" />
               <span className="min-w-0 flex-1">
                 <span className="block text-[15.5px] font-bold text-text">{r.menu}</span>
-                <select
+                <Select
                   value={r.recipeId ?? ""}
                   onChange={(e) => setRows((x) => x.map((y, j) => (j === i ? { ...y, recipeId: e.target.value || null, on: !!e.target.value } : y)))}
                   className={`${input} mt-1.5`}
@@ -64,7 +65,7 @@ export function MenuSelector({ eventId, dayId, dishes, recipes, pax }: { eventId
                       {rec.name}
                     </option>
                   ))}
-                </select>
+                </Select>
                 {!r.recipeId && <span className="mt-1 block text-[12.5px] text-warning">No approved recipe found for this dish. Choose one, or add the recipe in Recipes first.</span>}
               </span>
             </label>
@@ -80,14 +81,14 @@ export function MenuSelector({ eventId, dayId, dishes, recipes, pax }: { eventId
       )}
 
       <div className="flex gap-2">
-        <select value={extra} onChange={(e) => setExtra(e.target.value)} className={input} aria-label="Add a menu from the recipe database">
+        <Select value={extra} onChange={(e) => setExtra(e.target.value)} className={input} aria-label="Add a menu from the recipe database">
           <option value="">Add another menu from the Recipe Database...</option>
           {recipes.map((rec) => (
             <option key={rec.id} value={rec.id}>
               {rec.name}
             </option>
           ))}
-        </select>
+        </Select>
         <button
           type="button"
           disabled={!extra}

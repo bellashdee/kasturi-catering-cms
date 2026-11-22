@@ -123,14 +123,14 @@ export function ReceiptPdfImport({ companies }: { companies: { id: string; name:
           {companies.length > 1 && (
             <label className="flex flex-col text-[12px] font-semibold text-text-secondary">
               Company
-              <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={`${INPUT} mt-1 w-64`}>
+              <Select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={`${INPUT} mt-1 w-64`}>
                 <option value="">As printed on the report</option>
                 {companies.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
           )}
           <label className={`inline-flex h-10 cursor-pointer items-center rounded-lg bg-primary px-4 text-[13.5px] font-bold text-white ${reading ? "pointer-events-none opacity-60" : ""}`}>

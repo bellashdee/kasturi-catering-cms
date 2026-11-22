@@ -320,3 +320,22 @@ main td, main th { overflow-wrap: anywhere; }
     margin-bottom: 0.25rem;
   }
 }
+
+/*
+ * Phones and tablets (a finger, not a mouse): boxes use 16px letters, because a phone zooms the whole page in when a smaller box is
+ * tapped (and the page then stays zoomed and sideways); and the page itself never moves sideways: a wide table scrolls inside its own box.
+ */
+@media (pointer: coarse) {
+  input:not([type="checkbox"], [type="radio"], [type="file"], [type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+@media (max-width: 767px) {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import { SearchSelect } from "@/components/ui/SearchSelect";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveEventSite } from "@/lib/eventAttendance/siteActions";
@@ -70,12 +71,7 @@ export function EventSitesPanel({ sites, companies, knownLocations }: { sites: S
         </div>
         <div>
           <label className={label} htmlFor="site-text">Event location (as written on the form)</label>
-          <input id="site-text" className={field} list="site-hints" value={text} onChange={(e) => setText(e.target.value)} required />
-          <datalist id="site-hints">
-            {hints.map((h) => (
-              <option key={h.text} value={h.text} />
-            ))}
-          </datalist>
+          <SearchSelect id="site-text" className={field} options={hints.map((h) => h.text)} value={text} onChange={setText} required />
         </div>
         <div className="sm:col-span-2">
           <label className={label} htmlFor="site-coords">Coordinates or Google Maps link</label>

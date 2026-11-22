@@ -9,21 +9,12 @@ export function normalizeAutoCountNo(value: string | null | undefined): string {
   return (value ?? "").replace(/\s+/g, "").toUpperCase();
 }
 
-/** An AutoCount customer invoice number written inside a text, e.g. "for event INV-KI2611/004" or "I-SSC2610/015". */
-const AUTOCOUNT_IN_TEXT = /\b(?:INV|I)\s*-\s*[A-Z]{1,6}\s*\d{4}\s*\/\s*\d{3,4}\b/i;
-
 /**
- * The AutoCount invoice number of a cost: the one typed in its own field, or else the first one found in its remarks / notes
- * (so "key in the event's invoice no. in the remark" also links the cost to the event). "" when there is none.
+ * The AutoCount invoice number of a cost: only the one typed in its own field. Remarks are just notes: they never link a cost to
+ * an event's P&L (Ms. Nabilah, 22 Nov 2026). "" when there is none.
  */
-export function autoCountNoFrom(typed: string | null | undefined, ...texts: (string | null | undefined)[]): string {
-  const own = normalizeAutoCountNo(typed);
-  if (own) return own;
-  for (const t of texts) {
-    const m = t ? AUTOCOUNT_IN_TEXT.exec(t) : null;
-    if (m) return normalizeAutoCountNo(m[0]);
-  }
-  return "";
+export function autoCountNoFrom(typed: string | null | undefined): string {
+  return normalizeAutoCountNo(typed);
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -121,10 +112,10 @@ export function autoCountCostsOf(list: AutoCountCost[], eventId: string) {
 }
 
 /**
- * The AutoCount Invoice No. to save on a record: what is typed (or, when blank, the one found in its remarks). A form that does not
+ * The AutoCount Invoice No. to save on a record: what is typed, nothing else (never read from the remarks). A form that does not
  * send the field (undefined) keeps what the record had.
  */
-export function autoCountNoOnSave(typed: string | null | undefined, before: string | null | undefined, ...texts: (string | null | undefined)[]): string | null {
-  if (typed === undefined) return before || autoCountNoFrom(null, ...texts) || null;
-  return autoCountNoFrom(typed, ...texts) || null;
+export function autoCountNoOnSave(typed: string | null | undefined, before: string | null | undefined): string | null {
+  if (typed === undefined) return before || null;
+  return autoCountNoFrom(typed) || null;
 }

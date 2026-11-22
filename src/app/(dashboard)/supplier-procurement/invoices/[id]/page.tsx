@@ -50,6 +50,7 @@ export default async function SupplierInvoiceDetailPage({
           <div className="mt-2 text-[20px] font-extrabold text-text">{invoice.invoice_number}</div>
           <div className="text-[13px] text-text-secondary">
             {invoice.companies?.name} · {invoice.suppliers?.name}
+            {invoice.remarks && ` (${invoice.remarks})`}
             {invoice.department && ` · ${invoice.department}`}
           </div>
         </div>
@@ -77,6 +78,7 @@ export default async function SupplierInvoiceDetailPage({
               amount: String(invoice.amount),
               department: invoice.department ?? "",
               autoCountInvoiceNo: invoice.autocount_invoice_no ?? "",
+              remarks: invoice.remarks ?? "",
               items: invoice.supplier_invoice_items.map((i) => ({ itemCode: i.item_code ?? "", itemName: i.item_name, uom: i.uom ?? "", quantity: String(i.quantity), unitPrice: String(i.unit_price), discount: i.discount === null ? "" : String(i.discount), lineTotal: String(i.line_total) })),
             }}
           />

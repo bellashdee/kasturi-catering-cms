@@ -1,5 +1,6 @@
 "use client";
 
+import { SearchSelect } from "@/components/ui/SearchSelect";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/components/i18n/I18nProvider";
@@ -84,12 +85,7 @@ export function PlanBuilder({
           }}
           className="flex gap-2"
         >
-          <input value={draft} onChange={(e) => setDraft(e.target.value)} list="plan-recipe-names" placeholder={t.dishPlaceholder} className={field} />
-          <datalist id="plan-recipe-names">
-            {recipeNames.map((n) => (
-              <option key={n} value={n} />
-            ))}
-          </datalist>
+          <SearchSelect value={draft} onChange={setDraft} options={recipeNames} placeholder={t.dishPlaceholder} className={field} />
           <button type="submit" className="h-12 shrink-0 rounded-lg border border-border-strong bg-white px-4 text-[14px] font-bold text-text hover:border-primary hover:text-primary">
             + {t.addDish}
           </button>
