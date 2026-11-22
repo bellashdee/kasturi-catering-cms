@@ -779,6 +779,8 @@ const dictionary: Record<string, string> = {
  "Clocked out. You are {0} m from the event location.": "Clock out berjaya. Anda berada {0} m dari lokasi acara.",
  "Close": "Tutup",
  "No match.": "Tiada padanan.",
+ "Kitchen & Stock": "Dapur & Stok",
+ "Vehicles & Drivers": "Kenderaan & Pemandu",
  "Monthly Breakdown": "Pecahan Bulanan",
  "Monthly Costing — Restoran Bara Ikan Bakar Senibong: the restaurant's sales, costs and profit": "Pengkosan Bulanan — Restoran Bara Ikan Bakar Senibong: jualan, kos dan untung restoran",
  "Restoran Bara Ikan Bakar Senibong: sales, costs and profit from the recorded figures.": "Restoran Bara Ikan Bakar Senibong: jualan, kos dan untung daripada angka yang direkodkan.",

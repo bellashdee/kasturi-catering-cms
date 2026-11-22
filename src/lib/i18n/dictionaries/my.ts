@@ -790,6 +790,8 @@ const dictionary: Record<string, string> = {
  "Clocked out. You are {0} m from the event location.": "Clock out ပြီးပါပြီ။ သင်သည် ပွဲတည်နေရာမှ {0} မီတာ အကွာတွင် ရှိသည်။",
  "Close": "ပိတ်မည်",
  "No match.": "ကိုက်ညီသည် မရှိပါ။",
+ "Kitchen & Stock": "မီးဖိုချောင်နှင့် စတော့",
+ "Vehicles & Drivers": "ယာဉ်နှင့် ယာဉ်မောင်း",
  "Monthly Breakdown": "လစဉ် ခွဲခြမ်းစိတ်ဖြာချက်",
  "Monthly Costing — Restoran Bara Ikan Bakar Senibong: the restaurant's sales, costs and profit": "လစဉ်ကုန်ကျစရိတ် — Restoran Bara Ikan Bakar Senibong: စားသောက်ဆိုင်၏ ရောင်းအား၊ ကုန်ကျစရိတ်နှင့် အမြတ်",
  "Restoran Bara Ikan Bakar Senibong: sales, costs and profit from the recorded figures.": "Restoran Bara Ikan Bakar Senibong: မှတ်တမ်းတင်ထားသော ကိန်းဂဏန်းများအရ ရောင်းအား၊ ကုန်ကျစရိတ်နှင့် အမြတ်။",

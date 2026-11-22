@@ -2,10 +2,12 @@
 
 import { usePathname, useSearchParams } from "next/navigation";
 import { ALL_COMPANIES_OPTION, COMPANY_STYLE, MODULES } from "@/lib/constants";
+import { RESTAURANT_MODULE_LABEL } from "@/lib/restaurantView";
+import { useRestaurantView } from "@/components/layout/RestaurantView";
 
 type Company = { id: string; name: string; legal_name: string };
 
-function pageTitle(pathname: string, priorityTitle: string): string {
+function pageTitle(pathname: string, priorityTitle: string, restaurant: boolean): string {
   if (pathname === "/") return "Main Dashboard";
   if (pathname.startsWith("/settings")) return "Settings";
   if (pathname.startsWith("/profile")) return "My Profile";
@@ -13,12 +15,13 @@ function pageTitle(pathname: string, priorityTitle: string): string {
   if (pathname.startsWith("/payroll-centre")) return "Payroll Centre";
   if (pathname.startsWith("/bulletin")) return "Bulletin Board";
   const found = MODULES.find((m) => [m.href, ...(m.matchPrefixes ?? [])].some((p) => pathname === p || pathname.startsWith(`${p}/`)));
-  return found?.label ?? "Central Management System";
+  return (restaurant && found ? RESTAURANT_MODULE_LABEL[found.key] : undefined) ?? found?.label ?? "Central Management System";
 }
 
 /** The company being viewed (a coloured badge with its initials plus its name) and the current module's title. */
 export function HeaderTitle({ companies, priorityTitle = "Priority Centre" }: { companies: Company[]; priorityTitle?: string }) {
   const pathname = usePathname();
+  const restaurant = useRestaurantView();
   const selectedId = useSearchParams().get("company");
   const company = companies.find((c) => c.id === selectedId);
   const name = company?.name ?? ALL_COMPANIES_OPTION.name;
@@ -33,7 +36,7 @@ export function HeaderTitle({ companies, priorityTitle = "Priority Centre" }: { 
       </span>
       <div className="min-w-0 leading-tight">
         <div className="truncate text-[12.5px] font-semibold uppercase tracking-wide text-text-secondary">{name}</div>
-        <div className="truncate text-[17px] font-extrabold text-text sm:text-[19px]">{pageTitle(pathname, priorityTitle)}</div>
+        <div className="truncate text-[17px] font-extrabold text-text sm:text-[19px]">{pageTitle(pathname, priorityTitle, restaurant)}</div>
       </div>
     </div>
   );

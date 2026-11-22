@@ -8,6 +8,7 @@ import { moduleHref } from "@/lib/sections";
 import { withThisMonth } from "@/lib/monthPages";
 import { useAllowedSections } from "@/components/layout/SectionAccess";
 import { useRestaurantView } from "@/components/layout/RestaurantView";
+import { RESTAURANT_MODULE_LABEL } from "@/lib/restaurantView";
 
 const ICONS: Record<string, React.ReactNode> = {
   profile: (
@@ -224,6 +225,8 @@ export function TopLinks({ taskLabel = "Priority Centre" }: { taskLabel?: string
  * The modules in the order the work goes: the event is sold (Catering), cooked (Kitchen), bought for (Supplier & Procurement), delivered
  * (Operation Management), then paid and accounted for (Admin & Finance, Company Spending), then the staff (HR), the Reports and the AI Assistant.
  * The Payroll Centre is part of HR (a button on the HR page); only a payroll user who has no HR access gets its own entry.
+ * While O2 Life (the restaurant) is the only company viewed the list follows the restaurant's day instead: the kitchen and its stock, the
+ * suppliers, the spending, the money, the staff, then the vehicles and drivers, the Reports and the AI Assistant (no Catering).
  */
 export function ModuleLinks({ allowedModules, badges = {}, showPayroll = false }: { allowedModules: string[] | null; badges?: Record<string, number>; showPayroll?: boolean }) {
   const show = (key: string) => !allowedModules || allowedModules.includes(key);
@@ -233,22 +236,43 @@ export function ModuleLinks({ allowedModules, badges = {}, showPayroll = false }
   const moduleLink = (key: string) => {
     const m = MODULES.find((x) => x.key === key);
     if (!m || !show(key)) return null;
-    const kitchenForRestaurant = restaurant && key === "kitchen";
-    const href = kitchenForRestaurant ? "/kitchen/recipes" : moduleHref(key, m.href, allowedSections);
-    return <NavItem key={key} href={href} icon={key} label={m.label} matchPrefixes={kitchenForRestaurant ? ["/kitchen"] : m.matchPrefixes} badge={badges[key]} />;
+    if (restaurant && key === "kitchen") return <NavItem key={key} href="/kitchen/recipes" icon={key} label={RESTAURANT_MODULE_LABEL[key]} matchPrefixes={["/kitchen"]} badge={badges[key]} />;
+    // the vehicles and drivers: its first page is the drivers (the deliveries of events are not shown)
+    if (restaurant && key === "driver-logistics") return <NavItem key={key} href="/driver-logistics/drivers" icon={key} label={RESTAURANT_MODULE_LABEL[key]} matchPrefixes={["/driver-logistics"]} badge={badges[key]} />;
+    return <NavItem key={key} href={moduleHref(key, m.href, allowedSections)} icon={key} label={m.label} matchPrefixes={m.matchPrefixes} badge={badges[key]} />;
   };
+  const spending = <NavItem href="/spending" icon="petty-cash" label="Company Spending" matchPrefixes={["/spending"]} />;
+  const hrLinks = (
+    <>
+      {moduleLink("hr")}
+      {!show("hr") && showPayroll && <NavItem href="/payroll-centre" icon="payroll" label="Payroll Centre" />}
+      {!show("hr") && show("overtime") && <NavItem href="/hr/overtime" icon="hr" label="Overtime (OT)" />}
+    </>
+  );
+  if (restaurant) {
+    return (
+      <>
+        {moduleLink("kitchen")}
+        {moduleLink("supplier-procurement")}
+        {spending}
+        {moduleLink("finance-admin")}
+        {hrLinks}
+        {moduleLink("driver-logistics")}
+        {show("reports") && <NavItem href="/reports" icon="reports" label="Reports" />}
+        <NavItem href="/ai-assistant" icon="ai-assistant" label="🤖 AI Assistant" />
+      </>
+    );
+  }
   return (
     <>
-      {!restaurant && moduleLink("catering")}
+      {moduleLink("catering")}
       {moduleLink("kitchen")}
       {moduleLink("supplier-procurement")}
       {moduleLink("driver-logistics")}
       {moduleLink("finance-admin")}
       {/* Company Spending is for everybody: staff send their own claims (My Claims) there; the finance and petty cash pages follow their own access */}
-      <NavItem href="/spending" icon="petty-cash" label="Company Spending" matchPrefixes={["/spending"]} />
-      {moduleLink("hr")}
-      {!show("hr") && showPayroll && <NavItem href="/payroll-centre" icon="payroll" label="Payroll Centre" />}
-      {!show("hr") && show("overtime") && <NavItem href="/hr/overtime" icon="hr" label="Overtime (OT)" />}
+      {spending}
+      {hrLinks}
       {show("reports") && <NavItem href="/reports" icon="reports" label="Reports" />}
       <NavItem href="/ai-assistant" icon="ai-assistant" label="🤖 AI Assistant" />
     </>

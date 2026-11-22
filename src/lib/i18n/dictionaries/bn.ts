@@ -792,6 +792,8 @@ const dictionary: Record<string, string> = {
  "Clocked out. You are {0} m from the event location.": "ক্লক আউট হয়েছে। আপনি অনুষ্ঠানের স্থান থেকে {0} মিটার দূরে আছেন।",
  "Close": "বন্ধ করুন",
  "No match.": "কোনো মিল নেই।",
+ "Kitchen & Stock": "রান্নাঘর ও স্টক",
+ "Vehicles & Drivers": "যানবাহন ও চালক",
  "Monthly Breakdown": "মাসিক বিভাজন",
  "Monthly Costing — Restoran Bara Ikan Bakar Senibong: the restaurant's sales, costs and profit": "মাসিক খরচ — Restoran Bara Ikan Bakar Senibong: রেস্তোরাঁর বিক্রি, খরচ ও লাভ",
  "Restoran Bara Ikan Bakar Senibong: sales, costs and profit from the recorded figures.": "Restoran Bara Ikan Bakar Senibong: রেকর্ড করা হিসাব থেকে বিক্রি, খরচ ও লাভ।",

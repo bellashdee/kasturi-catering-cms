@@ -22,6 +22,15 @@ export function isRestaurantScope(companies: NamedCompany[], targetCompanyIds: s
   return !!o2 && targetCompanyIds.length === 1 && targetCompanyIds[0] === o2.id;
 }
 
+/**
+ * The restaurant's own names for the modules in the side bar and the page title (a module not listed keeps its name). The Kitchen is the
+ * kitchen and its stock; Operation Management is, for a restaurant, its vehicles and drivers (there are no event deliveries).
+ */
+export const RESTAURANT_MODULE_LABEL: Record<string, string> = {
+  kitchen: "Kitchen & Stock",
+  "driver-logistics": "Vehicles & Drivers",
+};
+
 /** Where an address made for catering goes in the restaurant view (null = the page is for every company, leave it). */
 export function restaurantRedirect(pathname: string): string | null {
   const under = (root: string) => pathname === root || pathname.startsWith(`${root}/`);
@@ -31,6 +40,8 @@ export function restaurantRedirect(pathname: string): string | null {
   if (under("/finance/event-pnl") || under("/finance/invoices") || under("/finance/payment-proofs") || under("/finance/receive-payments")) return "/admin";
   // Reports about events and customer invoices
   if (under("/reports/catering") || under("/reports/event-summary") || under("/reports/revenue") || under("/reports/customer-outstanding") || under("/reports/invoice-listing")) return "/reports";
+  // Operation Management: the deliveries of events (the list, one delivery, a new delivery); the vehicles, drivers and maintenance stay
+  if (pathname === "/driver-logistics" || pathname === "/driver-logistics/new" || /^\/driver-logistics\/[0-9a-f-]{36}$/.test(pathname)) return "/driver-logistics/drivers";
   // Kitchen: the production schedule of events (and one production order), the cooking plan of an event, the catering package menus, purchase requests from an event menu
   if (pathname === "/kitchen" || /^\/kitchen\/[0-9a-f-]{36}$/.test(pathname) || pathname === "/kitchen/new" || under("/kitchen/plan") || under("/kitchen/packages") || under("/kitchen/purchase-requests/event")) {
     return "/kitchen/recipes";

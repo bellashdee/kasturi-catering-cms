@@ -793,6 +793,8 @@ const dictionary: Record<string, string> = {
  "Clocked out. You are {0} m from the event location.": "已下班打卡。您距离活动地点 {0} 米。",
  "Close": "关闭",
  "No match.": "没有匹配项。",
+ "Kitchen & Stock": "厨房与库存",
+ "Vehicles & Drivers": "车辆与司机",
  "Monthly Breakdown": "月度明细",
  "Monthly Costing — Restoran Bara Ikan Bakar Senibong: the restaurant's sales, costs and profit": "月度成本 — Restoran Bara Ikan Bakar Senibong：餐厅的销售、成本和利润",
  "Restoran Bara Ikan Bakar Senibong: sales, costs and profit from the recorded figures.": "Restoran Bara Ikan Bakar Senibong：根据已记录数据的销售、成本和利润。",

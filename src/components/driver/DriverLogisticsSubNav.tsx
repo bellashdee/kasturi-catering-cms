@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useTabVisible } from "@/components/layout/SectionAccess";
+import { useRestaurantView } from "@/components/layout/RestaurantView";
 
 type Tab = { href: string; label: string; match: (p: string) => boolean };
 
@@ -25,7 +26,10 @@ const GROUPS: { title: string; tabs: Tab[] }[] = [
 
 export function DriverLogisticsSubNav() {
   const pathname = usePathname();
-  const visible = useTabVisible();
+  const restaurant = useRestaurantView();
+  // the deliveries are those of catering events: not shown for O2 Life (the restaurant)
+  const tabVisible = useTabVisible();
+  const visible = (href: string) => tabVisible(href) && !(restaurant && href === "/driver-logistics");
   const searchParams = useSearchParams();
   const company = searchParams.get("company");
   return (
