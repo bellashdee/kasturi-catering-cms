@@ -6715,6 +6715,76 @@ export type Database = {
           },
         ]
       }
+      wastage_log: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          document_id: string | null
+          estimated_value: number | null
+          id: string
+          item: string
+          notes: string | null
+          quantity: number
+          reason: string
+          unit: string | null
+          updated_at: string
+          wasted_on: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          document_id?: string | null
+          estimated_value?: number | null
+          id?: string
+          item: string
+          notes?: string | null
+          quantity: number
+          reason: string
+          unit?: string | null
+          updated_at?: string
+          wasted_on?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          document_id?: string | null
+          estimated_value?: number | null
+          id?: string
+          item?: string
+          notes?: string | null
+          quantity?: number
+          reason?: string
+          unit?: string | null
+          updated_at?: string
+          wasted_on?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wastage_log_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wastage_log_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wastage_log_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicles: {
         Row: {
           company_id: string

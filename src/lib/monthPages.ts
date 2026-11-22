@@ -18,6 +18,7 @@ export const MONTH_FILTER_PAGES = new Set([
   "/kitchen/plan",
   "/kitchen/purchase-requests",
   "/kitchen/stock",
+  "/kitchen/wastage",
   "/marketing/content",
   "/marketing/customers",
   "/marketing/expenses",

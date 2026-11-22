@@ -84,11 +84,24 @@ export default async function MonthlyBreakdownPage({ searchParams }: { searchPar
   const month = Math.min(Math.max(Number(monthParam) || 0, 0), 12);
   const shown = (m: number) => !month || m === month - 1;
 
-  const [salesRes, itemsRes, spending] = await Promise.all([
+  const [salesRes, itemsRes, spending, wastageRes] = await Promise.all([
     supabase.from("monthly_sales").select("month, sales_amount").eq("company_id", o2.id).eq("year", year).eq("sales_type", "total"),
     supabase.from("breakdown_items").select("id, line, label, budget, note, amounts, sort_order").eq("company_id", o2.id).eq("year", year).order("sort_order"),
     listSpending(supabase, [o2.id], `${year}-01-01`, `${year}-12-31`),
+    supabase.from("wastage_log").select("wasted_on, estimated_value").eq("company_id", o2.id).gte("wasted_on", `${year}-01-01`).lte("wasted_on", `${year}-12-31`),
   ]);
+
+  // the Wastage Log (food thrown away): shown as information only, never added to a cost (the food is already in Company Expenses)
+  const wastage: Months = noMonths();
+  const wastageEntries = Array<number>(12).fill(0);
+  const wastageNoValue = Array<number>(12).fill(0);
+  for (const w of wastageRes.data ?? []) {
+    const m = Number(w.wasted_on.slice(5, 7)) - 1;
+    if (m < 0 || m > 11) continue;
+    wastageEntries[m] += 1;
+    if (w.estimated_value === null) wastageNoValue[m] += 1;
+    else wastage[m] = (wastage[m] ?? 0) + Number(w.estimated_value);
+  }
 
   const sales: Months = noMonths();
   for (const s of salesRes.data ?? []) sales[s.month - 1] = Number(s.sales_amount);
@@ -232,6 +245,28 @@ export default async function MonthlyBreakdownPage({ searchParams }: { searchPar
         <p className="mt-3 text-[12px] text-text-secondary">
           Raw item cost = the costing-report figure entered below; a month without one uses the food bought in Company Expenses. Net profit is shown only when sales and all four cost lines are entered for the month.
         </p>
+      </SectionCard>
+
+      <SectionCard title={`Wastage — ${year} (information only)`}>
+        <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px]">
+          <span className="text-text-secondary">Wastage (RM, not added to costs) and its share of the raw item cost of the month. Nothing above changes because of it.</span>
+          <Link href={`/kitchen/wastage?company=${o2.id}`} className="font-semibold text-primary underline print:hidden">Open the Wastage Log →</Link>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+          {MONTH_LABEL.map((m, i) => {
+            if (!shown(i)) return null;
+            const rawCost = raw[i];
+            const pct = wastage[i] !== null && rawCost !== null && rawCost > 0 ? (wastage[i] as number) / rawCost : null;
+            return (
+              <div key={m} className="rounded-xl border border-border bg-surface p-3">
+                <div className="text-[11px] font-bold uppercase text-text-secondary">{m.slice(0, 3)}</div>
+                <div className="mt-0.5 font-semibold tabular-nums text-text">{wastage[i] === null ? "—" : formatCurrency(wastage[i] as number)}</div>
+                <div className="text-[11.5px] text-text-secondary">{pct === null ? "—" : `${pctText(pct)} of raw item cost`}</div>
+                {wastageNoValue[i] > 0 && <div className="text-[11.5px] text-text-secondary">{`${wastageNoValue[i]} of ${wastageEntries[i]} without a value`}</div>}
+              </div>
+            );
+          })}
+        </div>
       </SectionCard>
 
       <BreakdownEditor id="sales" title="Total Sales" source="monthly_sales" kind="sales" companyId={o2.id} year={year} canEdit

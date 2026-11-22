@@ -30,7 +30,7 @@ export const MODULE_SECTIONS: Record<string, Section[]> = {
     { key: "kitchen:plan", label: "Cooking Plan", href: "/kitchen/plan", prefixes: ["/kitchen/plan"] },
     { key: "kitchen:recipes", label: "Recipes", href: "/kitchen/recipes", prefixes: ["/kitchen/recipes"] },
     { key: "kitchen:packages", label: "Package Menu", href: "/kitchen/packages", prefixes: ["/kitchen/packages"] },
-    { key: "kitchen:stock", label: "Stock", href: "/kitchen/stock", prefixes: ["/kitchen/stock", "/kitchen/ingredients"] },
+    { key: "kitchen:stock", label: "Stock", href: "/kitchen/stock", prefixes: ["/kitchen/stock", "/kitchen/ingredients", "/kitchen/wastage"] },
     { key: "kitchen:purchase-requests", label: "Purchase Requests", href: "/kitchen/purchase-requests", prefixes: ["/kitchen/purchase-requests"] },
     { key: "kitchen:daily-report", label: "Daily Report", href: "/kitchen/reports", prefixes: ["/kitchen/reports"] },
   ],

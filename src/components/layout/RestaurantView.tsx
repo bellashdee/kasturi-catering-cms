@@ -24,6 +24,15 @@ export function useRestaurantView(): boolean {
   return target.length === 1 && target[0] === o2Id;
 }
 
+/** True when O2 Life (the restaurant) is among the companies being viewed (alone, or inside All Companies): the Wastage Log tab is then shown. */
+export function useIncludesRestaurant(): boolean {
+  const { o2Id, accessibleIds } = useContext(RestaurantViewContext);
+  const requested = useSearchParams().get("company");
+  if (!o2Id) return false;
+  const target = requested && accessibleIds.includes(requested) ? [requested] : accessibleIds;
+  return target.includes(o2Id);
+}
+
 /**
  * True when every one of these companies is O2 Life (the restaurant): the AutoCount Invoice No. (the customer invoice of an event) is then
  * not asked, and nothing is sent for it. Use the company picked in the form, not the one viewed.
