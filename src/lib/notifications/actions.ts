@@ -8,6 +8,7 @@ import { todayInMalaysia } from "@/lib/format";
 import { buildReminders, type Reminder } from "@/lib/notifications/reminders";
 import { canAccessModule } from "@/lib/modules";
 import { syncPriorityNotifications } from "@/lib/priority/sync";
+import { isRestaurantScope, restaurantRedirect } from "@/lib/restaurantView";
 
 export type RemindersResult = { ok: true; items: Reminder[] } | { ok: false; error: string };
 
@@ -17,7 +18,7 @@ export async function getReminders(companyId: string | null): Promise<RemindersR
     const session = await getSessionContext();
     if (!session) return { ok: false, error: "Not signed in." };
     const supabase = await createClient();
-    const { data: companies } = await supabase.from("companies").select("id");
+    const { data: companies } = await supabase.from("companies").select("id, name");
     const { targetCompanyIds } = resolveCompanyScope(session, companies ?? [], companyId ?? undefined);
     if (targetCompanyIds.length === 0) return { ok: true, items: [] };
     const data = await getDashboardData(supabase, targetCompanyIds, session.allowedModules);
@@ -42,6 +43,8 @@ export async function getReminders(companyId: string | null): Promise<RemindersR
     } catch (err) {
       console.warn("Priority Centre reminders could not be loaded:", err instanceof Error ? err.message : err);
     }
+    // O2 Life is the restaurant: no reminder that opens a catering or Operation Management page (events, deliveries, vehicles, drivers)
+    if (isRestaurantScope(companies ?? [], targetCompanyIds)) items = items.filter((i) => restaurantRedirect((i.href ?? "").split("?")[0]) === null);
     return { ok: true, items };
   } catch {
     return { ok: false, error: "Could not load reminders. Try again." };
