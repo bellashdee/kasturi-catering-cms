@@ -17,6 +17,7 @@ import { RequestList } from "@/components/kitchenPurchase/RequestList";
 import { listKitchenRequests } from "@/lib/kitchenPurchase/queries";
 import { canAccessModule } from "@/lib/modules";
 import { MonthFilter } from "@/components/MonthFilter";
+import { isRestaurantScope } from "@/lib/restaurantView";
 import { filterByMonth, monthLabelOf, monthRange } from "@/lib/monthFilter";
 import { Select } from "@/components/ui/Select";
 import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
@@ -24,6 +25,8 @@ import { readSort, sortBy } from "@/lib/listSort";
 import { STATUS_LABEL, type RequestStatus } from "@/lib/kitchenPurchase/shared";
 
 const SORTS = { created: "Date requested", date: "Event date", request: "Request No.", event: "Event", status: "Status" };
+/** O2 Life (the restaurant) has no events */
+const SORTS_RESTAURANT = { created: "Date requested", request: "Request No.", status: "Status" };
 
 function statusTone(status: string): "success" | "warning" | "danger" | "info" {
   if (status === "completed") return "success";
@@ -50,6 +53,7 @@ export default async function PurchaseRequestsPage({
   const { sort, dir } = readSort(sp, SORTS, "created", "desc");
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
   const query = requestedId ? `?company=${requestedId}` : "";
+  const restaurant = isRestaurantScope(companies, targetCompanyIds);
 
   if (targetCompanyIds.length === 0) {
     return <EmptyRow text="You don't have access to any company yet." />;
@@ -80,6 +84,8 @@ export default async function PurchaseRequestsPage({
     .not("source_events", "is", null)
     .order("created_at", { ascending: false })
     .limit(100);
+  // O2 Life is the restaurant: no event menus, so no purchase orders made from them
+  if (restaurant) menuOrdersQuery = menuOrdersQuery.limit(0);
   if (range) menuOrdersQuery = menuOrdersQuery.gte("order_date", range.start).lte("order_date", range.end);
   const { data: menuOrders } = await menuOrdersQuery;
 
@@ -102,9 +108,9 @@ export default async function PurchaseRequestsPage({
 
       <MonthFilter />
 
-      <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/kitchen/purchase-requests${query}`}>
+      <ListFilters keep={{ company: requestedId, month }} sortOptions={restaurant ? SORTS_RESTAURANT : SORTS} sort={sort} dir={dir} clearHref={`/kitchen/purchase-requests${query}`}>
         <FilterField label="Search">
-          <input name="q" defaultValue={sp.q ?? ""} placeholder="Request No. or event" className={`${FILTER_INPUT} w-52`} />
+          <input name="q" defaultValue={sp.q ?? ""} placeholder={restaurant ? "Request No." : "Request No. or event"} className={`${FILTER_INPUT} w-52`} />
         </FilterField>
         <FilterField label="Status">
           <Select name="status" defaultValue={status ?? ""} className={`${FILTER_INPUT} w-48`}>
@@ -117,11 +123,12 @@ export default async function PurchaseRequestsPage({
       <section className="flex flex-col gap-3">
         <div>
           <h2 className="text-[17px] font-extrabold text-text">Purchase Request History</h2>
-          <p className="text-[13px] text-text-secondary">Choose the event (or key in the menu) and the pax: the ingredients and quantities are worked out from the recipes, and one purchase order is made for each supplier at its latest price.</p>
+          <p className="text-[13px] text-text-secondary">{restaurant ? "Choose the recipes and how many portions (pax) of each: the ingredients and quantities are worked out from the recipes, and one purchase order is made for each supplier at its latest price." : "Choose the event (or key in the menu) and the pax: the ingredients and quantities are worked out from the recipes, and one purchase order is made for each supplier at its latest price."}</p>
         </div>
         <RequestList rows={kitchenRequests} hrefBase="/kitchen/purchase-requests" query={query} kitchenActions={canAccessModule(session.allowedModules, "kitchen")} empty={q || status ? "No purchase requests match these filters." : monthLabel ? "No purchase requests in this month." : "No purchase requests yet."} />
       </section>
 
+      {!restaurant && (
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         <div className="border-b border-border px-5 py-3 text-[13px] font-bold text-text">Purchase Orders Made from Event Menus</div>
         {(menuOrders ?? []).length === 0 ? (
@@ -144,6 +151,7 @@ export default async function PurchaseRequestsPage({
           ))
         )}
       </div>
+      )}
 
       <div className="rounded-xl border border-border bg-surface shadow-sm">
         {requests.length === 0 ? (

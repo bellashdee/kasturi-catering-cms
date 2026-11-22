@@ -9,6 +9,7 @@ import { markAllNotificationsRead, markNotificationRead, saveReminderSettings } 
 import { REMINDER_DAY_CHOICES } from "@/lib/priority/reminders";
 import { formatPrice } from "@/lib/format";
 import { AREA, BTN, BTN_SM, BTN_SM_GHOST, ErrorLine, Pill } from "@/components/priority/ui";
+import { useRestaurantView } from "@/components/layout/RestaurantView";
 
 export type ApprovalItem = {
   paymentId: string;
@@ -151,6 +152,8 @@ const DAY_LABEL: Record<number, string> = { 14: "14 days before", 7: "7 days bef
 
 export function ReminderSettingsForm({ daysBefore, remindAfterDeadline }: { daysBefore: number[]; remindAfterDeadline: boolean }) {
   const { busy, error, run } = useRunner();
+  // O2 Life is the restaurant: no events to be reminded of
+  const restaurant = useRestaurantView();
   const [days, setDays] = useState<number[]>(daysBefore);
   const [after, setAfter] = useState(remindAfterDeadline);
   const [saved, setSaved] = useState(false);
@@ -166,7 +169,7 @@ export function ReminderSettingsForm({ daysBefore, remindAfterDeadline }: { days
       }}
     >
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-[13px] font-semibold text-text-secondary">Remind me for payments, events and tasks:</legend>
+        <legend className="mb-1 text-[13px] font-semibold text-text-secondary">{restaurant ? "Remind me for payments and tasks:" : "Remind me for payments, events and tasks:"}</legend>
         {REMINDER_DAY_CHOICES.map((d) => (
           <label key={d} className="flex cursor-pointer items-center gap-2 text-[14px] text-text">
             <input type="checkbox" className="h-4 w-4 accent-[var(--color-primary)]" checked={days.includes(d)} onChange={(e) => { setSaved(false); setDays(e.target.checked ? [...days, d] : days.filter((x) => x !== d)); }} />

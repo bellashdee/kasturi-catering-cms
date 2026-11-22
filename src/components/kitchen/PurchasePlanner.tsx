@@ -46,12 +46,12 @@ function ChosenChips({ items, onRemove, onClear }: { items: { id: string; label:
   );
 }
 
-export function PurchasePlanner({ companyId, companyName, events, recipeOptions, supplierItems, savedMatches, query, initialMode = "event", setMenus = [] }: { companyId: string; companyName: string; events: PlannerEvent[]; recipeOptions: RecipeRef[]; supplierItems: SupplierItemOption[]; savedMatches: Record<string, string>; query: string; initialMode?: "event" | "recipes"; setMenus?: { id: string; name: string; recipeIds: string[] }[] }) {
+export function PurchasePlanner({ companyId, companyName, events, recipeOptions, supplierItems, savedMatches, query, initialMode = "event", setMenus = [], restaurant = false }: { companyId: string; companyName: string; events: PlannerEvent[]; recipeOptions: RecipeRef[]; supplierItems: SupplierItemOption[]; savedMatches: Record<string, string>; query: string; initialMode?: "event" | "recipes"; setMenus?: { id: string; name: string; recipeIds: string[] }[]; /** O2 Life (the restaurant): no events, the purchase starts from recipes only */ restaurant?: boolean }) {
   const router = useRouter();
   const [eventSearch, setEventSearch] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   // where the purchase starts: the menu of an event, or recipes chosen by hand
-  const [mode, setMode] = useState<"event" | "recipes">(initialMode);
+  const [mode, setMode] = useState<"event" | "recipes">(restaurant ? "recipes" : initialMode);
   const [recipeSearch, setRecipeSearch] = useState("");
   // the supplier item each ingredient was bought as before (saved by a person); a new pick is saved too
   const [saved, setSaved] = useState<Map<string, string>>(() => new Map(Object.entries(savedMatches)));
@@ -262,15 +262,15 @@ export function PurchasePlanner({ companyId, companyName, events, recipeOptions,
     <div className="flex flex-col gap-5">
       {/* 1. where the purchase starts */}
       <section className="rounded-xl border border-border bg-surface p-5 shadow-sm">
-        <div className="flex flex-wrap gap-1.5">
+        {!restaurant && <div className="flex flex-wrap gap-1.5">
           {([["event", "By event menu"], ["recipes", "By recipes"]] as const).map(([key, label]) => (
             <button key={key} type="button" onClick={() => setMode(key)} className={`rounded-full border px-3.5 py-1.5 text-[13px] font-semibold ${mode === key ? "border-primary bg-primary text-white" : "border-border-strong bg-surface text-text hover:bg-surface-alt"}`}>
               {label}
             </button>
           ))}
-        </div>
+        </div>}
 
-        {mode === "event" ? (
+        {mode === "event" && !restaurant ? (
           <>
             <div className="mt-4 text-[14.5px] font-extrabold text-text">1. Choose the event(s)</div>
             <p className="mt-0.5 text-[12.5px] text-text-secondary">Search, then tick the events to buy for. Their menus and pax come from the event order.</p>
@@ -312,7 +312,7 @@ export function PurchasePlanner({ companyId, companyName, events, recipeOptions,
         ) : (
           <>
             <div className="mt-4 text-[14.5px] font-extrabold text-text">1. Choose the recipes</div>
-            <p className="mt-0.5 text-[12.5px] text-text-secondary">Search, then tick the recipes to cook. You enter the pax of each one next; the ingredient list is worked out from the recipes only.</p>
+            <p className="mt-0.5 text-[12.5px] text-text-secondary">{restaurant ? "Search, then tick the dishes (recipes) to cook. You enter how many portions (pax) of each one next; the ingredient list is worked out from the recipes only." : "Search, then tick the recipes to cook. You enter the pax of each one next; the ingredient list is worked out from the recipes only."}</p>
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
               {(["all", "kitchen", "bar"] as const).map((k) => (
                 <button key={k} type="button" onClick={() => setRecipeSide(k)} className={`rounded-full border px-3 py-1 text-[12.5px] font-semibold ${recipeSide === k ? "border-primary bg-primary text-white" : "border-border-strong bg-surface text-text hover:bg-surface-alt"}`}>

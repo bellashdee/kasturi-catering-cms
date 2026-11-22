@@ -263,12 +263,13 @@ function ClaimFields({
 }
 
 /** The form that sends a new claim. */
-export function MyClaimForm({ companies, payers }: { companies: Company[]; payers: Payer[] }) {
+/** `defaultCompanyId`: the company already ticked (O2 Life, the restaurant, when it is the only company viewed). */
+export function MyClaimForm({ companies, payers, defaultCompanyId }: { companies: Company[]; payers: Payer[]; defaultCompanyId?: string }) {
   return (
     <ClaimFields
       companies={companies}
       payers={payers}
-      initial={{ companyId: "", date: todayInMalaysia(), amount: "", payer: payers.length === 1 ? payers[0].name : "", paymentMethod: "", category: "", description: "", remarks: "", invoiceNo: "", autoCountInvoiceNo: "" }}
+      initial={{ companyId: defaultCompanyId && companies.some((c) => c.id === defaultCompanyId) ? defaultCompanyId : "", date: todayInMalaysia(), amount: "", payer: payers.length === 1 ? payers[0].name : "", paymentMethod: "", category: "", description: "", remarks: "", invoiceNo: "", autoCountInvoiceNo: "" }}
       multiCompany
       submitLabel="Send claim"
       onSubmit={submitMyClaim}

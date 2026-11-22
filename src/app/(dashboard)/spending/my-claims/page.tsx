@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { getSessionContext } from "@/lib/auth";
 import { canAccessModule } from "@/lib/modules";
 import { ownIdentity, pettyCashAccess } from "@/lib/pettyCash/access";
-import { resolveCompanyScope } from "@/lib/companyScope";
 import { SoftHeader, SoftPage } from "@/components/ui/Soft";
 import { SpendingSubNav } from "@/components/spending/SpendingSubNav";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -22,6 +21,8 @@ import { MyClaimActions, MyClaimForm } from "@/components/claims/MyClaims";
 import { Select } from "@/components/ui/Select";
 import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
 import { readSort, sortBy } from "@/lib/listSort";
+import { RESTAURANT_COMPANY_NAME, isRestaurantOnly } from "@/lib/restaurantView";
+import { resolveCompanyScope } from "@/lib/companyScope";
 
 const SORTS = { date: "Date", bought: "Description", invoice: "Invoice No.", amount: "Amount", status: "Status" };
 
@@ -34,7 +35,7 @@ const MONTH_RE = /^\d{4}-\d{2}$/;
  * reads them with the service role and keeps to the claims the person made). Admin & Finance can choose another staff member to see,
  * print or export that person's claims (only in the companies they can open); they cannot change someone else's claims here.
  */
-export default async function MyClaimsPage({ searchParams }: { searchParams: Promise<{ month?: string; q?: string; status?: string; sort?: string; dir?: string; staff?: string }> }) {
+export default async function MyClaimsPage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string; q?: string; status?: string; sort?: string; dir?: string; staff?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
   const sp = await searchParams;
@@ -163,7 +164,7 @@ export default async function MyClaimsPage({ searchParams }: { searchParams: Pro
         <EmptyRow text="Your staff record is not linked to your login yet. Please ask the HR admin to link it, then you can send your claims here." />
       ) : (
         <SectionCard title="New claim">
-          <MyClaimForm companies={companies} payers={payerList} />
+          <MyClaimForm companies={companies} payers={payerList} defaultCompanyId={isRestaurantOnly(allCompanies, resolveCompanyScope(session, allCompanies, sp.company).accessibleIds, sp.company) ? sp.company ?? allCompanies.find((c) => c.name === RESTAURANT_COMPANY_NAME)?.id : undefined} />
         </SectionCard>
       )}
 

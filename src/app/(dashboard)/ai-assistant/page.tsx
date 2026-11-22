@@ -3,12 +3,21 @@ import { getSessionContext } from "@/lib/auth";
 import { KNOWLEDGE_BASE } from "@/lib/assistant/knowledge";
 import { AssistantChat } from "@/components/assistant/AssistantChat";
 import { SectionCard } from "@/components/dashboard/SectionCard";
+import { createClient } from "@/lib/supabase/server";
+import { resolveCompanyScope } from "@/lib/companyScope";
+import { isRestaurantOnly } from "@/lib/restaurantView";
 
-export default async function AiAssistantPage() {
+/** Getting-started tutorials about catering events, event kitchen orders and delivery drivers: left out for O2 Life (the restaurant). */
+const CATERING_TUTORIALS = new Set(["gs-04-catering-event", "gs-05-kitchen-production", "gs-06-assign-driver"]);
+
+export default async function AiAssistantPage({ searchParams }: { searchParams: Promise<{ company?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
-  const gettingStarted = KNOWLEDGE_BASE.filter((e) => e.type === "getting-started").sort((a, b) => a.id.localeCompare(b.id));
+  const { company } = await searchParams;
+  const { data: companies } = await (await createClient()).from("companies").select("id, name");
+  const restaurant = isRestaurantOnly(companies ?? [], resolveCompanyScope(session, companies ?? [], company).accessibleIds, company);
+  const gettingStarted = KNOWLEDGE_BASE.filter((e) => e.type === "getting-started" && !(restaurant && CATERING_TUTORIALS.has(e.id))).sort((a, b) => a.id.localeCompare(b.id));
 
   return (
     <div className="flex flex-col gap-5">

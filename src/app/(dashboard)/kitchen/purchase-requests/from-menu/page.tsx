@@ -10,6 +10,7 @@ import { PurchasePlanner } from "@/components/kitchen/PurchasePlanner";
 import { listPlannerEvents, loadSupplierItemOptions } from "@/lib/purchasePlanner/data";
 import { loadRecipeRefs } from "@/lib/kitchenAi/data";
 import { loadSavedMatches } from "@/lib/purchasePlanner/matches";
+import { isRestaurantScope } from "@/lib/restaurantView";
 
 /** The fixed daily menus of the company (Signature Solution: JDT 2 / 3 / 4 / UTM) with the recipes of their dishes. */
 async function loadSetMenus(supabase: Awaited<ReturnType<typeof createClient>>, companyId: string) {
@@ -47,13 +48,15 @@ export default async function PurchaseFromMenuPage({ searchParams }: { searchPar
   // the purchase is made for one company at a time (its recipes, stock, suppliers and prices)
   const company = targetCompanyIds.length === 1 ? selectable.find((c) => c.id === targetCompanyIds[0]) : selectable.length === 1 ? selectable[0] : undefined;
   const query = company && requestedId ? `?company=${company.id}` : "";
+  // O2 Life is the restaurant: no events, so the purchase starts from recipes and portions only
+  const restaurant = !!company && isRestaurantScope(companies, [company.id]);
 
   return (
     <div className="flex flex-col gap-5">
       <div>
         <Link href={`/kitchen/purchase-requests${query}`} className="text-[12.5px] font-semibold text-text-secondary">← Back to Purchase Requests</Link>
         <h1 className="mt-1 text-[22px] font-extrabold text-text">New Purchase Request</h1>
-        <p className="mt-0.5 text-[13px] text-text-secondary">Choose the event, or key in the menu yourself. The ingredients and quantities are worked out from the recipes and the pax, then ordered from the suppliers.</p>
+        <p className="mt-0.5 text-[13px] text-text-secondary">{restaurant ? "Choose the recipes and how many portions (pax) of each. The ingredients and quantities are worked out from the recipes, then ordered from the suppliers." : "Choose the event, or key in the menu yourself. The ingredients and quantities are worked out from the recipes and the pax, then ordered from the suppliers."}</p>
       </div>
 
       <KitchenSubNav />
@@ -73,12 +76,13 @@ export default async function PurchaseFromMenuPage({ searchParams }: { searchPar
         <PurchasePlanner
           companyId={company.id}
           companyName={company.name}
-          events={await listPlannerEvents(supabase, company.id, todayInMalaysia())}
+          events={restaurant ? [] : await listPlannerEvents(supabase, company.id, todayInMalaysia())}
           recipeOptions={await loadRecipeRefs(supabase, company.id)}
           supplierItems={await loadSupplierItemOptions(supabase, company.id)}
           savedMatches={Object.fromEntries(await loadSavedMatches(supabase, company.id))}
           query={query}
-          initialMode={mode === "manual" ? "recipes" : "event"}
+          initialMode={mode === "manual" || restaurant ? "recipes" : "event"}
+          restaurant={restaurant}
           setMenus={await loadSetMenus(supabase, company.id)}
         />
       )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAllRestaurant } from "@/components/layout/RestaurantView";
 import { useRouter } from "next/navigation";
 import { uploadDocument, fileTypeFromMime, ANY_UPLOAD_ACCEPT } from "@/lib/documents/upload";
 import { recordStockMovement, findDuplicateStockInvoice } from "@/lib/kitchen/actions";
@@ -98,6 +99,8 @@ export function StockUploadReview({
   const [result, setResult] = useState<number | null>(null);
 
   const [companyId, setCompanyId] = useState(defaultCompanyId ?? companies[0]?.id ?? "");
+  // O2 Life is the restaurant: no event invoices to deduct stock
+  const restaurant = useAllRestaurant([companyId]);
   const [movementType, setMovementType] = useState<MovementType>("in");
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
   const [invoiceNumber, setInvoiceNumber] = useState("");
@@ -253,7 +256,7 @@ export function StockUploadReview({
   return (
     <div>
       <div className="flex flex-wrap border-b border-border px-5">
-        {(Object.keys(TAB_LABEL) as Tab[]).map((t) => (
+        {(Object.keys(TAB_LABEL) as Tab[]).filter((t) => !(restaurant && t === "customer_invoice")).map((t) => (
           <button
             key={t}
             onClick={() => selectTab(t)}

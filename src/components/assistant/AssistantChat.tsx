@@ -1,5 +1,6 @@
 "use client";
 
+import { useRestaurantView } from "@/components/layout/RestaurantView";
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useI18n } from "@/components/i18n/I18nProvider";
@@ -32,11 +33,22 @@ const SUGGESTED_PROMPTS = [
   "What does this page do?",
 ];
 
+/** The same questions for a restaurant (O2 Life): stock and daily costs instead of catering events. */
+const SUGGESTED_PROMPTS_RESTAURANT = [
+  "How do I use this system?",
+  "How do I upload an invoice?",
+  "How do I check the stock?",
+  "How do I check supplier payments?",
+  "How do I see the daily costs?",
+  "What does this page do?",
+];
+
 const KITCHEN_HINTS = ["Change the pax to 300", "Remove the soup", "Generate the shopping list only", "Compare with our current stock", "Export this list to Excel"];
 
 export function AssistantChat({ variant = "widget" }: { variant?: "widget" | "page" }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const restaurant = useRestaurantView();
   const { lang } = useI18n();
   const companyParam = searchParams.get("company") ?? undefined;
   const eventParam = searchParams.get("event") ?? undefined;
@@ -467,7 +479,7 @@ export function AssistantChat({ variant = "widget" }: { variant?: "widget" | "pa
               Attach (📎) or snap (📷) a photo, PDF, Word, Excel or other file and ask about it. Turn on 🌐 to search the web. Try one of these:
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {SUGGESTED_PROMPTS.map((p) => (
+              {(restaurant ? SUGGESTED_PROMPTS_RESTAURANT : SUGGESTED_PROMPTS).map((p) => (
                 <button
                   key={p}
                   onClick={() => send(p)}

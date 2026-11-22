@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { StockUploadReview } from "@/components/kitchen/StockUploadReview";
+import { isRestaurantScope } from "@/lib/restaurantView";
 
 export default async function NewStockEntryPage({
   searchParams,
@@ -39,7 +40,9 @@ export default async function NewStockEntryPage({
     <div className="mx-auto max-w-3xl">
       <h1 className="text-[22px] font-extrabold text-text">New Stock Entry</h1>
       <p className="mt-1 text-[13px] text-text-secondary">
-        Enter stock changes manually, or upload a file (PDF, Excel, CSV, screenshot or photo): a supplier invoice to add stock, a customer event invoice to deduct stock, or a stock count.
+        {isRestaurantScope(companies, resolveCompanyScope(session, companies, requestedId).targetCompanyIds)
+          ? "Enter stock changes manually, or upload a file (PDF, Excel, CSV, screenshot or photo): a supplier invoice to add stock, or a stock count."
+          : "Enter stock changes manually, or upload a file (PDF, Excel, CSV, screenshot or photo): a supplier invoice to add stock, a customer event invoice to deduct stock, or a stock count."}
       </p>
       <div className="mt-5 rounded-xl border border-border bg-surface shadow-sm">
         <StockUploadReview
