@@ -32,6 +32,8 @@ export type SummaryPictureProps = {
   deliveries: number;
   supplierOutstanding: number;
   customerOutstanding: number;
+  /** O2 Life (the restaurant) is the only company viewed: no deliveries, production orders or customer invoices */
+  restaurant?: boolean;
 };
 
 const sum = (a: Series) => a.reduce((t, v) => t + v, 0);
@@ -163,11 +165,11 @@ export function SummaryInfographic(p: SummaryPictureProps) {
         <div className="mt-4 grid gap-6 md:grid-cols-[1fr_1.4fr]">
           <div className="grid grid-cols-2 gap-x-4 gap-y-5 self-start">
             <Pill value={p.activeStaff} label="Active staff" />
-            <Pill value={p.deliveries} label="Deliveries" />
-            <Pill value={p.productionOrders} label="Production orders" />
+            {!p.restaurant && <Pill value={p.deliveries} label="Deliveries" />}
+            {!p.restaurant && <Pill value={p.productionOrders} label="Production orders" />}
             <Pill value={p.activeCampaigns} label="Active campaigns" />
             <Pill value={formatCurrency(p.supplierOutstanding)} label="Supplier outstanding" />
-            <Pill value={formatCurrency(p.customerOutstanding)} label="Customer outstanding" />
+            {!p.restaurant && <Pill value={formatCurrency(p.customerOutstanding)} label="Customer outstanding" />}
           </div>
 
           <div>

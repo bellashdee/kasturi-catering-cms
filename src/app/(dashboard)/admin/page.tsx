@@ -13,6 +13,7 @@ import { SplitSalesForm } from "@/components/finance/SplitSalesForm";
 import { Select } from "@/components/ui/Select";
 import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
 import { readSort, sortBy } from "@/lib/listSort";
+import { isRestaurantScope } from "@/lib/restaurantView";
 
 /** Sort of the "Costs by Category" list. */
 const SORTS = { amount: "Amount", category: "Category" };
@@ -95,7 +96,7 @@ export default async function AdminPage({
     <div className="flex flex-col gap-5">
       <div>
         <h1 className="text-[22px] font-extrabold text-text">Admin &amp; Finance</h1>
-        <p className="mt-0.5 text-[13px] text-text-secondary">Monthly Costing</p>
+        <p className="mt-0.5 text-[13px] text-text-secondary">{isRestaurantScope(companies, targetCompanyIds) ? "Monthly Costing — Restoran Bara Ikan Bakar Senibong: the restaurant's sales, costs and profit" : "Monthly Costing"}</p>
       </div>
 
       <FinanceAdminSubNav />

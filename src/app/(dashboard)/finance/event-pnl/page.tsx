@@ -19,6 +19,7 @@ import { PrintButton } from "@/components/finance/EventPnlForms";
 import { Select } from "@/components/ui/Select";
 import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
 import { readSort, sortBy } from "@/lib/listSort";
+import { isRestaurantScope } from "@/lib/restaurantView";
 
 type SearchParams = { company?: string; year?: string; month?: string; q?: string; customer?: string; status?: string; sort?: string; dir?: string };
 
@@ -32,6 +33,9 @@ export default async function MonthlyEventPnlPage({ searchParams }: { searchPara
 
   const sp = await searchParams;
   const supabase = await createClient();
+  // O2 Life is the restaurant: it has no events, so its view never shows the Event P&L (of Signature Solution and Kasturi Indah)
+  const { data: allCompanies } = await supabase.from("companies").select("id, name");
+  if (isRestaurantScope(allCompanies ?? [], resolveCompanyScope(session, allCompanies ?? [], sp.company).targetCompanyIds)) redirect(sp.company ? `/admin?company=${sp.company}` : "/admin");
   const pnlCompanies = await eventPnlCompanies(supabase);
   const { targetCompanyIds } = resolveCompanyScope(session, pnlCompanies, sp.company);
   const adminIds = await eventPnlCompanyIds(supabase, targetCompanyIds);

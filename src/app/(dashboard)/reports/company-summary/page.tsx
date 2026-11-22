@@ -13,6 +13,7 @@ import { SectionCard, EmptyRow, StatRow } from "@/components/dashboard/SectionCa
 import { SummaryInfographic } from "@/components/reports/SummaryInfographic";
 import { SalesByMonthComparison } from "@/components/reports/SalesByMonthComparison";
 import { SoftPage } from "@/components/ui/Soft";
+import { isRestaurantScope } from "@/lib/restaurantView";
 
 function currentYearMonth() {
   return malaysiaYearMonth();
@@ -83,6 +84,7 @@ export default async function CompanySummaryReportPage({
         deliveries={summary.deliveries}
         supplierOutstanding={summary.supplierOutstanding}
         customerOutstanding={summary.customerOutstanding}
+        restaurant={isRestaurantScope(companies, targetCompanyIds)}
       />
 
       <SalesByMonthComparison year={year} current={series.revenue} previous={prevSeries.revenue} />

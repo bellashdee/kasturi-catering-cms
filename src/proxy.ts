@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { canAccessPath, mergeAllowedModules, moduleForPath } from "@/lib/modules";
 import { mergeAllowedSections, sectionForPath } from "@/lib/sections";
 import { MONTH_FILTER_PAGES, thisMonthInMalaysia } from "@/lib/monthPages";
+import { isRestaurantOnly, restaurantRedirect } from "@/lib/restaurantView";
 
 const PUBLIC_PATHS = ["/login", "/signup", "/auth"];
 // open to anyone, signed in or not (sales agents send customer details here without an account)
@@ -67,7 +68,8 @@ export async function proxy(request: NextRequest) {
     // its records, so it skips this database check; opening the page is still checked. This keeps the database free for the page being opened.
     // (only together with the RSC header: then Next answers with the loading frame only, whatever else the request says)
     const isPrefetch = request.headers.get("rsc") === "1" && (request.headers.has("next-router-prefetch") || request.headers.has("next-router-segment-prefetch"));
-    if (!isPrefetch && (moduleKey || sectionForPath(request.nextUrl.pathname))) {
+    const restaurantTo = restaurantRedirect(request.nextUrl.pathname);
+    if (!isPrefetch && (moduleKey || sectionForPath(request.nextUrl.pathname) || restaurantTo)) {
       const { data: grants } = await supabase.from("user_company_access").select("*").eq("user_id", user.id);
       const allowed = mergeAllowedModules((grants ?? []).map((g) => g.allowed_modules));
       const sections = mergeAllowedSections((grants ?? []).map((g) => (g as { allowed_sections?: string[] | null }).allowed_sections ?? null));
@@ -76,6 +78,21 @@ export async function proxy(request: NextRequest) {
         url.pathname = "/";
         url.search = "?denied=1";
         return NextResponse.redirect(url);
+      }
+      // O2 Life is the restaurant (no events, no customer invoices): while it is the only company viewed, an address made for catering goes to a restaurant page
+      if (restaurantTo) {
+        const { data: companies } = await supabase.from("companies").select("id, name");
+        const all = companies ?? [];
+        const accessible = (grants ?? []).some((g) => g.company_id === null)
+          ? all.map((c) => c.id)
+          : (grants ?? []).map((g) => g.company_id).filter((id): id is string => !!id && all.some((c) => c.id === id));
+        const company = request.nextUrl.searchParams.get("company");
+        if (isRestaurantOnly(all, accessible, company)) {
+          const url = request.nextUrl.clone();
+          url.pathname = restaurantTo;
+          url.search = company ? `?company=${company}` : "";
+          return NextResponse.redirect(url);
+        }
       }
     }
     // a month list opened without a month shows this month; a date range the person chose (From / To) is kept as it is

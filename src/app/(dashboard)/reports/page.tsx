@@ -63,6 +63,20 @@ const REPORTS: ReportCard[] = [
   },
 ];
 
+/** Cards made for catering events and customer invoices: not listed while O2 Life (the restaurant) is the only company viewed. */
+const RESTAURANT_HIDDEN = new Set(["revenue", "events"]);
+/** The cards the restaurant keeps, worded for a restaurant. */
+const RESTAURANT_TEXT: Record<string, Partial<ReportCard>> = {
+  overview: {
+    description: "Sales, costs and profit: one month, or the whole year compared with last year, and where the money went.",
+  },
+  outstanding: {
+    title: "Supplier Outstanding",
+    description: "Unpaid supplier invoices: who we still owe.",
+    links: [{ href: "/reports/supplier-outstanding", label: "We owe suppliers" }],
+  },
+};
+
 export default async function ReportsHubPage({
   searchParams,
 }: {
@@ -79,11 +93,15 @@ export default async function ReportsHubPage({
   const { targetCompanyIds } = resolveCompanyScope(session, companies ?? [], requestedId);
   const o2 = (companies ?? []).find((c) => c.name === "O2 Life");
   const onlyO2 = !!o2 && targetCompanyIds.length === 1 && targetCompanyIds[0] === o2.id;
-  const reports = REPORTS.filter((r) => onlyO2 || r.key !== "breakdown");
+  // O2 Life is the restaurant (Restoran Bara Ikan Bakar Senibong): no events and no customer invoices, so the cards about them are left out,
+  // the Monthly Breakdown comes first and the owed-money card is only about the suppliers
+  const reports = onlyO2
+    ? [REPORTS.find((r) => r.key === "breakdown")!, ...REPORTS.filter((r) => !RESTAURANT_HIDDEN.has(r.key) && r.key !== "breakdown").map((r) => RESTAURANT_TEXT[r.key] ? { ...r, ...RESTAURANT_TEXT[r.key] } : r)]
+    : REPORTS.filter((r) => r.key !== "breakdown");
 
   return (
     <SoftPage>
-      <SoftHeader title="Reports" subtitle="Real, live figures from every module — nothing here is hardcoded." />
+      <SoftHeader title="Reports" subtitle={onlyO2 ? "Restoran Bara Ikan Bakar Senibong: sales, costs and profit from the recorded figures." : "Real, live figures from every module — nothing here is hardcoded."} />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {reports.map((r) => (

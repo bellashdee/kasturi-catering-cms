@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useTabVisible } from "@/components/layout/SectionAccess";
+import { useRestaurantView } from "@/components/layout/RestaurantView";
 
 const TABS = [
   { href: "/kitchen", label: "Production Schedule", match: (p: string) => p === "/kitchen" || /^\/kitchen\/[0-9a-f-]{36}$/.test(p) },
@@ -14,15 +15,19 @@ const TABS = [
   { href: "/kitchen/reports", label: "Daily Report", match: (p: string) => p.startsWith("/kitchen/reports") },
 ];
 
+/** Made for catering events: not shown while O2 Life (the restaurant) is the only company viewed. */
+const EVENT_TABS = new Set(["/kitchen", "/kitchen/plan", "/kitchen/packages"]);
+
 export function KitchenSubNav() {
   const pathname = usePathname();
   const visible = useTabVisible();
+  const restaurant = useRestaurantView();
   const searchParams = useSearchParams();
   const company = searchParams.get("company");
 
   return (
     <div className="flex flex-wrap gap-1 border-b border-border">
-      {TABS.filter((tab) => visible(tab.href)).map((tab) => {
+      {TABS.filter((tab) => visible(tab.href) && !(restaurant && EVENT_TABS.has(tab.href))).map((tab) => {
         const active = tab.match(pathname);
         const href = company ? `${tab.href}?company=${company}` : tab.href;
         return (

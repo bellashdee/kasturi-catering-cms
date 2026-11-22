@@ -18,6 +18,8 @@ import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/List
 import { PrintButton } from "@/components/reports/PrintButton";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 import { SoftPage } from "@/components/ui/Soft";
+import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
+import { canAccessModule } from "@/lib/modules";
 
 const sum = (v: number[]) => v.reduce((t, x) => t + x, 0);
 const pctText = (n: number) => `${(n * 100).toFixed(1)}%`;
@@ -137,6 +139,13 @@ export default async function MonthlyBreakdownPage({ searchParams }: { searchPar
           {BARA_COMPANY} Sdn Bhd · {year}. RM and % of each month&apos;s total sales; red means over the limit; a dash is a month not entered yet. Click a heading to go to where its figures are saved and edit them.
         </p>
       </div>
+
+      {/* the restaurant's Admin & Finance tabs (Monthly Costing, Monthly Breakdown, payments) for whoever may open that module */}
+      {canAccessModule(session.allowedModules, "finance-admin") && (
+        <div className="print:hidden">
+          <FinanceAdminSubNav />
+        </div>
+      )}
 
       <div className="flex flex-wrap items-end justify-between gap-3 print:hidden">
         <ListFilters keep={{ company: requestedId }} clearHref={requestedId ? `/reports/monthly-breakdown?company=${requestedId}` : "/reports/monthly-breakdown"}>

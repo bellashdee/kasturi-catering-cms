@@ -7,6 +7,7 @@ import { MODULES } from "@/lib/constants";
 import { moduleHref } from "@/lib/sections";
 import { withThisMonth } from "@/lib/monthPages";
 import { useAllowedSections } from "@/components/layout/SectionAccess";
+import { useRestaurantView } from "@/components/layout/RestaurantView";
 
 const ICONS: Record<string, React.ReactNode> = {
   profile: (
@@ -227,13 +228,18 @@ export function TopLinks({ taskLabel = "Priority Centre" }: { taskLabel?: string
 export function ModuleLinks({ allowedModules, badges = {}, showPayroll = false }: { allowedModules: string[] | null; badges?: Record<string, number>; showPayroll?: boolean }) {
   const show = (key: string) => !allowedModules || allowedModules.includes(key);
   const allowedSections = useAllowedSections();
+  // O2 Life is the restaurant (Restoran Bara Ikan Bakar Senibong): no Catering, and the Kitchen opens on its recipes, not on the event schedule
+  const restaurant = useRestaurantView();
   const moduleLink = (key: string) => {
     const m = MODULES.find((x) => x.key === key);
-    return m && show(key) ? <NavItem key={key} href={moduleHref(key, m.href, allowedSections)} icon={key} label={m.label} matchPrefixes={m.matchPrefixes} badge={badges[key]} /> : null;
+    if (!m || !show(key)) return null;
+    const kitchenForRestaurant = restaurant && key === "kitchen";
+    const href = kitchenForRestaurant ? "/kitchen/recipes" : moduleHref(key, m.href, allowedSections);
+    return <NavItem key={key} href={href} icon={key} label={m.label} matchPrefixes={kitchenForRestaurant ? ["/kitchen"] : m.matchPrefixes} badge={badges[key]} />;
   };
   return (
     <>
-      {moduleLink("catering")}
+      {!restaurant && moduleLink("catering")}
       {moduleLink("kitchen")}
       {moduleLink("supplier-procurement")}
       {moduleLink("driver-logistics")}

@@ -16,6 +16,9 @@ import { CompanyTheme, CompanyThemeScript } from "@/components/layout/CompanyThe
 import { PageTools } from "@/components/layout/PageTools";
 import { Suspense } from "react";
 import { SectionAccessProvider } from "@/components/layout/SectionAccess";
+import { RestaurantViewProvider } from "@/components/layout/RestaurantView";
+import { resolveCompanyScope } from "@/lib/companyScope";
+import { RESTAURANT_COMPANY_NAME } from "@/lib/restaurantView";
 
 export default async function DashboardLayout({
   children,
@@ -38,10 +41,14 @@ export default async function DashboardLayout({
   // everyone has their own task list; Super Admins and Company Admins also get Madam Penny's Priority Centre (payments and approvals)
   const isAdmin = session.role === "super_admin" || session.role === "company_admin";
   const taskLabel = isAdmin ? "Priority Centre" : "My Tasks";
+  // O2 Life is the restaurant: while it is the only company viewed, the menus hide what is made for catering events
+  const o2Id = (companies ?? []).find((c) => c.name === RESTAURANT_COMPANY_NAME)?.id ?? null;
+  const { accessibleIds } = resolveCompanyScope(session, companies ?? [], undefined);
 
   return (
     <MobileNavProvider>
       <SectionAccessProvider allowedSections={session.allowedSections}>
+      <RestaurantViewProvider o2Id={o2Id} accessibleIds={accessibleIds} allowedModules={session.allowedModules}>
       <LanguageBootstrap profileLanguage={profile?.language ?? null} />
       <SessionGuard />
       <CompanyThemeScript companies={companies ?? []} />
@@ -63,6 +70,7 @@ export default async function DashboardLayout({
         <PushPrompt />
         <PhoneLists />
       </div>
+      </RestaurantViewProvider>
       </SectionAccessProvider>
     </MobileNavProvider>
   );

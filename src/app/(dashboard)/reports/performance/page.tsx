@@ -18,6 +18,7 @@ import { SalesYearComparison, type CompanySales } from "@/components/reports/Sal
 import { AGING_LABELS, CHART_COLORS, ColumnChart, DonutChart, RED, StackedBar, TrendLines, agingBucket, type Slice } from "@/components/reports/Charts";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 import { SoftPage } from "@/components/ui/Soft";
+import { isRestaurantScope } from "@/lib/restaurantView";
 
 const sum = (v: number[]) => v.reduce((t, x) => t + x, 0);
 const TOP = 10;
@@ -75,7 +76,7 @@ const More = ({ to, children }: { to: string; children: React.ReactNode }) => (
 );
 const Skeleton = ({ height = 260 }: { height?: number }) => <div className="animate-pulse rounded-2xl border border-border bg-surface-alt" style={{ height }} aria-busy="true" />;
 
-type BlockProps = { ids: string; year: number; /** 0 = the whole year */ month: number; query: string; requestedId?: string };
+type BlockProps = { ids: string; year: number; /** 0 = the whole year */ month: number; query: string; requestedId?: string; /** O2 Life (the restaurant) is the only company viewed: no event blocks */ restaurant?: boolean };
 const periodOf = (year: number, month: number) => (month ? `${MONTH_LABEL[month - 1]} ${year}` : String(year));
 const inMonth = (date: string, month: number) => !month || Number(date.slice(5, 7)) === month;
 
@@ -158,7 +159,7 @@ async function SalesVsLastYear({ ids, year }: BlockProps) {
 }
 
 /** The two rings: revenue by type of serving and the breakdown of expenses. */
-async function Rings({ ids, year, month, query }: BlockProps) {
+async function Rings({ ids, year, month, query, restaurant }: BlockProps) {
   const [events, spending, sales] = await Promise.all([getEvents(ids, year), getSpending(ids, year), getSalesByCompany(ids, year)]);
 
   // The ring adds up to the Sales of the period (the same figure as the Sales card): each month's sales are split by the type of serving of
@@ -209,7 +210,8 @@ async function Rings({ ids, year, month, query }: BlockProps) {
   if (cats.length > 6) expenses.push({ label: `Other (${cats.length - 6} categories)`, value: sum(cats.slice(6).map(([, v]) => v)), color: CHART_COLORS[6] });
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className={`grid gap-4 ${restaurant ? "" : "lg:grid-cols-2"}`}>
+      {!restaurant && (
       <SectionCard title={`Revenue by Type of Serving — ${periodOf(year, month)}`}>
         <Note>
           The {month ? "month" : "year"}&apos;s sales ({formatCurrency(sum(products.map((p) => p.value)))}, the same as the Sales card) by type of serving.
@@ -219,6 +221,7 @@ async function Rings({ ids, year, month, query }: BlockProps) {
         <DonutChart slices={products} centerLabel="Sales" empty="No sales this year." />
         <More to={`/reports/catering${query}`}>Catering Report</More>
       </SectionCard>
+      )}
       <SectionCard title={`Breakdown of Expenses — ${periodOf(year, month)}`}>
         <Note>Every cost recorded in the {month ? "month" : "year"}: the six biggest categories, the rest grouped as Other.</Note>
         <DonutChart slices={expenses} centerLabel="Total expenses" empty="No expenses recorded this year." />
@@ -492,7 +495,8 @@ export default async function PerformanceDashboardPage({ searchParams }: { searc
   const year = Number(yearParam) || malaysiaYearMonth().year;
   const month = Math.min(Math.max(Number(monthParam) || 0, 0), 12);
   const selected = companies.find((c) => targetCompanyIds.length === 1 && c.id === targetCompanyIds[0]);
-  const props: BlockProps = { ids: [...targetCompanyIds].sort().join(","), year, month, query, requestedId };
+  const restaurant = isRestaurantScope(companies, targetCompanyIds);
+  const props: BlockProps = { ids: [...targetCompanyIds].sort().join(","), year, month, query, requestedId, restaurant };
 
   return (
     <SoftPage>
@@ -510,9 +514,9 @@ export default async function PerformanceDashboardPage({ searchParams }: { searc
       <Suspense fallback={<Skeleton height={420} />}><Headline {...props} /></Suspense>
       <Suspense fallback={<Skeleton height={520} />}><SalesVsLastYear {...props} /></Suspense>
       <Suspense fallback={<Skeleton />}><Rings {...props} /></Suspense>
-      <Suspense fallback={<Skeleton />}><AveragePrices {...props} /></Suspense>
-      <Suspense fallback={<Skeleton />}><People {...props} /></Suspense>
-      <Suspense fallback={<Skeleton height={340} />}><OwedToUs {...props} /></Suspense>
+      {!restaurant && <Suspense fallback={<Skeleton />}><AveragePrices {...props} /></Suspense>}
+      {!restaurant && <Suspense fallback={<Skeleton />}><People {...props} /></Suspense>}
+      {!restaurant && <Suspense fallback={<Skeleton height={340} />}><OwedToUs {...props} /></Suspense>}
       <Suspense fallback={<Skeleton height={340} />}><OwedByUs {...props} /></Suspense>
     </SoftPage>
   );

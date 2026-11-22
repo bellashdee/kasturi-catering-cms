@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useTabVisible } from "@/components/layout/SectionAccess";
+import { useCanOpenModule, useRestaurantView } from "@/components/layout/RestaurantView";
 
 type Match = (path: string, params: URLSearchParams) => boolean;
 type Page = { href: string; label: string; match: Match };
@@ -36,20 +37,28 @@ const TABS: Tab[] = [
   },
 ];
 
+/** Made for catering events and their customers: not shown while O2 Life (the restaurant) is the only company viewed. */
+const EVENT_TABS = new Set(["/finance/event-pnl", "/finance/invoices", "/finance/payment-proofs"]);
+/** The restaurant's own tab, after Monthly Costing: sales, raw item cost, labour, utilities and net profit by month (a page of Reports). */
+const BREAKDOWN_TAB: Page = { href: "/reports/monthly-breakdown", label: "Monthly Breakdown", match: (p) => p.startsWith("/reports/monthly-breakdown") };
+
 const TAB_CLASS = "border-b-2 px-3.5 py-2.5 text-[13.5px] font-semibold";
 const tabClass = (active: boolean) => `${TAB_CLASS} ${active ? "border-primary text-primary" : "border-transparent text-text-secondary hover:text-text"}`;
 
 export function FinanceAdminSubNav() {
   const pathname = usePathname();
   const visible = useTabVisible();
+  const restaurant = useRestaurantView();
+  const canOpenReports = useCanOpenModule("reports");
   const searchParams = useSearchParams();
   const params = new URLSearchParams(searchParams.toString());
   const company = searchParams.get("company");
   const withCompany = (href: string) => (company ? `${href}?company=${company}` : href);
 
-  const row = TABS.flatMap((tab) => {
+  const tabs: Tab[] = restaurant && canOpenReports ? [TABS[0], BREAKDOWN_TAB, ...TABS.slice(1)] : TABS;
+  const row = tabs.flatMap((tab) => {
     if ("href" in tab) {
-      if (!visible(tab.href)) return [];
+      if (!visible(tab.href) || (restaurant && EVENT_TABS.has(tab.href))) return [];
       return [{ key: tab.href, label: tab.label, href: tab.href, active: tab.match(pathname, params), pages: [] as Page[] }];
     }
     const pages = tab.pages.filter((page) => visible(page.href));
