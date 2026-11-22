@@ -96,6 +96,13 @@ const ICONS: Record<string, React.ReactNode> = {
       <circle cx="10" cy="11" r="2.2" />
     </>
   ),
+  restaurant: (
+    <>
+      <circle cx="10" cy="10" r="6.5" />
+      <circle cx="10" cy="10" r="3.2" />
+      <path d="M2 4v4M3.6 4v4M5.2 4v4M3.6 8v8M17 4c-1.2 1.2-1.6 3-1.6 5h1.6v7" />
+    </>
+  ),
   "ingredient-calculator": (
     <>
       <rect x="4" y="2.5" width="12" height="15" rx="1.5" />
@@ -250,6 +257,7 @@ export function ModuleLinks({ allowedModules, badges = {}, showPayroll = false }
   if (restaurant) {
     return (
       <>
+        {moduleLink("restaurant")}
         {moduleLink("kitchen")}
         {moduleLink("supplier-procurement")}
         {spending}

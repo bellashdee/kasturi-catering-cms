@@ -348,7 +348,7 @@ The restaurant today records food when it is **bought** (Company Expenses by day
 | Phase | Content | New / changed | Size | Depends on |
 |---|---|---|---|---|
 | 0 | This audit and plan | docs only | done | |
-| 1 | Daily sales entry and Excel import (by day, channel, payment method), cash sessions per shift, restaurant roles table, audit events, Dashboard v1 (RM0.00 / empty states; food cost % from Company Expenses; drill-down to rows). Monthly figures from `monthly_sales` stay for months without daily rows; a month with daily rows uses the daily sum (rule shown on the page). | `rst_sales_daily`, `rst_cash_sessions`, `rst_staff_roles`, `audit_events`, `companies.is_restaurant`; new pages in the restaurant view | M (4–6 days) | decision (a), (d) |
+| 1 | Daily sales entry and Excel import (by day, channel, payment method), cash sessions per shift, restaurant roles table, audit events, Dashboard v1 (RM0.00 / empty states; food cost % from Company Expenses; drill-down to rows). **Phase 1 does not change `monthly_sales` or any existing report**: the dashboard reads daily rows only and shows, beside them, a reconciliation with the AutoCount monthly total (difference, never a sum), so nothing can be counted twice. A rule to let daily rows replace the monthly figure in the old reports is a separate decision for later. | `rst_sales_daily`, `rst_cash_sessions`, `rst_staff_roles`, `audit_events`, `companies.is_restaurant`; new pages in the restaurant view | M (4–6 days) | decision (a), (d) |
 | 2 | Restaurant menu (categories, price, station) + recipes with portion yield, waste %, versions and cost per portion; margin report | `rst_menu_items`, `rst_menu_addons`, `rst_recipe_versions`, recipe columns | M (4–6 days) | Chef provides recipes |
 | 3 | Stock core: ingredient set-up for O2 (units, conversion, min / max, location), atomic stock movement function, opening stock count, stock count workflow, wastage log linked to stock (with the other session), low-stock notices | ingredient and ledger columns, `rst_stock_batches`, `rst_stock_counts`, RPCs | L (8–12 days) | decision (b); phase 2 helps |
 | 4 | Purchasing chain: requisition shows available stock and pending delivery, approval without self-approval, PO approval, **GRN with partial receiving**, stock-in only on confirm, supplier invoice linked to GRN, duplicate guard in the database, supplier price history | `rst_goods_receipts` (+lines), PO columns | L (8–12 days) | phase 3 |
@@ -363,6 +363,15 @@ Each phase ends with: migration (additive), code, translations in 4 languages, t
 
 ---
 
+## 9a. Phase 1 status (approved 22 Nov 2026: "Fasa 1 dahulu")
+
+**Built:** migration `20261122000020_restaurant_phase1.sql` (applied to the database), module key `restaurant`, pages under `/restaurant` (Dashboard, Daily Sales, Cash Sessions, Staff Roles), side-bar entry "Restaurant" (restaurant view only), 4-language strings.
+
+- Database: `companies.is_restaurant` (true for O2 Life only), `rst_staff_roles`, `rst_sales_daily`, `rst_cash_sessions`, `audit_events`; functions `rst_is_restaurant`, `rst_has_role`, `rst_close_cash_session`, `rst_reopen_cash_session`, `rst_audit`. RLS: fast company rule + RESTRICTIVE gate on the `restaurant` module; writes need a restaurant role (Cashier / Manager / Finance, Admins always). Guard triggers: a line is inserted as a draft; a confirmed line cannot be edited, only cancelled by a Manager / Admin with a reason; no delete of confirmed lines or of cash sessions; closing the cash is one atomic function and is idempotent.
+- Database tests run before release (rolled back, nothing left in the tables): duplicate line refused, catering company refused, discount above sales refused, edit of confirmed refused, cancel without reason refused, delete of confirmed refused, cash close with a difference needs a reason, a draft cash line blocks closing, second close returns the first result, direct reopen blocked, reopen only by the function, audit rows written, a person with no restaurant role cannot insert or see rows.
+- Not in this increment (still to do inside phase 1): **Excel / CSV import of daily sales** (waits for the sample file or report of the system the restaurant uses today, decision (a)); the audit trail screen (the data is already collected); CSV / PDF export buttons on the three screens (the page tools of the side bar still print).
+- Assumptions used: channels Dine-in / Takeaway / Delivery / Online; payment methods Cash / QR-DuitNow / Card / Online platform / Other; shifts 1 to 3 on the screens (the database allows 1 to 9); one line per day, shift, channel and payment method; sales amount is the bill value before discount; Owner assigns restaurant roles in Staff Roles and switches the Restaurant module on in Settings for staff whose module list is limited.
+
 ## 10. Decisions only Ms. Nabilah can make (with recommendation)
 
 (a) **How do sales get into the system?** Built-in POS + kitchen display, or import from the POS / system the restaurant uses now, or manual daily entry from the end-of-day report. **Recommend:** manual / Excel import of daily sales first (phase 1); decide on a built-in POS only after seeing the phase 1 dashboard. Need to know: what does the restaurant use now, and can it export Excel / PDF? About "eHorse": the master prompt itself names **e-HORS (WinX Catering)**; please confirm whether "eHorse" is that system, whether Bara already uses it, and whether it exports Excel / PDF.
@@ -375,6 +384,30 @@ Each phase ends with: migration (additive), code, translations in 4 languages, t
 
 Other questions: Does the price on the menu include SST / service charge? Which payment methods does Bara accept (cash, DuitNow QR, card, GrabFood / ShopeeFood …)? How many shifts a day and who counts the cash? Does she want food cost kept on purchases (as now) until the first month-end stock count?
 
-## 11. Assumptions made (documented, to be corrected if wrong)
+## 11. Reference benchmark: e-HORS / WinX (read 22 Nov 2026)
+
+Ms. Nabilah asked for the official sites to be studied as a **workflow benchmark only** (no branding, assets or code copied).
+
+**Pages actually read (all loaded, readable text):** `ehors-tech.com` (WinX), `ehors.com`, `ehors.com/pos/`, `ehors.com/venue-catering/`, and four sub-pages `ehors.com/food-and-beverage/`, `/purchasing/`, `/inventory-management/`, `/accounting/`.
+**Not read / not visible:** the module diagrams on the `ehors.com` home page are images (not readable); the pages for front office, housekeeping, sales & marketing, service centre, HR and the hotel / resort / theme-park pages were not opened (not relevant to a single restaurant). The sites do **not** describe a kitchen display system, kitchen ticket routing, a management dashboard, roles / permissions in detail, or any offline mode, so those parts of the master prompt cannot be benchmarked against them and stay designed from Bara's own needs. Everything below is the vendor's own marketing description, not verified behaviour.
+
+**Concepts worth adapting (written in our own words and our own tables):**
+
+| Reference concept | How it connects modules | Adaptation for Bara | Phase |
+|---|---|---|---|
+| Recipes as a bill of materials, **nested sub-recipes**, costed at item level; theoretical cost compared with actual cost from sales and goods received | Menu → recipe → ingredient cost → variance | Sub-recipes for sambal, marinade, sauces made once and used in many dishes (`rst_recipe_components`); theoretical vs actual is already rule 7.3 | 2, 6 |
+| "Replace item" updates every recipe that uses an ingredient | Inventory → recipes | A controlled "replace ingredient" action (creates new recipe versions, never edits history) | 2 |
+| Stock quantity and value update in real time from goods received, usage, returns, transfers, corrections, stock takes; valuation by last or average price | One ledger feeds stock value | Same single ledger (`stock_movements` + `reason_code`); weighted average (A5), last price shown beside it | 3 |
+| Purchase advice from minimum stock, minimum order, **available stock and outstanding requests** | Inventory → purchasing | Matches our net-quantity rule: requested − available usable stock − pending delivery; add **minimum order quantity** per supplier item | 4 |
+| **Market-list buying** (templates per kitchen / location) beside standard purchasing | Kitchen → purchaser | Bara buys fresh seafood and vegetables **daily**: a daily market-list template (usual items and quantities, edited each morning) feeding the same requisition → PO → GRN chain | 4 |
+| Approvals configurable from 1 to 3 levels | Purchasing control | Approval levels per company setting (default 1: Manager; optional Chef then Manager), no self-approval | 4 |
+| Goods received in stages; returns as negative PO; received goods **reconciled with the supplier invoice** | Purchasing → inventory → payables | GRN partial receiving; return-to-supplier as a reversal movement + credit note link; GRN ↔ invoice matching screen | 4 |
+| Revenue, purchases, stock movements and payment methods post to the ledger automatically, no manual journals | Everything → accounting | No general ledger is built (AutoCount stays the accounts); instead each source posts once to our own tables and the reports read them. Optional export for AutoCount later | 6 |
+| POS: table sections with revenue reports, split / join bill, time-slot menus, mobile waiter app, hardware-independent, browser-based | POS → kitchen, stock, finance | Reinforces keeping the POS decision (a) separate; a browser POS on tablet / phone is feasible, offline behaviour must be designed by us (not described by the reference) | 7 |
+| Real-time operation, no night audit | Whole system | Day-close by the Manager is optional and never blocks sales | 1, 6 |
+
+Nothing in the reference changes the recommended first increment: daily sales, cash and dashboard (phase 1) do not depend on any of the above.
+
+## 12. Assumptions made (documented, to be corrected if wrong)
 
 A1 sales are before tax; A2 voids and refunds are not revenue; A3 inventory mode starts at the first approved opening count; A4 duplicate invoice = same supplier + number; A5 weighted average cost; A6 raw item cost target 38% of sales (existing Bara limit); A7 critical stock = half the reorder level; business day and shifts follow Malaysia time; no restaurant data is copied from the catering companies; no fake data is inserted at any time.

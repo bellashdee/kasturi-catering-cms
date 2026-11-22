@@ -15,6 +15,7 @@ const PATH_MODULE: [string, ModuleKey][] = [
   ["/spending/expenses", "finance-admin"],
   ["/spending/budgets", "finance-admin"],
   ["/reports", "reports"],
+  ["/restaurant", "restaurant"],
 ];
 
 export function moduleForPath(pathname: string): ModuleKey | null {

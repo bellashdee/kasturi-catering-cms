@@ -8,6 +8,8 @@ export type ModuleKey =
   | "finance-admin"
   | "ingredient-calculator"
   | "reports"
+  /** The restaurant system of O2 Life (daily sales, cash sessions, restaurant roles). Shown only while O2 Life is the only company viewed. */
+  | "restaurant"
   | "ai-assistant"
   /** Sub-permission: only the OT pages of HR (Staff OT Form, OT dashboard and approvals), not the rest of HR. */
   | "overtime"
@@ -22,6 +24,7 @@ export const MODULES: { key: ModuleKey; label: string; href: string; matchPrefix
   { key: "finance-admin", label: "Admin & Finance", href: "/admin", matchPrefixes: ["/admin", "/finance"] },
   { key: "hr", label: "HR", href: "/hr", matchPrefixes: ["/hr", "/payroll-centre"] },
   { key: "reports", label: "Reports", href: "/reports" },
+  { key: "restaurant", label: "Restaurant", href: "/restaurant" },
   { key: "ai-assistant", label: "AI Assistant", href: "/ai-assistant" },
   { key: "marketing", label: "Marketing", href: "/marketing" },
 ];
