@@ -1,3 +1,4 @@
+import { PhoneLists } from "@/components/layout/PhoneLists";
 import { redirect } from "next/navigation";
 import { PushPrompt } from "@/components/settings/PushPrompt";
 import { createClient } from "@/lib/supabase/server";
@@ -60,6 +61,7 @@ export default async function DashboardLayout({
         </div>
         <AssistantWidget />
         <PushPrompt />
+        <PhoneLists />
       </div>
       </SectionAccessProvider>
     </MobileNavProvider>

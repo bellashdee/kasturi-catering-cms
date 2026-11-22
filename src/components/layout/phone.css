@@ -1,0 +1,150 @@
+/*
+ * Phone layout (screens up to 767px wide). PhoneLists marks the tables and the lists made of fixed columns with the name of each column,
+ * so here every row becomes a card: the name of the column on the left, the value on the right. Nothing needs to be scrolled sideways.
+ * Print and wide screens are untouched.
+ */
+@media screen and (max-width: 767px) {
+  /* a full-height page uses the visible height of the phone (the address bar does not hide the bottom of the page) */
+  .h-screen {
+    height: 100dvh;
+  }
+
+  /* the title row of a page (title and its buttons) wraps instead of squeezing */
+  main > div > div.flex.justify-between:first-child {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  main h1,
+  main h2 {
+    overflow-wrap: anywhere;
+  }
+
+  /* boxes of 3 to 6 columns (the figures at the top of a page) show 2 columns */
+  main .grid-cols-3,
+  main .grid-cols-4,
+  main .grid-cols-5,
+  main .grid-cols-6 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  /* filter bars: one box per line, the whole width */
+  main form[method="get"] > label,
+  main form[method="get"] > div:not(.flex) {
+    flex: 1 1 100%;
+    min-width: 0 !important;
+  }
+  main form[method="get"] label > div {
+    display: block;
+    width: 100%;
+  }
+  main form[method="get"] :is(input, select, textarea):not([type="hidden"], [type="checkbox"], [type="radio"]) {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  /* tables: each row is a card */
+  main table[data-cards] {
+    display: block;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100%;
+  }
+  main table[data-cards] > thead {
+    display: none;
+  }
+  main table[data-cards] > tbody,
+  main table[data-cards] > tfoot {
+    display: block;
+  }
+  main table[data-cards] tr {
+    display: block;
+    margin: 0 0 10px;
+    padding: 6px 12px;
+    border: 1px solid var(--color-border) !important;
+    border-radius: 12px;
+    background: var(--color-surface);
+  }
+  main table[data-cards] tr[data-span] {
+    background: var(--color-surface-alt);
+    font-weight: 700;
+  }
+  main table[data-cards] :is(td, th) {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    padding: 6px 0 !important;
+    border: 0 !important;
+    text-align: right !important;
+  }
+  main table[data-cards] td::before {
+    content: attr(data-label);
+    flex: 0 0 38%;
+    max-width: 38%;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+  main table[data-cards] td[data-label=""]::before,
+  main table[data-cards] tr[data-span] td::before {
+    content: none;
+  }
+  main table[data-cards] td:empty {
+    display: none;
+  }
+
+  /* lists made of fixed columns: the header row is hidden, each row is a card */
+  main [data-phone-head] {
+    display: none !important;
+  }
+  main [data-phone-row] {
+    display: flex !important;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 14px !important;
+  }
+  main [data-phone-row] > * {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+    text-align: right;
+  }
+  main [data-phone-row] > *::before {
+    content: attr(data-label);
+    flex: 0 0 38%;
+    max-width: 38%;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+  main [data-phone-row] > [data-label=""]::before {
+    content: none;
+  }
+  main [data-phone-row] > :empty {
+    display: none;
+  }
+}
+
+/* a finger needs bigger things to press */
+@media (pointer: coarse) {
+  main button:not([role="option"]),
+  main summary,
+  main select {
+    min-height: 40px;
+  }
+  main input:not([type="checkbox"], [type="radio"], [type="file"], [type="range"], [type="hidden"]),
+  main textarea {
+    min-height: 44px;
+  }
+}
