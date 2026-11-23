@@ -165,7 +165,7 @@ export function expectedCash(s: Pick<CashSessionRow, "opening_cash" | "cash_expe
   return { cashIn, expected: s.opening_cash + cashIn - s.cash_expenses - s.withdrawals, drafts: mine.filter((l) => l.status === "draft").length };
 }
 
-/** The AutoCount monthly total of a month (all the rows keyed in for it), or null when none is keyed. */
+/** The monthly Total Sales of a month (Reports → Monthly Breakdown, table monthly_sales: all the rows keyed in for it), or null when none is keyed. */
 export async function fetchMonthlyTotal(db: SupabaseClient, companyId: string, month: string): Promise<number | null> {
   const [y, m] = month.split("-").map(Number);
   const { data, error } = await db.from("monthly_sales").select("sales_amount").eq("company_id", companyId).eq("year", y).eq("month", m);

@@ -259,18 +259,19 @@ export default async function RestaurantDashboardPage({ searchParams }: { search
           </div>
         </SectionCard>
 
-        <SectionCard title="Daily entries and the AutoCount monthly total">
+        <SectionCard title="Daily entries and the monthly Total Sales">
           {!canSeeCosts ? (
             <EmptyRow text="The monthly total is shown to people with Admin & Finance access." />
           ) : (
             <div className="flex flex-col gap-2 text-[13.5px]">
               <div className="text-[12.5px] text-text-muted">{dayText(monthStart)} to {dayText(monthEnd)}</div>
               <div className="flex items-center justify-between"><span>{`Daily entries (confirmed, ${monthDays} ${monthDays === 1 ? "day" : "days"})`}</span><span className="font-semibold">{formatCurrency(monthDaily)}</span></div>
-              <div className="flex items-center justify-between"><span>AutoCount monthly total</span><span className="font-semibold">{monthlyTotal === null ? "not keyed in yet" : formatCurrency(monthlyTotal)}</span></div>
+              <div className="flex items-center justify-between"><span>Total Sales of the month (Reports → Monthly Breakdown)</span><span className="font-semibold">{monthlyTotal === null ? "not keyed in yet" : formatCurrency(monthlyTotal)}</span></div>
               {monthlyTotal !== null && (
                 <div className="flex items-center justify-between border-t border-border pt-2"><span>Difference</span><span className="font-semibold">{formatCurrency(Math.round((monthDaily - monthlyTotal) * 100) / 100)}</span></div>
               )}
-              <p className="text-[12px] text-text-muted">The two are shown side by side to be checked. They are never added together, and the monthly reports still use the AutoCount total.</p>
+              <p className="text-[12px] text-text-muted">The two are shown side by side to be checked. They are never added together, and the monthly reports still use the Total Sales of the Monthly Breakdown.</p>
+              <p className="text-[12px] text-text-muted">The daily entries are compared as net sales: gross less discount, without service charge, SST, delivery fee and rounding.</p>
             </div>
           )}
         </SectionCard>

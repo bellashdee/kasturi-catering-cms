@@ -1,6 +1,6 @@
 -- Restaurant system, phase 1 (O2 Life only): daily sales by channel and payment method, cash sessions per shift, restaurant roles, audit events.
 -- Additive only. Nothing here touches the catering companies: every table is scoped by company_id and every write needs a restaurant company.
--- Money is never counted twice: the daily rows are NOT added to monthly_sales (the AutoCount monthly total); the dashboard shows them side by side.
+-- Money is never counted twice: the daily rows are NOT added to monthly_sales (the monthly Total Sales of the Monthly Breakdown); the dashboard shows them side by side.
 -- Completed records are never deleted: a confirmed sales line can only be cancelled (reason, manager) and a closed cash session reopened (reason, manager).
 
 alter table public.companies add column if not exists is_restaurant boolean not null default false;
