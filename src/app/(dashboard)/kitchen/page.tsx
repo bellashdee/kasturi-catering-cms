@@ -71,9 +71,14 @@ export default async function KitchenPage({
           <h1 className="text-[22px] font-extrabold text-text">Kitchen</h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">{orders.length} production order{orders.length === 1 ? "" : "s"}{monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}</p>
         </div>
-        <Link href={`/kitchen/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
-          + New Production Order
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href={`/kitchen/event-ingredients${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text">
+            Generate Ingredient List
+          </Link>
+          <Link href={`/kitchen/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
+            + New Production Order
+          </Link>
+        </div>
       </div>
 
       <KitchenSubNav />

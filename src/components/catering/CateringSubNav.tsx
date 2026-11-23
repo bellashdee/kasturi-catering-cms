@@ -11,6 +11,7 @@ const TABS = [
   { href: "/catering/import", label: "Import Events", match: (p: string) => p.startsWith("/catering/import") },
   { href: "/catering/event-report", label: "Event Report", match: (p: string) => p.startsWith("/catering/event-report") },
   { href: "/catering/customers", label: "Customers", match: (p: string) => p.startsWith("/catering/customers") },
+  { href: "/catering/meals-pax", label: "Meals & Pax", match: (p: string) => p.startsWith("/catering/meals-pax") },
 ];
 
 export function CateringSubNav() {

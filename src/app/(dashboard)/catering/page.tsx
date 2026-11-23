@@ -54,10 +54,11 @@ export default async function CateringPage({
   const listed = await listEvents(supabase, targetCompanyIds, undefined, month);
   // the event reference (EV-...) of each listed event, for the search and the sort
   const { data: refs } = listed.length
-    ? await supabase.from("catering_events").select("id, event_reference").in("id", listed.map((e) => e.id))
-    : { data: [] as { id: string; event_reference: string | null }[] };
+    ? await supabase.from("catering_events").select("id, event_reference, autocount_invoice_no").in("id", listed.map((e) => e.id))
+    : { data: [] as { id: string; event_reference: string | null; autocount_invoice_no: string | null }[] };
   const refOf = new Map((refs ?? []).map((r) => [r.id, r.event_reference]));
-  const loaded = listed.map((e) => ({ ...e, event_reference: refOf.get(e.id) ?? null }));
+  const autocountOf = new Map((refs ?? []).map((r) => [r.id, r.autocount_invoice_no]));
+  const loaded = listed.map((e) => ({ ...e, event_reference: refOf.get(e.id) ?? null, autocount_invoice_no: autocountOf.get(e.id) ?? null }));
   const has = (value: string | null | undefined, part: string | undefined) => !part || (value ?? "").toLowerCase().includes(part.trim().toLowerCase());
   const events = sortBy(
     loaded.filter((e) => (has(e.event_name, q) || has(e.event_reference, q)) && has(e.customers?.name, sp.customer) && (!sp.status || e.status === sp.status)),
@@ -189,6 +190,7 @@ export default async function CateringPage({
                   {e.event_name}
                   {e.event_reference && <span className="ml-2 font-mono text-[11px] font-normal text-text-muted">{e.event_reference}</span>}
                   {companies.length > 1 && <span className="ml-2 text-[11px] font-normal text-text-muted">{e.companies?.name}</span>}
+                  {e.autocount_invoice_no && <div className="mt-0.5 text-[11.5px] font-medium text-text-secondary">AutoCount: {e.autocount_invoice_no}</div>}
                 </div>
                 <div className="text-text-secondary">{e.customers?.name || "—"}</div>
                 <div className="text-text-secondary">{e.event_date}{e.end_date ? ` → ${e.end_date}` : ""}</div>
