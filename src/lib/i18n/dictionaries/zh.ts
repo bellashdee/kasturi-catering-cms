@@ -793,6 +793,7 @@ const dictionary: Record<string, string> = {
  "Clocked out. You are {0} m from the event location.": "已下班打卡。您距离活动地点 {0} 米。",
  "Close": "关闭",
  "No match.": "没有匹配项。",
+ "No sales yet": "尚无销售",
  "Daily entries and the monthly Total Sales": "每日录入与每月总销售额",
  "Total Sales of the month (Reports → Monthly Breakdown)": "当月总销售额（Reports → Monthly Breakdown）",
  "The two are shown side by side to be checked. They are never added together, and the monthly reports still use the Total Sales of the Monthly Breakdown.": "两者并排显示以便核对，绝不相加，月度报表仍使用 Monthly Breakdown 中的总销售额。",

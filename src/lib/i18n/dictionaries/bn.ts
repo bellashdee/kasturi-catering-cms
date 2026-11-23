@@ -792,6 +792,7 @@ const dictionary: Record<string, string> = {
  "Clocked out. You are {0} m from the event location.": "ক্লক আউট হয়েছে। আপনি অনুষ্ঠানের স্থান থেকে {0} মিটার দূরে আছেন।",
  "Close": "বন্ধ করুন",
  "No match.": "কোনো মিল নেই।",
+ "No sales yet": "এখনও কোনো বিক্রয় নেই",
  "Daily entries and the monthly Total Sales": "দৈনিক এন্ট্রি ও মাসিক মোট বিক্রয়",
  "Total Sales of the month (Reports → Monthly Breakdown)": "মাসের মোট বিক্রয় (Reports → Monthly Breakdown)",
  "The two are shown side by side to be checked. They are never added together, and the monthly reports still use the Total Sales of the Monthly Breakdown.": "দুটি পাশাপাশি দেখানো হয়েছে যাচাইয়ের জন্য। এগুলো কখনও যোগ করা হয় না, মাসিক রিপোর্ট এখনও Monthly Breakdown-এর মোট বিক্রয় ব্যবহার করে।",

@@ -86,7 +86,7 @@ export default async function RestaurantDashboardPage({ searchParams }: { search
   const q = ctx.requestedCompany ? `&company=${ctx.requestedCompany}` : "";
   const salesLink = (extra: string) => `/restaurant/sales?from=${from}&to=${to}${extra}${q}`;
   const aov = t.orders > 0 ? t.ordersNet / t.orders : null;
-  const profitLike = foodPurchases === null ? null : t.net - foodPurchases;
+  const profitLike = foodPurchases === null || noSales ? null : t.net - foodPurchases;
 
   return (
     <div className="flex flex-col gap-5">
@@ -137,7 +137,7 @@ export default async function RestaurantDashboardPage({ searchParams }: { search
         <KpiCard icon="approvals" label="Discounts and refunds" value={formatCurrency(t.discount + t.refund)} hint={`Discounts ${formatCurrency(t.discount)} · refunds ${formatCurrency(t.refund)}`} tone={t.refund > 0 ? "warning" : "neutral"} />
         <KpiCard icon="supplier" label="Food purchases" value={foodPurchases === null ? "—" : formatCurrency(foodPurchases)} hint={foodPurchases === null ? "No access to Company Expenses" : "Food categories of Company Expenses, when bought"} />
         <KpiCard icon="costing" label="Food purchases % of net sales" value={foodPurchases === null ? "—" : pct(foodPurchases, t.net)} hint="The Bara limit for raw items is 38%" tone={foodPurchases !== null && t.net > 0 && foodPurchases / t.net > 0.38 ? "danger" : "neutral"} />
-        <KpiCard icon="expenses" label="Sales less food purchases" value={profitLike === null ? "—" : formatCurrency(Math.round(profitLike * 100) / 100)} hint="Estimate: before labour, utilities and other costs" />
+        <KpiCard icon="expenses" label="Sales less food purchases" value={profitLike === null ? "—" : formatCurrency(Math.round(profitLike * 100) / 100)} hint={noSales ? "No sales yet" : "Estimate: before labour, utilities and other costs"} />
         <KpiCard icon="calendar" label="Cash difference" value={closedSessions.length === 0 ? "—" : formatCurrency(Math.round(cashVariance * 100) / 100)} hint={closedSessions.length === 0 ? "No closed cash session" : closedSessions.length === 1 ? "1 closed session" : `${closedSessions.length} closed sessions`} tone={Math.abs(cashVariance) >= 0.005 ? "danger" : "success"} />
       </div>
 

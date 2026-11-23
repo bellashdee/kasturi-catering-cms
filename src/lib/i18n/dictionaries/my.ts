@@ -790,6 +790,7 @@ const dictionary: Record<string, string> = {
  "Clocked out. You are {0} m from the event location.": "Clock out ပြီးပါပြီ။ သင်သည် ပွဲတည်နေရာမှ {0} မီတာ အကွာတွင် ရှိသည်။",
  "Close": "ပိတ်မည်",
  "No match.": "ကိုက်ညီသည် မရှိပါ။",
+ "No sales yet": "ရောင်းချမှု မရှိသေးပါ",
  "Daily entries and the monthly Total Sales": "နေ့စဉ်ထည့်သွင်းမှုများနှင့် လစဉ် စုစုပေါင်းရောင်းချမှု",
  "Total Sales of the month (Reports → Monthly Breakdown)": "လ၏ စုစုပေါင်းရောင်းချမှု (Reports → Monthly Breakdown)",
  "The two are shown side by side to be checked. They are never added together, and the monthly reports still use the Total Sales of the Monthly Breakdown.": "နှစ်ခုကို တစ်ဘေးတစ်ဖက်တွင် စစ်ဆေးရန် ပြထားသည်။ ၎င်းတို့ကို ဘယ်တော့မှ ပေါင်းမထားပါ၊ လစဉ်အစီရင်ခံစာများသည် Monthly Breakdown ၏ စုစုပေါင်းရောင်းချမှုကို ဆက်သုံးသည်။",

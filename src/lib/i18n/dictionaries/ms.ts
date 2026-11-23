@@ -779,6 +779,7 @@ const dictionary: Record<string, string> = {
  "Clocked out. You are {0} m from the event location.": "Clock out berjaya. Anda berada {0} m dari lokasi acara.",
  "Close": "Tutup",
  "No match.": "Tiada padanan.",
+ "No sales yet": "Belum ada jualan",
  "Daily entries and the monthly Total Sales": "Catatan harian dan Jumlah Jualan bulanan",
  "Total Sales of the month (Reports → Monthly Breakdown)": "Jumlah Jualan bulan itu (Laporan → Monthly Breakdown)",
  "The two are shown side by side to be checked. They are never added together, and the monthly reports still use the Total Sales of the Monthly Breakdown.": "Kedua-duanya dipaparkan bersebelahan untuk disemak. Ia tidak pernah dicampurkan, dan laporan bulanan masih menggunakan Jumlah Jualan dalam Monthly Breakdown.",
