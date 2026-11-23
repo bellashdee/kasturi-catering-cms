@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { listSpending, sameLabel } from "@/lib/finance/queries";
+import { listSpending, sameLabel, type CostRow } from "@/lib/finance/queries";
 import { RAW_ITEM_CATEGORIES } from "@/lib/monthlyBreakdown/restoranBara";
 import { todayInMalaysia } from "@/lib/format";
 import type { Database } from "@/lib/supabase/types";
@@ -111,8 +111,13 @@ export function missingDays(from: string, to: string, lines: SalesLine[], today 
  * today: it is recorded when the food is bought, not when it is used (there is no stock count yet). Credit notes count as minus.
  */
 export async function fetchFoodPurchases(db: SupabaseClient, companyId: string, from: string, to: string): Promise<number> {
+  return (await fetchFoodPurchaseRows(db, companyId, from, to)).reduce((t, r) => t + r.amount, 0);
+}
+
+/** The food purchases themselves (each with its record and bills), the ones fetchFoodPurchases adds up. */
+export async function fetchFoodPurchaseRows(db: SupabaseClient, companyId: string, from: string, to: string): Promise<CostRow[]> {
   const rows = await listSpending(db as unknown as SupabaseClient<Database>, [companyId], from, to);
-  return rows.filter((r) => RAW_ITEM_CATEGORIES.some((f) => sameLabel(r.category, f))).reduce((t, r) => t + r.amount, 0);
+  return rows.filter((r) => RAW_ITEM_CATEGORIES.some((f) => sameLabel(r.category, f)));
 }
 
 export type CashSessionRow = {
@@ -181,10 +186,16 @@ export function expectedCash(
 
 /** The monthly Total Sales of a month (Reports → Monthly Breakdown, table monthly_sales: all the rows keyed in for it), or null when none is keyed. */
 export async function fetchMonthlyTotal(db: SupabaseClient, companyId: string, month: string): Promise<number | null> {
+  const rows = await fetchMonthlyTotalRows(db, companyId, month);
+  return rows.length === 0 ? null : rows.reduce((t, r) => t + r.amount, 0);
+}
+
+/** The rows keyed in for the monthly Total Sales (one total, or catering + daily), with their record ids. */
+export async function fetchMonthlyTotalRows(db: SupabaseClient, companyId: string, month: string): Promise<{ id: string; amount: number; salesType: string }[]> {
   const [y, m] = month.split("-").map(Number);
-  const { data, error } = await db.from("monthly_sales").select("sales_amount").eq("company_id", companyId).eq("year", y).eq("month", m);
-  if (error || !data || data.length === 0) return null;
-  return (data as { sales_amount: number }[]).reduce((t, r) => t + Number(r.sales_amount), 0);
+  const { data, error } = await db.from("monthly_sales").select("id, sales_amount, sales_type").eq("company_id", companyId).eq("year", y).eq("month", m);
+  if (error || !data) return [];
+  return (data as { id: string; sales_amount: number; sales_type: string }[]).map((r) => ({ id: r.id, amount: Number(r.sales_amount), salesType: r.sales_type }));
 }
 
 

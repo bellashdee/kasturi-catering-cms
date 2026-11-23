@@ -22,6 +22,7 @@ import {
   STAFF_ROLE_LABEL,
 } from "@/lib/catering/constants";
 import { formatCurrency, formatMalaysiaDateTime, formatPrice, formatTime12 } from "@/lib/format";
+import { AmountOrigin } from "@/components/shared/AmountOrigin";
 import { dayAmount, dayPax, menuRows } from "@/lib/catering/days";
 import { additionalRows } from "@/lib/catering/quotationRequest";
 import { NEEDS_LABEL, eventNeeds } from "@/lib/catering/customerNeeds";
@@ -168,7 +169,7 @@ export default async function EventDetailPage({
         </div>
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
           <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Revenue</div>
-          <div className="mt-1 text-xl font-extrabold text-text">{formatCurrency(revenue)}</div>
+          <div className="mt-1 text-xl font-extrabold text-text"><AmountOrigin origin={{ kind: "catering_event", id }} amount={revenue} /></div>
         </div>
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
           <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Status</div>

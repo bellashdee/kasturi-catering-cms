@@ -13,6 +13,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { SpendingSubNav } from "@/components/spending/SpendingSubNav";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 import { receiptIds } from "@/lib/documents/receipts";
+import { AmountOrigin } from "@/components/shared/AmountOrigin";
 import { ExportListButtons } from "@/components/procurement/ExportListButtons";
 import { fileSlug, formatRm, monthLabel, spendSummary } from "@/lib/pettyCash/summary";
 import { PettyCashEntryForm } from "@/components/pettyCash/PettyCashEntryForm";
@@ -441,8 +442,8 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
                           {r.claim && <div className="text-[11.5px] text-text-secondary">{`Claimed by: ${r.claim.claimant || "—"}`}</div>}
                           {r.person && <div className="text-[11.5px] text-text-secondary">{`${r.kind === "in" ? "Received by" : r.claim ? "Paid from the petty cash of" : "Spent by"}: ${r.person}`}</div>}
                         </td>
-                        <td className="whitespace-nowrap px-3 py-2.5 text-right font-semibold tabular-nums text-success">{r.kind === "in" ? formatPrice(r.amount) : ""}</td>
-                        <td className="whitespace-nowrap px-3 py-2.5 text-right font-semibold tabular-nums text-text">{r.kind === "out" ? formatPrice(r.amount) : ""}</td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right font-semibold tabular-nums text-success">{r.kind === "in" ? <AmountOrigin origin={{ kind: r.source === "book" ? "petty_cash_book" : "petty_cash_claim", id: r.key.slice(1) }} billIds={r.documentIds} text={formatPrice(r.amount)} /> : ""}</td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right font-semibold tabular-nums text-text">{r.kind === "out" ? <AmountOrigin origin={{ kind: r.source === "book" ? "petty_cash_book" : "petty_cash_claim", id: r.key.slice(1) }} billIds={r.documentIds} text={formatPrice(r.amount)} /> : ""}</td>
                         <td className={`whitespace-nowrap px-3 py-2.5 text-right tabular-nums ${r.balance < 0 ? "font-semibold text-danger" : "text-text-secondary"}`}>{formatPrice(r.balance)}</td>
                         <td className="min-w-[8rem] px-3 py-2.5">
                           {r.claim ? (

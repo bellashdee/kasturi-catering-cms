@@ -213,8 +213,8 @@ export async function getEventPnlDetail(supabase: DB, eventId: string) {
   const [revenue, costs, sheets, invoices, budget, supplierInvoices, fromAutoCount] = await Promise.all([
     supabase.from("event_revenue_entries").select("*").eq("catering_event_id", eventId).order("entry_date").order("created_at"),
     supabase.from("event_cost_entries").select("*").eq("catering_event_id", eventId).order("cost_date").order("created_at"),
-    supabase.from("event_costing").select("food_cost, ingredient_cost, staff_cost, transport_cost, equipment_cost, other_cost").eq("catering_event_id", eventId),
-    supabase.from("customer_invoices").select("id, invoice_number, invoice_date, amount, tax_amount, status, description").eq("catering_event_id", eventId).order("invoice_date"),
+    supabase.from("event_costing").select("id, food_cost, ingredient_cost, staff_cost, transport_cost, equipment_cost, other_cost").eq("catering_event_id", eventId),
+    supabase.from("customer_invoices").select("id, invoice_number, invoice_date, amount, tax_amount, status, description, document_id").eq("catering_event_id", eventId).order("invoice_date"),
     supabase.from("event_budgets").select("*").eq("catering_event_id", eventId).maybeSingle(),
     supabase.from("supplier_invoices").select("id, invoice_number, invoice_date, amount, status, suppliers(name), supplier_invoice_items(item_name, uom, quantity, line_total)").eq("company_id", event.company_id).order("invoice_date", { ascending: false }).limit(60),
     autoCountCosts(supabase, [eventId]),
@@ -234,6 +234,8 @@ export async function getEventPnlDetail(supabase: DB, eventId: string) {
     revenue: revenue.data ?? [],
     costs: costs.data ?? [],
     sheet,
+    /** the Catering costing sheet rows of the event (their records, for "where does this amount come from") */
+    sheetRows: (sheets.data ?? []).map((r) => ({ id: r.id, total: Number(r.food_cost ?? 0) + Number(r.ingredient_cost ?? 0) + Number(r.staff_cost ?? 0) + Number(r.transport_cost ?? 0) + Number(r.equipment_cost ?? 0) + Number(r.other_cost ?? 0) })),
     invoices: invoices.data ?? [],
     budget: budget.data ?? null,
     pnl,

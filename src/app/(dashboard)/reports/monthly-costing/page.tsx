@@ -14,6 +14,8 @@ import { ReportTable } from "@/components/reports/ReportTable";
 import { buildReportRows } from "@/lib/reports/buildRows";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { readSort, sortBy } from "@/lib/listSort";
+import { TotalOrigin, type TotalPart } from "@/components/shared/TotalOrigin";
+import type { CostRow } from "@/lib/finance/queries";
 
 const SORTS = { amount: "Amount", module: "Module", category: "Category", department: "Department" };
 
@@ -95,11 +97,14 @@ export default async function MonthlyCostingReportPage({
   const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   const periodLabel = range ? `${period.start} to ${period.end}` : `${MONTH_NAMES[month - 1]} ${year}`;
 
-  const grouped = new Map<string, { source: string; category: string; department: string | null; amount: number }>();
+  // each line keeps the records it adds up: tapping its amount lists them, tapping one opens its bill
+  const companyName = new Map(companies.map((c) => [c.id, c.name]));
+  const partOf = (r: CostRow): TotalPart => ({ group: r.source, amount: r.amount, date: r.date, label: [r.category, r.invoiceNo, r.details, companyName.get(r.companyId)].filter(Boolean).join(" · "), origin: r.origin, billIds: r.billIds });
+  const grouped = new Map<string, { source: string; category: string; department: string | null; amount: number; parts: TotalPart[] }>();
   for (const r of filteredRows) {
     const key = `${r.source}·${r.category}·${r.department ?? ""}`;
     const existing = grouped.get(key);
-    grouped.set(key, { source: r.source, category: r.category, department: r.department, amount: (existing?.amount ?? 0) + r.amount });
+    grouped.set(key, { source: r.source, category: r.category, department: r.department, amount: (existing?.amount ?? 0) + r.amount, parts: [...(existing?.parts ?? []), partOf(r)] });
   }
   const rows = sortBy(Array.from(grouped.values()), sort, dir, {
     amount: (r) => r.amount,
@@ -141,7 +146,7 @@ export default async function MonthlyCostingReportPage({
       },
       { key: "category", label: "Category", exportValue: (r) => r.category },
       { key: "department", label: "Department", exportValue: (r) => r.department ?? "—" },
-      { key: "amount", label: "Amount", exportValue: (r) => r.amount, display: (r) => formatCurrency(r.amount) },
+      { key: "amount", label: "Amount", exportValue: (r) => r.amount, display: (r) => <TotalOrigin total={r.amount} parts={r.parts} title={`${r.source} · ${r.category}${r.department ? ` · ${r.department}` : ""}`} /> },
     ],
     (r, i) => `${r.source}-${r.category}-${i}`,
   );
@@ -151,7 +156,10 @@ export default async function MonthlyCostingReportPage({
       <div>
         <Link href={`/reports${query}`} className="text-[12.5px] font-semibold text-text-secondary">← Back to Reports</Link>
         <h1 className="mt-2 text-[22px] font-extrabold text-text">Monthly Costing Report</h1>
-        <p className="mt-0.5 text-[13px] text-text-secondary">{rows.length} line{rows.length === 1 ? "" : "s"} · {formatCurrency(total)} total</p>
+        <p className="mt-0.5 text-[13px] text-text-secondary">
+          {rows.length} line{rows.length === 1 ? "" : "s"} ·{" "}
+          <TotalOrigin total={total} parts={filteredRows.map(partOf)} title={`Monthly Costing · ${periodLabel}`} text={`${formatCurrency(total)} total`} className="font-semibold text-text" explain="Every cost of the period from every module (with the filters as chosen). Tap an amount to open its bill." />
+        </p>
       </div>
 
       <ReportFilterBar

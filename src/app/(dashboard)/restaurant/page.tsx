@@ -10,9 +10,13 @@ import {
   feedmeExtras,
   fetchCashSessions,
   fetchDayTotals,
-  fetchFoodPurchases,
-  fetchMonthlyTotal,
+  fetchFoodPurchaseRows,
+  fetchMonthlyTotalRows,
   fetchSalesLines,
+  dayTotalNet,
+  netOf,
+  type DayTotalRow,
+  type SalesLine,
   NOT_SPLIT,
   breakdownRows,
   fetchCloseUps,
@@ -27,6 +31,8 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { RestaurantSubNav } from "@/components/restaurant/RestaurantSubNav";
 import { NotRestaurant } from "@/components/restaurant/NotRestaurant";
 import { SPEND_INPUT, SPEND_LABEL } from "@/components/spending/formStyles";
+import { TotalOrigin, type TotalPart } from "@/components/shared/TotalOrigin";
+import { AmountOrigin } from "@/components/shared/AmountOrigin";
 
 const dayText = (iso: string) => formatMalaysiaDate(`${iso}T12:00:00+08:00`);
 const pct = (part: number, whole: number) => (whole > 0 ? `${((part / whole) * 100).toFixed(1)}%` : "—");
@@ -43,16 +49,30 @@ export default async function RestaurantDashboardPage({ searchParams }: { search
   const monthEnd = addDays(`${addDays(monthStart, 40).slice(0, 7)}-01`, -1);
   const canSeeCosts = canAccessModule(ctx.session.allowedModules, "finance-admin");
 
-  const [rangeLines, monthLines, rangeTotals, monthTotals, cash, closeUpData, foodPurchases, monthlyTotal] = await Promise.all([
+  const [rangeLines, monthLines, rangeTotals, monthTotals, cash, closeUpData, foodRows, monthlyRows] = await Promise.all([
     fetchSalesLines(ctx.db, ctx.company.id, from, to),
     fetchSalesLines(ctx.db, ctx.company.id, monthStart, monthEnd),
     fetchDayTotals(ctx.db, ctx.company.id, from, to),
     fetchDayTotals(ctx.db, ctx.company.id, monthStart, monthEnd),
     fetchCashSessions(ctx.db, ctx.company.id, from, to),
     fetchCloseUps(ctx.db, ctx.company.id, from, to),
-    canSeeCosts ? fetchFoodPurchases(ctx.db, ctx.company.id, from, to) : Promise.resolve(null),
-    canSeeCosts ? fetchMonthlyTotal(ctx.db, ctx.company.id, monthKey) : Promise.resolve(null),
+    canSeeCosts ? fetchFoodPurchaseRows(ctx.db, ctx.company.id, from, to) : Promise.resolve(null),
+    canSeeCosts ? fetchMonthlyTotalRows(ctx.db, ctx.company.id, monthKey) : Promise.resolve(null),
   ]);
+  const foodPurchases = foodRows === null ? null : foodRows.reduce((sum, r) => sum + r.amount, 0);
+  const monthlyTotal = monthlyRows === null || monthlyRows.length === 0 ? null : monthlyRows.reduce((sum, r) => sum + r.amount, 0);
+  // the records behind each figure: tapping a figure lists them, tapping one opens its record. A day with a FeedMe day total counts
+  // that total (its split lines only explain it), any other day its sales lines, as in combineDays.
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  const salesParts = (lines: SalesLine[], totals: DayTotalRow[], pick?: { line: (l: SalesLine) => number; total: (t: DayTotalRow) => number }): TotalPart[] => {
+    const feedmeDates = new Set(totals.map((t) => t.sales_date));
+    return [
+      ...lines.filter((l) => !feedmeDates.has(l.sales_date)).map((l) => ({ group: `Daily sales · ${channelLabel(l.channel)}`, amount: r2(pick ? pick.line(l) : netOf(l)), date: l.sales_date, label: [`Shift ${l.shift_no}`, paymentLabel(l.payment_method), l.notes].filter(Boolean).join(" · "), origin: { kind: "rst_sales_line" as const, id: l.id }, billIds: [] })),
+      ...totals.map((t) => ({ group: "FeedMe day total", amount: r2(pick ? pick.total(t) : dayTotalNet(t)), date: t.sales_date, label: [t.outlet, `${t.bills} bills`].filter(Boolean).join(" · "), origin: { kind: "rst_day_total" as const, id: t.id }, billIds: [] })),
+    ].filter((p) => !pick || Math.abs(p.amount) >= 0.005);
+  };
+  const foodParts: TotalPart[] = (foodRows ?? []).map((r) => ({ group: r.source, amount: r.amount, date: r.date, label: [r.category, r.invoiceNo, r.details].filter(Boolean).join(" · "), origin: r.origin, billIds: r.billIds }));
+  const monthlyParts: TotalPart[] = (monthlyRows ?? []).map((r) => ({ group: "Monthly Total Sales", amount: r.amount, date: monthKey, label: r.salesType === "total" ? "Total" : r.salesType, origin: { kind: "monthly_sales" as const, id: r.id }, billIds: [] }));
 
   const confirmed = rangeLines.filter((l) => l.status === "confirmed");
   const confirmedTotals = rangeTotals.filter((d) => d.status === "confirmed");
@@ -77,14 +97,14 @@ export default async function RestaurantDashboardPage({ searchParams }: { search
   const byDay = [...days].sort((a, b) => b.date.localeCompare(a.date));
   const missing = missingDays(from, to, rangeLines, today, rangeTotals);
   const closedSessions = cash.filter((s) => s.status === "closed");
+  const cashParts: TotalPart[] = closedSessions.map((s) => ({ group: "Closed cash sessions", amount: r2(s.variance ?? 0), date: s.session_date, label: [`Shift ${s.shift_no}`, s.variance_note].filter(Boolean).join(" · "), origin: { kind: "rst_cash_session" as const, id: s.id }, billIds: [] }));
   const cashVariance = closedSessions.reduce((sum, s) => sum + (s.variance ?? 0), 0);
   const openSessions = cash.filter((s) => s.status === "open");
   const noSales = days.length === 0;
 
-  const monthDaysSales = combineDays(
-    monthLines.filter((l) => l.status === "confirmed"),
-    monthTotals.filter((d) => d.status === "confirmed"),
-  );
+  const monthConfirmedLines = monthLines.filter((l) => l.status === "confirmed");
+  const monthConfirmedTotals = monthTotals.filter((d) => d.status === "confirmed");
+  const monthDaysSales = combineDays(monthConfirmedLines, monthConfirmedTotals);
   const monthDaily = totalsOfDays(monthDaysSales).net;
   const monthDays = monthDaysSales.length;
 
@@ -136,14 +156,14 @@ export default async function RestaurantDashboardPage({ searchParams }: { search
       )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiCard icon="sales" label="Net sales" value={formatCurrency(t.net)} hint={`Gross ${formatCurrency(t.gross)}`} />
+        <KpiCard icon="sales" label="Net sales" value={<TotalOrigin total={t.net} parts={salesParts(confirmed, confirmedTotals)} title="Net sales" explain="The confirmed sales of the period: a day with a FeedMe day total counts that total (gross less discount), any other day its daily sales lines (gross − discounts − refunds)." />} hint={`Gross ${formatCurrency(t.gross)}`} />
         <KpiCard icon="invoice" label="Orders" value={t.orders > 0 ? String(t.orders) : "—"} hint={t.orders > 0 ? "From the lines that have an order count" : "Order count not entered"} />
         <KpiCard icon="payments" label="Average order value" value={aov === null ? "—" : formatCurrency(Math.round(aov * 100) / 100)} hint={aov === null ? "Insufficient data (no order counts)" : "Net sales ÷ orders"} />
-        <KpiCard icon="approvals" label="Discounts and refunds" value={formatCurrency(t.discount + t.refund)} hint={`Discounts ${formatCurrency(t.discount)} · refunds ${formatCurrency(t.refund)}`} tone={t.refund > 0 ? "warning" : "neutral"} />
-        <KpiCard icon="supplier" label="Food purchases" value={foodPurchases === null ? "—" : formatCurrency(foodPurchases)} hint={foodPurchases === null ? "No access to Company Expenses" : "Food categories of Company Expenses, when bought"} />
+        <KpiCard icon="approvals" label="Discounts and refunds" value={<TotalOrigin total={t.discount + t.refund} parts={salesParts(confirmed, confirmedTotals, { line: (l) => l.discount_amount + l.refund_amount, total: (x) => -x.discount })} title="Discounts and refunds" explain="The discounts and refunds of the confirmed daily sales lines and FeedMe day totals of the period." />} hint={`Discounts ${formatCurrency(t.discount)} · refunds ${formatCurrency(t.refund)}`} tone={t.refund > 0 ? "warning" : "neutral"} />
+        <KpiCard icon="supplier" label="Food purchases" value={foodPurchases === null ? "—" : <TotalOrigin total={foodPurchases} parts={foodParts} title="Food purchases" explain="The food categories of Company Expenses and Petty Cash bought in the period (credit notes count as minus). Tap an amount to open its bill." />} hint={foodPurchases === null ? "No access to Company Expenses" : "Food categories of Company Expenses, when bought"} />
         <KpiCard icon="costing" label="Food purchases % of net sales" value={foodPurchases === null ? "—" : pct(foodPurchases, t.net)} hint="The Bara limit for raw items is 38%" tone={foodPurchases !== null && t.net > 0 && foodPurchases / t.net > 0.38 ? "danger" : "neutral"} />
         <KpiCard icon="expenses" label="Sales less food purchases" value={profitLike === null ? "—" : formatCurrency(Math.round(profitLike * 100) / 100)} hint={noSales ? "No sales yet" : "Estimate: before labour, utilities and other costs"} />
-        <KpiCard icon="calendar" label="Cash difference" value={closedSessions.length === 0 ? "—" : formatCurrency(Math.round(cashVariance * 100) / 100)} hint={closedSessions.length === 0 ? "No closed cash session" : closedSessions.length === 1 ? "1 closed session" : `${closedSessions.length} closed sessions`} tone={Math.abs(cashVariance) >= 0.005 ? "danger" : "success"} />
+        <KpiCard icon="calendar" label="Cash difference" value={closedSessions.length === 0 ? "—" : <TotalOrigin total={Math.round(cashVariance * 100) / 100} parts={cashParts} title="Cash difference" explain="Counted cash − expected cash of every closed cash session of the period." />} hint={closedSessions.length === 0 ? "No closed cash session" : closedSessions.length === 1 ? "1 closed session" : `${closedSessions.length} closed sessions`} tone={Math.abs(cashVariance) >= 0.005 ? "danger" : "success"} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -204,7 +224,7 @@ export default async function RestaurantDashboardPage({ searchParams }: { search
                   <td className="py-2"><Link className="text-primary hover:underline" href={`/restaurant/sales?date=${r.date}${q}`}>{dayText(r.date)}</Link></td>
                   <td className="py-2 text-text-secondary">{r.source === "feedme" ? (closeUpDates.has(r.date) ? "FeedMe · split complete" : "FeedMe · not split") : "Sales lines"}</td>
                   <td className="py-2 text-right text-text-secondary">{r.orders > 0 ? r.orders : "—"}</td>
-                  <td className="py-2 text-right font-semibold">{formatCurrency(r.net)}</td>
+                  <td className="py-2 text-right font-semibold"><TotalOrigin total={r.net} parts={salesParts(confirmed.filter((l) => l.sales_date === r.date), confirmedTotals.filter((x) => x.sales_date === r.date))} title={dayText(r.date)} /></td>
                 </tr>
               ))}
             </tbody>
@@ -274,10 +294,10 @@ export default async function RestaurantDashboardPage({ searchParams }: { search
           ) : (
             <div className="flex flex-col gap-2 text-[13.5px]">
               <div className="text-[12.5px] text-text-muted">{dayText(monthStart)} to {dayText(monthEnd)}</div>
-              <div className="flex items-center justify-between"><span>{`Daily entries (confirmed, ${monthDays} ${monthDays === 1 ? "day" : "days"})`}</span><span className="font-semibold">{formatCurrency(monthDaily)}</span></div>
-              <div className="flex items-center justify-between"><span>Total Sales of the month (Reports → Monthly Breakdown)</span><span className="font-semibold">{monthlyTotal === null ? "not keyed in yet" : formatCurrency(monthlyTotal)}</span></div>
+              <div className="flex items-center justify-between"><span>{`Daily entries (confirmed, ${monthDays} ${monthDays === 1 ? "day" : "days"})`}</span><TotalOrigin total={monthDaily} parts={salesParts(monthConfirmedLines, monthConfirmedTotals)} title="Daily entries of the month" className="font-semibold" /></div>
+              <div className="flex items-center justify-between"><span>Total Sales of the month (Reports → Monthly Breakdown)</span><span className="font-semibold">{monthlyTotal === null ? "not keyed in yet" : monthlyRows && monthlyRows.length === 1 ? <AmountOrigin origin={{ kind: "monthly_sales", id: monthlyRows[0].id }} amount={monthlyTotal} /> : <TotalOrigin total={monthlyTotal} parts={monthlyParts} title="Total Sales of the month" />}</span></div>
               {monthlyTotal !== null && (
-                <div className="flex items-center justify-between border-t border-border pt-2"><span>Difference</span><span className="font-semibold">{formatCurrency(Math.round((monthDaily - monthlyTotal) * 100) / 100)}</span></div>
+                <div className="flex items-center justify-between border-t border-border pt-2"><span>Difference</span><TotalOrigin total={Math.round((monthDaily - monthlyTotal) * 100) / 100} parts={[...salesParts(monthConfirmedLines, monthConfirmedTotals), ...monthlyParts.map((p) => ({ ...p, amount: -p.amount }))]} title="Difference" explain="Daily entries of the month − the monthly Total Sales. The monthly Total Sales is listed as minus." className="font-semibold" /></div>
               )}
               <p className="text-[12px] text-text-muted">The two are shown side by side to be checked. They are never added together, and the monthly reports still use the Total Sales of the Monthly Breakdown.</p>
               <p className="text-[12px] text-text-muted">The daily entries are compared as net sales: gross less discount, without service charge, SST, delivery fee and rounding.</p>

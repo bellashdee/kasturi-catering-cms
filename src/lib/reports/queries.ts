@@ -153,6 +153,8 @@ export async function getCompanySummary(supabase: DB, companyIds: string[], year
     totalCost,
     net: revenue - totalCost,
     bySource: Array.from(bySource.entries()).map(([source, amount]) => ({ source, amount })).sort((a, b) => b.amount - a.amount),
+    /** every cost counted in totalCost (each with its record and bills), for "where does this figure come from" */
+    costRows: costBreakdown,
     activeStaff: headcountRes.count ?? 0,
     activeCampaigns: campaignsRes.count ?? 0,
     productionOrders: productionRes.count ?? 0,

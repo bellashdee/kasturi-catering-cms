@@ -20,6 +20,7 @@ import { Select } from "@/components/ui/Select";
 import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
 import { readSort, sortBy } from "@/lib/listSort";
 import { isRestaurantScope } from "@/lib/restaurantView";
+import { TotalOrigin, type TotalPart } from "@/components/shared/TotalOrigin";
 
 type SearchParams = { company?: string; year?: string; month?: string; q?: string; customer?: string; status?: string; sort?: string; dir?: string };
 
@@ -96,12 +97,16 @@ export default async function MonthlyEventPnlPage({ searchParams }: { searchPara
   const exportQuery = new URLSearchParams({ year: String(year), month: String(month) });
   for (const k of ["company", "q", "customer", "status", "sort", "dir"] as const) if (sp[k]) exportQuery.set(k, sp[k]!);
 
-  const cards: { label: string; value: string; tone?: string }[] = [
-    { label: "Total Event Revenue", value: money(totals.netRevenue) },
-    { label: "Event Direct Costs", value: money(totals.directCosts) },
-    { label: "Total Gross Profit", value: money(totals.grossProfit), tone: totals.grossProfit < 0 ? "text-danger" : "text-text" },
-    { label: "Additional Event Expenses", value: money(totals.additionalExpenses) },
-    { label: "Total Net Event Profit", value: money(totals.netProfit), tone: totals.netProfit < 0 ? "text-danger" : "text-success" },
+  // each total, by event: tapping a total lists the events in it; each event opens its Event P&L, where every entry shows its bill
+  const byEvent = (pick: (r: (typeof rows)[number]) => number): TotalPart[] =>
+    rows.filter((r) => Math.abs(pick(r)) >= 0.005).map((r) => ({ group: r.companyName, amount: pick(r), date: r.eventDate, label: [r.eventName, ...r.autoCountNos].filter(Boolean).join(" · "), origin: { kind: "event_pnl" as const, id: r.id }, billIds: [] }));
+  const totalOf = (value: number, title: string, pick: (r: (typeof rows)[number]) => number) => <TotalOrigin total={value} title={title} text={money(value)} parts={byEvent(pick)} explain="The total of the events listed below. Open an event (ⓘ) to see each of its entries and their bills." />;
+  const cards: { label: string; value: React.ReactNode; tone?: string }[] = [
+    { label: "Total Event Revenue", value: totalOf(totals.netRevenue, "Total Event Revenue", (r) => r.pnl.netRevenue) },
+    { label: "Event Direct Costs", value: totalOf(totals.directCosts, "Event Direct Costs", (r) => r.pnl.directCosts) },
+    { label: "Total Gross Profit", value: totalOf(totals.grossProfit, "Total Gross Profit", (r) => r.pnl.grossProfit), tone: totals.grossProfit < 0 ? "text-danger" : "text-text" },
+    { label: "Additional Event Expenses", value: totalOf(totals.additionalExpenses, "Additional Event Expenses", (r) => r.pnl.additionalExpenses) },
+    { label: "Total Net Event Profit", value: totalOf(totals.netProfit, "Total Net Event Profit", (r) => r.pnl.netProfit), tone: totals.netProfit < 0 ? "text-danger" : "text-success" },
     { label: "Overall Profit Margin", value: formatMargin(totals.margin), tone: totals.margin !== null && totals.margin < 0 ? "text-danger" : "text-text" },
     { label: "Number of Events", value: String(totals.events) },
     { label: "Loss-Making Events", value: String(totals.lossMaking), tone: totals.lossMaking > 0 ? "text-danger" : "text-text" },
@@ -200,11 +205,11 @@ export default async function MonthlyEventPnlPage({ searchParams }: { searchPara
                     <td className="px-3 py-2.5 font-semibold text-text"><Link href={`/finance/event-pnl/${r.id}`} className="hover:text-primary hover:underline">{r.eventName}</Link></td>
                     <td className="px-3 py-2.5 text-text-secondary">{r.companyName}</td>
                     <td className="px-3 py-2.5 text-text-secondary">{r.customerName ?? "—"}</td>
-                    <td className="px-3 py-2.5 text-right">{money(r.pnl.netRevenue)}</td>
-                    <td className="px-3 py-2.5 text-right">{money(r.pnl.directCosts)}</td>
-                    <td className={`px-3 py-2.5 text-right ${r.pnl.grossProfit < 0 ? "text-danger" : ""}`}>{money(r.pnl.grossProfit)}</td>
-                    <td className="px-3 py-2.5 text-right">{money(r.pnl.additionalExpenses)}</td>
-                    <td className={`px-3 py-2.5 text-right font-bold ${r.pnl.netProfit < 0 ? "text-danger" : "text-text"}`}>{money(r.pnl.netProfit)}</td>
+                    <td className="px-3 py-2.5 text-right"><Link href={`/finance/event-pnl/${r.id}`} title="Open the event: every entry and its bill" className="underline decoration-dotted underline-offset-2 hover:text-primary">{money(r.pnl.netRevenue)}</Link></td>
+                    <td className="px-3 py-2.5 text-right"><Link href={`/finance/event-pnl/${r.id}`} title="Open the event: every entry and its bill" className="underline decoration-dotted underline-offset-2 hover:text-primary">{money(r.pnl.directCosts)}</Link></td>
+                    <td className={`px-3 py-2.5 text-right ${r.pnl.grossProfit < 0 ? "text-danger" : ""}`}><Link href={`/finance/event-pnl/${r.id}`} title="Open the event: every entry and its bill" className="underline decoration-dotted underline-offset-2 hover:text-primary">{money(r.pnl.grossProfit)}</Link></td>
+                    <td className="px-3 py-2.5 text-right"><Link href={`/finance/event-pnl/${r.id}`} title="Open the event: every entry and its bill" className="underline decoration-dotted underline-offset-2 hover:text-primary">{money(r.pnl.additionalExpenses)}</Link></td>
+                    <td className={`px-3 py-2.5 text-right font-bold ${r.pnl.netProfit < 0 ? "text-danger" : "text-text"}`}><Link href={`/finance/event-pnl/${r.id}`} title="Open the event: every entry and its bill" className="underline decoration-dotted underline-offset-2 hover:text-primary">{money(r.pnl.netProfit)}</Link></td>
                     <td className="px-3 py-2.5 text-right">
                       <div>{formatMargin(r.pnl.margin)}</div>
                       <StatusBadge tone={VERDICT_TONE[r.pnl.verdict]}>{VERDICT_LABEL[r.pnl.verdict]}</StatusBadge>
@@ -237,11 +242,11 @@ export default async function MonthlyEventPnlPage({ searchParams }: { searchPara
               <tfoot>
                 <tr className="bg-surface-alt text-[12.5px] font-extrabold text-text">
                   <td className="px-3 py-2.5" colSpan={5}>Monthly totals ({totals.events} event{totals.events === 1 ? "" : "s"})</td>
-                  <td className="px-3 py-2.5 text-right">{money(totals.netRevenue)}</td>
-                  <td className="px-3 py-2.5 text-right">{money(totals.directCosts)}</td>
-                  <td className="px-3 py-2.5 text-right">{money(totals.grossProfit)}</td>
-                  <td className="px-3 py-2.5 text-right">{money(totals.additionalExpenses)}</td>
-                  <td className="px-3 py-2.5 text-right">{money(totals.netProfit)}</td>
+                  <td className="px-3 py-2.5 text-right">{totalOf(totals.netRevenue, "Total", (r) => r.pnl.netRevenue)}</td>
+                  <td className="px-3 py-2.5 text-right">{totalOf(totals.directCosts, "Total", (r) => r.pnl.directCosts)}</td>
+                  <td className="px-3 py-2.5 text-right">{totalOf(totals.grossProfit, "Total", (r) => r.pnl.grossProfit)}</td>
+                  <td className="px-3 py-2.5 text-right">{totalOf(totals.additionalExpenses, "Total", (r) => r.pnl.additionalExpenses)}</td>
+                  <td className="px-3 py-2.5 text-right">{totalOf(totals.netProfit, "Total", (r) => r.pnl.netProfit)}</td>
                   <td className="px-3 py-2.5 text-right">{formatMargin(totals.margin)}</td>
                   <td className="px-3 py-2.5" />
                   <td className="px-3 py-2.5 print:hidden" />
