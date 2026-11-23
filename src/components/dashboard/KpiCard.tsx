@@ -50,7 +50,8 @@ export function KpiCard({
   icon,
 }: {
   label: string;
-  value: string;
+  /** the figure: text, or a figure that shows where it comes from (<TotalOrigin>, <AmountOrigin>) */
+  value: React.ReactNode;
   hint?: string;
   tone?: "neutral" | "success" | "warning" | "danger";
   iconTone?: "info" | "success" | "warning" | "danger";

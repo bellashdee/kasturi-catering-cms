@@ -25,6 +25,9 @@ import { formatMalaysiaDateTime } from "@/lib/format";
 import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
+import { AmountOrigin } from "@/components/shared/AmountOrigin";
+import { TotalOrigin, type TotalPart } from "@/components/shared/TotalOrigin";
+import { autoCountOrigin, billList } from "@/lib/origin/kinds";
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { AddInvoiceRevenueButton, BudgetForm, CostForm, EntryActions, PrintButton, RevenueForm } from "@/components/finance/EventPnlForms";
 
@@ -82,10 +85,29 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
   const b = detail.budgetComparison;
   const na = <span className="text-text-muted">Budget not set</span>;
 
-  const line = (labelText: string, value: number, opts?: { bold?: boolean; negative?: boolean }) => (
+  // the records behind each P&L line: tapping a line's amount lists them, tapping one opens its bill
+  const isDeduction = (t: string) => (REVENUE_DEDUCTIONS as readonly string[]).includes(t);
+  const revenueParts = (types?: readonly string[]): TotalPart[] =>
+    detail.revenue.filter((r) => !types || types.includes(r.entry_type)).map((r) => ({ group: `Revenue · ${REVENUE_TYPE_LABEL[r.entry_type] ?? r.entry_type}`, amount: (isDeduction(r.entry_type) && !types ? -1 : 1) * Number(r.amount), date: r.entry_date, label: r.description, origin: { kind: "event_revenue_entry" as const, id: r.id }, billIds: billList(r.document_id) }));
+  const costLabel = (t: string) => ANY_DIRECT_COST_TYPE_LABEL[t] ?? ADDITIONAL_COST_TYPE_LABEL[t] ?? t;
+  const entryParts = (cls: "direct" | "additional"): TotalPart[] =>
+    detail.costs.filter((c) => c.cost_class === cls && c.cost_basis === "actual").map((c) => ({ group: `Cost entry · ${costLabel(c.cost_type)}`, amount: Number(c.amount), date: c.cost_date, label: [c.supplier_name, c.reference_no, c.description].filter(Boolean).join(" · "), origin: { kind: "event_cost_entry" as const, id: c.id }, billIds: billList(c.document_id) }));
+  const directParts: TotalPart[] = [
+    ...entryParts("direct"),
+    ...detail.autoCountCosts.map((s) => ({ group: `AutoCount no. · ${AUTOCOUNT_SOURCE_LABEL[s.source]}`, amount: s.amount, date: s.date, label: [s.partyName, s.reference, s.autoCountNo].filter(Boolean).join(" · "), origin: autoCountOrigin(s.source, s.id) })),
+    ...detail.sheetRows.filter((r) => r.total > 0).map((r) => ({ group: "Catering event costing sheet", amount: r.total, date: event.event_date, label: event.event_name, origin: { kind: "event_costing" as const, id: r.id }, billIds: [] })),
+  ];
+  const additionalParts = entryParts("additional");
+  const profitParts: TotalPart[] = [...revenueParts(), ...directParts.map((p) => ({ ...p, amount: -p.amount })), ...additionalParts.map((p) => ({ ...p, amount: -p.amount }))];
+
+  const line = (labelText: string, value: number, opts?: { bold?: boolean; negative?: boolean; parts?: TotalPart[]; explain?: string }) => (
     <div className={`flex items-center justify-between py-1.5 text-[13.5px] ${opts?.bold ? "font-extrabold text-text" : "text-text-secondary"}`}>
       <span>{labelText}</span>
-      <span className={opts?.bold ? (value < 0 ? "text-danger" : "text-text") : "font-semibold text-text"}>{opts?.negative ? `− ${money(value)}` : money(value)}</span>
+      <span className={opts?.bold ? (value < 0 ? "text-danger" : "text-text") : "font-semibold text-text"}>
+        {opts?.parts ? (
+          <TotalOrigin total={value} parts={opts.parts} title={labelText} explain={opts.explain} text={opts?.negative ? `− ${money(value)}` : money(value)} />
+        ) : opts?.negative ? `− ${money(value)}` : money(value)}
+      </span>
     </div>
   );
 
@@ -132,28 +154,28 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
               <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Revenue</div>
               {REVENUE_ADDITIONS.map((k) => {
                 const total = detail.revenue.filter((r) => r.entry_type === k).reduce((t, r) => t + Number(r.amount), 0);
-                return total > 0 ? <div key={k}>{line(REVENUE_TYPE_LABEL[k], total)}</div> : null;
+                return total > 0 ? <div key={k}>{line(REVENUE_TYPE_LABEL[k], total, { parts: revenueParts([k]) })}</div> : null;
               })}
-              {line("Gross event revenue", pnl.grossRevenue)}
+              {line("Gross event revenue", pnl.grossRevenue, { parts: revenueParts(REVENUE_ADDITIONS), explain: "Sales, packages, additional services and other revenue entries of the event." })}
               {REVENUE_DEDUCTIONS.map((k) => {
                 const total = detail.revenue.filter((r) => r.entry_type === k).reduce((t, r) => t + Number(r.amount), 0);
-                return total > 0 ? <div key={k}>{line(REVENUE_TYPE_LABEL[k], total, { negative: true })}</div> : null;
+                return total > 0 ? <div key={k}>{line(REVENUE_TYPE_LABEL[k], total, { negative: true, parts: revenueParts([k]) })}</div> : null;
               })}
-              {line("Net event revenue", pnl.netRevenue, { bold: true })}
+              {line("Net event revenue", pnl.netRevenue, { bold: true, parts: revenueParts(), explain: "Gross revenue − discounts, refunds and credit notes (listed as minus)." })}
             </div>
             <div className="py-2">
               <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Direct costs (actual)</div>
               {directLinesOf(pnl).map(([label, amount]) => <div key={label}>{line(label, amount)}</div>)}
-              {line("Total direct costs", pnl.directCosts, { bold: true })}
+              {line("Total direct costs", pnl.directCosts, { bold: true, parts: directParts, explain: "Actual direct cost entries, the costs keyed in with this event's AutoCount invoice no., and the Catering event costing sheet." })}
               {pnl.fromCostingSheet > 0 && <p className="text-[11.5px] text-text-muted">Includes {money(pnl.fromCostingSheet)} from the Catering event costing sheet. Do not also enter those costs here.</p>}
             </div>
             <div className="py-2">{line("Gross profit", pnl.grossProfit, { bold: true })}</div>
             <div className="py-2">
               <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Additional event-specific expenses</div>
-              {line("Total additional expenses", pnl.additionalExpenses)}
+              {line("Total additional expenses", pnl.additionalExpenses, { parts: additionalParts })}
             </div>
             <div className="pt-2">
-              {line("Net event profit", pnl.netProfit, { bold: true })}
+              {line("Net event profit", pnl.netProfit, { bold: true, parts: profitParts, explain: "Net revenue − direct costs − additional expenses. Costs are listed as minus." })}
               <div className="flex items-center justify-between py-1.5 text-[13.5px] font-extrabold text-text"><span>Profit margin</span><span>{formatMargin(pnl.margin)}</span></div>
             </div>
           </div>
@@ -196,7 +218,7 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
                     <td className="py-2 text-text-secondary">{date(r.entry_date)}</td>
                     <td className="py-2 font-semibold text-text">{REVENUE_TYPE_LABEL[r.entry_type]}</td>
                     <td className="py-2 text-text-secondary">{r.description ?? "—"}{r.notes ? <div className="text-[11.5px] text-text-muted">{r.notes}</div> : null}{r.document_id && <div><DocumentViewLink documentId={r.document_id} label="📎 Document" /></div>}</td>
-                    <td className={`py-2 text-right font-semibold ${(REVENUE_DEDUCTIONS as readonly string[]).includes(r.entry_type) ? "text-danger" : "text-text"}`}>{(REVENUE_DEDUCTIONS as readonly string[]).includes(r.entry_type) ? "− " : ""}{money(Number(r.amount))}</td>
+                    <td className={`py-2 text-right font-semibold ${(REVENUE_DEDUCTIONS as readonly string[]).includes(r.entry_type) ? "text-danger" : "text-text"}`}><AmountOrigin origin={{ kind: "event_revenue_entry", id: r.id }} billIds={billList(r.document_id)} text={`${(REVENUE_DEDUCTIONS as readonly string[]).includes(r.entry_type) ? "− " : ""}${money(Number(r.amount))}`} /></td>
                     <td className="py-2 text-right"><EntryActions kind="revenue" entry={r} eventId={id} companyId={event.company_id} /></td>
                   </tr>
                 ))}
@@ -211,7 +233,7 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
             <ul className="mt-2 divide-y divide-border text-[12.5px]">
               {detail.invoices.map((i) => (
                 <li key={i.id} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
-                  <span><Link href={`/finance/invoices/${i.id}`} className="font-semibold text-text hover:text-primary">{i.invoice_number}</Link> · {date(i.invoice_date)} · {money(Number(i.amount))} · {i.status}</span>
+                  <span><Link href={`/finance/invoices/${i.id}`} className="font-semibold text-text hover:text-primary">{i.invoice_number}</Link> · {date(i.invoice_date)} · <AmountOrigin origin={{ kind: "customer_invoice", id: i.id }} billIds={billList(i.document_id)} text={money(Number(i.amount))} /> · {i.status}</span>
                   {countedInvoiceIds.has(i.id) ? <StatusBadge tone="success">Counted as revenue</StatusBadge> : <span className="print:hidden"><AddInvoiceRevenueButton eventId={id} invoiceId={i.id} /></span>}
                 </li>
               ))}
@@ -238,7 +260,7 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
                     <td className="py-2">{s.partyName ?? "—"}{s.reference ? <div className="text-[11.5px]">{s.reference}</div> : null}</td>
                     <td className="py-2">{s.autoCountNo}</td>
                     <td className="py-2 text-text-secondary">{s.costs.map((c) => `${ANY_DIRECT_COST_TYPE_LABEL[c.cost_type] ?? c.cost_type} ${money(c.amount)}`).join(" · ")}</td>
-                    <td className="py-2 text-right font-semibold">{money(s.amount)}</td>
+                    <td className="py-2 text-right font-semibold"><AmountOrigin origin={autoCountOrigin(s.source, s.id)} text={money(s.amount)} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -257,7 +279,7 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
                   <Fragment key={group.label}>
                     <tr className="border-t-2 border-border-strong bg-surface-alt">
                       <td colSpan={4} className="py-2 pl-2 text-[12.5px] font-extrabold text-text">{group.label} <span className="font-semibold text-text-muted">· {group.rows.length} {group.rows.length === 1 ? "entry" : "entries"}</span></td>
-                      <td className="py-2 text-right text-[12.5px] font-extrabold text-text">{money(group.actualTotal)}</td>
+                      <td className="py-2 text-right text-[12.5px] font-extrabold text-text"><TotalOrigin total={group.actualTotal} title={group.label} text={money(group.actualTotal)} parts={group.rows.filter((c) => c.cost_basis === "actual").map((c) => ({ group: `Cost entry · ${group.label}`, amount: Number(c.amount), date: c.cost_date, label: [c.supplier_name, c.reference_no, c.description].filter(Boolean).join(" · "), origin: { kind: "event_cost_entry" as const, id: c.id }, billIds: billList(c.document_id) }))} /></td>
                       <td />
                     </tr>
                 {group.rows.map((c) => (
@@ -266,7 +288,7 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
                     <td className="py-2 font-semibold text-text">{group.label}<div className="text-[11px] font-normal text-text-muted">{c.cost_class === "direct" ? "Direct" : "Additional"}</div></td>
                     <td className="py-2">{c.supplier_name ?? "—"}{c.reference_no ? <div className="text-[11.5px]">{c.reference_no}</div> : null}{c.description ? <div className="text-[11.5px] text-text-muted">{c.description}</div> : null}{c.document_id && <div><DocumentViewLink documentId={c.document_id} label="📎 Document" /></div>}{c.supplier_invoice_id && <div><Link href={`/supplier-procurement/invoices/${c.supplier_invoice_id}`} className="text-[11px] font-semibold text-primary hover:underline">Linked supplier invoice →</Link></div>}</td>
                     <td className="py-2"><StatusBadge tone={c.cost_basis === "actual" ? "info" : "warning"}>{COST_BASIS_LABEL[c.cost_basis]}</StatusBadge></td>
-                    <td className="py-2 text-right font-semibold">{money(Number(c.amount))}</td>
+                    <td className="py-2 text-right font-semibold"><AmountOrigin origin={{ kind: "event_cost_entry", id: c.id }} billIds={billList(c.document_id)} text={money(Number(c.amount))} /></td>
                     <td className="py-2 text-right"><EntryActions kind="cost" entry={c} eventId={id} companyId={event.company_id} /></td>
                   </tr>
                 ))}

@@ -20,19 +20,22 @@ import { EmptyRow, SectionCard } from "@/components/dashboard/SectionCard";
 import { SoftPage } from "@/components/ui/Soft";
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { canAccessModule } from "@/lib/modules";
+import { TotalOrigin } from "@/components/shared/TotalOrigin";
+import type { TotalPart } from "@/lib/origin/kinds";
+import { costPart } from "@/lib/origin/parts";
 
 const sum = (v: number[]) => v.reduce((t, x) => t + x, 0);
 const pctText = (n: number) => `${(n * 100).toFixed(1)}%`;
 const noMonths = (): Months => Array(12).fill(null);
 
 /** A month's figure in RM and, under it, its share of that month's total sales; red when a cost is over its limit (net profit: under it). */
-function Cell({ amount, sales, limit, profit }: { amount: number | null; sales: number | null; limit?: number; profit?: boolean }) {
+function Cell({ amount, sales, limit, profit, parts, title, explain }: { amount: number | null; sales: number | null; limit?: number; profit?: boolean; parts?: TotalPart[]; title?: string; explain?: string }) {
   if (amount === null) return <td className="px-2 py-2 text-right text-text-secondary">—</td>;
   const pct = sales && sales > 0 ? amount / sales : null;
   const bad = limit !== undefined && pct !== null && (profit ? pct < limit : pct > limit);
   return (
     <td className="px-2 py-2 text-right tabular-nums">
-      <div className={`font-semibold ${amount < 0 ? "text-danger" : "text-text"}`}>{formatCurrency(amount)}</div>
+      <div className={`font-semibold ${amount < 0 ? "text-danger" : "text-text"}`}>{parts ? <TotalOrigin total={amount} parts={parts} title={title ?? ""} explain={explain} /> : formatCurrency(amount)}</div>
       {limit !== undefined && <div className={`text-[11.5px] ${bad ? "font-bold text-danger" : "text-text-secondary"}`}>{pct === null ? "—" : pctText(pct)}</div>}
     </td>
   );
@@ -85,7 +88,7 @@ export default async function MonthlyBreakdownPage({ searchParams }: { searchPar
   const shown = (m: number) => !month || m === month - 1;
 
   const [salesRes, itemsRes, spending, wastageRes] = await Promise.all([
-    supabase.from("monthly_sales").select("month, sales_amount").eq("company_id", o2.id).eq("year", year).eq("sales_type", "total"),
+    supabase.from("monthly_sales").select("id, month, sales_amount").eq("company_id", o2.id).eq("year", year).eq("sales_type", "total"),
     supabase.from("breakdown_items").select("id, line, label, budget, note, amounts, sort_order").eq("company_id", o2.id).eq("year", year).order("sort_order"),
     listSpending(supabase, [o2.id], `${year}-01-01`, `${year}-12-31`),
     supabase.from("wastage_log").select("wasted_on, estimated_value").eq("company_id", o2.id).gte("wasted_on", `${year}-01-01`).lte("wasted_on", `${year}-12-31`),
@@ -124,6 +127,16 @@ export default async function MonthlyBreakdownPage({ searchParams }: { searchPar
   const contribution = totalOf(items.contribution);
   const net = netOf(sales, [raw, labour, utilities, contribution]);
   const L = BARA_LIMITS;
+
+  // the records behind each month's figure: tapping it lists them, tapping one opens its record or bill
+  const monthKey = (m: number) => `${year}-${String(m + 1).padStart(2, "0")}`;
+  const salesPartsOf = (m: number): TotalPart[] => (salesRes.data ?? []).filter((r) => r.month === m + 1).map((r) => ({ group: "Monthly sales (AutoCount)", amount: Number(r.sales_amount), date: monthKey(m), label: "Total", origin: { kind: "monthly_sales" as const, id: r.id }, billIds: [] }));
+  const itemPartsOf = (line: BreakdownLine, m: number): TotalPart[] =>
+    items[line].filter((it) => it.values[m] !== null).map((it) => ({ group: "Keyed in on this page", amount: it.values[m] as number, date: monthKey(m), label: it.label, origin: { kind: "breakdown_item" as const, id: it.id }, billIds: [] }));
+  const linePartsOf = (line: BreakdownLine, m: number): TotalPart[] =>
+    line === "raw" && rawManual[m] === null ? spending.filter((c) => c.date.startsWith(monthKey(m)) && RAW_ITEM_CATEGORIES.some((f) => sameLabel(c.category, f))).map((c) => costPart(c)) : itemPartsOf(line, m);
+  const lineExplain = (line: BreakdownLine, m: number) =>
+    line === "raw" && rawManual[m] === null ? "No costing-report figure is keyed in for this month, so it is the food bought and recorded in Company Expenses and Petty Cash. Tap an amount to open its bill." : "Keyed in by hand on this page (the editor below), from the month's costing report.";
 
   const lines: { key: BreakdownLine; label: string; limit: number; values: Months; color: string }[] = [
     { key: "raw", label: "Raw item cost", limit: L.raw, values: raw, color: "#1e3a5f" },
@@ -225,13 +238,13 @@ export default async function MonthlyBreakdownPage({ searchParams }: { searchPar
               <tr className="border-b border-border bg-info-bg/40">
                 <td className="px-2 py-2 text-text-secondary">100%</td>
                 <td className="px-2 py-2 font-bold text-text"><Heading to="#sales">Total sales</Heading></td>
-                {sales.map((s, m) => shown(m) && <Cell key={m} amount={s} sales={s} />)}
+                {sales.map((s, m) => shown(m) && <Cell key={m} amount={s} sales={s} parts={salesPartsOf(m)} title={`Total sales · ${MONTH_LABEL[m]} ${year}`} explain="Keyed in on Admin & Finance → Monthly Sales from the AutoCount report of the month." />)}
               </tr>
               {lines.map((l) => (
                 <tr key={l.key} className="border-b border-border">
                   <td className="px-2 py-2 text-text-secondary">{pctText(l.limit)}</td>
                   <td className="px-2 py-2 font-semibold text-text"><Heading to={`#${l.key}`}>{l.label}</Heading></td>
-                  {l.values.map((v, m) => shown(m) && <Cell key={m} amount={v} sales={sales[m]} limit={l.limit} />)}
+                  {l.values.map((v, m) => shown(m) && <Cell key={m} amount={v} sales={sales[m]} limit={l.limit} parts={linePartsOf(l.key, m)} title={`${l.label} · ${MONTH_LABEL[m]} ${year}`} explain={lineExplain(l.key, m)} />)}
                 </tr>
               ))}
               <tr className="bg-info-bg/40">

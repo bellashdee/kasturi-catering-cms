@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { resolvePeriod, type DateRange } from "@/lib/finance/constants";
 import { salesByCompanyMonth } from "@/lib/reports/sales";
+import { billList, type OriginRef } from "@/lib/origin/kinds";
 
 type DB = SupabaseClient<Database>;
 
@@ -24,6 +25,10 @@ export type CostRow = {
   invoiceNo?: string | null;
   /** the event's AutoCount invoice no. it was keyed in with (the cost then counts in that event's P&L) */
   autoCountNo?: string | null;
+  /** the record it was keyed in as, so a page can show where the amount comes from (<AmountOrigin>) */
+  origin?: OriginRef;
+  /** the bills (receipt, invoice, voucher) attached to that record */
+  billIds?: string[];
 };
 
 /**
@@ -71,7 +76,7 @@ export async function listSpending(supabase: DB, companyIds: string[], from?: st
   ] = await Promise.all([
     supabase
       .from("stock_movements")
-      .select("id, company_id, quantity, movement_type, created_at, ingredients(unit_cost)")
+      .select("id, company_id, quantity, movement_type, created_at, document_id, ingredients(unit_cost)")
       .in("company_id", companyIds)
       .in("movement_type", ["out", "wastage"])
       .gte("created_at", startTs)
@@ -84,7 +89,7 @@ export async function listSpending(supabase: DB, companyIds: string[], from?: st
       .lte("catering_events.event_date", end),
     supabase
       .from("supplier_payments")
-      .select("id, company_id, amount, payment_date, supplier_invoices(department)")
+      .select("id, company_id, amount, payment_date, receipt_document_id, supplier_invoices(department, document_id)")
       .in("company_id", companyIds)
       .eq("status", "paid")
       .not("supplier_invoice_id", "is", null) // Finance supplier payments are counted from finance_payments
@@ -92,13 +97,13 @@ export async function listSpending(supabase: DB, companyIds: string[], from?: st
       .lte("payment_date", end),
     supabase
       .from("driver_expenses")
-      .select("id, company_id, amount, category, expense_date")
+      .select("id, company_id, amount, category, expense_date, document_id")
       .in("company_id", companyIds)
       .gte("expense_date", start)
       .lte("expense_date", end),
     supabase
       .from("marketing_expenses")
-      .select("id, company_id, amount, category, expense_date")
+      .select("id, company_id, amount, category, expense_date, document_id")
       .in("company_id", companyIds)
       .gte("expense_date", start)
       .lte("expense_date", end),
@@ -111,13 +116,13 @@ export async function listSpending(supabase: DB, companyIds: string[], from?: st
       .lte("pay_period_end", end),
     supabase
       .from("expenses")
-      .select("id, company_id, amount, category, department, expense_date, notes, note_type, invoice_no, autocount_invoice_no")
+      .select("id, company_id, amount, category, department, expense_date, notes, note_type, invoice_no, autocount_invoice_no, document_id")
       .in("company_id", companyIds)
       .gte("expense_date", start)
       .lte("expense_date", end),
     supabase
       .from("petty_cash_transactions")
-      .select("id, company_id, amount, category, type, transaction_date, description, claimant_name, invoice_no, autocount_invoice_no")
+      .select("id, company_id, amount, category, type, transaction_date, description, claimant_name, invoice_no, autocount_invoice_no, document_id, extra_document_ids")
       .in("company_id", companyIds)
       .eq("type", "expense")
       .gte("transaction_date", start)
@@ -125,7 +130,7 @@ export async function listSpending(supabase: DB, companyIds: string[], from?: st
     // the money spent from the petty cash book (an entry for more than one company is counted once, under its main company)
     supabase
       .from("operation_petty_cash")
-      .select("id, company_id, amount, category, entry_date, description, invoice_no, autocount_invoice_no")
+      .select("id, company_id, amount, category, entry_date, description, invoice_no, autocount_invoice_no, document_id, extra_document_ids")
       .in("company_id", companyIds)
       .eq("entry_type", "expense")
       .gte("entry_date", start)
@@ -133,7 +138,7 @@ export async function listSpending(supabase: DB, companyIds: string[], from?: st
     // Read-through only: paid Finance payments are never copied into another table, so nothing is counted twice.
     supabase
       .from("finance_payments")
-      .select("id, company_id, amount, category, utility_provider, paid_date, period_month, payee_name")
+      .select("id, company_id, amount, category, utility_provider, paid_date, period_month, payee_name, document_id, proof_document_id, voucher_document_id")
       .in("company_id", companyIds)
       .eq("status", "paid")
       // Supplier payments settle purchases that are already counted in the costing (daily purchase costs), so only
@@ -158,6 +163,8 @@ export async function listSpending(supabase: DB, companyIds: string[], from?: st
         // the Malaysian day (the month's filter above is in Malaysian time too), so grouping by date matches the month's own query
         date: new Date(new Date(m.created_at).getTime() + 8 * 3600_000).toISOString().slice(0, 10),
         details: null,
+        origin: { kind: "stock_movement", id: m.id },
+        billIds: billList(m.document_id),
       });
     }
   }
@@ -172,7 +179,7 @@ export async function listSpending(supabase: DB, companyIds: string[], from?: st
       ["Other Cost", Number(c.other_cost)],
     ];
     for (const [category, amount] of parts) {
-      if (amount > 0) rows.push({ source: "Catering", category, department: null, amount, companyId: c.company_id, id: `${c.id}-${category}`, date: c.catering_events?.event_date ?? "", details: c.catering_events?.event_name ?? null });
+      if (amount > 0) rows.push({ source: "Catering", category, department: null, amount, companyId: c.company_id, id: `${c.id}-${category}`, date: c.catering_events?.event_date ?? "", details: c.catering_events?.event_name ?? null, origin: { kind: "event_costing", id: c.id }, billIds: [] });
     }
   }
 
@@ -186,15 +193,17 @@ export async function listSpending(supabase: DB, companyIds: string[], from?: st
       id: p.id,
       date: p.payment_date ?? "",
       details: null,
+      origin: { kind: "supplier_payment", id: p.id },
+      billIds: billList(p.receipt_document_id, p.supplier_invoices?.document_id),
     });
   }
 
   for (const d of driverExpenses.data ?? []) {
-    rows.push({ source: "Driver", category: d.category, department: null, amount: Number(d.amount), companyId: d.company_id, id: d.id, date: d.expense_date, details: null });
+    rows.push({ source: "Driver", category: d.category, department: null, amount: Number(d.amount), companyId: d.company_id, id: d.id, date: d.expense_date, details: null, origin: { kind: "driver_expense", id: d.id }, billIds: billList(d.document_id) });
   }
 
   for (const mk of marketingExpenses.data ?? []) {
-    rows.push({ source: "Marketing", category: mk.category, department: null, amount: Number(mk.amount), companyId: mk.company_id, id: mk.id, date: mk.expense_date, details: null });
+    rows.push({ source: "Marketing", category: mk.category, department: null, amount: Number(mk.amount), companyId: mk.company_id, id: mk.id, date: mk.expense_date, details: null, origin: { kind: "marketing_expense", id: mk.id }, billIds: billList(mk.document_id) });
   }
 
   for (const pr of payrollRecords.data ?? []) {
@@ -207,6 +216,8 @@ export async function listSpending(supabase: DB, companyIds: string[], from?: st
       id: pr.id,
       date: pr.pay_period_end,
       details: pr.employees?.full_name ?? null,
+      origin: { kind: "payroll", id: pr.id },
+      billIds: [],
     });
   }
 
@@ -224,6 +235,8 @@ export async function listSpending(supabase: DB, companyIds: string[], from?: st
       note: e.note_type === "credit_note" || e.note_type === "debit_note" ? e.note_type : null,
       invoiceNo: e.invoice_no ?? null,
       autoCountNo: e.autocount_invoice_no ?? null,
+      origin: { kind: "expense", id: e.id },
+      billIds: billList(e.document_id),
     });
   }
 
@@ -239,6 +252,8 @@ export async function listSpending(supabase: DB, companyIds: string[], from?: st
       details: [pc.description, pc.claimant_name ? `Staff claim: ${pc.claimant_name}` : null].filter(Boolean).join(" · ") || null,
       invoiceNo: pc.invoice_no ?? null,
       autoCountNo: pc.autocount_invoice_no ?? null,
+      origin: { kind: "petty_cash_claim", id: pc.id },
+      billIds: billList(pc.document_id, pc.extra_document_ids),
     });
   }
 
@@ -254,6 +269,8 @@ export async function listSpending(supabase: DB, companyIds: string[], from?: st
       details: pb.description ?? null,
       invoiceNo: pb.invoice_no ?? null,
       autoCountNo: pb.autocount_invoice_no ?? null,
+      origin: { kind: "petty_cash_book", id: pb.id },
+      billIds: billList(pb.document_id, pb.extra_document_ids),
     });
   }
 
@@ -267,6 +284,8 @@ export async function listSpending(supabase: DB, companyIds: string[], from?: st
       id: fp.id,
       date: fp.paid_date ?? fp.period_month,
       details: [fp.payee_name, fp.category !== "rental" && fp.utility_provider ? fp.utility_provider : null].filter(Boolean).join(" · ") || null,
+      origin: { kind: "finance_payment", id: fp.id },
+      billIds: billList(fp.document_id, fp.proof_document_id, fp.voucher_document_id),
     });
   }
 

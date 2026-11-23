@@ -11,6 +11,8 @@ import { Select } from "@/components/ui/Select";
 import { AutoCountInvoiceField } from "@/components/procurement/AutoCountInvoiceField";
 import { RESTAURANT_COMPANY_NAME } from "@/lib/restaurantView";
 import { INVOICE_NO_LABEL, INVOICE_NO_PLACEHOLDER } from "@/components/spending/formStyles";
+import { AmountOrigin } from "@/components/shared/AmountOrigin";
+import type { OriginRef } from "@/lib/origin/kinds";
 
 export type ExpenseListRow = {
   id: string;
@@ -28,6 +30,9 @@ export type ExpenseListRow = {
   autoCountNo?: string | null;
   /** marked as a credit note (money back, shown as minus) or a debit note */
   note?: "credit_note" | "debit_note" | null;
+  /** the record behind the amount and its bills: tapping the amount opens the bill */
+  origin?: OriginRef | null;
+  billIds?: string[];
 };
 
 const NOTE_LABEL = { credit_note: "Credit Note", debit_note: "Debit Note" } as const;
@@ -166,7 +171,9 @@ export function CompanyExpenseTable({ rows, categories }: { rows: ExpenseListRow
             )}
           </div>
           <div className="truncate text-text-secondary" title={e.invoiceNo ?? ""}>{e.invoiceNo || "—"}{e.autoCountNo && <div className="truncate text-[11px] font-semibold text-primary" title={`AutoCount: ${e.autoCountNo}`}>{`AutoCount: ${e.autoCountNo}`}</div>}</div>
-          <div className={e.note === "credit_note" ? "font-semibold text-success" : "text-text-secondary"}>{e.amount < 0 ? `− ${formatCurrency(Math.abs(e.amount))}` : formatCurrency(e.amount)}</div>
+          <div className={e.note === "credit_note" ? "font-semibold text-success" : "text-text-secondary"}>
+            <AmountOrigin origin={e.origin} billIds={e.billIds} text={e.amount < 0 ? `− ${formatCurrency(Math.abs(e.amount))}` : formatCurrency(e.amount)} />
+          </div>
           <div className="text-text-secondary">{e.department ?? "—"}</div>
           <div className="truncate text-text-muted" title={e.notes ?? ""}>
             {e.companyName}

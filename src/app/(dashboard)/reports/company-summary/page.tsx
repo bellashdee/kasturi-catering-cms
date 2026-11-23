@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { getCompanySummary, getYearMonthlySeries } from "@/lib/reports/queries";
-import { formatCurrency, malaysiaYearMonth } from "@/lib/format";
+import { malaysiaYearMonth } from "@/lib/format";
 import { MONTH_LABEL, parseDateRange } from "@/lib/finance/constants";
 import { ReportFilterBar } from "@/components/reports/ReportFilterBar";
 import { PrintButton } from "@/components/reports/PrintButton";
@@ -14,6 +14,8 @@ import { SummaryInfographic } from "@/components/reports/SummaryInfographic";
 import { SalesByMonthComparison } from "@/components/reports/SalesByMonthComparison";
 import { SoftPage } from "@/components/ui/Soft";
 import { isRestaurantScope } from "@/lib/restaurantView";
+import { TotalOrigin } from "@/components/shared/TotalOrigin";
+import { costPart, salesParts } from "@/lib/origin/parts";
 
 function currentYearMonth() {
   return malaysiaYearMonth();
@@ -53,6 +55,10 @@ export default async function CompanySummaryReportPage({
     getYearMonthlySeries(supabase, targetCompanyIds, year - 1),
   ]);
   const periodLabel = range ? `${range.start} – ${range.end}` : `${MONTH_LABEL[month - 1]} ${year}`;
+  // the records behind the figures: tapping a figure below lists them, tapping one opens its bill
+  const companyName = new Map(companies.map((c) => [c.id, c.name]));
+  const costParts = summary.costRows.map((r) => costPart(r, companyName.get(r.companyId)));
+  const revenueParts = range ? [] : await salesParts(supabase, targetCompanyIds, year, month, companyName);
 
   return (
     <SoftPage>
@@ -91,11 +97,24 @@ export default async function CompanySummaryReportPage({
 
       <PieChart title="Cost by module" slices={summary.bySource.map((x) => ({ label: x.source, value: x.amount }))} />
 
+      <SectionCard title="Where do these figures come from?">
+        <p className="mb-1 text-[12.5px] text-text-muted">Tap a figure to see the records it adds up; tap a record&apos;s amount to open its bill.</p>
+        <StatRow
+          label="Revenue"
+          value={<TotalOrigin total={summary.revenue} parts={revenueParts} title={`Revenue · ${periodLabel}`} explain={range ? "For a day range, the payments received from customers in those days." : "For each company, the monthly sales keyed in from AutoCount (Admin & Finance → Monthly Sales); a company with none keyed in for the month counts the invoices it issued, before tax."} />}
+        />
+        <StatRow label="Total cost" value={<TotalOrigin total={summary.totalCost} parts={costParts} title={`Total cost · ${periodLabel}`} explain="Every cost of the period from every module (the same list as Monthly Costing)." />} />
+        <StatRow
+          label="Net (revenue − cost)"
+          value={<TotalOrigin total={summary.net} parts={[...revenueParts, ...costParts.map((p) => ({ ...p, amount: -p.amount }))]} title={`Net · ${periodLabel}`} explain="Revenue − total cost. The costs are listed as minus." />}
+        />
+      </SectionCard>
+
       <SectionCard title="Cost by Module">
         {summary.bySource.length === 0 ? (
           <EmptyRow text="No costs recorded this month." />
         ) : (
-          summary.bySource.map((s) => <StatRow key={s.source} label={s.source} value={formatCurrency(s.amount)} />)
+          summary.bySource.map((s) => <StatRow key={s.source} label={s.source} value={<TotalOrigin total={s.amount} parts={costParts.filter((p) => p.group === s.source)} title={`${s.source} · ${periodLabel}`} />} />)
         )}
       </SectionCard>
     </SoftPage>

@@ -15,6 +15,7 @@ import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
 import { Select } from "@/components/ui/Select";
 import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
 import { readSort, sortBy } from "@/lib/listSort";
+import { TotalOrigin } from "@/components/shared/TotalOrigin";
 
 const SORTS = { date: "Date", category: "Category", invoice: "Invoice No.", department: "Department", amount: "Amount" };
 
@@ -45,7 +46,7 @@ export default async function CompanyExpensesPage({
   const spending = await listSpending(supabase, targetCompanyIds);
   const companyName = new Map(companies.map((c) => [c.id, c.name]));
   const everyExpense = spending
-    .map((r: CostRow) => ({ id: r.id, source: r.source, category: r.category, department: r.department, amount: r.amount, note: r.note ?? null, invoiceNo: r.invoiceNo ?? null, autoCountNo: r.autoCountNo ?? null, expense_date: r.date, notes: r.details, companies: { name: companyName.get(r.companyId) ?? "" } }))
+    .map((r: CostRow) => ({ id: r.id, source: r.source, category: r.category, department: r.department, amount: r.amount, note: r.note ?? null, invoiceNo: r.invoiceNo ?? null, autoCountNo: r.autoCountNo ?? null, expense_date: r.date, notes: r.details, origin: r.origin ?? null, billIds: r.billIds ?? [], companies: { name: companyName.get(r.companyId) ?? "" } }))
     .sort((a, b) => b.expense_date.localeCompare(a.expense_date) || a.source.localeCompare(b.source));
 
   // search and filters: words in the category, notes, invoice no., department, company or amount; the category and department; a date range
@@ -88,7 +89,16 @@ export default async function CompanyExpensesPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[22px] font-extrabold text-text">Company Expenses</h1>
-          <p className="mt-0.5 text-[13px] text-text-secondary">{expenses.length} expense{expenses.length === 1 ? "" : "s"}{filtered ? ` found of ${everyExpense.length}` : ""}{monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null} · {formatCurrency(total)} total</p>
+          <p className="mt-0.5 text-[13px] text-text-secondary">{expenses.length} expense{expenses.length === 1 ? "" : "s"}{filtered ? ` found of ${everyExpense.length}` : ""}{monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null} ·{" "}
+            <TotalOrigin
+              total={total}
+              title={monthLabel ? `Company Expenses · ${monthLabel}` : "Company Expenses"}
+              explain="The total of every expense in the list (with the search and filters as chosen). Each one is a record keyed in on its own page; tap an amount to open its bill."
+              text={`${formatCurrency(total)} total`}
+              className="font-semibold text-text"
+              parts={expenses.map((e) => ({ group: e.source, amount: Number(e.amount), date: e.expense_date, label: [e.category, e.invoiceNo, e.companies?.name].filter(Boolean).join(" · "), origin: e.origin, billIds: e.billIds }))}
+            />
+          </p>
         </div>
         <Link href={`/spending/expenses/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">
           + New Expense
@@ -144,6 +154,8 @@ export default async function CompanyExpensesPage({
               invoiceNo: e.invoiceNo,
               autoCountNo: e.autoCountNo,
               note: e.note,
+              origin: e.origin,
+              billIds: e.billIds,
             }))}
           />
         )}
