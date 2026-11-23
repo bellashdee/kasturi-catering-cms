@@ -6,16 +6,23 @@ import { channelLabel, paymentLabel } from "@/lib/restaurant/constants";
 import {
   RANGE_LABEL,
   addDays,
+  combineDays,
+  feedmeExtras,
   fetchCashSessions,
+  fetchDayTotals,
   fetchFoodPurchaseRows,
   fetchMonthlyTotalRows,
   fetchSalesLines,
+  dayTotalNet,
   netOf,
+  type DayTotalRow,
   type SalesLine,
-  groupNet,
+  NOT_SPLIT,
+  breakdownRows,
+  fetchCloseUps,
   missingDays,
   resolveRange,
-  totalsOf,
+  totalsOfDays,
   type RangeKey,
 } from "@/lib/restaurant/dashboard";
 import { KpiCard } from "@/components/dashboard/KpiCard";
@@ -42,42 +49,69 @@ export default async function RestaurantDashboardPage({ searchParams }: { search
   const monthEnd = addDays(`${addDays(monthStart, 40).slice(0, 7)}-01`, -1);
   const canSeeCosts = canAccessModule(ctx.session.allowedModules, "finance-admin");
 
-  const [rangeLines, monthLines, cash, foodRows, monthlyRows] = await Promise.all([
+  const [rangeLines, monthLines, rangeTotals, monthTotals, cash, closeUpData, foodRows, monthlyRows] = await Promise.all([
     fetchSalesLines(ctx.db, ctx.company.id, from, to),
     fetchSalesLines(ctx.db, ctx.company.id, monthStart, monthEnd),
+    fetchDayTotals(ctx.db, ctx.company.id, from, to),
+    fetchDayTotals(ctx.db, ctx.company.id, monthStart, monthEnd),
     fetchCashSessions(ctx.db, ctx.company.id, from, to),
+    fetchCloseUps(ctx.db, ctx.company.id, from, to),
     canSeeCosts ? fetchFoodPurchaseRows(ctx.db, ctx.company.id, from, to) : Promise.resolve(null),
     canSeeCosts ? fetchMonthlyTotalRows(ctx.db, ctx.company.id, monthKey) : Promise.resolve(null),
   ]);
   const foodPurchases = foodRows === null ? null : foodRows.reduce((sum, r) => sum + r.amount, 0);
   const monthlyTotal = monthlyRows === null || monthlyRows.length === 0 ? null : monthlyRows.reduce((sum, r) => sum + r.amount, 0);
-  // the records behind each figure: tapping a figure lists them, tapping one of them opens its record
-  const lineParts = (lines: SalesLine[], amountOf: (l: SalesLine) => number = netOf): TotalPart[] =>
-    lines.map((l) => ({ group: `Daily sales · ${channelLabel(l.channel)}`, amount: Math.round(amountOf(l) * 100) / 100, date: l.sales_date, label: [`Shift ${l.shift_no}`, paymentLabel(l.payment_method), l.notes].filter(Boolean).join(" · "), origin: { kind: "rst_sales_line" as const, id: l.id }, billIds: [] }));
+  // the records behind each figure: tapping a figure lists them, tapping one opens its record. A day with a FeedMe day total counts
+  // that total (its split lines only explain it), any other day its sales lines, as in combineDays.
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  const salesParts = (lines: SalesLine[], totals: DayTotalRow[], pick?: { line: (l: SalesLine) => number; total: (t: DayTotalRow) => number }): TotalPart[] => {
+    const feedmeDates = new Set(totals.map((t) => t.sales_date));
+    return [
+      ...lines.filter((l) => !feedmeDates.has(l.sales_date)).map((l) => ({ group: `Daily sales · ${channelLabel(l.channel)}`, amount: r2(pick ? pick.line(l) : netOf(l)), date: l.sales_date, label: [`Shift ${l.shift_no}`, paymentLabel(l.payment_method), l.notes].filter(Boolean).join(" · "), origin: { kind: "rst_sales_line" as const, id: l.id }, billIds: [] })),
+      ...totals.map((t) => ({ group: "FeedMe day total", amount: r2(pick ? pick.total(t) : dayTotalNet(t)), date: t.sales_date, label: [t.outlet, `${t.bills} bills`].filter(Boolean).join(" · "), origin: { kind: "rst_day_total" as const, id: t.id }, billIds: [] })),
+    ].filter((p) => !pick || Math.abs(p.amount) >= 0.005);
+  };
   const foodParts: TotalPart[] = (foodRows ?? []).map((r) => ({ group: r.source, amount: r.amount, date: r.date, label: [r.category, r.invoiceNo, r.details].filter(Boolean).join(" · "), origin: r.origin, billIds: r.billIds }));
-  const monthlyParts: TotalPart[] = (monthlyRows ?? []).map((r) => ({ group: "AutoCount monthly total", amount: r.amount, date: monthKey, label: r.salesType === "total" ? "Total" : r.salesType, origin: { kind: "monthly_sales" as const, id: r.id }, billIds: [] }));
+  const monthlyParts: TotalPart[] = (monthlyRows ?? []).map((r) => ({ group: "Monthly Total Sales", amount: r.amount, date: monthKey, label: r.salesType === "total" ? "Total" : r.salesType, origin: { kind: "monthly_sales" as const, id: r.id }, billIds: [] }));
 
   const confirmed = rangeLines.filter((l) => l.status === "confirmed");
-  const drafts = rangeLines.filter((l) => l.status === "draft");
-  const t = totalsOf(confirmed);
-  const byChannel = groupNet(confirmed, (l) => l.channel);
-  const byPayment = groupNet(confirmed, (l) => l.payment_method);
-  const byDay = groupNet(confirmed, (l) => l.sales_date).sort((a, b) => b.key.localeCompare(a.key));
-  const missing = missingDays(from, to, rangeLines, today);
+  const confirmedTotals = rangeTotals.filter((d) => d.status === "confirmed");
+  const drafts = [...rangeLines.filter((l) => l.status === "draft"), ...rangeTotals.filter((d) => d.status === "draft")];
+  // a FeedMe day total is the sales of its day; the split lines of that day only explain it (see combineDays)
+  const days = combineDays(confirmed, confirmedTotals);
+  const t = totalsOfDays(days);
+  const feedme = feedmeExtras(confirmedTotals);
+  // the Close up of a day (split by payment method and by order type) counts only when its FeedMe day is confirmed
+  const confirmedIds = new Set(confirmedTotals.map((d) => d.id));
+  const activeCloseUps = closeUpData.closeups.filter((c) => confirmedIds.has(c.day_total_id));
+  const activeSplits = closeUpData.splits.filter((sp) => confirmedIds.has(sp.day_total_id));
+  const closeUpDates = new Set(activeCloseUps.map((c) => c.sales_date));
+  const channelRows = breakdownRows("channel", confirmed, days, activeSplits, closeUpDates);
+  const paymentRows = breakdownRows("payment", confirmed, days, activeSplits, closeUpDates);
+  const channelTotal = channelRows.reduce((sum, r) => sum + r.net, 0);
+  const paymentTotal = paymentRows.reduce((sum, r) => sum + r.net, 0);
+  const voided = activeCloseUps.reduce((x, c) => ({ amount: x.amount + c.void_amount, bills: x.bills + c.void_bills }), { amount: 0, bills: 0 });
+  const refundedCloseUp = activeCloseUps.reduce((sum, c) => sum + c.refund_amount, 0);
+  const labelOf = (key: string, fallback: (k: string) => string) => (key === NOT_SPLIT ? "Not split (FeedMe day total)" : fallback(key));
+  const differs = days.filter((d) => d.source === "feedme" && d.linesCount > 0 && Math.abs(d.net - d.linesNet) >= 0.005);
+  const byDay = [...days].sort((a, b) => b.date.localeCompare(a.date));
+  const missing = missingDays(from, to, rangeLines, today, rangeTotals);
   const closedSessions = cash.filter((s) => s.status === "closed");
-  const cashParts: TotalPart[] = closedSessions.map((s) => ({ group: "Closed cash sessions", amount: Math.round((s.variance ?? 0) * 100) / 100, date: s.session_date, label: [`Shift ${s.shift_no}`, s.variance_note].filter(Boolean).join(" · "), origin: { kind: "rst_cash_session" as const, id: s.id }, billIds: [] }));
+  const cashParts: TotalPart[] = closedSessions.map((s) => ({ group: "Closed cash sessions", amount: r2(s.variance ?? 0), date: s.session_date, label: [`Shift ${s.shift_no}`, s.variance_note].filter(Boolean).join(" · "), origin: { kind: "rst_cash_session" as const, id: s.id }, billIds: [] }));
   const cashVariance = closedSessions.reduce((sum, s) => sum + (s.variance ?? 0), 0);
   const openSessions = cash.filter((s) => s.status === "open");
-  const noSales = confirmed.length === 0;
+  const noSales = days.length === 0;
 
-  const monthConfirmed = monthLines.filter((l) => l.status === "confirmed");
-  const monthDaily = totalsOf(monthConfirmed).net;
-  const monthDays = new Set(monthConfirmed.map((l) => l.sales_date)).size;
+  const monthConfirmedLines = monthLines.filter((l) => l.status === "confirmed");
+  const monthConfirmedTotals = monthTotals.filter((d) => d.status === "confirmed");
+  const monthDaysSales = combineDays(monthConfirmedLines, monthConfirmedTotals);
+  const monthDaily = totalsOfDays(monthDaysSales).net;
+  const monthDays = monthDaysSales.length;
 
   const q = ctx.requestedCompany ? `&company=${ctx.requestedCompany}` : "";
   const salesLink = (extra: string) => `/restaurant/sales?from=${from}&to=${to}${extra}${q}`;
   const aov = t.orders > 0 ? t.ordersNet / t.orders : null;
-  const profitLike = foodPurchases === null ? null : t.net - foodPurchases;
+  const profitLike = foodPurchases === null || noSales ? null : t.net - foodPurchases;
 
   return (
     <div className="flex flex-col gap-5">
@@ -122,50 +156,52 @@ export default async function RestaurantDashboardPage({ searchParams }: { search
       )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiCard icon="sales" label="Net sales" value={<TotalOrigin total={t.net} parts={lineParts(confirmed)} title="Net sales" explain="The confirmed daily sales lines of the period: gross − discounts − refunds of each line." />} hint={`Gross ${formatCurrency(t.gross)}`} />
+        <KpiCard icon="sales" label="Net sales" value={<TotalOrigin total={t.net} parts={salesParts(confirmed, confirmedTotals)} title="Net sales" explain="The confirmed sales of the period: a day with a FeedMe day total counts that total (gross less discount), any other day its daily sales lines (gross − discounts − refunds)." />} hint={`Gross ${formatCurrency(t.gross)}`} />
         <KpiCard icon="invoice" label="Orders" value={t.orders > 0 ? String(t.orders) : "—"} hint={t.orders > 0 ? "From the lines that have an order count" : "Order count not entered"} />
         <KpiCard icon="payments" label="Average order value" value={aov === null ? "—" : formatCurrency(Math.round(aov * 100) / 100)} hint={aov === null ? "Insufficient data (no order counts)" : "Net sales ÷ orders"} />
-        <KpiCard icon="approvals" label="Discounts and refunds" value={<TotalOrigin total={t.discount + t.refund} parts={lineParts(confirmed.filter((l) => l.discount_amount > 0 || l.refund_amount > 0), (l) => l.discount_amount + l.refund_amount)} title="Discounts and refunds" explain="The discounts and refunds keyed in on the confirmed daily sales lines of the period." />} hint={`Discounts ${formatCurrency(t.discount)} · refunds ${formatCurrency(t.refund)}`} tone={t.refund > 0 ? "warning" : "neutral"} />
+        <KpiCard icon="approvals" label="Discounts and refunds" value={<TotalOrigin total={t.discount + t.refund} parts={salesParts(confirmed, confirmedTotals, { line: (l) => l.discount_amount + l.refund_amount, total: (x) => -x.discount })} title="Discounts and refunds" explain="The discounts and refunds of the confirmed daily sales lines and FeedMe day totals of the period." />} hint={`Discounts ${formatCurrency(t.discount)} · refunds ${formatCurrency(t.refund)}`} tone={t.refund > 0 ? "warning" : "neutral"} />
         <KpiCard icon="supplier" label="Food purchases" value={foodPurchases === null ? "—" : <TotalOrigin total={foodPurchases} parts={foodParts} title="Food purchases" explain="The food categories of Company Expenses and Petty Cash bought in the period (credit notes count as minus). Tap an amount to open its bill." />} hint={foodPurchases === null ? "No access to Company Expenses" : "Food categories of Company Expenses, when bought"} />
         <KpiCard icon="costing" label="Food purchases % of net sales" value={foodPurchases === null ? "—" : pct(foodPurchases, t.net)} hint="The Bara limit for raw items is 38%" tone={foodPurchases !== null && t.net > 0 && foodPurchases / t.net > 0.38 ? "danger" : "neutral"} />
-        <KpiCard icon="expenses" label="Sales less food purchases" value={profitLike === null ? "—" : formatCurrency(Math.round(profitLike * 100) / 100)} hint="Estimate: before labour, utilities and other costs" />
+        <KpiCard icon="expenses" label="Sales less food purchases" value={profitLike === null ? "—" : formatCurrency(Math.round(profitLike * 100) / 100)} hint={noSales ? "No sales yet" : "Estimate: before labour, utilities and other costs"} />
         <KpiCard icon="calendar" label="Cash difference" value={closedSessions.length === 0 ? "—" : <TotalOrigin total={Math.round(cashVariance * 100) / 100} parts={cashParts} title="Cash difference" explain="Counted cash − expected cash of every closed cash session of the period." />} hint={closedSessions.length === 0 ? "No closed cash session" : closedSessions.length === 1 ? "1 closed session" : `${closedSessions.length} closed sessions`} tone={Math.abs(cashVariance) >= 0.005 ? "danger" : "success"} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <SectionCard title="By channel">
-          {byChannel.length === 0 ? (
+          {channelRows.length === 0 ? (
             <EmptyRow text="No sales for this period." />
           ) : (
             <table className="w-full text-[13.5px]">
               <tbody>
-                {byChannel.map((r) => (
+                {channelRows.map((r) => (
                   <tr key={r.key} className="border-b border-border last:border-0">
-                    <td className="py-2"><Link className="text-primary hover:underline" href={salesLink(`&channel=${r.key}`)}>{channelLabel(r.key)}</Link></td>
-                    <td className="py-2 text-right text-text-secondary">{pct(r.net, t.net)}</td>
-                    <td className="py-2 text-right font-semibold"><TotalOrigin total={r.net} parts={lineParts(confirmed.filter((l) => l.channel === r.key))} title={channelLabel(r.key)} /></td>
+                    <td className="py-2">{r.key === NOT_SPLIT ? <span className="text-text-secondary">{labelOf(r.key, channelLabel)}</span> : <Link className="text-primary hover:underline" href={salesLink(`&channel=${r.key}`)}>{labelOf(r.key, channelLabel)}</Link>}</td>
+                    <td className="py-2 text-right text-text-secondary">{pct(r.net, channelTotal)}</td>
+                    <td className="py-2 text-right font-semibold">{formatCurrency(Math.round(r.net * 100) / 100)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
+          {closeUpDates.size > 0 && <p className="mt-2 text-[12px] text-text-muted">A day from the FeedMe Close up is the Nett collected: it includes service charge, SST and rounding, so this table can be more than the net sales above.</p>}
         </SectionCard>
         <SectionCard title="By payment method">
-          {byPayment.length === 0 ? (
+          {paymentRows.length === 0 ? (
             <EmptyRow text="No sales for this period." />
           ) : (
             <table className="w-full text-[13.5px]">
               <tbody>
-                {byPayment.map((r) => (
+                {paymentRows.map((r) => (
                   <tr key={r.key} className="border-b border-border last:border-0">
-                    <td className="py-2"><Link className="text-primary hover:underline" href={salesLink(`&method=${r.key}`)}>{paymentLabel(r.key)}</Link></td>
-                    <td className="py-2 text-right text-text-secondary">{pct(r.net, t.net)}</td>
-                    <td className="py-2 text-right font-semibold"><TotalOrigin total={r.net} parts={lineParts(confirmed.filter((l) => l.payment_method === r.key))} title={paymentLabel(r.key)} /></td>
+                    <td className="py-2">{r.key === NOT_SPLIT ? <span className="text-text-secondary">{labelOf(r.key, paymentLabel)}</span> : <Link className="text-primary hover:underline" href={salesLink(`&method=${r.key}`)}>{labelOf(r.key, paymentLabel)}</Link>}</td>
+                    <td className="py-2 text-right text-text-secondary">{pct(r.net, paymentTotal)}</td>
+                    <td className="py-2 text-right font-semibold">{formatCurrency(Math.round(r.net * 100) / 100)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
+          {closeUpDates.size > 0 && <p className="mt-2 text-[12px] text-text-muted">A day from the FeedMe Close up is the Nett collected: it includes service charge, SST and rounding, so this table can be more than the net sales above.</p>}
         </SectionCard>
       </div>
 
@@ -177,16 +213,18 @@ export default async function RestaurantDashboardPage({ searchParams }: { search
             <thead>
               <tr className="border-b border-border text-left text-[12px] text-text-muted">
                 <th className="py-2 font-semibold">Date</th>
+                <th className="py-2 font-semibold">From</th>
                 <th className="py-2 text-right font-semibold">Orders</th>
                 <th className="py-2 text-right font-semibold">Net sales</th>
               </tr>
             </thead>
             <tbody>
               {byDay.map((r) => (
-                <tr key={r.key} className="border-b border-border last:border-0">
-                  <td className="py-2"><Link className="text-primary hover:underline" href={`/restaurant/sales?date=${r.key}${q}`}>{dayText(r.key)}</Link></td>
+                <tr key={r.date} className="border-b border-border last:border-0">
+                  <td className="py-2"><Link className="text-primary hover:underline" href={`/restaurant/sales?date=${r.date}${q}`}>{dayText(r.date)}</Link></td>
+                  <td className="py-2 text-text-secondary">{r.source === "feedme" ? (closeUpDates.has(r.date) ? "FeedMe · split complete" : "FeedMe · not split") : "Sales lines"}</td>
                   <td className="py-2 text-right text-text-secondary">{r.orders > 0 ? r.orders : "—"}</td>
-                  <td className="py-2 text-right font-semibold"><TotalOrigin total={r.net} parts={lineParts(confirmed.filter((l) => l.sales_date === r.key))} title={dayText(r.key)} /></td>
+                  <td className="py-2 text-right font-semibold"><TotalOrigin total={r.net} parts={salesParts(confirmed.filter((l) => l.sales_date === r.date), confirmedTotals.filter((x) => x.sales_date === r.date))} title={dayText(r.date)} /></td>
                 </tr>
               ))}
             </tbody>
@@ -194,11 +232,41 @@ export default async function RestaurantDashboardPage({ searchParams }: { search
         )}
       </SectionCard>
 
+      {feedme.days > 0 && (
+        <SectionCard title="FeedMe day totals in this period">
+          <div className="flex flex-col gap-2 text-[13.5px]">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 sm:grid-cols-3">
+              <div className="flex justify-between"><span>Days from FeedMe</span><span className="font-semibold">{feedme.days}</span></div>
+              <div className="flex justify-between"><span>Bills</span><span className="font-semibold">{feedme.bills}</span></div>
+              <div className="flex justify-between"><span>Pax</span><span className="font-semibold">{feedme.pax}</span></div>
+              <div className="flex justify-between"><span>Service charge (SC)</span><span className="font-semibold">{formatCurrency(Math.round(feedme.serviceCharge * 100) / 100)}</span></div>
+              <div className="flex justify-between"><span>SST</span><span className="font-semibold">{formatCurrency(Math.round(feedme.sst * 100) / 100)}</span></div>
+              <div className="flex justify-between"><span>Delivery fee</span><span className="font-semibold">{formatCurrency(Math.round(feedme.deliveryFee * 100) / 100)}</span></div>
+              <div className="flex justify-between"><span>Rounding</span><span className="font-semibold">{formatCurrency(Math.round(feedme.rounding * 100) / 100)}</span></div>
+              <div className="flex justify-between sm:col-span-2"><span>Nett collected with the bills</span><span className="font-bold">{formatCurrency(Math.round(feedme.nett * 100) / 100)}</span></div>
+              {activeCloseUps.length > 0 && <div className="flex justify-between"><span>Voided / draft bills (not sales)</span><span className="font-semibold">{formatCurrency(Math.round(voided.amount * 100) / 100)}</span></div>}
+              {activeCloseUps.length > 0 && <div className="flex justify-between"><span>Refunds (not sales)</span><span className="font-semibold">{formatCurrency(Math.round(refundedCloseUp * 100) / 100)}</span></div>}
+            </div>
+            <p className="text-[12px] text-text-muted">Net sales above = gross less discount. Service charge, SST, delivery fee and rounding are collected with the bill but are not counted as sales.</p>
+            {differs.length > 0 && (
+              <div className="rounded-lg border border-warning/30 bg-warning-bg px-3 py-2 text-[12.5px] text-warning">
+                <div className="font-semibold">Check: the split lines differ from the FeedMe total on these days</div>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {differs.slice(0, 10).map((d) => (
+                    <Link key={d.date} href={`/restaurant/sales?date=${d.date}${q}`} className="rounded-md border border-warning/40 bg-surface px-2 py-0.5 text-primary">{`${dayText(d.date)}: ${formatCurrency(Math.round((d.net - d.linesNet) * 100) / 100)}`}</Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </SectionCard>
+      )}
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <SectionCard title="Needs your attention">
           <div className="flex flex-col gap-2 text-[13.5px]">
             <div className="flex items-center justify-between">
-              <span>Draft sales lines not confirmed</span>
+              <span>Draft sales not confirmed</span>
               <StatusBadge tone={drafts.length > 0 ? "warning" : "success"}>{drafts.length}</StatusBadge>
             </div>
             <div className="flex items-center justify-between">
@@ -220,18 +288,19 @@ export default async function RestaurantDashboardPage({ searchParams }: { search
           </div>
         </SectionCard>
 
-        <SectionCard title="Daily entries and the AutoCount monthly total">
+        <SectionCard title="Daily entries and the monthly Total Sales">
           {!canSeeCosts ? (
             <EmptyRow text="The monthly total is shown to people with Admin & Finance access." />
           ) : (
             <div className="flex flex-col gap-2 text-[13.5px]">
               <div className="text-[12.5px] text-text-muted">{dayText(monthStart)} to {dayText(monthEnd)}</div>
-              <div className="flex items-center justify-between"><span>{`Daily entries (confirmed, ${monthDays} ${monthDays === 1 ? "day" : "days"})`}</span><TotalOrigin total={monthDaily} parts={lineParts(monthConfirmed)} title="Daily entries of the month" className="font-semibold" /></div>
-              <div className="flex items-center justify-between"><span>AutoCount monthly total</span><span className="font-semibold">{monthlyTotal === null ? "not keyed in yet" : monthlyRows && monthlyRows.length === 1 ? <AmountOrigin origin={{ kind: "monthly_sales", id: monthlyRows[0].id }} amount={monthlyTotal} /> : <TotalOrigin total={monthlyTotal} parts={monthlyParts} title="AutoCount monthly total" explain="Keyed in on Admin & Finance → Monthly Sales from the AutoCount report of the month." />}</span></div>
+              <div className="flex items-center justify-between"><span>{`Daily entries (confirmed, ${monthDays} ${monthDays === 1 ? "day" : "days"})`}</span><TotalOrigin total={monthDaily} parts={salesParts(monthConfirmedLines, monthConfirmedTotals)} title="Daily entries of the month" className="font-semibold" /></div>
+              <div className="flex items-center justify-between"><span>Total Sales of the month (Reports → Monthly Breakdown)</span><span className="font-semibold">{monthlyTotal === null ? "not keyed in yet" : monthlyRows && monthlyRows.length === 1 ? <AmountOrigin origin={{ kind: "monthly_sales", id: monthlyRows[0].id }} amount={monthlyTotal} /> : <TotalOrigin total={monthlyTotal} parts={monthlyParts} title="Total Sales of the month" />}</span></div>
               {monthlyTotal !== null && (
-                <div className="flex items-center justify-between border-t border-border pt-2"><span>Difference</span><TotalOrigin total={Math.round((monthDaily - monthlyTotal) * 100) / 100} parts={[...lineParts(monthConfirmed), ...monthlyParts.map((p) => ({ ...p, amount: -p.amount }))]} title="Difference" explain="Daily entries of the month − the AutoCount monthly total. The AutoCount total is listed as minus." className="font-semibold" /></div>
+                <div className="flex items-center justify-between border-t border-border pt-2"><span>Difference</span><TotalOrigin total={Math.round((monthDaily - monthlyTotal) * 100) / 100} parts={[...salesParts(monthConfirmedLines, monthConfirmedTotals), ...monthlyParts.map((p) => ({ ...p, amount: -p.amount }))]} title="Difference" explain="Daily entries of the month − the monthly Total Sales. The monthly Total Sales is listed as minus." className="font-semibold" /></div>
               )}
-              <p className="text-[12px] text-text-muted">The two are shown side by side to be checked. They are never added together, and the monthly reports still use the AutoCount total.</p>
+              <p className="text-[12px] text-text-muted">The two are shown side by side to be checked. They are never added together, and the monthly reports still use the Total Sales of the Monthly Breakdown.</p>
+              <p className="text-[12px] text-text-muted">The daily entries are compared as net sales: gross less discount, without service charge, SST, delivery fee and rounding.</p>
             </div>
           )}
         </SectionCard>
