@@ -72,4 +72,4 @@ export const TRACKED_EMPLOYEE_COLUMNS = [
   "spouse_name", "spouse_ic_no", "spouse_working", "children_count", "child_relief", "emergency_name", "emergency_phone", "emergency_relationship",
   "job_level", "date_confirmed", "date_promoted", "resign_date", "education_background", "working_experience",
 ] as const;
-export const TRACKED_PRIVATE_COLUMNS = ["bank_name", "bank_account_no", "epf_no", "socso_no", "tax_no", "tax_branch", "bank_id", "bank_branch_code", "basic_rate", "pay_basis", "payment_mode"] as const;
+export const TRACKED_PRIVATE_COLUMNS = ["bank_name", "bank_account_no", "epf_no", "socso_no", "tax_no", "tax_branch", "bank_id", "bank_branch_code", "pay_basis", "payment_mode"] as const;

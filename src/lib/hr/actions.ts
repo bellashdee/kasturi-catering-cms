@@ -103,7 +103,9 @@ async function savePrivateDetails(
   input: PrivateInput,
 ) {
   const text = (v: string | undefined) => v?.trim() || null;
+  // the salary is not kept with the other private details: only Ms. Penny Chan and Ms. Nabilah may read or change it (checked before anything is saved)
   const basicRate = numberOrNull(input.basicRate, "basic rate");
+  if (input.basicRate !== undefined) await requirePayrollAccess(supabase);
   const { error } = await supabase.from("employee_private_details").upsert({
     employee_id: employeeId,
     company_id: companyId,
@@ -115,12 +117,24 @@ async function savePrivateDetails(
     tax_branch: text(input.taxBranch),
     bank_id: text(input.bankId),
     bank_branch_code: text(input.bankBranchCode),
-    basic_rate: basicRate,
     pay_basis: text(input.payBasis),
     payment_mode: text(input.paymentMode),
     updated_at: new Date().toISOString(),
   });
   if (error) throw new Error("Only Madam Penny or Nabilah can save salary, bank, KWSP, SOCSO and tax details.");
+
+  if (input.basicRate !== undefined) {
+    if (basicRate === null) {
+      const { error: clearError } = await supabase.from("employee_salaries").delete().eq("employee_id", employeeId);
+      if (clearError) throw new Error("Only Madam Penny or Nabilah can save the salary.");
+    } else {
+      const { data: auth } = await supabase.auth.getUser();
+      const { error: salaryError } = await supabase
+        .from("employee_salaries")
+        .upsert({ employee_id: employeeId, company_id: companyId, basic_rate: basicRate, updated_at: new Date().toISOString(), updated_by: auth.user?.id ?? null });
+      if (salaryError) throw new Error("Only Madam Penny or Nabilah can save the salary.");
+    }
+  }
 }
 
 /** The Personnel Information details of the staff record (address, spouse, emergency contact, job dates, education, experience). */

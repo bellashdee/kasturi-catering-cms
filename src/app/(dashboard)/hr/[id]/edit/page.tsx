@@ -1,7 +1,8 @@
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
-import { getEmployee, getEmployeePrivateDetails } from "@/lib/hr/queries";
+import { getEmployee, getEmployeeBasicRate, getEmployeePrivateDetails } from "@/lib/hr/queries";
+import { canUsePayrollCentre } from "@/lib/hr/payrollAccess";
 import { canManageStaffPrivateDetails } from "@/lib/hr/constants";
 import { EmployeeForm } from "@/components/hr/EmployeeForm";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -30,6 +31,9 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
   const attachedCompanyIds = (sameName ?? []).filter((e) => nameKey(e.full_name) === nameKey(employee.full_name)).map((e) => e.company_id);
   const canEditPrivate = canManageStaffPrivateDetails(session.role);
   const privateDetails = canEditPrivate ? await getEmployeePrivateDetails(supabase, id) : null;
+  // the basic rate: only Ms. Penny Chan and Ms. Nabilah see it or change it
+  const canEditSalary = canEditPrivate && (await canUsePayrollCentre(supabase));
+  const basicRate = canEditSalary ? await getEmployeeBasicRate(supabase, id) : null;
 
   // Only an admin of this company links logins to staff records.
   const { data: isAdmin } = await supabase.rpc("user_is_company_admin", { target_company_id: employee.company_id });
@@ -46,6 +50,7 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
         <EmployeeForm
           employeeId={id}
           canEditPrivate={canEditPrivate}
+          canEditSalary={canEditSalary}
           accounts={accounts}
           initialUserId={employee.user_id}
           attachedCompanyIds={attachedCompanyIds}
@@ -69,7 +74,7 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
             taxBranch: privateDetails?.tax_branch ?? "",
             bankId: privateDetails?.bank_id ?? "",
             bankBranchCode: privateDetails?.bank_branch_code ?? "",
-            basicRate: privateDetails?.basic_rate != null ? String(privateDetails.basic_rate) : "",
+            basicRate: basicRate != null ? String(basicRate) : "",
             payBasis: privateDetails?.pay_basis ?? "",
             paymentMode: privateDetails?.payment_mode ?? "",
             employeeNo: employee.employee_no ?? "",

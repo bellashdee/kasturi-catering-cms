@@ -1809,6 +1809,45 @@ export type Database = {
           },
         ]
       }
+      employee_salaries: {
+        Row: {
+          employee_id: string
+          company_id: string
+          basic_rate: number | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          employee_id: string
+          company_id: string
+          basic_rate?: number | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          employee_id?: string
+          company_id?: string
+          basic_rate?: number | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_salaries_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_salaries_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_private_details: {
         Row: {
           bank_account_no: string | null

@@ -116,9 +116,19 @@ export async function listAttendanceForEmployee(supabase: DB, employeeId: string
 export async function getEmployeePrivateDetails(supabase: DB, employeeId: string) {
   const { data, error } = await supabase
     .from("employee_private_details")
-    .select("bank_name, bank_account_no, epf_no, socso_no, tax_no, tax_branch, bank_id, bank_branch_code, basic_rate, pay_basis, payment_mode")
+    .select("bank_name, bank_account_no, epf_no, socso_no, tax_no, tax_branch, bank_id, bank_branch_code, pay_basis, payment_mode")
     .eq("employee_id", employeeId)
     .maybeSingle();
   if (error) throw error;
   return data;
+}
+
+/**
+ * The basic rate (salary) of a staff member. It is kept apart from every other detail: only the people in payroll_centre_access (Ms. Penny Chan and
+ * Ms. Nabilah) can read it, the database returns nothing to anyone else. Returns null when there is no rate or the person may not see it.
+ */
+export async function getEmployeeBasicRate(supabase: DB, employeeId: string): Promise<number | null> {
+  const { data, error } = await supabase.from("employee_salaries").select("basic_rate").eq("employee_id", employeeId).maybeSingle();
+  if (error) throw error;
+  return data?.basic_rate != null ? Number(data.basic_rate) : null;
 }

@@ -4,6 +4,7 @@ import type { Database } from "@/lib/supabase/types";
 import type { SessionContext } from "@/lib/auth";
 import { OT_STATUS_LABEL } from "@/lib/hr/overtime";
 import {
+  getEmployeeBasicRate,
   getEmployeePrivateDetails,
   listLeaveForEmployee,
   listOvertimeForEmployee,
@@ -102,12 +103,14 @@ export async function EmployeeProfileView({
     .order("issued_date", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
   const staffFiles: StaffFileRow[] = (fileRows ?? []).map((f) => ({ id: f.id, kind: f.kind, title: f.title, issued_date: f.issued_date, original_filename: f.original_filename, company: f.companies?.name ?? "" }));
-  const [{ data: allCertificates }, leave, overtime, payroll, privateDetails] = await Promise.all([
+  const [{ data: allCertificates }, leave, overtime, payroll, privateDetails, basicRate] = await Promise.all([
     supabase.from("employee_certificates").select("*").in("employee_id", recordIds.length > 0 ? recordIds : [id]).order("expiry_date", { ascending: true }),
     listLeaveForEmployee(supabase, id),
     listOvertimeForEmployee(supabase, id),
     canSeePayroll ? listPayrollForEmployee(supabase, id) : Promise.resolve([]),
     canSeeOwnPrivate ? getEmployeePrivateDetails(supabase, id) : Promise.resolve(null),
+    // the salary is shown only to Ms. Penny Chan and Ms. Nabilah (the database returns nothing to anyone else, not even to the staff member)
+    canSeePayroll ? getEmployeeBasicRate(supabase, id) : Promise.resolve(null),
   ]);
 
   const restricted = "Restricted (Admin only)";
@@ -239,7 +242,7 @@ export async function EmployeeProfileView({
             <Field label="Date Resigned" value={employee.resign_date} />
             <Field label="Employment Type" value={EMPLOYMENT_TYPE_LABEL[employee.employment_type] ?? employee.employment_type} />
             <Field label="Status" value={EMPLOYEE_STATUS_LABEL[employee.status] ?? employee.status} />
-            <Field label="Basic Rate" value={!canSeePrivate ? restricted : privateDetails?.basic_rate != null ? formatCurrency(Number(privateDetails.basic_rate)) : null} />
+            {canSeePayroll && <Field label="Basic Rate" value={basicRate != null ? formatCurrency(basicRate) : null} />}
             <Field label="Pay Basis" value={!canSeePrivate ? restricted : privateDetails?.pay_basis} />
             <Field label="Payment Mode" value={!canSeePrivate ? restricted : privateDetails?.payment_mode} />
           </Fields>

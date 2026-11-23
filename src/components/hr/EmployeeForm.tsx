@@ -39,6 +39,7 @@ export function EmployeeForm({
   employeeId,
   initial,
   canEditPrivate = false,
+  canEditSalary = false,
   accounts,
   initialUserId,
   attachedCompanyIds = [],
@@ -49,6 +50,8 @@ export function EmployeeForm({
   initial?: Partial<EmployeeInput>;
   /** Super Admin / Company Admin only: shows the salary, bank, KWSP, SOCSO and tax fields. */
   canEditPrivate?: boolean;
+  /** Only Ms. Penny Chan and Ms. Nabilah: shows the basic rate (nobody else sees or sends it). */
+  canEditSalary?: boolean;
   /** Admins only: login accounts that can be linked to this staff record (own OT submission). */
   accounts?: { id: string; label: string }[];
   initialUserId?: string | null;
@@ -153,7 +156,7 @@ export function EmployeeForm({
     setError(null);
     // Non-admins never send the salary / bank / KWSP / SOCSO / tax fields at all, so they can't blank them out by accident.
     const base: EmployeeInput = canEditPrivate
-      ? form
+      ? canEditSalary ? form : { ...form, basicRate: undefined }
       : { ...form, bankName: undefined, bankAccountNo: undefined, epfNo: undefined, socsoNo: undefined, taxNo: undefined, taxBranch: undefined, bankId: undefined, bankBranchCode: undefined, basicRate: undefined, payBasis: undefined, paymentMode: undefined };
     const payload: EmployeeInput = accounts ? { ...base, userId: linkedUserId || null } : base;
     try {
@@ -405,9 +408,9 @@ export function EmployeeForm({
 
       {canEditPrivate && (
         <>
-          <Section title="Salary" note="visible to Super Admin and Company Admin only">
+          <Section title="Salary" note={canEditSalary ? "the basic rate is visible to Ms. Penny Chan and Ms. Nabilah only" : "visible to Super Admin and Company Admin only"}>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              {field("basicRate", "Basic Rate (RM)", { inputMode: "decimal" })}
+              {canEditSalary && field("basicRate", "Basic Rate (RM)", { inputMode: "decimal" })}
               <div>
                 <label className={labelClass}>Pay Basis</label>
                 <Select value={form.payBasis ?? ""} onChange={(e) => set("payBasis", e.target.value)} className={inputClass}>
