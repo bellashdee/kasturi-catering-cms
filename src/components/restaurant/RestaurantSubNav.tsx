@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 const TABS = [
   { href: "/restaurant", label: "Dashboard", exact: true },
   { href: "/restaurant/sales", label: "Daily Sales", exact: false },
+  { href: "/restaurant/import", label: "Import FeedMe", exact: false },
   { href: "/restaurant/cash", label: "Cash Sessions", exact: false },
   { href: "/restaurant/roles", label: "Staff Roles", exact: false, adminOnly: true },
 ];

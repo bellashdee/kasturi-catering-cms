@@ -18,7 +18,7 @@ type FormState = { id?: string; shift: string; channel: string; method: string; 
 const EMPTY: FormState = { shift: "1", channel: "dine_in", method: "cash", gross: "", discount: "", refund: "", orders: "", notes: "" };
 
 /** The sales lines of one day: add, change a draft, confirm the day, cancel a confirmed line (a Manager). Nothing confirmed is ever deleted. */
-export function SalesDay({ companyId, date, lines, canSell, canManage, readOnly }: { companyId: string; date: string; lines: SalesLine[]; canSell: boolean; canManage: boolean; readOnly: boolean }) {
+export function SalesDay({ companyId, date, lines, canSell, canManage, readOnly, extraDrafts = 0 }: { companyId: string; date: string; lines: SalesLine[]; canSell: boolean; canManage: boolean; readOnly: boolean; /** draft FeedMe day totals of the day: they are confirmed together with the lines */ extraDrafts?: number }) {
   const router = useRouter();
   const [form, setForm] = useState<FormState>(EMPTY);
   const [busy, setBusy] = useState(false);
@@ -171,9 +171,9 @@ export function SalesDay({ companyId, date, lines, canSell, canManage, readOnly 
       <div className="rounded-3xl border border-border bg-surface shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-3.5">
           <div className="text-[15px] font-bold text-text">Sales lines · confirmed net {formatCurrency(totalNet)}</div>
-          {!readOnly && canSell && drafts.length > 0 && (
+          {!readOnly && canSell && drafts.length + extraDrafts > 0 && (
             <button type="button" disabled={busy} onClick={confirmAll} className="rounded-lg bg-primary px-4 py-2 text-[13px] font-bold text-white disabled:opacity-60">
-              {`Confirm the day (${drafts.length} ${drafts.length === 1 ? "draft" : "drafts"})`}
+              {`Confirm the day (${drafts.length + extraDrafts} ${drafts.length + extraDrafts === 1 ? "draft" : "drafts"})`}
             </button>
           )}
         </div>

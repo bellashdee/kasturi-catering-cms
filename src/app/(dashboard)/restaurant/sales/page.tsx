@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { getRestaurantContext } from "@/lib/restaurant/access";
-import { addDays, fetchSalesLines } from "@/lib/restaurant/dashboard";
+import { addDays, fetchDayTotals, fetchSalesLines } from "@/lib/restaurant/dashboard";
 import { formatMalaysiaDate, todayInMalaysia } from "@/lib/format";
 import { CHANNELS, PAYMENT_METHODS } from "@/lib/restaurant/constants";
 import { RestaurantSubNav } from "@/components/restaurant/RestaurantSubNav";
 import { NotRestaurant } from "@/components/restaurant/NotRestaurant";
 import { SalesDay } from "@/components/restaurant/SalesDay";
+import { DayTotalsList } from "@/components/restaurant/DayTotalsList";
 import { SPEND_INPUT } from "@/components/spending/formStyles";
 
 const isDate = (v?: string) => !!v && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(`${v}T00:00:00Z`));
@@ -21,7 +22,9 @@ export default async function DailySalesPage({ searchParams }: { searchParams: P
   const date = isDate(sp.date) ? (sp.date as string) : isDate(sp.from) && sp.from === sp.to ? (sp.from as string) : today;
   const from = isRange ? (sp.from as string) : date;
   const to = isRange ? (sp.to as string) : date;
-  let lines = await fetchSalesLines(ctx.db, ctx.company.id, from <= to ? from : to, from <= to ? to : from);
+  const [rangeFrom, rangeTo] = from <= to ? [from, to] : [to, from];
+  const [fetchedLines, dayTotals] = await Promise.all([fetchSalesLines(ctx.db, ctx.company.id, rangeFrom, rangeTo), fetchDayTotals(ctx.db, ctx.company.id, rangeFrom, rangeTo)]);
+  let lines = fetchedLines;
   if (sp.channel && CHANNELS.some((c) => c.key === sp.channel)) lines = lines.filter((l) => l.channel === sp.channel);
   if (sp.method && PAYMENT_METHODS.some((p) => p.key === sp.method)) lines = lines.filter((l) => l.payment_method === sp.method);
 
@@ -55,7 +58,9 @@ export default async function DailySalesPage({ searchParams }: { searchParams: P
         </form>
       )}
 
-      <SalesDay key={`${from}-${to}-${sp.channel ?? ""}-${sp.method ?? ""}`} companyId={ctx.company.id} date={date} lines={lines} canSell={ctx.can.sell} canManage={ctx.can.manage} readOnly={isRange} />
+      <DayTotalsList rows={dayTotals} canSell={ctx.can.sell && !isRange} canManage={ctx.can.manage && !isRange} />
+
+      <SalesDay key={`${from}-${to}-${sp.channel ?? ""}-${sp.method ?? ""}`} companyId={ctx.company.id} date={date} lines={lines} canSell={ctx.can.sell} canManage={ctx.can.manage} readOnly={isRange} extraDrafts={dayTotals.filter((d) => d.status === "draft").length} />
     </div>
   );
 }

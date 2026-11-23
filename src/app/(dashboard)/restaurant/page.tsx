@@ -6,14 +6,17 @@ import { channelLabel, paymentLabel } from "@/lib/restaurant/constants";
 import {
   RANGE_LABEL,
   addDays,
+  combineDays,
+  feedmeExtras,
   fetchCashSessions,
+  fetchDayTotals,
   fetchFoodPurchases,
   fetchMonthlyTotal,
   fetchSalesLines,
   groupNet,
   missingDays,
   resolveRange,
-  totalsOf,
+  totalsOfDays,
   type RangeKey,
 } from "@/lib/restaurant/dashboard";
 import { KpiCard } from "@/components/dashboard/KpiCard";
@@ -24,6 +27,7 @@ import { NotRestaurant } from "@/components/restaurant/NotRestaurant";
 import { SPEND_INPUT, SPEND_LABEL } from "@/components/spending/formStyles";
 
 const dayText = (iso: string) => formatMalaysiaDate(`${iso}T12:00:00+08:00`);
+const NOT_SPLIT = "__not_split";
 const pct = (part: number, whole: number) => (whole > 0 ? `${((part / whole) * 100).toFixed(1)}%` : "—");
 
 export default async function RestaurantDashboardPage({ searchParams }: { searchParams: Promise<{ company?: string; range?: string; from?: string; to?: string }> }) {
@@ -38,29 +42,46 @@ export default async function RestaurantDashboardPage({ searchParams }: { search
   const monthEnd = addDays(`${addDays(monthStart, 40).slice(0, 7)}-01`, -1);
   const canSeeCosts = canAccessModule(ctx.session.allowedModules, "finance-admin");
 
-  const [rangeLines, monthLines, cash, foodPurchases, monthlyTotal] = await Promise.all([
+  const [rangeLines, monthLines, rangeTotals, monthTotals, cash, foodPurchases, monthlyTotal] = await Promise.all([
     fetchSalesLines(ctx.db, ctx.company.id, from, to),
     fetchSalesLines(ctx.db, ctx.company.id, monthStart, monthEnd),
+    fetchDayTotals(ctx.db, ctx.company.id, from, to),
+    fetchDayTotals(ctx.db, ctx.company.id, monthStart, monthEnd),
     fetchCashSessions(ctx.db, ctx.company.id, from, to),
     canSeeCosts ? fetchFoodPurchases(ctx.db, ctx.company.id, from, to) : Promise.resolve(null),
     canSeeCosts ? fetchMonthlyTotal(ctx.db, ctx.company.id, monthKey) : Promise.resolve(null),
   ]);
 
   const confirmed = rangeLines.filter((l) => l.status === "confirmed");
-  const drafts = rangeLines.filter((l) => l.status === "draft");
-  const t = totalsOf(confirmed);
+  const confirmedTotals = rangeTotals.filter((d) => d.status === "confirmed");
+  const drafts = [...rangeLines.filter((l) => l.status === "draft"), ...rangeTotals.filter((d) => d.status === "draft")];
+  // a FeedMe day total is the sales of its day; the split lines of that day only explain it (see combineDays)
+  const days = combineDays(confirmed, confirmedTotals);
+  const t = totalsOfDays(days);
+  const feedme = feedmeExtras(confirmedTotals);
+  const feedmeDates = new Set(confirmedTotals.map((d) => d.sales_date));
   const byChannel = groupNet(confirmed, (l) => l.channel);
   const byPayment = groupNet(confirmed, (l) => l.payment_method);
-  const byDay = groupNet(confirmed, (l) => l.sales_date).sort((a, b) => b.key.localeCompare(a.key));
-  const missing = missingDays(from, to, rangeLines, today);
+  // what a FeedMe day total holds beyond the split lines keyed in for the same day
+  const notSplit = days.filter((d) => d.source === "feedme").reduce((sum, d) => sum + (d.net - d.linesNet), 0);
+  const withNotSplit = (rows: ReturnType<typeof groupNet>) => (feedmeDates.size > 0 && Math.abs(notSplit) >= 0.005 ? [...rows, { key: NOT_SPLIT, net: notSplit, orders: 0, lines: 0 }] : rows);
+  const channelRows = withNotSplit(byChannel);
+  const paymentRows = withNotSplit(byPayment);
+  const labelOf = (key: string, fallback: (k: string) => string) => (key === NOT_SPLIT ? "Not split (FeedMe day total)" : fallback(key));
+  const differs = days.filter((d) => d.source === "feedme" && d.linesCount > 0 && Math.abs(d.net - d.linesNet) >= 0.005);
+  const byDay = [...days].sort((a, b) => b.date.localeCompare(a.date));
+  const missing = missingDays(from, to, rangeLines, today, rangeTotals);
   const closedSessions = cash.filter((s) => s.status === "closed");
   const cashVariance = closedSessions.reduce((sum, s) => sum + (s.variance ?? 0), 0);
   const openSessions = cash.filter((s) => s.status === "open");
-  const noSales = confirmed.length === 0;
+  const noSales = days.length === 0;
 
-  const monthConfirmed = monthLines.filter((l) => l.status === "confirmed");
-  const monthDaily = totalsOf(monthConfirmed).net;
-  const monthDays = new Set(monthConfirmed.map((l) => l.sales_date)).size;
+  const monthDaysSales = combineDays(
+    monthLines.filter((l) => l.status === "confirmed"),
+    monthTotals.filter((d) => d.status === "confirmed"),
+  );
+  const monthDaily = totalsOfDays(monthDaysSales).net;
+  const monthDays = monthDaysSales.length;
 
   const q = ctx.requestedCompany ? `&company=${ctx.requestedCompany}` : "";
   const salesLink = (extra: string) => `/restaurant/sales?from=${from}&to=${to}${extra}${q}`;
@@ -122,14 +143,14 @@ export default async function RestaurantDashboardPage({ searchParams }: { search
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <SectionCard title="By channel">
-          {byChannel.length === 0 ? (
+          {channelRows.length === 0 ? (
             <EmptyRow text="No sales for this period." />
           ) : (
             <table className="w-full text-[13.5px]">
               <tbody>
-                {byChannel.map((r) => (
+                {channelRows.map((r) => (
                   <tr key={r.key} className="border-b border-border last:border-0">
-                    <td className="py-2"><Link className="text-primary hover:underline" href={salesLink(`&channel=${r.key}`)}>{channelLabel(r.key)}</Link></td>
+                    <td className="py-2">{r.key === NOT_SPLIT ? <span className="text-text-secondary">{labelOf(r.key, channelLabel)}</span> : <Link className="text-primary hover:underline" href={salesLink(`&channel=${r.key}`)}>{labelOf(r.key, channelLabel)}</Link>}</td>
                     <td className="py-2 text-right text-text-secondary">{pct(r.net, t.net)}</td>
                     <td className="py-2 text-right font-semibold">{formatCurrency(r.net)}</td>
                   </tr>
@@ -139,14 +160,14 @@ export default async function RestaurantDashboardPage({ searchParams }: { search
           )}
         </SectionCard>
         <SectionCard title="By payment method">
-          {byPayment.length === 0 ? (
+          {paymentRows.length === 0 ? (
             <EmptyRow text="No sales for this period." />
           ) : (
             <table className="w-full text-[13.5px]">
               <tbody>
-                {byPayment.map((r) => (
+                {paymentRows.map((r) => (
                   <tr key={r.key} className="border-b border-border last:border-0">
-                    <td className="py-2"><Link className="text-primary hover:underline" href={salesLink(`&method=${r.key}`)}>{paymentLabel(r.key)}</Link></td>
+                    <td className="py-2">{r.key === NOT_SPLIT ? <span className="text-text-secondary">{labelOf(r.key, paymentLabel)}</span> : <Link className="text-primary hover:underline" href={salesLink(`&method=${r.key}`)}>{labelOf(r.key, paymentLabel)}</Link>}</td>
                     <td className="py-2 text-right text-text-secondary">{pct(r.net, t.net)}</td>
                     <td className="py-2 text-right font-semibold">{formatCurrency(r.net)}</td>
                   </tr>
@@ -165,14 +186,16 @@ export default async function RestaurantDashboardPage({ searchParams }: { search
             <thead>
               <tr className="border-b border-border text-left text-[12px] text-text-muted">
                 <th className="py-2 font-semibold">Date</th>
+                <th className="py-2 font-semibold">From</th>
                 <th className="py-2 text-right font-semibold">Orders</th>
                 <th className="py-2 text-right font-semibold">Net sales</th>
               </tr>
             </thead>
             <tbody>
               {byDay.map((r) => (
-                <tr key={r.key} className="border-b border-border last:border-0">
-                  <td className="py-2"><Link className="text-primary hover:underline" href={`/restaurant/sales?date=${r.key}${q}`}>{dayText(r.key)}</Link></td>
+                <tr key={r.date} className="border-b border-border last:border-0">
+                  <td className="py-2"><Link className="text-primary hover:underline" href={`/restaurant/sales?date=${r.date}${q}`}>{dayText(r.date)}</Link></td>
+                  <td className="py-2 text-text-secondary">{r.source === "feedme" ? "FeedMe" : "Sales lines"}</td>
                   <td className="py-2 text-right text-text-secondary">{r.orders > 0 ? r.orders : "—"}</td>
                   <td className="py-2 text-right font-semibold">{formatCurrency(r.net)}</td>
                 </tr>
@@ -182,11 +205,39 @@ export default async function RestaurantDashboardPage({ searchParams }: { search
         )}
       </SectionCard>
 
+      {feedme.days > 0 && (
+        <SectionCard title="FeedMe day totals in this period">
+          <div className="flex flex-col gap-2 text-[13.5px]">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 sm:grid-cols-3">
+              <div className="flex justify-between"><span>Days from FeedMe</span><span className="font-semibold">{feedme.days}</span></div>
+              <div className="flex justify-between"><span>Bills</span><span className="font-semibold">{feedme.bills}</span></div>
+              <div className="flex justify-between"><span>Pax</span><span className="font-semibold">{feedme.pax}</span></div>
+              <div className="flex justify-between"><span>Service charge (SC)</span><span className="font-semibold">{formatCurrency(Math.round(feedme.serviceCharge * 100) / 100)}</span></div>
+              <div className="flex justify-between"><span>SST</span><span className="font-semibold">{formatCurrency(Math.round(feedme.sst * 100) / 100)}</span></div>
+              <div className="flex justify-between"><span>Delivery fee</span><span className="font-semibold">{formatCurrency(Math.round(feedme.deliveryFee * 100) / 100)}</span></div>
+              <div className="flex justify-between"><span>Rounding</span><span className="font-semibold">{formatCurrency(Math.round(feedme.rounding * 100) / 100)}</span></div>
+              <div className="flex justify-between sm:col-span-2"><span>Nett collected with the bills</span><span className="font-bold">{formatCurrency(Math.round(feedme.nett * 100) / 100)}</span></div>
+            </div>
+            <p className="text-[12px] text-text-muted">Net sales above = gross less discount. Service charge, SST, delivery fee and rounding are collected with the bill but are not counted as sales.</p>
+            {differs.length > 0 && (
+              <div className="rounded-lg border border-warning/30 bg-warning-bg px-3 py-2 text-[12.5px] text-warning">
+                <div className="font-semibold">Check: the split lines differ from the FeedMe total on these days</div>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {differs.slice(0, 10).map((d) => (
+                    <Link key={d.date} href={`/restaurant/sales?date=${d.date}${q}`} className="rounded-md border border-warning/40 bg-surface px-2 py-0.5 text-primary">{`${dayText(d.date)}: ${formatCurrency(Math.round((d.net - d.linesNet) * 100) / 100)}`}</Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </SectionCard>
+      )}
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <SectionCard title="Needs your attention">
           <div className="flex flex-col gap-2 text-[13.5px]">
             <div className="flex items-center justify-between">
-              <span>Draft sales lines not confirmed</span>
+              <span>Draft sales not confirmed</span>
               <StatusBadge tone={drafts.length > 0 ? "warning" : "success"}>{drafts.length}</StatusBadge>
             </div>
             <div className="flex items-center justify-between">

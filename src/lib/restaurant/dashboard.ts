@@ -99,8 +99,8 @@ export function groupNet(lines: SalesLine[], keyOf: (l: SalesLine) => string): {
 }
 
 /** The days of a range that have no sales line at all (a day that is over and nothing was entered for it). */
-export function missingDays(from: string, to: string, lines: SalesLine[], today = todayInMalaysia()): string[] {
-  const have = new Set(lines.filter((l) => l.status !== "cancelled").map((l) => l.sales_date));
+export function missingDays(from: string, to: string, lines: SalesLine[], today = todayInMalaysia(), totals: Pick<DayTotalRow, "sales_date" | "status">[] = []): string[] {
+  const have = new Set([...lines.filter((l) => l.status !== "cancelled").map((l) => l.sales_date), ...totals.filter((d) => d.status !== "cancelled").map((d) => d.sales_date)]);
   const out: string[] = [];
   for (let d = from; d <= to && d < today; d = addDays(d, 1)) if (!have.has(d)) out.push(d);
   return out;
@@ -171,4 +171,155 @@ export async function fetchMonthlyTotal(db: SupabaseClient, companyId: string, m
   const { data, error } = await db.from("monthly_sales").select("sales_amount").eq("company_id", companyId).eq("year", y).eq("month", m);
   if (error || !data || data.length === 0) return null;
   return (data as { sales_amount: number }[]).reduce((t, r) => t + Number(r.sales_amount), 0);
+}
+
+
+/* ------------------------------------------------------------------ day totals from the FeedMe POS (no split by channel or payment method) */
+
+export type DayTotalRow = {
+  id: string;
+  sales_date: string;
+  outlet: string;
+  source: string;
+  bills: number;
+  pax: number | null;
+  gross: number;
+  /** as FeedMe writes it: zero or negative */
+  discount: number;
+  service_charge: number;
+  sst: number;
+  delivery_fee: number;
+  rounding: number;
+  nett: number;
+  status: string;
+  source_file: string | null;
+  cancel_reason: string | null;
+  manual_lines_ack: number | null;
+};
+
+export async function fetchDayTotals(db: SupabaseClient, companyId: string, from: string, to: string): Promise<DayTotalRow[]> {
+  const { data, error } = await db
+    .from("rst_sales_day_totals")
+    .select("id, sales_date, outlet, source, bills, pax, gross, discount, service_charge, sst, delivery_fee, rounding, nett, status, source_file, cancel_reason, manual_lines_ack")
+    .eq("company_id", companyId)
+    .gte("sales_date", from)
+    .lte("sales_date", to)
+    .order("sales_date", { ascending: true })
+    .range(0, 4999);
+  if (error) throw error;
+  const n = (v: unknown) => (v === null || v === undefined ? null : Number(v));
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+    id: r.id as string,
+    sales_date: r.sales_date as string,
+    outlet: r.outlet as string,
+    source: r.source as string,
+    bills: Number(r.bills),
+    pax: n(r.pax),
+    gross: Number(r.gross),
+    discount: Number(r.discount),
+    service_charge: Number(r.service_charge),
+    sst: Number(r.sst),
+    delivery_fee: Number(r.delivery_fee),
+    rounding: Number(r.rounding),
+    nett: Number(r.nett),
+    status: r.status as string,
+    source_file: (r.source_file as string | null) ?? null,
+    cancel_reason: (r.cancel_reason as string | null) ?? null,
+    manual_lines_ack: n(r.manual_lines_ack),
+  }));
+}
+
+/** The sales of a FeedMe day: gross less discount. Service charge, SST, delivery fee and rounding are collected with the bill but are not sales, so they are shown apart. */
+export const dayTotalNet = (d: Pick<DayTotalRow, "gross" | "discount">) => d.gross + d.discount;
+
+export type DaySales = {
+  date: string;
+  net: number;
+  gross: number;
+  discount: number;
+  refund: number;
+  orders: number;
+  /** the net sales of the part that has an order count (for the average order value) */
+  ordersNet: number;
+  pax: number;
+  /** where the figure of the day comes from: a FeedMe day total, or the sales lines keyed in (split by channel and payment method) */
+  source: "feedme" | "lines";
+  /** net of the split lines of the same day (they only explain a FeedMe day total) */
+  linesNet: number;
+  linesCount: number;
+};
+
+/**
+ * THE RULE for a day: when a confirmed FeedMe day total exists, it IS the sales of that day (bills, pax, gross, discount); the split lines of
+ * the same day are not added to it, they only explain it (the dashboard shows what is "not split" and flags a difference). A day without a
+ * FeedMe total takes its figures from the confirmed sales lines. Cancelled and draft rows never count.
+ */
+export function combineDays(confirmedLines: SalesLine[], confirmedTotals: DayTotalRow[]): DaySales[] {
+  const byDate = new Map<string, DaySales>();
+  const dayOf = (date: string): DaySales => {
+    let d = byDate.get(date);
+    if (!d) {
+      d = { date, net: 0, gross: 0, discount: 0, refund: 0, orders: 0, ordersNet: 0, pax: 0, source: "lines", linesNet: 0, linesCount: 0 };
+      byDate.set(date, d);
+    }
+    return d;
+  };
+  for (const l of confirmedLines) {
+    const d = dayOf(l.sales_date);
+    d.linesNet += netOf(l);
+    d.linesCount += 1;
+  }
+  const feedmeDates = new Set(confirmedTotals.map((t) => t.sales_date));
+  for (const l of confirmedLines) {
+    if (feedmeDates.has(l.sales_date)) continue;
+    const d = dayOf(l.sales_date);
+    d.net += netOf(l);
+    d.gross += l.gross_amount;
+    d.discount += l.discount_amount;
+    d.refund += l.refund_amount;
+    if (l.orders_count !== null) {
+      d.orders += l.orders_count;
+      d.ordersNet += netOf(l);
+    }
+  }
+  for (const t of confirmedTotals) {
+    const d = dayOf(t.sales_date);
+    d.source = "feedme";
+    d.net += dayTotalNet(t);
+    d.gross += t.gross;
+    d.discount += -t.discount;
+    d.orders += t.bills;
+    d.ordersNet += dayTotalNet(t);
+    d.pax += t.pax ?? 0;
+  }
+  return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export function totalsOfDays(days: DaySales[]): Totals {
+  const t: Totals = { gross: 0, discount: 0, refund: 0, net: 0, orders: 0, ordersNet: 0, lines: 0 };
+  for (const d of days) {
+    t.gross += d.gross;
+    t.discount += d.discount;
+    t.refund += d.refund;
+    t.net += d.net;
+    t.orders += d.orders;
+    t.ordersNet += d.ordersNet;
+    t.lines += d.linesCount;
+  }
+  return t;
+}
+
+/** What FeedMe collected with the bills besides the sales, for the days of a range (confirmed totals only). */
+export function feedmeExtras(confirmedTotals: DayTotalRow[]) {
+  const x = { days: new Set(confirmedTotals.map((t) => t.sales_date)).size, bills: 0, pax: 0, serviceCharge: 0, sst: 0, deliveryFee: 0, rounding: 0, nett: 0 };
+  for (const t of confirmedTotals) {
+    x.bills += t.bills;
+    x.pax += t.pax ?? 0;
+    x.serviceCharge += t.service_charge;
+    x.sst += t.sst;
+    x.deliveryFee += t.delivery_fee;
+    x.rounding += t.rounding;
+    x.nett += t.nett;
+  }
+  return x;
 }

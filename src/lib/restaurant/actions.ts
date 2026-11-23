@@ -102,8 +102,11 @@ export async function confirmDay(companyId: string, date: string): Promise<Actio
     if (!isDate(date)) throw new Error("Choose the date of the sales.");
     const { data, error } = await db.from("rst_sales_daily").update({ status: "confirmed" }).eq("company_id", companyId).eq("sales_date", date).eq("status", "draft").select("id");
     if (error) throw error;
+    // the day total imported from FeedMe (if any) is confirmed together with the lines of the day
+    const { data: totals, error: totalsError } = await db.from("rst_sales_day_totals").update({ status: "confirmed" }).eq("company_id", companyId).eq("sales_date", date).eq("status", "draft").select("id");
+    if (totalsError) throw totalsError;
     refresh();
-    return { count: (data ?? []).length };
+    return { count: (data ?? []).length + (totals ?? []).length };
   });
 }
 
