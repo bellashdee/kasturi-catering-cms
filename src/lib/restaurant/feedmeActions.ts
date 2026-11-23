@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { runAction, type ActionResult } from "@/lib/actionResult";
 import { FEEDME_SOURCE, MAX_FILE_BYTES, parseFeedMeOverview, type FeedMeDay } from "@/lib/restaurant/feedme";
+import { detectFeedMeKind, parseFeedMeCloseUp, type CloseUpDay } from "@/lib/restaurant/closeup";
 
 /**
  * The FeedMe import: the file is read here on the server (never trusted), shown as a preview, and saved only when the person confirms.
@@ -83,18 +84,104 @@ async function classify(db: SupabaseClient, companyId: string, days: FeedMeDay[]
   });
 }
 
-/** Reads the file and shows what it holds and what would happen to each day. Nothing is saved. */
-export async function previewFeedMeImport(formData: FormData): Promise<ActionResult<{ preview: FeedMePreview }>> {
+export type CloseUpPreview = {
+  fileName: string;
+  merchant: string;
+  day: CloseUpDay;
+  /**
+   * new_day = the day is not saved yet: the Close up creates it (a draft) with its split;
+   * attach = the day is already saved (Overview file) with the same figures: the split is attached to it, no second sale;
+   * same = this Close up is already imported; different = the day is saved with other figures (both shown, nothing overwritten); blocked = cannot be imported
+   */
+  state: "new_day" | "attach" | "same" | "different" | "blocked";
+  saved: (SavedDay & { origin: string }) | null;
+  manualLines: number;
+  manualNet: number;
+};
+
+async function classifyCloseUp(db: SupabaseClient, companyId: string, fileName: string, merchant: string, day: CloseUpDay): Promise<CloseUpPreview> {
+  const [saved, manual] = await Promise.all([
+    db.from("rst_sales_day_totals").select("id, status, origin, bills, pax, gross, discount, service_charge, sst, delivery_fee, rounding, nett").eq("company_id", companyId).eq("source", FEEDME_SOURCE).eq("sales_date", day.date).ilike("outlet", day.outlet).neq("status", "cancelled").limit(1),
+    db.from("rst_sales_daily").select("gross_amount, discount_amount, refund_amount").eq("company_id", companyId).eq("sales_date", day.date).neq("status", "cancelled").range(0, 999),
+  ]);
+  if (saved.error) throw saved.error;
+  if (manual.error) throw manual.error;
+  const r = ((saved.data ?? []) as Record<string, unknown>[])[0];
+  let hasCloseUp = false;
+  if (r) {
+    const { data, error } = await db.from("rst_day_closeups").select("id").eq("day_total_id", r.id as string).limit(1);
+    if (error) throw error;
+    hasCloseUp = (data ?? []).length > 0;
+  }
+  const savedDay: CloseUpPreview["saved"] = r
+    ? { status: String(r.status), origin: String(r.origin), bills: Number(r.bills), pax: r.pax === null ? null : Number(r.pax), gross: Number(r.gross), discount: Number(r.discount), serviceCharge: Number(r.service_charge), sst: Number(r.sst), deliveryFee: Number(r.delivery_fee), rounding: Number(r.rounding), nett: Number(r.nett) }
+    : null;
+  const manualRows = (manual.data ?? []) as Record<string, unknown>[];
+  const manualNet = manualRows.reduce((t, m) => t + Number(m.gross_amount) - Number(m.discount_amount) - Number(m.refund_amount), 0);
+  const same =
+    savedDay !== null &&
+    savedDay.bills === day.bills && savedDay.pax === day.pax && cents(savedDay.gross) === cents(day.gross) && cents(savedDay.discount) === cents(day.discount) && cents(savedDay.serviceCharge) === cents(day.serviceCharge) &&
+    cents(savedDay.sst) === cents(day.sst) && cents(savedDay.deliveryFee) === cents(day.deliveryFee) && cents(savedDay.rounding) === cents(day.rounding) && cents(savedDay.nett) === cents(day.nett);
+  const state: CloseUpPreview["state"] = day.problem ? "blocked" : !savedDay ? "new_day" : !same ? "different" : hasCloseUp ? "same" : "attach";
+  return { fileName, merchant, day, state, saved: savedDay, manualLines: manualRows.length, manualNet: Math.round(manualNet * 100) / 100 };
+}
+
+/** Reads the file (the Overview or the Close up of FeedMe) and shows what it holds and what would happen. Nothing is saved. */
+export async function previewFeedMeImport(formData: FormData): Promise<ActionResult<{ kind: "overview"; preview: FeedMePreview } | { kind: "closeup"; closeup: CloseUpPreview }>> {
   return runAction(async () => {
     const { db } = await context();
     const companyId = String(formData.get("companyId") ?? "");
     if (!UUID.test(companyId)) throw new Error("The company is missing. Reload the page.");
     const file = await readFile(formData);
+    const kind = detectFeedMeKind(file.bytes);
+    if (kind === null) throw new Error("This is not a FeedMe file. Download the Overview (Report → Overview) or the Close up (Report → Close up) of one day as Excel.");
+    if (kind === "closeup") {
+      const parsedCloseUp = parseFeedMeCloseUp(file.bytes);
+      if (!parsedCloseUp.ok) throw new Error(parsedCloseUp.error);
+      return { kind: "closeup" as const, closeup: await classifyCloseUp(db, companyId, file.name, parsedCloseUp.merchant, parsedCloseUp.day) };
+    }
     const parsed = parseFeedMeOverview(file.bytes);
     if (!parsed.ok) throw new Error(parsed.error);
     const days = await classify(db, companyId, parsed.days);
-    return { preview: { fileName: file.name, merchant: parsed.merchant, dateRange: parsed.dateRange, warnings: parsed.warnings, days } };
+    return { kind: "overview" as const, preview: { fileName: file.name, merchant: parsed.merchant, dateRange: parsed.dateRange, warnings: parsed.warnings, days } };
   });
+}
+
+/** Saves the Close up of one day in ONE database step: the day (when it is not saved yet) as a draft, and its split by payment method and order type. */
+async function importCloseUp(db: SupabaseClient, companyId: string, formData: FormData, file: { name: string; bytes: Uint8Array }): Promise<{ imported: number; skipped: { date: string; reason: string }[] }> {
+  const parsed = parseFeedMeCloseUp(file.bytes);
+  if (!parsed.ok) throw new Error(parsed.error);
+  const c = await classifyCloseUp(db, companyId, file.name, parsed.merchant, parsed.day);
+  const d = c.day;
+  if (c.state === "blocked") throw new Error(d.problem ?? "This day cannot be imported.");
+  if (c.state === "same") throw new Error("The Close up of this day is already imported.");
+  if (c.state === "different") throw new Error("This day is already saved with other figures. Nothing was overwritten.");
+  if (c.state === "new_day" && c.manualLines > 0 && formData.getAll("ack").length === 0) throw new Error("This day already has sales keyed in by hand: tick the choice to import it anyway.");
+  const payload = {
+    bills: d.bills,
+    pax: d.pax,
+    gross: d.gross,
+    discount: d.discount,
+    service_charge: d.serviceCharge,
+    sst: d.sst,
+    delivery_fee: d.deliveryFee,
+    rounding: d.rounding,
+    nett: d.nett,
+    void_bills: d.voidBills,
+    void_amount: d.voidAmount,
+    refund_amount: d.refundAmount,
+    source_file: file.name,
+    manual_lines_ack: c.state === "new_day" && c.manualLines > 0 ? c.manualNet : null,
+    payments: d.payments.map((p) => ({ label: p.label, key: p.key, qty: p.qty, amount: p.amount })),
+    channels: d.channels.map((p) => ({ label: p.label, key: p.key, qty: p.qty, amount: p.amount })),
+  };
+  const { error } = await db.rpc("rst_import_closeup", { p_company: companyId, p_date: d.date, p_outlet: d.outlet, p_payload: payload });
+  if (error) {
+    if (error.code === "23505") throw new Error("The Close up of this day is already imported.");
+    throw error;
+  }
+  revalidatePath("/restaurant", "layout");
+  return { imported: 1, skipped: [] };
 }
 
 /**
@@ -106,11 +193,12 @@ export async function importFeedMe(formData: FormData): Promise<ActionResult<{ i
     const { db } = await context();
     const companyId = String(formData.get("companyId") ?? "");
     if (!UUID.test(companyId)) throw new Error("The company is missing. Reload the page.");
+    const file = await readFile(formData);
+    if (detectFeedMeKind(file.bytes) === "closeup") return importCloseUp(db, companyId, formData, file);
     const chosen = new Set(formData.getAll("date").map(String));
     const acknowledged = new Set(formData.getAll("ack").map(String));
     if (chosen.size === 0) throw new Error("Tick at least one day to import.");
 
-    const file = await readFile(formData);
     const parsed = parseFeedMeOverview(file.bytes);
     if (!parsed.ok) throw new Error(parsed.error);
     const days = await classify(db, companyId, parsed.days);

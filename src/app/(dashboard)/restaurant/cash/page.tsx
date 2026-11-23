@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getRestaurantContext } from "@/lib/restaurant/access";
-import { addDays, expectedCash, fetchCashSessions, fetchSalesLines } from "@/lib/restaurant/dashboard";
+import { addDays, closeUpCash, expectedCash, fetchCashSessions, fetchCloseUps, fetchDayTotals, fetchSalesLines } from "@/lib/restaurant/dashboard";
 import { formatCurrency, formatMalaysiaDate, todayInMalaysia } from "@/lib/format";
 import { RestaurantSubNav } from "@/components/restaurant/RestaurantSubNav";
 import { NotRestaurant } from "@/components/restaurant/NotRestaurant";
@@ -21,14 +21,25 @@ export default async function CashSessionsPage({ searchParams }: { searchParams:
   const date = isDate(sp.date) ? (sp.date as string) : today;
   const historyFrom = addDays(today, -30);
 
-  const [daySessions, dayLines, history] = await Promise.all([
+  const [daySessions, dayLines, history, dayTotals, closeUps] = await Promise.all([
     fetchCashSessions(ctx.db, ctx.company.id, date, date),
     fetchSalesLines(ctx.db, ctx.company.id, date, date),
     fetchCashSessions(ctx.db, ctx.company.id, historyFrom, today),
+    fetchDayTotals(ctx.db, ctx.company.id, date, date),
+    fetchCloseUps(ctx.db, ctx.company.id, date, date),
   ]);
 
+  // the cash sales of the day from a confirmed FeedMe Close up (the CASH total); a draft one must be confirmed first
+  const confirmedIds = new Set(dayTotals.filter((d) => d.status === "confirmed").map((d) => d.id));
+  const draftIds = new Set(dayTotals.filter((d) => d.status === "draft").map((d) => d.id));
+  const closeUp = {
+    confirmedCash: closeUpCash(closeUps.splits.filter((sp) => confirmedIds.has(sp.day_total_id)), date),
+    draftWaiting: closeUps.closeups.some((c) => draftIds.has(c.day_total_id)),
+    sessionsToday: daySessions.length,
+  };
+
   const views: CashView[] = daySessions.map((s) => {
-    const e = expectedCash(s, dayLines);
+    const e = expectedCash(s, dayLines, closeUp);
     return {
       id: s.id,
       date: s.session_date,
@@ -45,6 +56,11 @@ export default async function CashSessionsPage({ searchParams }: { searchParams:
       variance: s.variance,
       note: s.variance_note,
       reopenReason: s.reopen_reason,
+      source: e.source,
+      closeUpCash: e.closeUpCashOfDay,
+      waiting: e.waiting,
+      // a closed session is never changed: when the figures known now give another expected cash, it is flagged
+      changedExpected: s.status === "closed" && s.expected_closing !== null && Math.abs(e.expected - s.expected_closing) >= 0.005 ? e.expected : null,
     };
   });
 

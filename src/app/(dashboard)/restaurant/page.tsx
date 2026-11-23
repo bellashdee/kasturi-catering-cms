@@ -13,7 +13,9 @@ import {
   fetchFoodPurchases,
   fetchMonthlyTotal,
   fetchSalesLines,
-  groupNet,
+  NOT_SPLIT,
+  breakdownRows,
+  fetchCloseUps,
   missingDays,
   resolveRange,
   totalsOfDays,
@@ -27,7 +29,6 @@ import { NotRestaurant } from "@/components/restaurant/NotRestaurant";
 import { SPEND_INPUT, SPEND_LABEL } from "@/components/spending/formStyles";
 
 const dayText = (iso: string) => formatMalaysiaDate(`${iso}T12:00:00+08:00`);
-const NOT_SPLIT = "__not_split";
 const pct = (part: number, whole: number) => (whole > 0 ? `${((part / whole) * 100).toFixed(1)}%` : "—");
 
 export default async function RestaurantDashboardPage({ searchParams }: { searchParams: Promise<{ company?: string; range?: string; from?: string; to?: string }> }) {
@@ -42,12 +43,13 @@ export default async function RestaurantDashboardPage({ searchParams }: { search
   const monthEnd = addDays(`${addDays(monthStart, 40).slice(0, 7)}-01`, -1);
   const canSeeCosts = canAccessModule(ctx.session.allowedModules, "finance-admin");
 
-  const [rangeLines, monthLines, rangeTotals, monthTotals, cash, foodPurchases, monthlyTotal] = await Promise.all([
+  const [rangeLines, monthLines, rangeTotals, monthTotals, cash, closeUpData, foodPurchases, monthlyTotal] = await Promise.all([
     fetchSalesLines(ctx.db, ctx.company.id, from, to),
     fetchSalesLines(ctx.db, ctx.company.id, monthStart, monthEnd),
     fetchDayTotals(ctx.db, ctx.company.id, from, to),
     fetchDayTotals(ctx.db, ctx.company.id, monthStart, monthEnd),
     fetchCashSessions(ctx.db, ctx.company.id, from, to),
+    fetchCloseUps(ctx.db, ctx.company.id, from, to),
     canSeeCosts ? fetchFoodPurchases(ctx.db, ctx.company.id, from, to) : Promise.resolve(null),
     canSeeCosts ? fetchMonthlyTotal(ctx.db, ctx.company.id, monthKey) : Promise.resolve(null),
   ]);
@@ -59,14 +61,17 @@ export default async function RestaurantDashboardPage({ searchParams }: { search
   const days = combineDays(confirmed, confirmedTotals);
   const t = totalsOfDays(days);
   const feedme = feedmeExtras(confirmedTotals);
-  const feedmeDates = new Set(confirmedTotals.map((d) => d.sales_date));
-  const byChannel = groupNet(confirmed, (l) => l.channel);
-  const byPayment = groupNet(confirmed, (l) => l.payment_method);
-  // what a FeedMe day total holds beyond the split lines keyed in for the same day
-  const notSplit = days.filter((d) => d.source === "feedme").reduce((sum, d) => sum + (d.net - d.linesNet), 0);
-  const withNotSplit = (rows: ReturnType<typeof groupNet>) => (feedmeDates.size > 0 && Math.abs(notSplit) >= 0.005 ? [...rows, { key: NOT_SPLIT, net: notSplit, orders: 0, lines: 0 }] : rows);
-  const channelRows = withNotSplit(byChannel);
-  const paymentRows = withNotSplit(byPayment);
+  // the Close up of a day (split by payment method and by order type) counts only when its FeedMe day is confirmed
+  const confirmedIds = new Set(confirmedTotals.map((d) => d.id));
+  const activeCloseUps = closeUpData.closeups.filter((c) => confirmedIds.has(c.day_total_id));
+  const activeSplits = closeUpData.splits.filter((sp) => confirmedIds.has(sp.day_total_id));
+  const closeUpDates = new Set(activeCloseUps.map((c) => c.sales_date));
+  const channelRows = breakdownRows("channel", confirmed, days, activeSplits, closeUpDates);
+  const paymentRows = breakdownRows("payment", confirmed, days, activeSplits, closeUpDates);
+  const channelTotal = channelRows.reduce((sum, r) => sum + r.net, 0);
+  const paymentTotal = paymentRows.reduce((sum, r) => sum + r.net, 0);
+  const voided = activeCloseUps.reduce((x, c) => ({ amount: x.amount + c.void_amount, bills: x.bills + c.void_bills }), { amount: 0, bills: 0 });
+  const refundedCloseUp = activeCloseUps.reduce((sum, c) => sum + c.refund_amount, 0);
   const labelOf = (key: string, fallback: (k: string) => string) => (key === NOT_SPLIT ? "Not split (FeedMe day total)" : fallback(key));
   const differs = days.filter((d) => d.source === "feedme" && d.linesCount > 0 && Math.abs(d.net - d.linesNet) >= 0.005);
   const byDay = [...days].sort((a, b) => b.date.localeCompare(a.date));
@@ -151,13 +156,14 @@ export default async function RestaurantDashboardPage({ searchParams }: { search
                 {channelRows.map((r) => (
                   <tr key={r.key} className="border-b border-border last:border-0">
                     <td className="py-2">{r.key === NOT_SPLIT ? <span className="text-text-secondary">{labelOf(r.key, channelLabel)}</span> : <Link className="text-primary hover:underline" href={salesLink(`&channel=${r.key}`)}>{labelOf(r.key, channelLabel)}</Link>}</td>
-                    <td className="py-2 text-right text-text-secondary">{pct(r.net, t.net)}</td>
-                    <td className="py-2 text-right font-semibold">{formatCurrency(r.net)}</td>
+                    <td className="py-2 text-right text-text-secondary">{pct(r.net, channelTotal)}</td>
+                    <td className="py-2 text-right font-semibold">{formatCurrency(Math.round(r.net * 100) / 100)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
+          {closeUpDates.size > 0 && <p className="mt-2 text-[12px] text-text-muted">A day from the FeedMe Close up is the Nett collected: it includes service charge, SST and rounding, so this table can be more than the net sales above.</p>}
         </SectionCard>
         <SectionCard title="By payment method">
           {paymentRows.length === 0 ? (
@@ -168,13 +174,14 @@ export default async function RestaurantDashboardPage({ searchParams }: { search
                 {paymentRows.map((r) => (
                   <tr key={r.key} className="border-b border-border last:border-0">
                     <td className="py-2">{r.key === NOT_SPLIT ? <span className="text-text-secondary">{labelOf(r.key, paymentLabel)}</span> : <Link className="text-primary hover:underline" href={salesLink(`&method=${r.key}`)}>{labelOf(r.key, paymentLabel)}</Link>}</td>
-                    <td className="py-2 text-right text-text-secondary">{pct(r.net, t.net)}</td>
-                    <td className="py-2 text-right font-semibold">{formatCurrency(r.net)}</td>
+                    <td className="py-2 text-right text-text-secondary">{pct(r.net, paymentTotal)}</td>
+                    <td className="py-2 text-right font-semibold">{formatCurrency(Math.round(r.net * 100) / 100)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
+          {closeUpDates.size > 0 && <p className="mt-2 text-[12px] text-text-muted">A day from the FeedMe Close up is the Nett collected: it includes service charge, SST and rounding, so this table can be more than the net sales above.</p>}
         </SectionCard>
       </div>
 
@@ -195,7 +202,7 @@ export default async function RestaurantDashboardPage({ searchParams }: { search
               {byDay.map((r) => (
                 <tr key={r.date} className="border-b border-border last:border-0">
                   <td className="py-2"><Link className="text-primary hover:underline" href={`/restaurant/sales?date=${r.date}${q}`}>{dayText(r.date)}</Link></td>
-                  <td className="py-2 text-text-secondary">{r.source === "feedme" ? "FeedMe" : "Sales lines"}</td>
+                  <td className="py-2 text-text-secondary">{r.source === "feedme" ? (closeUpDates.has(r.date) ? "FeedMe · split complete" : "FeedMe · not split") : "Sales lines"}</td>
                   <td className="py-2 text-right text-text-secondary">{r.orders > 0 ? r.orders : "—"}</td>
                   <td className="py-2 text-right font-semibold">{formatCurrency(r.net)}</td>
                 </tr>
@@ -217,6 +224,8 @@ export default async function RestaurantDashboardPage({ searchParams }: { search
               <div className="flex justify-between"><span>Delivery fee</span><span className="font-semibold">{formatCurrency(Math.round(feedme.deliveryFee * 100) / 100)}</span></div>
               <div className="flex justify-between"><span>Rounding</span><span className="font-semibold">{formatCurrency(Math.round(feedme.rounding * 100) / 100)}</span></div>
               <div className="flex justify-between sm:col-span-2"><span>Nett collected with the bills</span><span className="font-bold">{formatCurrency(Math.round(feedme.nett * 100) / 100)}</span></div>
+              {activeCloseUps.length > 0 && <div className="flex justify-between"><span>Voided / draft bills (not sales)</span><span className="font-semibold">{formatCurrency(Math.round(voided.amount * 100) / 100)}</span></div>}
+              {activeCloseUps.length > 0 && <div className="flex justify-between"><span>Refunds (not sales)</span><span className="font-semibold">{formatCurrency(Math.round(refundedCloseUp * 100) / 100)}</span></div>}
             </div>
             <p className="text-[12px] text-text-muted">Net sales above = gross less discount. Service charge, SST, delivery fee and rounding are collected with the bill but are not counted as sales.</p>
             {differs.length > 0 && (

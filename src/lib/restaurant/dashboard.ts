@@ -159,10 +159,24 @@ export async function fetchCashSessions(db: SupabaseClient, companyId: string, f
 }
 
 /** The cash the till should hold now: opening + cash sales of the shift (confirmed lines) - cash expenses - withdrawals. */
-export function expectedCash(s: Pick<CashSessionRow, "opening_cash" | "cash_expenses" | "withdrawals" | "session_date" | "shift_no">, lines: SalesLine[]): { cashIn: number; expected: number; drafts: number } {
+export function expectedCash(
+  s: Pick<CashSessionRow, "opening_cash" | "cash_expenses" | "withdrawals" | "session_date" | "shift_no">,
+  lines: SalesLine[],
+  closeUp: { confirmedCash: number | null; draftWaiting: boolean; sessionsToday: number } = { confirmedCash: null, draftWaiting: false, sessionsToday: 1 },
+): { cashIn: number; expected: number; drafts: number; source: "closeup" | "lines"; closeUpCashOfDay: number | null; waiting: boolean } {
   const mine = lines.filter((l) => l.sales_date === s.session_date && l.shift_no === s.shift_no && l.payment_method === "cash");
-  const cashIn = mine.filter((l) => l.status === "confirmed").reduce((t, l) => t + netOf(l), 0);
-  return { cashIn, expected: s.opening_cash + cashIn - s.cash_expenses - s.withdrawals, drafts: mine.filter((l) => l.status === "draft").length };
+  const linesCash = mine.filter((l) => l.status === "confirmed").reduce((t, l) => t + netOf(l), 0);
+  // a confirmed Close up of the day gives the cash sales of the day (it is per day, not per shift): it feeds the session only when the day has one session
+  const useCloseUp = closeUp.confirmedCash !== null && closeUp.sessionsToday === 1;
+  const cashIn = useCloseUp ? (closeUp.confirmedCash as number) : linesCash;
+  return {
+    cashIn,
+    expected: s.opening_cash + cashIn - s.cash_expenses - s.withdrawals,
+    drafts: useCloseUp ? 0 : mine.filter((l) => l.status === "draft").length,
+    source: useCloseUp ? "closeup" : "lines",
+    closeUpCashOfDay: closeUp.confirmedCash,
+    waiting: closeUp.draftWaiting,
+  };
 }
 
 /** The monthly Total Sales of a month (Reports → Monthly Breakdown, table monthly_sales: all the rows keyed in for it), or null when none is keyed. */
@@ -322,4 +336,94 @@ export function feedmeExtras(confirmedTotals: DayTotalRow[]) {
     x.nett += t.nett;
   }
   return x;
+}
+
+
+/* ------------------------------------------------------------------ the FeedMe Close up of a day (split by payment method and by order type) */
+
+export type CloseUpRow = {
+  id: string;
+  day_total_id: string;
+  sales_date: string;
+  bills: number;
+  pax: number | null;
+  nett: number;
+  void_bills: number;
+  void_amount: number;
+  refund_amount: number;
+};
+export type CloseUpSplitRow = { day_total_id: string; sales_date: string; kind: "payment" | "channel"; mapped_key: string; raw_label: string; qty: number; amount: number };
+
+export async function fetchCloseUps(db: SupabaseClient, companyId: string, from: string, to: string): Promise<{ closeups: CloseUpRow[]; splits: CloseUpSplitRow[] }> {
+  const [c, s] = await Promise.all([
+    db.from("rst_day_closeups").select("id, day_total_id, sales_date, bills, pax, nett, void_bills, void_amount, refund_amount").eq("company_id", companyId).gte("sales_date", from).lte("sales_date", to).range(0, 4999),
+    db.from("rst_day_closeup_splits").select("day_total_id, sales_date, kind, mapped_key, raw_label, qty, amount").eq("company_id", companyId).gte("sales_date", from).lte("sales_date", to).range(0, 19999),
+  ]);
+  if (c.error) throw c.error;
+  if (s.error) throw s.error;
+  return {
+    closeups: ((c.data ?? []) as Record<string, unknown>[]).map((r) => ({
+      id: r.id as string,
+      day_total_id: r.day_total_id as string,
+      sales_date: r.sales_date as string,
+      bills: Number(r.bills),
+      pax: r.pax === null ? null : Number(r.pax),
+      nett: Number(r.nett),
+      void_bills: Number(r.void_bills),
+      void_amount: Number(r.void_amount),
+      refund_amount: Number(r.refund_amount),
+    })),
+    splits: ((s.data ?? []) as Record<string, unknown>[]).map((r) => ({
+      day_total_id: r.day_total_id as string,
+      sales_date: r.sales_date as string,
+      kind: r.kind as "payment" | "channel",
+      mapped_key: r.mapped_key as string,
+      raw_label: r.raw_label as string,
+      qty: Number(r.qty),
+      amount: Number(r.amount),
+    })),
+  };
+}
+
+export const NOT_SPLIT = "__not_split";
+
+/**
+ * The "By payment method" and "By channel" tables. For a day with a confirmed FeedMe day total that has a Close up, the Close up split is used
+ * (its amounts are the Nett collected: they include service charge, SST and rounding) and the lines keyed in by hand for that day are left out
+ * (they only explain). A FeedMe day without a Close up is counted as "not split" apart from what the lines keyed in for it explain. A day
+ * without a FeedMe total uses its confirmed lines. Nothing is added twice.
+ */
+export function breakdownRows(
+  kind: "payment" | "channel",
+  confirmedLines: SalesLine[],
+  days: DaySales[],
+  activeSplits: CloseUpSplitRow[],
+  closeUpDates: Set<string>,
+): { key: string; net: number; orders: number; lines: number }[] {
+  const map = new Map<string, { key: string; net: number; orders: number; lines: number }>();
+  const add = (key: string, amount: number, qty: number, lines: number) => {
+    const cur = map.get(key) ?? { key, net: 0, orders: 0, lines: 0 };
+    cur.net += amount;
+    cur.orders += qty;
+    cur.lines += lines;
+    map.set(key, cur);
+  };
+  for (const s of activeSplits) if (s.kind === kind) add(s.mapped_key, s.amount, s.qty, 1);
+  for (const l of confirmedLines) {
+    if (closeUpDates.has(l.sales_date)) continue;
+    add(kind === "payment" ? l.payment_method : l.channel, netOf(l), l.orders_count ?? 0, 1);
+  }
+  for (const d of days) {
+    if (d.source !== "feedme" || closeUpDates.has(d.date)) continue;
+    const rest = d.net - d.linesNet;
+    if (Math.abs(rest) >= 0.005) add(NOT_SPLIT, rest, 0, 0);
+  }
+  return Array.from(map.values()).sort((a, b) => b.net - a.net);
+}
+
+/** The cash sales of a day from a confirmed Close up (the CASH total), or null when the day has none. */
+export function closeUpCash(splits: CloseUpSplitRow[], date: string): number | null {
+  const mine = splits.filter((s) => s.sales_date === date && s.kind === "payment");
+  if (mine.length === 0) return null;
+  return mine.filter((s) => s.mapped_key === "cash").reduce((t, s) => t + s.amount, 0);
 }

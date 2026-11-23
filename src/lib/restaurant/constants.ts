@@ -17,7 +17,7 @@ export const PAYMENT_METHODS = [
 ] as const;
 export type PaymentMethodKey = (typeof PAYMENT_METHODS)[number]["key"];
 
-export const channelLabel = (key: string) => CHANNELS.find((c) => c.key === key)?.label ?? key;
+export const channelLabel = (key: string) => CHANNELS.find((c) => c.key === key)?.label ?? (key === "other" ? "Other" : key);
 export const paymentLabel = (key: string) => PAYMENT_METHODS.find((p) => p.key === key)?.label ?? key;
 
 /** The restaurant roles a person can hold on top of their login (Owner and Admin are the Super Admin and Company Admin of the login itself). */

@@ -23,6 +23,14 @@ export type CashView = {
   variance: number | null;
   note: string | null;
   reopenReason: string | null;
+  /** where the cash sales come from: the FeedMe Close up of the day, or the cash lines keyed in for the shift */
+  source: "closeup" | "lines";
+  /** the CASH total of a confirmed Close up of the day (all shifts), when there is one */
+  closeUpCash: number | null;
+  /** a FeedMe day with a Close up of this date is still a draft: it must be confirmed before the cash is closed */
+  waiting: boolean;
+  /** a closed session only: the expected cash worked out from today's figures when it is not the figure the session was closed with */
+  changedExpected: number | null;
 };
 
 const num = (v: string) => (v.trim() === "" ? NaN : Number(v));
@@ -91,8 +99,10 @@ function Session({ s, canSell, canManage }: { s: CashView; canSell: boolean; can
             </div>
           </div>
           <div className="rounded-xl bg-surface-alt px-4 py-3 text-[13.5px]">
-            <div className="flex justify-between"><span>Cash sales of this shift (confirmed, after discounts and refunds)</span><span className="font-semibold">{formatCurrency(s.cashIn)}</span></div>
+            <div className="flex justify-between"><span>{s.source === "closeup" ? "Cash sales of the day, from the FeedMe Close up (confirmed)" : "Cash sales of this shift (confirmed, after discounts and refunds)"}</span><span className="font-semibold">{formatCurrency(s.cashIn)}</span></div>
             <div className="mt-1 flex justify-between"><span>Cash the till should hold</span><span className="font-bold">{Number.isFinite(liveExpected) ? formatCurrency(Math.round(liveExpected * 100) / 100) : "—"}</span></div>
+            {s.waiting && <div className="mt-1 text-[12.5px] text-warning">The FeedMe day of this date is still a draft. Confirm it in Daily Sales before closing the cash.</div>}
+            {s.source === "lines" && s.closeUpCash !== null && <div className="mt-1 text-[12.5px] text-warning">{`The FeedMe Close up has ${formatCurrency(s.closeUpCash)} cash for the whole day. It is not used here because the day has more than one cash session: check it yourself.`}</div>}
             {s.drafts > 0 && <div className="mt-1 text-[12.5px] text-warning">{s.drafts === 1 ? "1 cash sales line is still a draft. Confirm it in Daily Sales before closing." : `${s.drafts} cash sales lines are still drafts. Confirm them in Daily Sales before closing.`}</div>}
           </div>
           {canSell && (
@@ -127,6 +137,12 @@ function Session({ s, canSell, canManage }: { s: CashView; canSell: boolean; can
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {closed && s.changedExpected !== null && (
+        <div className="mt-3 rounded-lg border border-warning/30 bg-warning-bg px-3 py-2 text-[12.5px] text-warning">
+          {`The cash sales known now give an expected cash of ${formatCurrency(s.changedExpected)}, but this session was closed with ${formatCurrency(s.expected)}. The closed session is not changed. A Manager can reopen it to check.`}
         </div>
       )}
 

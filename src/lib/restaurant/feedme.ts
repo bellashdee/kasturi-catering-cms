@@ -29,14 +29,14 @@ export type FeedMeDay = {
 
 export type FeedMeParse = { ok: true; merchant: string; dateRange: string | null; days: FeedMeDay[]; warnings: string[] } | { ok: false; error: string };
 
-const cents = (v: number) => Math.round(v * 100);
+export const cents = (v: number) => Math.round(v * 100);
 
-function cellText(v: unknown): string {
+export function cellText(v: unknown): string {
   return typeof v === "string" ? v.trim() : typeof v === "number" ? String(v) : "";
 }
 
 /** A money / number cell: a number, or text such as "1,234.50". Returns null when it is not a plain number. */
-function numberOf(v: unknown): number | null {
+export function numberOf(v: unknown): number | null {
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
   if (typeof v === "string") {
     const t = v.replace(/,/g, "").trim();
@@ -48,7 +48,7 @@ function numberOf(v: unknown): number | null {
 }
 
 /** dd/mm/yyyy -> YYYY-MM-DD, or null when it is not a real date. */
-function isoDate(text: string): string | null {
+export function isoDate(text: string): string | null {
   const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(text.trim());
   if (!m) return null;
   const [d, mo, y] = [Number(m[1]), Number(m[2]), Number(m[3])];
