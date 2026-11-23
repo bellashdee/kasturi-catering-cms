@@ -5,7 +5,7 @@ import { getSessionContext, type SessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { isRestaurantScope } from "@/lib/restaurantView";
 import { canAccessModule } from "@/lib/modules";
-import { MANAGER_ROLES, MODULE_KEY, SALES_ROLES } from "@/lib/restaurant/constants";
+import { COSTING_ROLES, MANAGER_ROLES, MENU_ROLES, MODULE_KEY, SALES_ROLES } from "@/lib/restaurant/constants";
 
 export type RestaurantContext = {
   session: SessionContext;
@@ -14,7 +14,7 @@ export type RestaurantContext = {
   company: { id: string; name: string };
   isAdmin: boolean;
   roles: string[];
-  can: { sell: boolean; manage: boolean; roles: boolean };
+  can: { sell: boolean; manage: boolean; roles: boolean; menu: boolean; costing: boolean };
   /** "?company=<id>" or "" so links keep the company that is viewed */
   query: string;
   requestedCompany: string | undefined;
@@ -51,7 +51,7 @@ export async function getRestaurantContext(requestedCompany?: string): Promise<R
     company,
     isAdmin,
     roles,
-    can: { sell: has(SALES_ROLES), manage: has(MANAGER_ROLES), roles: isAdmin },
+    can: { sell: has(SALES_ROLES), manage: has(MANAGER_ROLES), roles: isAdmin, menu: has(MENU_ROLES), costing: has(COSTING_ROLES) },
     query: requestedCompany ? `?company=${requestedCompany}` : "",
     requestedCompany,
   };

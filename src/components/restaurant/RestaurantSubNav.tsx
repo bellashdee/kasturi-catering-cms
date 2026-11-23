@@ -8,6 +8,9 @@ const TABS = [
   { href: "/restaurant/sales", label: "Daily Sales", exact: false },
   { href: "/restaurant/import", label: "Import FeedMe", exact: false },
   { href: "/restaurant/cash", label: "Cash Sessions", exact: false },
+  { href: "/restaurant/menu", label: "Menu", exact: false },
+  { href: "/restaurant/ingredients", label: "Ingredients", exact: false },
+  { href: "/restaurant/margin", label: "Margin Report", exact: false },
   { href: "/restaurant/roles", label: "Staff Roles", exact: false, adminOnly: true },
 ];
 

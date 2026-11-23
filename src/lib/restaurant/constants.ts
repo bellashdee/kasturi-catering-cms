@@ -35,5 +35,8 @@ export type RestaurantRoleKey = (typeof RESTAURANT_ROLES)[number]["key"];
 /** Who may enter / confirm sales and work with the cash (the database enforces the same lists). */
 export const SALES_ROLES: string[] = ["cashier", "manager", "finance"];
 export const MANAGER_ROLES: string[] = ["manager"];
+/** Who may change the menu and the recipes (Chef, Manager), and the unit costs of the ingredients (also Purchasing). */
+export const MENU_ROLES: string[] = ["manager", "chef"];
+export const COSTING_ROLES: string[] = ["manager", "chef", "purchasing"];
 
 export const MODULE_KEY = "restaurant";
