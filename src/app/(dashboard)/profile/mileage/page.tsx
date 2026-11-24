@@ -7,7 +7,7 @@ import { untyped } from "@/lib/kitchenPurchase/shared";
 import { todayInMalaysia } from "@/lib/format";
 import type { MileageTrip } from "@/lib/hr/mileage";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
-import { ProfileTabs } from "@/components/hr/ProfileTabs";
+import { ProfileHeader } from "@/components/hr/ProfileHeader";
 import { MileageLogBoard } from "@/components/hr/MileageLogBoard";
 
 const shiftMonth = (month: string, by: number) => {
@@ -24,10 +24,14 @@ export default async function MyMileagePage({ searchParams }: { searchParams: Pr
   const supabase = await createClient();
   const { records, employee } = await getOwnEmployee(supabase, session.userId, record);
   const head = (
-    <>
-      <div className="text-[20px] font-extrabold text-text">My Profile</div>
-      <ProfileTabs active="/profile/mileage" record={record} />
-    </>
+    <ProfileHeader
+      active="/profile/mileage"
+      record={record}
+      title="Mileage Claim"
+      intro="Record each trip with your car's odometer reading at the start and the end. Print the month's Mileage Log to claim."
+      records={records}
+      currentId={employee?.id}
+    />
   );
   if (!employee) {
     return (
@@ -52,16 +56,6 @@ export default async function MyMileagePage({ searchParams }: { searchParams: Pr
   return (
     <div className="flex flex-col gap-5">
       {head}
-      {records.length > 1 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[12.5px] font-semibold text-text-secondary">Staff record</span>
-          {records.map((r) => (
-            <Link key={r.id} href={`/profile/mileage?record=${r.id}&month=${month}`} className={`rounded-full border px-3.5 py-1.5 text-[13px] font-semibold ${r.id === employee.id ? "border-primary bg-primary text-white" : "border-border-strong bg-surface text-text"}`}>
-              {r.companies?.name ?? r.full_name}
-            </Link>
-          ))}
-        </div>
-      )}
       <div className="flex flex-wrap items-center gap-3">
         <div>
           <div className="text-[18px] font-extrabold text-text">Mileage Log</div>

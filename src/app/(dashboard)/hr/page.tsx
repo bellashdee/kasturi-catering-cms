@@ -46,6 +46,8 @@ export default async function HRPage({
   }
 
   const access = await getHrAccess(supabase, session, targetCompanyIds);
+  const { data: privacyRestricted } = await supabase.rpc("user_privacy_restricted" as never);
+  const hidePersonal = privacyRestricted === true;
   // the buttons of the sub-categories this member has (all of them unless Settings limits the member)
   const can = (key: string) => canOpenSection(session.allowedSections, key);
   // the Payroll Centre belongs to HR; only the Director of Finance and her personal assistant see its button
@@ -91,13 +93,13 @@ export default async function HRPage({
         joined(group.map((g) => g.employee_no)),
         f.full_name,
         joined(group.map((g) => g.companies?.name)),
-        f.ic_passport_no ?? "",
-        f.date_of_birth ?? "",
+        hidePersonal ? "" : f.ic_passport_no ?? "",
+        hidePersonal ? "" : f.date_of_birth ?? "",
         f.gender ?? "",
         f.nationality ?? "",
         f.race ?? "",
         f.religion ?? "",
-        f.marital_status ?? "",
+        hidePersonal ? "" : f.marital_status ?? "",
         f.phone ?? "",
         f.email ?? "",
         joined(group.map((g) => g.branch)),
@@ -106,7 +108,7 @@ export default async function HRPage({
         joined(group.map((g) => EMPLOYMENT_TYPE_LABEL[g.employment_type] ?? g.employment_type)),
         joined(group.map((g) => g.join_date)),
         Array.from(new Set(group.map((g) => EMPLOYEE_STATUS_LABEL[g.status] ?? g.status))).join(" / "),
-        address(f),
+        hidePersonal ? "" : address(f),
       ].map((v) => (v === "—" ? "" : v));
     }),
   };
@@ -261,7 +263,7 @@ export default async function HRPage({
                       </span>
                     )}
                   </div>
-                  <div className="break-words text-text-secondary">{first.ic_passport_no || "—"}</div>
+                  <div className="break-words text-text-secondary">{hidePersonal ? "Private" : first.ic_passport_no || "—"}</div>
                   <div className="text-text-secondary">{joined(group.map((g) => g.position))}</div>
                   <div className="break-words text-text-secondary">{first.phone || "—"}</div>
                   <div className="text-text-secondary">{joined(group.map((g) => g.join_date))}</div>

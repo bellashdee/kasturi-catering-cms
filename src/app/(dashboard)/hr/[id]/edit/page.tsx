@@ -23,6 +23,9 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
   }
   const access = await getHrAccess(supabase, session, [employee.company_id]);
   if (!access.isAdminOf(employee.company_id)) notFound();
+  // an admin without access to staff privacy cannot open another staff member's full record for editing (it shows the IC, address, family ...)
+  const { data: privacyRestricted } = await supabase.rpc("user_privacy_restricted" as never);
+  if (privacyRestricted === true && !access.ownEmployeeIds.has(employee.id)) notFound();
 
   const { data: allCompanies } = await supabase.from("companies").select("id, name").order("name");
   // the companies where this person (same name) already has a staff record

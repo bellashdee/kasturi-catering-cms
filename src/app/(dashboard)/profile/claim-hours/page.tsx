@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
@@ -7,7 +6,7 @@ import { untyped } from "@/lib/kitchenPurchase/shared";
 import { formatMalaysiaDate, todayInMalaysia } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SectionCard, EmptyRow } from "@/components/dashboard/SectionCard";
-import { ProfileTabs } from "@/components/hr/ProfileTabs";
+import { ProfileHeader } from "@/components/hr/ProfileHeader";
 import { ClaimHoursForm, DeleteClaimButton } from "@/components/hr/ClaimHoursControls";
 
 type Claim = { id: string; work_date: string; start_time: string; end_time: string; hours: number; approved_hours: number | null; reason: string; status: string; manager_remarks: string | null };
@@ -26,10 +25,14 @@ export default async function MyClaimHoursPage({ searchParams }: { searchParams:
   const { records, employee } = await getOwnEmployee(supabase, session.userId, record);
 
   const head = (
-    <>
-      <div className="text-[20px] font-extrabold text-text">My Profile</div>
-      <ProfileTabs active="/profile/claim-hours" record={record} />
-    </>
+    <ProfileHeader
+      active="/profile/claim-hours"
+      record={record}
+      title="Claim Hours"
+      intro="For staff with a salary of RM4,000 and above (no OT). Claim the extra hours you worked; every 8 approved hours gives you 1 day of replacement leave."
+      records={records}
+      currentId={employee?.id}
+    />
   );
   if (!employee) {
     return (
@@ -53,16 +56,6 @@ export default async function MyClaimHoursPage({ searchParams }: { searchParams:
   return (
     <div className="flex flex-col gap-5">
       {head}
-      {records.length > 1 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[12.5px] font-semibold text-text-secondary">Staff record</span>
-          {records.map((r) => (
-            <Link key={r.id} href={`/profile/claim-hours?record=${r.id}`} className={`rounded-full border px-3.5 py-1.5 text-[13px] font-semibold ${r.id === employee.id ? "border-primary bg-primary text-white" : "border-border-strong bg-surface text-text"}`}>
-              {r.companies?.name ?? r.full_name}
-            </Link>
-          ))}
-        </div>
-      )}
 
       <div className="rounded-xl bg-surface-alt px-4 py-3 text-[13px] leading-relaxed text-text-secondary">
         <b className="text-text">Rule:</b> staff with a salary of <b className="text-text">RM4,000 and above cannot claim OT</b>. If you work extra hours, claim the hours here.

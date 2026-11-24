@@ -84,6 +84,9 @@ export async function EmployeeProfileView({
   // a person sees (and changes) their own bank, KWSP, SOCSO and tax numbers; the salary stays with the admins
   const isOwn = access.ownEmployeeIds.has(employee.id);
   const canSeeOwnPrivate = canSeePrivate || isOwn;
+  // an admin marked "no staff privacy" (e.g. Ms. Syaza) does not see another staff member's personal details
+  const { data: privacyRestricted } = await supabase.rpc("user_privacy_restricted" as never);
+  const hidePersonal = privacyRestricted === true && !isOwn;
   // the same person can have a staff record in each company he or she works for: all of them are shown together
   const { data: sameName } = await supabase.from("employees").select("*, companies(name)").ilike("full_name", likeExact(employee.full_name)).order("created_at");
   const records = (sameName ?? []).filter((r) => r.id === employee.id || access.canSee(r));
@@ -115,6 +118,7 @@ export async function EmployeeProfileView({
   ]);
 
   const restricted = "Restricted (Admin only)";
+  const priv = <T,>(v: T): T | string => (hidePersonal ? "Private" : v);
   // the date of birth written on the staff record; for a Malaysian IC number it is also known from the number itself
   const dobText = employee.date_of_birth || dobFromIc(employee.ic_passport_no) || "—";
   const kwspValue = !canSeeOwnPrivate ? restricted : privateDetails?.epf_no || "—";
@@ -183,51 +187,51 @@ export async function EmployeeProfileView({
             <Fields cols={3}>
               <Field label="Employee No." value={employee.employee_no} />
               <Field label="Name" value={employee.full_name} wide2 />
-              <Field label="I/C No." value={employee.ic_passport_no} />
-              <Field label="Old I/C No." value={employee.old_ic_no} />
-              <Field label="Passport No." value={employee.passport_no} />
-              <Field label="Date of Birth" value={dobText === "—" ? null : dobText} />
+              <Field label="I/C No." value={priv(employee.ic_passport_no)} />
+              <Field label="Old I/C No." value={priv(employee.old_ic_no)} />
+              <Field label="Passport No." value={priv(employee.passport_no)} />
+              <Field label="Date of Birth" value={priv(dobText === "—" ? null : dobText)} />
               <Field label="Nationality" value={employee.nationality} />
               <Field label="Gender" value={employee.gender} />
               <Field label="Race" value={employee.race} />
               <Field label="Religion" value={employee.religion} />
-              <Field label="Marital Status" value={employee.marital_status} />
+              <Field label="Marital Status" value={priv(employee.marital_status)} />
               <Field label="Short Name" value={shortNameOf(employee.full_name, employee.short_name)} />
               <Field label="Mobile No." value={employee.phone} />
-              <Field label="Phone No." value={employee.home_phone} />
+              <Field label="Phone No." value={priv(employee.home_phone)} />
               <Field label="Email" value={employee.email} />
-              <Field label="Address" value={employee.address_line} wide />
-              <Field label="City" value={employee.address_city} />
-              <Field label="State" value={employee.address_state} />
-              <Field label="Postcode" value={employee.address_postcode} />
+              <Field label="Address" value={priv(employee.address_line)} wide />
+              <Field label="City" value={priv(employee.address_city)} />
+              <Field label="State" value={priv(employee.address_state)} />
+              <Field label="Postcode" value={priv(employee.address_postcode)} />
             </Fields>
           </SectionCard>
         </div>
 
         <SectionCard title="Permanent Address">
           <Fields>
-            <Field label="Address" value={employee.perm_address_line} wide />
-            <Field label="City" value={employee.perm_city} />
-            <Field label="State" value={employee.perm_state} />
-            <Field label="Postcode" value={employee.perm_postcode} />
+            <Field label="Address" value={priv(employee.perm_address_line)} wide />
+            <Field label="City" value={priv(employee.perm_city)} />
+            <Field label="State" value={priv(employee.perm_state)} />
+            <Field label="Postcode" value={priv(employee.perm_postcode)} />
           </Fields>
         </SectionCard>
 
         <SectionCard title="Emergency Contact">
           <Fields>
-            <Field label="Name" value={employee.emergency_name} wide />
-            <Field label="Phone No." value={employee.emergency_phone} />
-            <Field label="Relationship" value={employee.emergency_relationship} />
+            <Field label="Name" value={priv(employee.emergency_name)} wide />
+            <Field label="Phone No." value={priv(employee.emergency_phone)} />
+            <Field label="Relationship" value={priv(employee.emergency_relationship)} />
           </Fields>
         </SectionCard>
 
         <SectionCard title="Spouse">
           <Fields>
-            <Field label="Name" value={employee.spouse_name} wide />
-            <Field label="I/C No." value={employee.spouse_ic_no} />
-            <Field label="Working?" value={employee.spouse_working === null || employee.spouse_working === undefined ? null : employee.spouse_working ? "Yes" : "No"} />
-            <Field label="No. of Children" value={employee.children_count} />
-            <Field label="Child Relief" value={employee.child_relief != null ? Number(employee.child_relief).toFixed(2) : null} />
+            <Field label="Name" value={priv(employee.spouse_name)} wide />
+            <Field label="I/C No." value={priv(employee.spouse_ic_no)} />
+            <Field label="Working?" value={priv(employee.spouse_working === null || employee.spouse_working === undefined ? null : employee.spouse_working ? "Yes" : "No")} />
+            <Field label="No. of Children" value={priv(employee.children_count)} />
+            <Field label="Child Relief" value={priv(employee.child_relief != null ? Number(employee.child_relief).toFixed(2) : null)} />
           </Fields>
         </SectionCard>
 

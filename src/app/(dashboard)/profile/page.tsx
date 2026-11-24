@@ -5,7 +5,7 @@ import { getSessionContext, ROLE_LABEL } from "@/lib/auth";
 import { getHrAccess } from "@/lib/hr/access";
 import { EmployeeProfileView } from "@/components/hr/EmployeeProfileView";
 import { SectionCard, EmptyRow, StatRow } from "@/components/dashboard/SectionCard";
-import { ProfileTabs } from "@/components/hr/ProfileTabs";
+import { ProfileHeader } from "@/components/hr/ProfileHeader";
 
 /**
  * My Profile: every person sees all of their own details here (the login, and the staff record with the documents, leave, overtime and
@@ -37,8 +37,7 @@ export default async function MyProfilePage({ searchParams }: { searchParams: Pr
   if (!employee) {
     return (
       <div className="flex flex-col gap-5">
-        <div className="text-[20px] font-extrabold text-text">My Profile</div>
-      <ProfileTabs active="/profile" record={record} />
+        <ProfileHeader active="/profile" record={record} title="My Details" intro="Your login and your staff record: details, documents, leave balance and overtime." />
         {account}
         <EmptyRow text="Your staff record is not linked to your login yet. Please ask the HR admin to link it, then your staff details, documents, leave and overtime will show here." />
       </div>
@@ -49,8 +48,7 @@ export default async function MyProfilePage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="text-[20px] font-extrabold text-text">My Profile</div>
-      <ProfileTabs active="/profile" record={record} />
+      <ProfileHeader active="/profile" record={record} title="My Details" intro="Your login and your staff record: details, documents, leave balance and overtime." />
       {account}
       {records.length > 1 && (
         <div className="flex flex-wrap items-center gap-2">

@@ -38,8 +38,11 @@ export function OvertimeForm({
   overtimeId,
   initial,
   maxDate,
+  doneHref,
 }: {
   staff: OtStaffOption[];
+  /** where to go after a successful submit (the OT record page when not given) */
+  doneHref?: string;
   defaultEmployeeId?: string;
   overtimeId?: string;
   initial?: Initial;
@@ -106,7 +109,7 @@ export function OvertimeForm({
         setBusy(null);
         return;
       }
-      router.push(`/hr/overtime/${result.id}`);
+      router.push(doneHref ?? `/hr/overtime/${result.id}`);
       router.refresh();
     } catch (err) {
       setError(errorMessage(err, "Could not save."));

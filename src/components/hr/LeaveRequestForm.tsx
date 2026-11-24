@@ -22,7 +22,7 @@ function daysBetween(start: string, end: string): number {
  * `keyIn`: an admin or leave editor types in the leave of another staff member (a paper form or a message): the status can be set to
  * "already approved", and after saving the person goes back to the leave list (they cannot open another staff member's profile).
  */
-export function LeaveRequestForm({ employeeId, companyId, keyIn = false, canApprove = false }: { employeeId: string; companyId: string; keyIn?: boolean; canApprove?: boolean }) {
+export function LeaveRequestForm({ employeeId, companyId, keyIn = false, canApprove = false, doneHref }: { employeeId: string; companyId: string; keyIn?: boolean; canApprove?: boolean; doneHref?: string }) {
   const router = useRouter();
   const [leaveType, setLeaveType] = useState("annual");
   const [otherType, setOtherType] = useState("");
@@ -51,7 +51,7 @@ export function LeaveRequestForm({ employeeId, companyId, keyIn = false, canAppr
         documentId = doc.id;
       }
       await requestLeave({ employeeId, companyId, leaveType, leaveTypeOther: leaveType === "other" ? otherType.trim() : undefined, startDate, endDate, days, reason, documentId, status: keyIn && canApprove ? status : undefined });
-      router.push(keyIn ? "/hr/leave" : `/hr/${employeeId}`);
+      router.push(doneHref ?? (keyIn ? "/hr/leave" : `/hr/${employeeId}`));
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not submit.");
