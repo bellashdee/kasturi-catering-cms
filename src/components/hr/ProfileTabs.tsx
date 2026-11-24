@@ -2,9 +2,9 @@ import Link from "next/link";
 
 const TABS = [
   { href: "/profile", label: "My Details" },
-  { href: "/profile/leave", label: "Leave Form" },
   { href: "/profile/ot", label: "OT Form" },
   { href: "/profile/claim-hours", label: "Claim Hours" },
+  { href: "/profile/leave", label: "Leave Form" },
   { href: "/profile/mileage", label: "Mileage Claim" },
 ];
 
