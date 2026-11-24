@@ -2,7 +2,7 @@
 
 import { jsPDF } from "jspdf";
 import autoTableImport from "jspdf-autotable";
-import { PURPOSE_CODES, mileageSummary, type MileageTrip } from "@/lib/hr/mileage";
+import { MILEAGE_RATE_RM, PURPOSE_CODES, mileageSummary, type MileageTrip } from "@/lib/hr/mileage";
 
 // the package is CommonJS: depending on how it is bundled the function is the import itself or its "default"
 const autoTable: typeof autoTableImport = (autoTableImport as unknown as { default?: typeof autoTableImport }).default ?? autoTableImport;
@@ -92,6 +92,14 @@ export function buildMileagePdf(p: { staffName: string; companyName: string; mon
   doc.text("TOTAL KM:", R - 76, y + 4.8);
   doc.setTextColor(20, 20, 20);
   doc.text(km(s.total), R - 2, y + 4.8, { align: "right" });
+  // the claim: business km x RM0.80
+  doc.setFillColor(...NAVY);
+  doc.rect(L, y, 30, 7, "F");
+  doc.rect(L + 30, y, 70, 7);
+  doc.setTextColor(255, 255, 255);
+  doc.text("CLAIM (RM):", L + 2, y + 4.8);
+  doc.setTextColor(20, 20, 20);
+  doc.text(`${km(s.business)} km x RM${MILEAGE_RATE_RM.toFixed(2)} = RM ${s.claim.toFixed(2)}`, L + 32, y + 4.8);
 
   // three boxes: purpose codes, summary, notes
   y += 12;

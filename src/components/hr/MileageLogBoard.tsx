@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { PURPOSE_CODES, mileageSummary, type MileageTrip } from "@/lib/hr/mileage";
+import { MILEAGE_RATE_RM, PURPOSE_CODES, mileageSummary, type MileageTrip } from "@/lib/hr/mileage";
 import { deleteMileageTrip, saveMileageNotes, saveMileageTrip, type MileageTripInput } from "@/lib/hr/mileageActions";
 import { openMileagePdf } from "@/lib/hr/mileagePdf";
 
@@ -43,7 +43,7 @@ export function MileageLogBoard({ employeeId, staffName, companyName, month, mon
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
         <div className="text-[13px] text-text-secondary">
-          {trips.length} trip{trips.length === 1 ? "" : "s"} · <b className="text-text">{km(s.total)} km</b> in {monthLabel}
+          {trips.length} trip{trips.length === 1 ? "" : "s"} · <b className="text-text">{km(s.total)} km</b> in {monthLabel} · claim <b className="text-text">RM {s.claim.toFixed(2)}</b>
         </div>
         <button
           type="button"
@@ -167,6 +167,7 @@ export function MileageLogBoard({ employeeId, staffName, companyName, month, mon
               <div key={l as string} className="flex justify-between"><span className="text-text-secondary">{l}</span><span className="tabular-nums">{km(v as number)}</span></div>
             ))}
             <div className="flex justify-between rounded-md bg-surface-alt px-2 py-1.5 font-bold"><span>Total km</span><span className="tabular-nums">{km(s.total)}</span></div>
+            <div className="mt-1 flex justify-between rounded-md bg-primary px-2 py-2 text-[14px] font-extrabold text-white"><span>Claim (business km × RM{MILEAGE_RATE_RM.toFixed(2)})</span><span className="tabular-nums">RM {s.claim.toFixed(2)}</span></div>
           </div>
         </div>
         <div className="rounded-xl border border-border bg-surface shadow-sm">

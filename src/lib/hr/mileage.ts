@@ -18,11 +18,14 @@ export type MileageTrip = {
   purpose_code: number;
 };
 
-/** Business, personal and other (fuel, maintenance, other) kilometres of the month. */
+/** The mileage claim rate: RM0.80 for every business kilometre. */
+export const MILEAGE_RATE_RM = 0.8;
+
+/** Business, personal and other (fuel, maintenance, other) kilometres of the month, and the claim (business km × RM0.80). */
 export function mileageSummary(trips: MileageTrip[]) {
   const km = (codes: number[]) => trips.filter((t) => codes.includes(t.purpose_code)).reduce((s, t) => s + Number(t.total_km), 0);
   const business = km([1]);
   const personal = km([2]);
   const other = km([3, 4, 5]);
-  return { business, personal, other, total: business + personal + other };
+  return { business, personal, other, total: business + personal + other, claim: Math.round(business * MILEAGE_RATE_RM * 100) / 100 };
 }
