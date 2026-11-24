@@ -10,7 +10,8 @@ import Link from "next/link";
 import { MonthFilter } from "@/components/MonthFilter";
 import { filterByMonth, monthLabelOf } from "@/lib/monthFilter";
 import { todayInMalaysia } from "@/lib/format";
-import { leaveBalanceForYear } from "@/lib/hr/leaveBalance";
+import { leaveBalanceForYear, type LeaveAdjustment } from "@/lib/hr/leaveBalance";
+import { untyped } from "@/lib/kitchenPurchase/shared";
 import { LEAVE_STATUS_LABEL, LEAVE_TYPE_LABEL } from "@/lib/hr/constants";
 import { Select } from "@/components/ui/Select";
 import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
@@ -61,7 +62,11 @@ export default async function LeavePage({
   const staffForBalance = showBalances
     ? ((await supabase.from("employees").select("id, full_name, join_date, company_id, status, companies(name)").in("company_id", targetCompanyIds).eq("status", "active").order("full_name")).data ?? [])
     : [];
-  const balances = staffForBalance.map((e) => ({ e, b: leaveBalanceForYear(e.join_date, allRequests.filter((r) => r.employee_id === e.id), balanceYear) }));
+  const { data: adjRows } = showBalances && staffForBalance.length
+    ? await untyped(supabase).from("leave_balance_adjustments").select("employee_id, year, al_entitled, al_taken_before, mc_entitled, mc_taken_before").eq("year", balanceYear).in("employee_id", staffForBalance.map((e) => e.id))
+    : { data: [] };
+  const adjOf = (id: string) => ((adjRows ?? []) as (LeaveAdjustment & { employee_id: string })[]).filter((a) => a.employee_id === id);
+  const balances = staffForBalance.map((e) => ({ e, b: leaveBalanceForYear(e.join_date, allRequests.filter((r) => r.employee_id === e.id), balanceYear, adjOf(e.id)) }));
   const q = sp.q?.trim().toLowerCase() ?? "";
   const { sort, dir } = readSort(sp, SORTS, "submitted", "desc");
   const requests = sortBy(
@@ -108,7 +113,7 @@ export default async function LeavePage({
                 {y}
               </Link>
             ))}
-            <span className="ml-auto text-text-muted">Entitlement by the Employment Act 1955 (years of service). Balance = entitled − taken − waiting approval.</span>
+            <span className="ml-auto text-text-muted">Entitlement by the Employment Act 1955 unless HR set the company's own figure. Taken includes leave keyed in from before the system (open the staff → Leave Balance → Edit balance). Balance = entitled − taken − waiting approval.</span>
           </div>
           <div className="overflow-x-auto border-t border-border">
             <table className="w-full min-w-[820px] text-[13px]">
@@ -133,7 +138,7 @@ export default async function LeavePage({
                     </td>
                     <td className="px-2 py-2 text-right text-text-secondary">{b.serviceYears} yr</td>
                     <td className="px-2 py-2 text-right tabular-nums">{b.al.entitled}</td>
-                    <td className="px-2 py-2 text-right tabular-nums">{b.al.taken + b.al.waiting}</td>
+                    <td className="px-2 py-2 text-right tabular-nums">{b.al.taken + b.al.waiting}{b.adjusted ? "*" : ""}</td>
                     <td className={`px-2 py-2 text-right font-bold tabular-nums ${b.al.balance < 0 ? "text-danger" : "text-text"}`}>{b.al.balance}</td>
                     <td className="px-2 py-2 text-right tabular-nums">{b.mc.entitled}</td>
                     <td className="px-2 py-2 text-right tabular-nums">{b.mc.taken + b.mc.waiting}</td>

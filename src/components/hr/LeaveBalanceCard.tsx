@@ -2,7 +2,8 @@ import Link from "next/link";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { SectionCard } from "@/components/dashboard/SectionCard";
-import { leaveBalanceYears } from "@/lib/hr/leaveBalance";
+import { leaveBalanceYears, type LeaveAdjustment } from "@/lib/hr/leaveBalance";
+import { LeaveBalanceEditor } from "@/components/hr/LeaveBalanceEditor";
 import { untyped } from "@/lib/kitchenPurchase/shared";
 import { todayInMalaysia } from "@/lib/format";
 
@@ -12,11 +13,18 @@ const n = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
 /** Leave balance of one staff member: AL and MC of each year (entitled, taken, waiting approval, balance), and the claim-hours replacement leave. */
 export async function LeaveBalanceCard({ employeeId, joinDate, leave, supabase, claimHoursHref }: { employeeId: string; joinDate: string | null; leave: LeaveLike[]; supabase: SupabaseClient<Database>; claimHoursHref?: string }) {
   const thisYear = Number(todayInMalaysia().slice(0, 4));
-  const years = leaveBalanceYears(joinDate, leave, thisYear);
-  const [{ data: usesClaimHours }, { data: balanceRows }] = await Promise.all([
-    untyped(supabase).rpc("employee_uses_claim_hours", { target_employee_id: employeeId }),
-    untyped(supabase).rpc("claim_hours_balance", { target_employee_id: employeeId }),
+  const db = untyped(supabase);
+  const [{ data: usesClaimHours }, { data: balanceRows }, { data: adjRows }, { data: emp }, { data: isEditor }] = await Promise.all([
+    db.rpc("employee_uses_claim_hours", { target_employee_id: employeeId }),
+    db.rpc("claim_hours_balance", { target_employee_id: employeeId }),
+    db.from("leave_balance_adjustments").select("year, al_entitled, al_taken_before, mc_entitled, mc_taken_before, notes").eq("employee_id", employeeId),
+    supabase.from("employees").select("company_id").eq("id", employeeId).maybeSingle(),
+    db.rpc("user_is_leave_editor"),
   ]);
+  const { data: isAdmin } = emp ? await db.rpc("user_is_company_admin", { target_company_id: emp.company_id }) : { data: false };
+  const canEdit = isEditor === true || isAdmin === true;
+  const adjustments = (adjRows ?? []) as LeaveAdjustment[];
+  const years = leaveBalanceYears(joinDate, leave, thisYear, adjustments);
   const ch = (balanceRows as { approved_hours: number; earned_days: number; used_days: number; balance_days: number; hours_to_next_day: number }[] | null)?.[0];
   const current = years[0];
 
@@ -34,10 +42,23 @@ export async function LeaveBalanceCard({ employeeId, joinDate, leave, supabase, 
             </div>
             <div className="mt-1.5 text-[12px] text-text-secondary">
               Taken {n(v.taken)}{v.waiting ? ` · waiting approval ${n(v.waiting)}` : ""}
+              {label.startsWith("Annual") && current.takenBefore.al > 0 ? ` (incl. ${n(current.takenBefore.al)} before the system)` : ""}
+              {label.startsWith("Medical") && current.takenBefore.mc > 0 ? ` (incl. ${n(current.takenBefore.mc)} before the system)` : ""}
             </div>
           </div>
         ))}
       </div>
+
+      {canEdit && (
+        <div className="mt-2">
+          <LeaveBalanceEditor
+            employeeId={employeeId}
+            thisYear={thisYear}
+            adjustments={adjustments.map((a) => ({ ...a, year: Number(a.year) }))}
+            actDefaults={Object.fromEntries(leaveBalanceYears(joinDate, leave, thisYear).map((y) => [y.year, { al: y.al.entitled, mc: y.mc.entitled }]))}
+          />
+        </div>
+      )}
 
       {(usesClaimHours === true || (ch && Number(ch.approved_hours) > 0)) && ch && (
         <div className="mt-3 rounded-xl border border-primary/30 bg-surface p-3 text-[13px]">
@@ -83,7 +104,8 @@ export async function LeaveBalanceCard({ employeeId, joinDate, leave, supabase, 
         </div>
       )}
       <div className={`${years.length > 1 ? "mt-7" : "mt-3"} text-[11.5px] text-text-muted`}>
-        Entitlement by the Employment Act 1955 ({current.serviceYears} completed year{current.serviceYears === 1 ? "" : "s"} of service{joinDate ? "" : " — no start date on the staff record"}). The year you join, AL is in proportion to the months worked.
+        Entitlement by the Employment Act 1955 ({current.serviceYears} completed year{current.serviceYears === 1 ? "" : "s"} of service{joinDate ? `, joined ${joinDate.split("-").reverse().join("/")}` : " — no start date on the staff record"}), unless HR set the company&apos;s own figure. The year you join, AL is in proportion to the months worked.
+        {canEdit ? " Use Edit balance to key in leave taken before the system was used." : current.adjusted ? " Includes leave keyed in by HR." : " Leave taken before the system was used is keyed in by HR."}
       </div>
     </SectionCard>
   );

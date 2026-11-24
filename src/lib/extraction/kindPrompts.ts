@@ -44,6 +44,34 @@ If a field is not visible or you are not confident, use null for it rather than 
   ]
 }
 List every distinct item you can identify. If a quantity is not legible, omit that item rather than guessing.`,
+  event_list: `You are reading a list of confirmed catering events (an event list / event schedule table, exported from Excel or Word, scanned, or photographed). Every row of the table is one event. Copy EVERY row, in the order printed, across every page, and respond with ONLY a JSON object, no other text:
+{
+  "items": [
+    {
+      "event_id": the event ID / reference as printed, else null,
+      "customer": the customer or company name as printed, else null,
+      "event_name": the event name as printed, else null,
+      "event_date": the event date converted to ISO (YYYY-MM-DD); if the year is not printed use the year in the document's title, else null,
+      "start_time": start time as 24-hour HH:MM, else null,
+      "end_time": end time as 24-hour HH:MM, else null,
+      "venue": the venue / location as printed, else null,
+      "event_address": the event address as printed, else null,
+      "pax": the number of pax as a plain number, else null,
+      "meal_type": the meal type(s) as printed (e.g. "Breakfast, Lunch"), else null,
+      "service_type": the service type as printed (buffet, packed meal, ...), else null,
+      "confirmed_menu": the confirmed menu as printed, else null,
+      "sales_agent": the sales agent as printed, else null,
+      "autocount_quotation_no": the AutoCount quotation number as printed, else null,
+      "autocount_invoice_no": the AutoCount invoice number as printed, else null,
+      "event_status": the event status as printed, else null,
+      "event_type": the event type as printed, else null,
+      "remarks": remarks as printed, else null,
+      "revenue": the revenue / amount as a plain number (no RM, no commas), else null,
+      "com": the company code column (K / SSC) as printed, else null
+    }
+  ]
+}
+Skip header rows, page headers/footers and total rows. Never invent an event or a value: a cell that is empty stays null. If a row is partly unreadable, still include it with the readable values and name it in "issues".`,
   customer_event_invoice: `You are reading an invoice or order sheet issued to a customer for a catering event. Stock will be deducted for what was supplied, so list every line item (a food item, dish, ingredient or supply, whatever is written) with its quantity. Respond with ONLY a JSON object, no other text:
 {
   "customer_name": the customer's name as printed, else null,

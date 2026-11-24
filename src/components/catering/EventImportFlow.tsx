@@ -96,6 +96,8 @@ export function EventImportFlow({ companies, defaultCompanyId }: { companies: Co
   const [busy, setBusy] = useState<"" | "checking" | "importing">("");
   const [error, setError] = useState<string | null>(null);
   const [notes, setNotes] = useState<string[]>([]);
+  const [pdfStatus, setPdfStatus] = useState("");
+  const [pdfNote, setPdfNote] = useState<string[]>([]);
   const [year, setYear] = useState(malaysiaYear);
   const [result, setResult] = useState<{ created: number; updated: number; skipped: number; failed: number; details: ImportDetail[] } | null>(null);
 
@@ -119,16 +121,41 @@ export function EventImportFlow({ companies, defaultCompanyId }: { companies: Co
     if (!file) return;
     setError(null);
     setResult(null);
+    setPdfNote([]);
     const isPdf = /\.pdf$/i.test(file.name) || file.type === "application/pdf";
     try {
       let list: Sheet[];
       if (isPdf) {
-        const { readPdfTable } = await import("@/lib/catering/pdfTable");
-        const table = await readPdfTable(await file.arrayBuffer());
-        if (table.length < 2) {
-          setError("No event table could be read from that PDF. A scanned PDF (a photo of the page) has no text: use the Excel file instead.");
+        if (!companyId) {
+          setError("Choose the company first.");
           return;
         }
+        // 1. the PDF is saved in Documents and converted to Markdown with MarkItDown (like every uploaded file)
+        setPdfStatus("Saving the PDF and converting it with MarkItDown…");
+        const { saveEventPdf, readEventPdfFromDocument } = await import("@/lib/catering/eventPdfMarkitdown");
+        const savedId = saveEventPdf(file, companyId).catch(() => null);
+        // 2. a PDF made from Excel / Word: its table is read exactly, cell by cell
+        const { readPdfTable } = await import("@/lib/catering/pdfTable");
+        let table = await readPdfTable(await file.arrayBuffer()).catch(() => [] as unknown[][]);
+        const documentId = await savedId;
+        if (table.length < 2 || findHeaderRow(table) < 0) {
+          // 3. otherwise (scanned page, merged cells, unusual layout) the MarkItDown text / the pages are read by the AI reader
+          if (!documentId) {
+            setPdfStatus("");
+            setError("The PDF could not be saved for reading. Check your connection and try again, or use the Excel file.");
+            return;
+          }
+          setPdfStatus("Reading the events from the MarkItDown text with the AI reader… (up to a minute)");
+          const read = await readEventPdfFromDocument(documentId);
+          setPdfStatus("");
+          if ("error" in read) {
+            setError(`${read.error} Check the PDF, or use the Excel file instead.`);
+            return;
+          }
+          table = read.rows;
+          setPdfNote(["Read from the PDF by MarkItDown + the AI reader: check every row in the preview against the PDF before CONFIRM IMPORT.", ...read.issues.slice(0, 8)]);
+        }
+        setPdfStatus("");
         list = [{ name: "PDF", rows: table }];
       } else {
         const workbook = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
@@ -144,6 +171,7 @@ export function EventImportFlow({ companies, defaultCompanyId }: { companies: Co
       const first = Math.max(0, list.findIndex((s) => findHeaderRow(s.rows) >= 0));
       pickSheet(list, first);
     } catch {
+      setPdfStatus("");
       setError(isPdf ? "Could not read that PDF. Make sure it is not password protected, or use the Excel file instead." : "Could not read that file. Make sure it is a valid .xlsx, .xls, .csv or .pdf file.");
     }
   }
@@ -263,12 +291,20 @@ export function EventImportFlow({ companies, defaultCompanyId }: { companies: Co
           </Select>
         </div>
         {error && <div className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">{error}</div>}
+        {pdfStatus && <div className="rounded-lg border border-border bg-surface-alt px-3 py-2 text-sm text-text-secondary">{pdfStatus}</div>}
+        {pdfNote.length > 0 && (
+          <div className="rounded-lg border border-warning/40 bg-warning-bg px-3 py-2 text-sm text-warning">
+            {pdfNote.map((n, i) => (
+              <div key={i}>{i === 0 ? n : `• ${n}`}</div>
+            ))}
+          </div>
+        )}
         <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border-strong bg-surface-alt px-4 py-14 text-center">
           <span className="text-[14px] font-bold text-text">Click to choose the confirmed events file (Excel or PDF)</span>
           <span className="max-w-xl text-[12.5px] text-text-muted">
             Columns are found by their header in any order: Event ID, Customer, Event Name, Event Date, Start Time, End Time, Venue, Event Address, Pax, Meal Type,
-            Service Type, Confirmed Menu, Sales Agent, AutoCount Quotation No., AutoCount Invoice No., Event Status, Remarks, Revenue, Com (K / SSC). A PDF event list
-            must be the PDF made from Excel or Word (not a scanned page). Nothing is saved until you press CONFIRM IMPORT.
+            Service Type, Confirmed Menu, Sales Agent, AutoCount Quotation No., AutoCount Invoice No., Event Status, Remarks, Revenue, Com (K / SSC). A PDF is saved,
+            converted with MarkItDown and, when its table cannot be read directly (scanned page, merged cells), read by the AI reader. Nothing is saved as events until you press CONFIRM IMPORT.
           </span>
           <input type="file" accept=".xlsx,.xls,.csv,.pdf,application/pdf" className="hidden" onChange={handleFile} />
         </label>
