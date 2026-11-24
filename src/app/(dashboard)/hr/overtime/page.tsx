@@ -129,7 +129,10 @@ export default async function OvertimePage({
           <h1 className="text-[22px] font-extrabold text-text">Overtime</h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">OT dashboard for {monthLabel}. Limit: {OT_MONTHLY_LIMIT} hours per staff per month.</p>
         </div>
-        <Link href={`/hr/overtime/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13.5px] font-semibold text-white">+ Staff OT Form</Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href={`/hr/claim-hours${query}`} className="rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13.5px] font-semibold text-text">Claim Hours (RM4,000+)</Link>
+          <Link href={`/hr/overtime/new${query}`} className="rounded-lg bg-primary px-4 py-2.5 text-[13.5px] font-semibold text-white">+ Staff OT Form</Link>
+        </div>
       </div>
 
       <ListFilters keep={{ company: requestedId }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/hr/overtime${query}`}>

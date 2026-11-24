@@ -38,12 +38,13 @@ export const MODULE_SECTIONS: Record<string, Section[]> = {
   "supplier-procurement": [
     { key: "supplier-procurement:suppliers", label: "Suppliers", href: "/supplier-procurement", prefixes: [] },
     { key: "supplier-procurement:items", label: "Items & Prices", href: "/supplier-procurement/items", prefixes: ["/supplier-procurement/items"] },
-    { key: "supplier-procurement:matching", label: "Ingredient Matching", href: "/supplier-procurement/ingredient-matching", prefixes: ["/supplier-procurement/ingredient-matching"] },
     { key: "supplier-procurement:kitchen-requests", label: "Kitchen Requests", href: "/supplier-procurement/kitchen-requests", prefixes: ["/supplier-procurement/kitchen-requests"] },
     { key: "supplier-procurement:quotes", label: "Supplier Quotes", href: "/supplier-procurement/price-quotes", prefixes: ["/supplier-procurement/price-quotes"] },
     { key: "supplier-procurement:orders", label: "Purchase Orders", href: "/supplier-procurement/orders", prefixes: ["/supplier-procurement/orders", "/supplier-procurement/requests"] },
     { key: "supplier-procurement:invoices", label: "Invoices", href: "/supplier-procurement/invoices", prefixes: ["/supplier-procurement/invoices"] },
     { key: "supplier-procurement:notes", label: "Credit / Debit Notes", href: "/supplier-procurement/notes", prefixes: ["/supplier-procurement/notes"] },
+    { key: "supplier-procurement:soa", label: "SOA (Statement of Account)", href: "/supplier-procurement/soa", prefixes: ["/supplier-procurement/soa"] },
+    { key: "supplier-procurement:vendors", label: "Vendor Contacts", href: "/supplier-procurement/vendors", prefixes: ["/supplier-procurement/vendors"] },
   ],
   "driver-logistics": [
     { key: "driver-logistics:deliveries", label: "Deliveries", href: "/driver-logistics", prefixes: [] },

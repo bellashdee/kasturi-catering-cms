@@ -94,6 +94,9 @@ export default async function PayrollCentrePage({ searchParams }: { searchParams
           <Link href={monthLink(shiftMonth(month, 1))} className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-[13px] font-semibold text-text">
             Next →
           </Link>
+          <Link href={`/payroll-centre/import?month=${month}${companyQuery}`} className="rounded-lg bg-primary px-3.5 py-2 text-[13px] font-semibold text-white">
+            Import Payslips (PDF / Excel)
+          </Link>
         </div>
       </div>
 

@@ -16,6 +16,22 @@ const MEALS = [
   { key: "hitea", label: "Hi-tea Pax" },
 ] as const;
 
+/**
+ * The price per pax of each site (Signature Solution): JDT 3, JDT 4 and UTM are charged per meal (breakfast RM10, lunch RM15, dinner RM15);
+ * JDT 2 is one price for every meal (RM25). Hi-tea has no price, so it is not charged.
+ */
+type Prices = { breakfast: number; lunch: number; dinner: number };
+const SITE_PRICES: Record<string, Prices> = {
+  "JDT 2": { breakfast: 25, lunch: 25, dinner: 25 },
+  "JDT 3": { breakfast: 10, lunch: 15, dinner: 15 },
+  "JDT 4": { breakfast: 10, lunch: 15, dinner: 15 },
+  UTM: { breakfast: 10, lunch: 15, dinner: 15 },
+};
+const siteKey = (site: string) => site.toUpperCase().replace(/\s+/g, " ").trim();
+const pricesOf = (site: string): Prices | null => SITE_PRICES[siteKey(site)] ?? SITE_PRICES[Object.keys(SITE_PRICES).find((k) => siteKey(k) === siteKey(site)) ?? ""] ?? null;
+const priceNote = (p: Prices | null) => (!p ? "No price set" : p.breakfast === p.lunch && p.lunch === p.dinner ? `RM${p.breakfast} per meal` : `B RM${p.breakfast} · L RM${p.lunch} · D RM${p.dinner}`);
+const rm = (n: number) => `RM ${n.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 const num = (s: string) => (s.trim() === "" ? null : Number(s));
 const fmt = (n: number) => n.toLocaleString("en-GB");
 
@@ -110,10 +126,12 @@ export function MealsPaxTracker({ companyId, companyName, month, monthLabel, sit
       t.dinner += num(c.dinner) ?? 0;
       t.hitea += num(c.hitea) ?? 0;
     }
-    return { ...t, total: t.breakfast + t.lunch + t.dinner + t.hitea };
+    const p = pricesOf(site);
+    const amount = p ? t.breakfast * p.breakfast + t.lunch * p.lunch + t.dinner * p.dinner : 0;
+    return { ...t, total: t.breakfast + t.lunch + t.dinner + t.hitea, amount };
   };
   const siteTotals = sites.map((s) => ({ site: s, ...totalsOf(s) }));
-  const grand = siteTotals.reduce((g, r) => ({ breakfast: g.breakfast + r.breakfast, lunch: g.lunch + r.lunch, dinner: g.dinner + r.dinner, hitea: g.hitea + r.hitea, total: g.total + r.total }), { breakfast: 0, lunch: 0, dinner: 0, hitea: 0, total: 0 });
+  const grand = siteTotals.reduce((g, r) => ({ breakfast: g.breakfast + r.breakfast, lunch: g.lunch + r.lunch, dinner: g.dinner + r.dinner, hitea: g.hitea + r.hitea, total: g.total + r.total, amount: g.amount + r.amount }), { breakfast: 0, lunch: 0, dinner: 0, hitea: 0, total: 0, amount: 0 });
 
   const download = () => {
     const wb = XLSX.utils.book_new();
@@ -121,12 +139,14 @@ export function MealsPaxTracker({ companyId, companyName, month, monthLabel, sit
       ["MONTHLY MEALS & PAX SUMMARY"],
       [`${monthLabel} | ${companyName} | Monthly meal attendance by location`],
       [],
-      ["Location", "Breakfast Pax", "Lunch Pax", "Dinner Pax", "Hi-tea Pax", "Total Pax"],
-      ...siteTotals.map((r): (string | number)[] => [r.site, r.breakfast, r.lunch, r.dinner, r.hitea, r.total]),
-      ["GRAND TOTAL", grand.breakfast, grand.lunch, grand.dinner, grand.hitea, grand.total],
+      ["Location", "Price per pax", "Breakfast Pax", "Lunch Pax", "Dinner Pax", "Hi-tea Pax", "Total Pax", "Amount (RM)"],
+      ...siteTotals.map((r): (string | number)[] => [r.site, priceNote(pricesOf(r.site)), r.breakfast, r.lunch, r.dinner, r.hitea, r.total, Math.round(r.amount * 100) / 100]),
+      ["GRAND TOTAL", "", grand.breakfast, grand.lunch, grand.dinner, grand.hitea, grand.total, Math.round(grand.amount * 100) / 100],
+      [],
+      ["Hi-tea has no price and is not charged."],
     ];
     const s0 = XLSX.utils.aoa_to_sheet(summary);
-    s0["!cols"] = [{ wch: 18 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
+    s0["!cols"] = [{ wch: 18 }, { wch: 26 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 14 }];
     XLSX.utils.book_append_sheet(wb, s0, "Monthly Summary");
     for (const site of sites) {
       const rows: (string | number)[][] = [[`${site} | MONTHLY MEALS & PAX RECORD`], [monthLabel], [], ["Date", "Day", "Breakfast Pax", "Lunch Pax", "Dinner Pax", "Hi-tea Pax", "Remarks"]];
@@ -169,7 +189,8 @@ export function MealsPaxTracker({ companyId, companyName, month, monthLabel, sit
                 {MEALS.map((m) => (
                   <th key={m.key} className="py-2 pr-3 text-right">{m.label}</th>
                 ))}
-                <th className="py-2 text-right">Total Pax</th>
+                <th className="py-2 pr-3 text-right">Total Pax</th>
+                <th className="py-2 text-right">Amount</th>
               </tr>
             </thead>
             <tbody>
@@ -177,12 +198,14 @@ export function MealsPaxTracker({ companyId, companyName, month, monthLabel, sit
                 <tr key={r.site} className="border-t border-border">
                   <td className="py-2 pr-3 font-semibold text-text">
                     <button type="button" className="hover:underline" onClick={() => setTab(r.site)}>{r.site}</button>
+                    <div className="text-[11.5px] font-normal text-text-muted">{priceNote(pricesOf(r.site))}</div>
                   </td>
                   <td className="py-2 pr-3 text-right">{fmt(r.breakfast)}</td>
                   <td className="py-2 pr-3 text-right">{fmt(r.lunch)}</td>
                   <td className="py-2 pr-3 text-right">{fmt(r.dinner)}</td>
                   <td className="py-2 pr-3 text-right">{fmt(r.hitea)}</td>
-                  <td className="py-2 text-right font-semibold text-text">{fmt(r.total)}</td>
+                  <td className="py-2 pr-3 text-right font-semibold text-text">{fmt(r.total)}</td>
+                  <td className="whitespace-nowrap py-2 text-right font-semibold text-text">{rm(r.amount)}</td>
                 </tr>
               ))}
               <tr className="border-t-2 border-border-strong font-bold text-text">
@@ -191,11 +214,12 @@ export function MealsPaxTracker({ companyId, companyName, month, monthLabel, sit
                 <td className="py-2 pr-3 text-right">{fmt(grand.lunch)}</td>
                 <td className="py-2 pr-3 text-right">{fmt(grand.dinner)}</td>
                 <td className="py-2 pr-3 text-right">{fmt(grand.hitea)}</td>
-                <td className="py-2 text-right">{fmt(grand.total)}</td>
+                <td className="py-2 pr-3 text-right">{fmt(grand.total)}</td>
+                <td className="whitespace-nowrap py-2 text-right">{rm(grand.amount)}</td>
               </tr>
             </tbody>
           </table>
-          <div className="mt-3 text-[12.5px] text-text-muted">Enter the pax in each location&apos;s tab. Leave Hi-tea blank on days when it is not required.</div>
+          <div className="mt-3 text-[12.5px] text-text-muted">Enter the pax in each location&apos;s tab. Leave Hi-tea blank on days when it is not required. Amount = pax × price per pax (JDT 3, JDT 4, UTM: breakfast RM10, lunch RM15, dinner RM15; JDT 2: RM25 per meal). Hi-tea is not charged.</div>
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-surface p-4 shadow-sm">

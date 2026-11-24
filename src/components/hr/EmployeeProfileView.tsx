@@ -35,6 +35,7 @@ import { StaffFilesCard, type StaffFileRow } from "@/components/hr/StaffFilesCar
 import { getProbationsForPerson } from "@/lib/hr/probationQueries";
 import { todayInMalaysia } from "@/lib/format";
 import { PrintButton } from "@/components/reports/PrintButton";
+import { LeaveBalanceCard } from "@/components/hr/LeaveBalanceCard";
 
 const emptyField = (v: React.ReactNode) => v === null || v === undefined || v === "" || (typeof v === "string" && v.startsWith("Restricted"));
 
@@ -345,6 +346,8 @@ export async function EmployeeProfileView({
             ))}
           </div>
         </SectionCard>
+
+        <LeaveBalanceCard employeeId={id} joinDate={employee.join_date} leave={leave} supabase={supabase} claimHoursHref={backHref ? "/hr/claim-hours" : "/profile/claim-hours"} />
 
         <SectionCard noPrint title="Leave" action={<Link href={`/hr/${id}/leave/new${query}`} className="text-[12.5px] font-semibold text-primary">+ Request</Link>}>
           {leave.length === 0 ? (
