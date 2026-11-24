@@ -5,7 +5,7 @@ import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { todayInMalaysia } from "@/lib/format";
 import { AGING_LABELS, loadSoaStatements } from "@/lib/procurement/soa";
-import { amountInWords } from "@/lib/documents/printDocument";
+import { amountInWords } from "@/lib/amountInWords";
 import { SoaPrintButtons } from "@/components/procurement/SoaPrintButtons";
 import { SoaDateFilter } from "@/components/procurement/SoaDateFilter";
 
