@@ -9,8 +9,12 @@ const TABS = [
 ];
 
 /** The tabs of My Profile. A superior also gets Team Approvals (the OT and leave of their staff). */
-export function ProfileTabs({ active, record, showTeam = false, teamWaiting = 0 }: { active: string; record?: string; showTeam?: boolean; teamWaiting?: number }) {
-  const tabs = showTeam ? [...TABS, { href: "/profile/team", label: teamWaiting > 0 ? `Team Approvals (${teamWaiting})` : "Team Approvals" }] : TABS;
+export function ProfileTabs({ active, record, showTeam = false, teamWaiting = 0, showRoster = false }: { active: string; record?: string; showTeam?: boolean; teamWaiting?: number; showRoster?: boolean }) {
+  const tabs = [
+    ...TABS,
+    ...(showRoster ? [{ href: "/profile/duty-roster", label: "Duty Roster" }] : []),
+    ...(showTeam ? [{ href: "/profile/team", label: teamWaiting > 0 ? `Team Approvals (${teamWaiting})` : "Team Approvals" }] : []),
+  ];
   return (
     <div className="-mx-1 flex gap-1 overflow-x-auto border-b border-border px-1 print:hidden">
       {tabs.map((t) => (

@@ -23,7 +23,10 @@ const GROUPS: { title: string; tabs: Tab[] }[] = [
   },
   {
     title: "Manage My Staff",
-    tabs: [{ href: "/driver-logistics/attendance", label: "Attendance (Clock In / Out)", match: (p) => p.startsWith("/driver-logistics/attendance") }],
+    tabs: [
+      { href: "/driver-logistics/duty-roster", label: "Daily Duty Roster", match: (p) => p.startsWith("/driver-logistics/duty-roster") },
+      { href: "/driver-logistics/attendance", label: "Attendance (Clock In / Out)", match: (p) => p.startsWith("/driver-logistics/attendance") },
+    ],
   },
 ];
 
