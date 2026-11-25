@@ -6,7 +6,22 @@ import { useTabVisible } from "@/components/layout/SectionAccess";
 
 type Tab = { href: string; label: string; match: (p: string) => boolean };
 
+/**
+ * In the order of the day's work: plan the staff (duty roster, clock in), prepare the equipment, run the deliveries and follow the
+ * drivers, then the drivers' and vehicles' records and the vehicle maintenance.
+ */
 const GROUPS: { title: string; tabs: Tab[] }[] = [
+  {
+    title: "Manage My Staff",
+    tabs: [
+      { href: "/driver-logistics/duty-roster", label: "Daily Duty Roster", match: (p) => p.startsWith("/driver-logistics/duty-roster") },
+      { href: "/driver-logistics/attendance", label: "Attendance (Clock In / Out)", match: (p) => p.startsWith("/driver-logistics/attendance") },
+    ],
+  },
+  {
+    title: "Manage Equipment",
+    tabs: [{ href: "/driver-logistics/equipment", label: "Equipment Checklist", match: (p) => p.startsWith("/driver-logistics/equipment") }],
+  },
   {
     title: "Manage Drivers",
     tabs: [
@@ -15,17 +30,6 @@ const GROUPS: { title: string; tabs: Tab[] }[] = [
       { href: "/driver-logistics/drivers", label: "Drivers Information", match: (p) => p.startsWith("/driver-logistics/drivers") },
       { href: "/driver-logistics/vehicles", label: "Vehicles", match: (p) => p.startsWith("/driver-logistics/vehicles") },
       { href: "/driver-logistics/maintenance", label: "Maintenance", match: (p) => p.startsWith("/driver-logistics/maintenance") },
-    ],
-  },
-  {
-    title: "Manage Equipment",
-    tabs: [{ href: "/driver-logistics/equipment", label: "Equipment Checklist", match: (p) => p.startsWith("/driver-logistics/equipment") }],
-  },
-  {
-    title: "Manage My Staff",
-    tabs: [
-      { href: "/driver-logistics/duty-roster", label: "Daily Duty Roster", match: (p) => p.startsWith("/driver-logistics/duty-roster") },
-      { href: "/driver-logistics/attendance", label: "Attendance (Clock In / Out)", match: (p) => p.startsWith("/driver-logistics/attendance") },
     ],
   },
 ];
