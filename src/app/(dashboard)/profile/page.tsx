@@ -64,7 +64,7 @@ export default async function MyProfilePage({ searchParams }: { searchParams: Pr
           ))}
         </div>
       )}
-      <EmployeeProfileView employee={employee} access={access} session={session} supabase={supabase} query="" />
+      <EmployeeProfileView employee={employee} access={access} session={session} supabase={supabase} query="" hideLeaveAndOt />
     </div>
   );
 }

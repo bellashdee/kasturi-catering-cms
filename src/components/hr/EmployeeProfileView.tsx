@@ -68,11 +68,14 @@ export async function EmployeeProfileView({
   query,
   backHref,
   showHistory = false,
+  hideLeaveAndOt = false,
 }: {
   employee: EmployeeWithCompany;
   access: HrAccess;
   session: SessionContext;
   supabase: SupabaseClient<Database>;
+  /** My Details: the Leave and Overtime lists are left out (they have their own tabs, Leave Form and OT Form) */
+  hideLeaveAndOt?: boolean;
   query: string;
   /** a link back to the Employee Database (left out on My Profile) */
   backHref?: string;
@@ -360,41 +363,45 @@ export async function EmployeeProfileView({
 
         <LeaveBalanceCard employeeId={id} joinDate={employee.join_date} leave={leave} supabase={supabase} claimHoursHref={backHref ? "/hr/claim-hours" : "/profile/claim-hours"} />
 
-        <SectionCard noPrint title="Leave" action={<Link href={`/hr/${id}/leave/new${query}`} className="text-[12.5px] font-semibold text-primary">+ Request</Link>}>
-          {leave.length === 0 ? (
-            <EmptyRow text="No leave requests yet." />
-          ) : (
-            <div className="-mx-5 -mb-5 divide-y divide-border">
-              {leave.slice(0, 5).map((l) => (
-                <LeaveItem
-                  key={l.id}
-                  compact
-                  canDecide={leaveApprover === true && !access.ownEmployeeIds.has(employee.id)}
-                  canChange={access.isAdminOf(employee.company_id) || (access.ownEmployeeIds.has(employee.id) && l.status === "pending")}
-                  leave={{ id: l.id, employeeId: l.employee_id, leaveType: l.leave_type, leaveTypeOther: l.leave_type_other, startDate: l.start_date, endDate: l.end_date, days: Number(l.days), reason: l.reason, status: l.status, documentId: l.document_id, approvalText: l.status === "pending" ? `Approval by: ${leaveApproverName}` : null }}
-                />
-              ))}
-            </div>
-          )}
-        </SectionCard>
+        {!hideLeaveAndOt && (
+          <>
+            <SectionCard noPrint title="Leave" action={<Link href={`/hr/${id}/leave/new${query}`} className="text-[12.5px] font-semibold text-primary">+ Request</Link>}>
+              {leave.length === 0 ? (
+                <EmptyRow text="No leave requests yet." />
+              ) : (
+                <div className="-mx-5 -mb-5 divide-y divide-border">
+                  {leave.slice(0, 5).map((l) => (
+                    <LeaveItem
+                      key={l.id}
+                      compact
+                      canDecide={leaveApprover === true && !access.ownEmployeeIds.has(employee.id)}
+                      canChange={access.isAdminOf(employee.company_id) || (access.ownEmployeeIds.has(employee.id) && l.status === "pending")}
+                      leave={{ id: l.id, employeeId: l.employee_id, leaveType: l.leave_type, leaveTypeOther: l.leave_type_other, startDate: l.start_date, endDate: l.end_date, days: Number(l.days), reason: l.reason, status: l.status, documentId: l.document_id, approvalText: l.status === "pending" ? `Approval by: ${leaveApproverName}` : null }}
+                    />
+                  ))}
+                </div>
+              )}
+            </SectionCard>
 
-        <SectionCard noPrint title="Overtime" action={<Link href={`/hr/overtime/new?employee=${id}`} className="text-[12.5px] font-semibold text-primary">+ OT Form</Link>}>
-          {overtime.length === 0 ? (
-            <EmptyRow text="No overtime logged yet." />
-          ) : (
-            <div className="-mx-5 -mb-5 divide-y divide-border">
-              {overtime.slice(0, 5).map((o) => (
-                <Link key={o.id} href={`/hr/overtime/${o.id}`} className="flex items-center justify-between px-5 py-3 hover:bg-bg">
-                  <div>
-                    <div className="text-[13px] font-semibold text-text">{o.work_date}</div>
-                    <div className="text-xs text-text-muted">{o.reason || "No reason given"} · {OT_STATUS_LABEL[o.status] ?? o.status}</div>
-                  </div>
-                  <div className="text-[13px] font-bold text-text">{o.hours}h</div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </SectionCard>
+            <SectionCard noPrint title="Overtime" action={<Link href={`/hr/overtime/new?employee=${id}`} className="text-[12.5px] font-semibold text-primary">+ OT Form</Link>}>
+              {overtime.length === 0 ? (
+                <EmptyRow text="No overtime logged yet." />
+              ) : (
+                <div className="-mx-5 -mb-5 divide-y divide-border">
+                  {overtime.slice(0, 5).map((o) => (
+                    <Link key={o.id} href={`/hr/overtime/${o.id}`} className="flex items-center justify-between px-5 py-3 hover:bg-bg">
+                      <div>
+                        <div className="text-[13px] font-semibold text-text">{o.work_date}</div>
+                        <div className="text-xs text-text-muted">{o.reason || "No reason given"} · {OT_STATUS_LABEL[o.status] ?? o.status}</div>
+                      </div>
+                      <div className="text-[13px] font-bold text-text">{o.hours}h</div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </SectionCard>
+          </>
+        )}
 
         {isAdmin && showHistory && (
           <div className="lg:col-span-2 print:hidden">
