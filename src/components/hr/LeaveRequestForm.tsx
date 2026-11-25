@@ -22,7 +22,23 @@ function daysBetween(start: string, end: string): number {
  * `keyIn`: an admin or leave editor types in the leave of another staff member (a paper form or a message): the status can be set to
  * "already approved", and after saving the person goes back to the leave list (they cannot open another staff member's profile).
  */
-export function LeaveRequestForm({ employeeId, companyId, keyIn = false, canApprove = false, doneHref }: { employeeId: string; companyId: string; keyIn?: boolean; canApprove?: boolean; doneHref?: string }) {
+export function LeaveRequestForm({
+  employeeId,
+  companyId,
+  keyIn = false,
+  canApprove = false,
+  doneHref,
+  approverName,
+}: {
+  employeeId: string;
+  companyId: string;
+  keyIn?: boolean;
+  canApprove?: boolean;
+  doneHref?: string;
+  /** who approves this staff member's leave: their superior (or the leave approver when they have none) */
+  approverName?: string | null;
+}) {
+  const sendTo = approverName || "Madam Penny";
   const router = useRouter();
   const [leaveType, setLeaveType] = useState("annual");
   const [otherType, setOtherType] = useState("");
@@ -62,6 +78,10 @@ export function LeaveRequestForm({ employeeId, companyId, keyIn = false, canAppr
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {error && <div className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">{error}</div>}
+
+      <div className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2.5 text-[13px] text-text">
+        This leave will be approved by: <span className="font-bold">{sendTo}</span>
+      </div>
 
       <div>
         <label className={labelClass}>Leave Type *</label>
@@ -124,7 +144,7 @@ export function LeaveRequestForm({ employeeId, companyId, keyIn = false, canAppr
           Cancel
         </button>
         <button type="submit" disabled={saving} className="rounded-lg bg-primary px-5 py-2.5 text-[13.5px] font-semibold text-white disabled:opacity-60">
-          {saving ? "Saving..." : keyIn ? (canApprove && status === "approved" ? "Save leave" : "Save & send to Madam Penny") : "Submit for Approval"}
+          {saving ? "Saving..." : keyIn ? (canApprove && status === "approved" ? "Save leave" : `Save & send to ${sendTo}`) : `Submit to ${sendTo}`}
         </button>
       </div>
     </form>

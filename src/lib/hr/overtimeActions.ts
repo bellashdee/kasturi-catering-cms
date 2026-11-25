@@ -6,9 +6,10 @@ import { logTaskAudit } from "@/lib/taskProofs/actions";
 import { todayInMalaysia } from "@/lib/driverAttendance/date";
 import { runAction, type ActionResult } from "@/lib/actionResult";
 import { countedHoursForMonth } from "@/lib/hr/otQueries";
+import { superiorsOf } from "@/lib/hr/superiors";
+import { untyped } from "@/lib/kitchenPurchase/shared";
 import type { Database } from "@/lib/supabase/types";
 import {
-  OT_DECIDABLE_STATUSES,
   OT_MONTHLY_LIMIT,
   calcOtHours,
   otInterval,
@@ -54,7 +55,8 @@ async function assertCanActFor(supabase: DB, userId: string, employee: EmployeeR
   if (isAdmin !== true) throw new Error("You can only submit OT for your own staff record. Ask an admin to link your login to your name.");
 }
 
-function validate(input: OvertimeInput, submitting: boolean) {
+/** `hasSuperior`: the OT goes to the staff member's superior in the system, so no separate proof of approval is needed. */
+function validate(input: OvertimeInput, submitting: boolean, hasSuperior: boolean) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.workDate)) throw new Error("Select the OT date.");
   if (input.workDate > todayInMalaysia()) throw new Error("The OT date cannot be in the future.");
   if (calcOtHours(input.otStartTime, input.otEndTime) === null) throw new Error("Enter a valid OT start and end time (they cannot be the same).");
@@ -62,7 +64,7 @@ function validate(input: OvertimeInput, submitting: boolean) {
     throw new Error("Normal working hours must be between 0 and 24.");
   }
   if (submitting && !input.reason?.trim()) throw new Error("Enter the reason / description for this OT. For a saved draft, press Edit Draft and fill it in.");
-  if (submitting && !input.documentId) throw new Error("Attach the approval of your manager (for example a screenshot of the message, a signed form or an email) before you submit the OT.");
+  if (submitting && !hasSuperior && !input.documentId) throw new Error("Attach the approval of your manager (for example a screenshot of the message, a signed form or an email) before you submit the OT.");
 }
 
 async function assertNoOverlap(supabase: DB, employeeId: string, workDate: string, start: string, end: string, excludeId?: string) {
@@ -85,12 +87,16 @@ async function assertNoOverlap(supabase: DB, employeeId: string, workDate: strin
   }
 }
 
-/** Below the monthly limit the OT is simply Submitted; if it would take the month above the limit it needs Manager Approval. */
-async function statusForSubmission(supabase: DB, employeeId: string, workDate: string, hours: number, excludeId?: string) {
+/**
+ * A staff member with a superior: every OT waits for the superior's approval. Without one (the old way): below the monthly limit the
+ * OT is simply Submitted; if it would take the month above the limit it needs Manager Approval.
+ */
+async function statusForSubmission(supabase: DB, employeeId: string, workDate: string, hours: number, hasSuperior: boolean, excludeId?: string) {
   const counted = await countedHoursForMonth(supabase, employeeId, workDate, excludeId);
   const projected = counted + hours;
   const exceeds = projected > OT_MONTHLY_LIMIT;
-  return { counted, projected, exceeds, status: (exceeds ? "pending_approval" : "submitted") as OtStatus };
+  const waits = exceeds || hasSuperior;
+  return { counted, projected, exceeds, waits, status: (waits ? "pending_approval" : "submitted") as OtStatus };
 }
 
 async function openApproval(supabase: DB, userId: string, companyId: string, overtimeId: string) {
@@ -116,9 +122,11 @@ function refresh(employeeId: string, overtimeId?: string) {
 export type SaveOvertimeResult = {
   id: string;
   status: OtStatus;
-  /** true when the submission would take the month above the limit, so it waits for Manager Approval. */
+  /** true when the OT waits for a decision (the superior, or above the monthly limit). */
   needsApproval: boolean;
   monthlyTotal: number;
+  /** who decides it: the superior's name (null when the staff member has no superior) */
+  approverName: string | null;
 };
 
 /**
@@ -128,7 +136,8 @@ export type SaveOvertimeResult = {
 async function saveOvertimeImpl(input: OvertimeInput, intent: "draft" | "submit", overtimeId?: string): Promise<SaveOvertimeResult> {
   const { supabase, userId } = await requireUser();
   const submitting = intent === "submit";
-  validate(input, submitting);
+  const superior = (await superiorsOf(supabase, [input.employeeId])).get(input.employeeId) ?? null;
+  validate(input, submitting, !!superior);
 
   const employee = await loadEmployee(supabase, input.employeeId);
   await assertCanActFor(supabase, userId, employee);
@@ -145,12 +154,14 @@ async function saveOvertimeImpl(input: OvertimeInput, intent: "draft" | "submit"
 
   let status: OtStatus = "draft";
   let needsApproval = false;
+  let exceeds = false;
   let monthlyTotal = 0;
   if (submitting) {
     await assertNoOverlap(supabase, input.employeeId, input.workDate, input.otStartTime, input.otEndTime, overtimeId);
-    const check = await statusForSubmission(supabase, input.employeeId, input.workDate, hours, overtimeId);
+    const check = await statusForSubmission(supabase, input.employeeId, input.workDate, hours, !!superior, overtimeId);
     status = check.status;
-    needsApproval = check.exceeds;
+    needsApproval = check.waits;
+    exceeds = check.exceeds;
     monthlyTotal = check.projected;
   }
 
@@ -165,7 +176,7 @@ async function saveOvertimeImpl(input: OvertimeInput, intent: "draft" | "submit"
     reason: input.reason?.trim() || null,
     document_id: input.documentId ?? null,
     status,
-    exceeds_limit: needsApproval,
+    exceeds_limit: exceeds,
     submitted_at: submitting ? new Date().toISOString() : null,
   };
 
@@ -188,13 +199,19 @@ async function saveOvertimeImpl(input: OvertimeInput, intent: "draft" | "submit"
       relatedId: id,
       action: needsApproval ? "ot_request_submitted" : "ot_submitted",
       newValue: status,
-      reason: needsApproval ? `Would bring the month to ${monthlyTotal} hours (limit ${OT_MONTHLY_LIMIT}); Manager Approval required.` : undefined,
+      reason: exceeds
+        ? `Would bring the month to ${monthlyTotal} hours (limit ${OT_MONTHLY_LIMIT}); Manager Approval required.`
+        : superior
+          ? `Sent to ${superior.name} (superior) for approval.`
+          : undefined,
     });
     if (needsApproval) await openApproval(supabase, userId, employee.company_id, id);
   }
 
   refresh(input.employeeId, id);
-  return { id: id!, status, needsApproval, monthlyTotal };
+  revalidatePath("/profile/ot");
+  revalidatePath("/profile/team");
+  return { id: id!, status, needsApproval, monthlyTotal, approverName: superior?.name ?? null };
 }
 
 /**
@@ -254,47 +271,43 @@ export async function cancelOvertime(overtimeId: string, reason?: string): Promi
 }
 
 /**
- * Manager decision. Recorded with the manager, the time, the decision, the approved hours and remarks.
- * A manager can never decide their own OT (also enforced by a database trigger).
+ * The decision of the superior (or a Super Admin; for staff without a superior, the OT approvers). Recorded with who decided, the time,
+ * the decision, the approved hours and remarks. Nobody decides their own OT. The checks run in the database (decide_staff_overtime),
+ * because a superior is not always an admin of the staff member's company.
  */
 async function decideOvertimeImpl(overtimeId: string, decision: "approved" | "rejected", options: { approvedHours?: number; remarks?: string }) {
-  const { supabase, userId } = await requireUser();
-  const { data: rec } = await supabase.from("overtime_records").select("*, employees(user_id)").eq("id", overtimeId).maybeSingle();
-  if (!rec) throw new Error("OT record not found.");
-  if (!OT_DECIDABLE_STATUSES.includes(rec.status as OtStatus)) throw new Error("This OT is not waiting for a decision.");
-
-  const { data: isApprover } = await supabase.rpc("user_can_approve_ot", { target_company_id: rec.company_id });
-  if (isApprover !== true) throw new Error("Only Saiful, Redza, Atiq or Ismaizal can approve or reject overtime.");
-  if (rec.employees?.user_id === userId) throw new Error("You cannot approve or reject your own overtime.");
-
+  const { supabase } = await requireUser();
+  const { data: team } = await untyped(supabase).rpc("my_team_requests");
+  const fromTeam = ((team?.overtime ?? []) as { id: string; employee_id: string; company: string; status: string; hours: number }[]).find((o) => o.id === overtimeId);
+  const { data: rec } = await supabase.from("overtime_records").select("id, employee_id, company_id, status, hours").eq("id", overtimeId).maybeSingle();
+  const employeeId = rec?.employee_id ?? fromTeam?.employee_id;
+  if (!employeeId) throw new Error("OT record not found.");
+  const previous = rec?.status ?? fromTeam?.status ?? "";
   const remarks = options.remarks?.trim() || null;
-  let approvedHours: number | null = null;
-  if (decision === "approved") {
-    approvedHours = options.approvedHours ?? Number(rec.hours);
-    if (!Number.isFinite(approvedHours) || approvedHours <= 0 || approvedHours > Number(rec.hours)) {
-      throw new Error(`Approved hours must be more than 0 and not more than the ${rec.hours} hours requested.`);
-    }
-  } else if (!remarks) {
-    throw new Error("Enter a remark explaining why this OT is rejected.");
-  }
 
-  const { error } = await supabase
-    .from("overtime_records")
-    .update({ status: decision, reviewed_by: userId, reviewed_at: new Date().toISOString(), approved_hours: approvedHours, manager_remarks: remarks })
-    .eq("id", overtimeId);
-  if (error) throw error;
-
-  await closeApproval(supabase, rec.approval_id, decision);
-  await logTaskAudit({
-    companyId: rec.company_id,
-    relatedTable: "overtime_records",
-    relatedId: overtimeId,
-    action: decision === "approved" ? "ot_approved" : "ot_rejected",
-    previousValue: rec.status,
-    newValue: decision === "approved" ? `${approvedHours} hours approved` : "rejected",
-    reason: remarks ?? undefined,
+  const { error } = await untyped(supabase).rpc("decide_staff_overtime", {
+    p_overtime_id: overtimeId,
+    p_decision: decision,
+    p_approved_hours: decision === "approved" && Number.isFinite(options.approvedHours) ? options.approvedHours : null,
+    p_remarks: remarks,
   });
-  refresh(rec.employee_id, overtimeId);
+  if (error) throw new Error(error.message);
+
+  const companyId = rec?.company_id;
+  if (companyId) {
+    await logTaskAudit({
+      companyId,
+      relatedTable: "overtime_records",
+      relatedId: overtimeId,
+      action: decision === "approved" ? "ot_approved" : "ot_rejected",
+      previousValue: previous,
+      newValue: decision === "approved" ? `${options.approvedHours ?? rec?.hours} hours approved` : "rejected",
+      reason: remarks ?? undefined,
+    }).catch(() => undefined);
+  }
+  refresh(employeeId, overtimeId);
+  revalidatePath("/profile/team");
+  revalidatePath("/profile/ot");
 }
 
 export async function decideOvertime(overtimeId: string, decision: "approved" | "rejected", options: { approvedHours?: number; remarks?: string }): Promise<ActionResult> {

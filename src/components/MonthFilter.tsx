@@ -6,11 +6,13 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
  * Filter of a list by month: a month picker with the month before and after (the list shows what falls in that month). A page opened
  * without a month opens on this month (the proxy adds it, see MONTH_FILTER_PAGES). The company and the search stay.
  */
-export function MonthFilter({ param = "month" }: { param?: string }) {
+export function MonthFilter({ param = "month", allowAll = false }: { param?: string; /** shows an "All months" button (month=all: no month filter) */ allowAll?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const value = searchParams.get(param) ?? "";
+  const raw = searchParams.get(param) ?? "";
+  const isAll = raw === "all";
+  const value = isAll ? "" : raw;
 
   function change(next: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -45,6 +47,15 @@ export function MonthFilter({ param = "month" }: { param?: string }) {
         <button type="button" aria-label="Next month" onClick={() => step(1)} className={btn}>
           ›
         </button>
+        {allowAll && (
+          <button
+            type="button"
+            onClick={() => change("all")}
+            className={`h-9 shrink-0 rounded-lg border px-3 text-[13px] font-semibold ${isAll ? "border-primary bg-primary text-white" : "border-border-strong bg-surface text-text hover:bg-surface-alt"}`}
+          >
+            All months
+          </button>
+        )}
       </div>
     </div>
   );

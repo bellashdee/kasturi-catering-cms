@@ -8,11 +8,12 @@ const TABS = [
   { href: "/profile/mileage", label: "Mileage Claim" },
 ];
 
-/** The tabs of My Profile. */
-export function ProfileTabs({ active, record }: { active: string; record?: string }) {
+/** The tabs of My Profile. A superior also gets Team Approvals (the OT and leave of their staff). */
+export function ProfileTabs({ active, record, showTeam = false, teamWaiting = 0 }: { active: string; record?: string; showTeam?: boolean; teamWaiting?: number }) {
+  const tabs = showTeam ? [...TABS, { href: "/profile/team", label: teamWaiting > 0 ? `Team Approvals (${teamWaiting})` : "Team Approvals" }] : TABS;
   return (
     <div className="-mx-1 flex gap-1 overflow-x-auto border-b border-border px-1 print:hidden">
-      {TABS.map((t) => (
+      {tabs.map((t) => (
         <Link
           key={t.href}
           href={record ? `${t.href}?record=${record}` : t.href}

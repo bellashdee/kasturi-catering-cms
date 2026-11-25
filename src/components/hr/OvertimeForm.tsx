@@ -15,6 +15,8 @@ export type OtStaffOption = {
   companyName: string;
   department: string | null;
   position: string | null;
+  /** the superior who approves this staff member's OT (null: no superior, the OT approvers decide) */
+  superiorName?: string | null;
 };
 
 type Initial = {
@@ -87,7 +89,7 @@ export function OvertimeForm({
       setError("Enter the reason / description for this OT.");
       return;
     }
-    if (intent === "submit" && !photo && !initial?.documentId) {
+    if (intent === "submit" && !person?.superiorName && !photo && !initial?.documentId) {
       setError("Attach the approval of your manager before you submit the OT.");
       return;
     }
@@ -169,6 +171,13 @@ export function OvertimeForm({
         </div>
       </div>
 
+      {person && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2.5 text-[13px] text-text">
+          This OT will be approved by: <span className="font-bold">{person.superiorName ?? "Saiful, Redza, Atiq or Ismaizal"}</span>
+          {person.superiorName ? " (superior)" : ""}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>OT Date *</label>
@@ -209,9 +218,13 @@ export function OvertimeForm({
       </div>
 
       <div>
-        <label className={labelClass}>Manager&apos;s approval — attach *</label>
+        <label className={labelClass}>{person?.superiorName ? "Supporting file (optional)" : "Manager's approval — attach *"}</label>
         <input type="file" accept="image/*,application/pdf" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} className="mt-1.5 block w-full text-[13px]" />
-        <p className="mt-1 text-[11.5px] text-text-muted">Your manager must approve the OT first. Attach the approval (a screenshot of the message, a signed form or an email). It is required to submit; a draft can be saved without it.</p>
+        <p className="mt-1 text-[11.5px] text-text-muted">
+          {person?.superiorName
+            ? `After you submit, ${person.superiorName} approves or rejects the OT in the system. A file is not needed.`
+            : "Your manager must approve the OT first. Attach the approval (a screenshot of the message, a signed form or an email). It is required to submit; a draft can be saved without it."}
+        </p>
         {initial?.documentId && !photo && <p className="mt-1 text-[11.5px] text-text-muted">An approval is already attached. Choose a file only to replace it.</p>}
       </div>
 
@@ -234,7 +247,7 @@ export function OvertimeForm({
           {busy === "draft" ? "Saving..." : "Save Draft"}
         </button>
         <button type="submit" disabled={busy !== null} className="rounded-lg bg-primary px-5 py-2.5 text-[13.5px] font-semibold text-white disabled:opacity-60">
-          {busy === "submit" ? "Submitting..." : wouldExceed ? "Submit OT Request" : "Submit OT"}
+          {busy === "submit" ? "Submitting..." : person?.superiorName ? `Submit to ${person.superiorName}` : wouldExceed ? "Submit OT Request" : "Submit OT"}
         </button>
       </div>
     </form>

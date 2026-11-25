@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import type { OtStaffOption } from "@/components/hr/OvertimeForm";
+import { superiorsOf } from "@/lib/hr/superiors";
 
 type DB = SupabaseClient<Database>;
 
@@ -30,8 +31,9 @@ export async function listOtStaffOptions(supabase: DB, companyIds: string[], use
     companiesWhereUser(supabase, companyIds, "user_is_company_admin"),
   ]);
 
-  return (employees ?? [])
-    .filter((e) => adminCompanies.has(e.company_id) || e.user_id === userId)
+  const shown = (employees ?? []).filter((e) => adminCompanies.has(e.company_id) || e.user_id === userId);
+  const superiors = await superiorsOf(supabase, shown.map((e) => e.id));
+  return shown
     .map((e) => ({
       id: e.id,
       name: e.full_name,
@@ -39,5 +41,6 @@ export async function listOtStaffOptions(supabase: DB, companyIds: string[], use
       companyName: e.companies?.name ?? "",
       department: e.department,
       position: e.position,
+      superiorName: superiors.get(e.id)?.name ?? null,
     }));
 }

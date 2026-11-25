@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { getEmployee } from "@/lib/hr/queries";
 import { LeaveRequestForm } from "@/components/hr/LeaveRequestForm";
+import { approverName, superiorsOf } from "@/lib/hr/superiors";
 import { LeaveFormGuide } from "@/components/shared/FormGuides";
 import { getHrAccess } from "@/lib/hr/access";
 
@@ -22,6 +23,7 @@ export default async function NewLeavePage({ params }: { params: Promise<{ id: s
   }
   const access = await getHrAccess(supabase, session, [employee.company_id]);
   if (!access.canSee(employee)) notFound();
+  const leaveApprover = approverName("leave", (await superiorsOf(supabase, [id])).get(id));
 
   return (
     <div className="mx-auto max-w-xl">
@@ -33,7 +35,7 @@ export default async function NewLeavePage({ params }: { params: Promise<{ id: s
         <LeaveFormGuide />
       </div>
       <div className="mt-5 rounded-xl border border-border bg-surface p-6 shadow-sm">
-        <LeaveRequestForm employeeId={id} companyId={employee.company_id} />
+        <LeaveRequestForm employeeId={id} companyId={employee.company_id} approverName={leaveApprover} />
       </div>
     </div>
   );

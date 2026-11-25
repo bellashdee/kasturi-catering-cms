@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { approverName, superiorsOf } from "@/lib/hr/superiors";
+import { untyped } from "@/lib/kitchenPurchase/shared";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import type { SessionContext } from "@/lib/auth";
@@ -99,7 +101,12 @@ export async function EmployeeProfileView({
     : { data: null };
   const companyOf = (companyId: string) => probationCompanies?.find((c) => c.id === companyId);
   // the letters and papers kept for this person (the database only returns them to a Super Admin and to the person themself)
-  const { data: leaveApprover } = await supabase.rpc("user_can_approve_leave");
+  // the superior of this staff member (or a Super Admin; without a superior, the leave approvers) approves the leave
+  const [{ data: leaveApprover }, superiors] = await Promise.all([
+    untyped(supabase).rpc("user_can_decide_staff_request", { target_employee_id: id, request_kind: "leave" }),
+    superiorsOf(supabase, [id]),
+  ]);
+  const leaveApproverName = approverName("leave", superiors.get(id));
   const { data: fileRows } = await supabase
     .from("employee_files")
     .select("id, kind, title, issued_date, original_filename, created_at, companies(name)")
@@ -362,9 +369,9 @@ export async function EmployeeProfileView({
                 <LeaveItem
                   key={l.id}
                   compact
-                  canDecide={leaveApprover === true}
+                  canDecide={leaveApprover === true && !access.ownEmployeeIds.has(employee.id)}
                   canChange={access.isAdminOf(employee.company_id) || (access.ownEmployeeIds.has(employee.id) && l.status === "pending")}
-                  leave={{ id: l.id, employeeId: l.employee_id, leaveType: l.leave_type, leaveTypeOther: l.leave_type_other, startDate: l.start_date, endDate: l.end_date, days: Number(l.days), reason: l.reason, status: l.status, documentId: l.document_id }}
+                  leave={{ id: l.id, employeeId: l.employee_id, leaveType: l.leave_type, leaveTypeOther: l.leave_type_other, startDate: l.start_date, endDate: l.end_date, days: Number(l.days), reason: l.reason, status: l.status, documentId: l.document_id, approvalText: l.status === "pending" ? `Approval by: ${leaveApproverName}` : null }}
                 />
               ))}
             </div>

@@ -13,6 +13,7 @@ import { SectionCard, EmptyRow } from "@/components/dashboard/SectionCard";
 import { ProfileHeader } from "@/components/hr/ProfileHeader";
 import { OvertimeForm } from "@/components/hr/OvertimeForm";
 import { OvertimeFormGuide } from "@/components/shared/FormGuides";
+import { approverName, displayNames, superiorsOf } from "@/lib/hr/superiors";
 
 const n = (v: number) => (Number.isInteger(v) ? String(v) : Number(v).toFixed(2).replace(/\.?0+$/, ""));
 
@@ -24,7 +25,7 @@ export default async function MyOvertimePage({ searchParams }: { searchParams: P
   const supabase = await createClient();
   const { records, employee } = await getOwnEmployee(supabase, session.userId, record);
   const header = (
-    <ProfileHeader active="/profile/ot" record={record} title="OT Form" intro="Fill in the day you worked overtime with the start and end time; the OT hours are worked out for you. Your manager approves it." records={records} currentId={employee?.id} />
+    <ProfileHeader active="/profile/ot" record={record} title="OT Form" intro="Fill in the day you worked overtime with the start and end time; the OT hours are worked out for you. Your superior approves it." records={records} currentId={employee?.id} />
   );
   if (!employee) {
     return (
@@ -35,7 +36,20 @@ export default async function MyOvertimePage({ searchParams }: { searchParams: P
     );
   }
 
-  const [{ data: claimHoursStaff }, overtime] = await Promise.all([untyped(supabase).rpc("employee_uses_claim_hours", { target_employee_id: employee.id }), listOvertimeForEmployee(supabase, employee.id)]);
+  const [{ data: claimHoursStaff }, overtime, superiors] = await Promise.all([
+    untyped(supabase).rpc("employee_uses_claim_hours", { target_employee_id: employee.id }),
+    listOvertimeForEmployee(supabase, employee.id),
+    superiorsOf(supabase, [employee.id]),
+  ]);
+  const superior = superiors.get(employee.id) ?? null;
+  const otApprover = approverName("ot", superior);
+  const reviewers = await displayNames(supabase, overtime.map((o) => o.reviewed_by));
+  const decidedBy = (o: (typeof overtime)[number]) => {
+    if (o.status === "draft" || o.status === "cancelled") return "—";
+    if (o.status === "submitted" || o.status === "pending_approval") return `Waiting for ${otApprover}`;
+    const who = (o.reviewed_by && reviewers.get(o.reviewed_by)) || otApprover;
+    return `${o.status === "approved" ? "Approved" : "Rejected"} by ${who}${o.manager_remarks ? ` · "${o.manager_remarks}"` : ""}`;
+  };
   const rec = record ? `?record=${record}` : "";
 
   return (
@@ -52,7 +66,7 @@ export default async function MyOvertimePage({ searchParams }: { searchParams: P
       ) : (
         <SectionCard title="Submit overtime" action={<OvertimeFormGuide />}>
           <OvertimeForm
-            staff={[{ id: employee.id, name: employee.full_name, companyId: employee.company_id, companyName: employee.companies?.name ?? "", department: employee.department, position: employee.position }]}
+            staff={[{ id: employee.id, name: employee.full_name, companyId: employee.company_id, companyName: employee.companies?.name ?? "", department: employee.department, position: employee.position, superiorName: superior?.name ?? null }]}
             defaultEmployeeId={employee.id}
             maxDate={todayInMalaysia()}
             doneHref={`/profile/ot${rec}`}
@@ -64,14 +78,15 @@ export default async function MyOvertimePage({ searchParams }: { searchParams: P
           <EmptyRow text="No overtime submitted yet." />
         ) : (
           <div className="-mx-5 -mb-5 overflow-x-auto">
-            <table className="w-full min-w-[620px] text-[14px]">
+            <table className="w-full min-w-[760px] text-[14px]">
               <thead>
                 <tr className="border-b border-border bg-surface-alt text-left text-[12px] font-bold uppercase tracking-wide text-text-secondary">
                   <th className="px-5 py-3">Date</th>
                   <th className="px-3 py-3">Time</th>
                   <th className="px-3 py-3 text-right">OT hours</th>
                   <th className="px-3 py-3">Reason</th>
-                  <th className="px-5 py-3">Status</th>
+                  <th className="px-3 py-3">Status</th>
+                  <th className="px-5 py-3">Approval</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -81,7 +96,8 @@ export default async function MyOvertimePage({ searchParams }: { searchParams: P
                     <td className="px-3 py-3 text-text-secondary">{o.ot_start_time ? `${o.ot_start_time.slice(0, 5)} – ${(o.ot_end_time ?? "").slice(0, 5)}` : "—"}</td>
                     <td className="px-3 py-3 text-right font-bold tabular-nums">{n(Number(o.approved_hours ?? o.hours ?? 0))}</td>
                     <td className="px-3 py-3 text-text-secondary">{o.reason || "—"}</td>
-                    <td className="px-5 py-3"><StatusBadge tone={OT_STATUS_TONE[o.status] ?? "neutral"}>{OT_STATUS_LABEL[o.status] ?? o.status}</StatusBadge></td>
+                    <td className="px-3 py-3"><StatusBadge tone={OT_STATUS_TONE[o.status] ?? "neutral"}>{OT_STATUS_LABEL[o.status] ?? o.status}</StatusBadge></td>
+                    <td className="px-5 py-3 text-[13px] text-text-secondary">{decidedBy(o)}</td>
                   </tr>
                 ))}
               </tbody>

@@ -16,6 +16,7 @@ import { LEAVE_STATUS_LABEL, LEAVE_TYPE_LABEL } from "@/lib/hr/constants";
 import { Select } from "@/components/ui/Select";
 import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
 import { readSort, sortBy } from "@/lib/listSort";
+import { approverName, displayNames, myTeamRequests, superiorsOf } from "@/lib/hr/superiors";
 
 const SORTS = { submitted: "Submitted", start: "Start date", staff: "Staff name", status: "Status" };
 
@@ -41,19 +42,86 @@ export default async function LeavePage({
 
   const access = await getHrAccess(supabase, session, targetCompanyIds);
   // a leave editor (Ms. Syaza, Ms. Nabilah) keys in and looks after the leave of the other staff too, without being an admin
-  const [{ data: editorFlag }, { data: viewerFlag }, { data: approverFlag }] = await Promise.all([
+  const [{ data: editorFlag }, { data: viewerFlag }, { data: approverFlag }, { data: superFlag }, team] = await Promise.all([
     supabase.rpc("user_is_leave_editor"),
     supabase.rpc("user_can_view_staff_leave"),
     supabase.rpc("user_can_approve_leave"),
+    supabase.rpc("current_user_is_super_admin"),
+    myTeamRequests(supabase),
   ]);
   const isEditor = editorFlag === true;
   const isViewer = viewerFlag === true;
-  const canApprove = approverFlag === true;
+  const isLeaveApprover = approverFlag === true;
+  const isSuper = superFlag === true;
   const canKeyIn = access.adminAnywhere || isEditor;
   // only the people who may look at staff leave see it (the database enforces the same); anyone else only their own
   // the month is the month the leave starts in
-  const allRequests = (await listLeaveForCompanies(supabase, targetCompanyIds)).filter((r) => access.isAdminOf(r.company_id) || isEditor || isViewer || access.ownEmployeeIds.has(r.employee_id));
+  const visible = (await listLeaveForCompanies(supabase, targetCompanyIds)).filter((r) => access.isAdminOf(r.company_id) || isEditor || isViewer || access.ownEmployeeIds.has(r.employee_id));
+  // a superior also sees every leave of their own staff (to approve it), even of a company they are not an admin of
+  const seen = new Set(visible.map((r) => r.id));
+  const teamRows = team.leave
+    .filter((l) => !seen.has(l.id))
+    .map((l) => ({
+      id: l.id,
+      company_id: "",
+      employee_id: l.employee_id,
+      leave_type: l.leave_type,
+      leave_type_other: l.leave_type_other,
+      start_date: l.start_date,
+      end_date: l.end_date,
+      days: l.days,
+      reason: l.reason,
+      status: l.status,
+      document_id: l.document_id,
+      created_at: l.created_at,
+      reviewed_by: null as string | null,
+      decision_remarks: l.remarks,
+      reviewer_name: l.reviewed_by_name,
+      employees: { full_name: l.name },
+      companies: { name: l.company },
+    }));
+  type LeaveView = (typeof teamRows)[number];
+  const allRequests: LeaveView[] = [
+    ...visible.map((r) => {
+      const extra = r as unknown as { reviewed_by?: string | null; decision_remarks?: string | null };
+      return {
+        id: r.id,
+        company_id: r.company_id,
+        employee_id: r.employee_id,
+        leave_type: r.leave_type,
+        leave_type_other: r.leave_type_other,
+        start_date: r.start_date,
+        end_date: r.end_date,
+        days: Number(r.days),
+        reason: r.reason,
+        status: r.status,
+        document_id: r.document_id,
+        created_at: r.created_at,
+        reviewed_by: extra.reviewed_by ?? null,
+        decision_remarks: extra.decision_remarks ?? null,
+        reviewer_name: null as string | null,
+        employees: { full_name: r.employees?.full_name ?? "" },
+        companies: { name: r.companies?.name ?? "" },
+      };
+    }),
+    ...teamRows,
+  ];
+  // who approves each leave (the staff member's superior) and who decided it
+  const [superiors, reviewerNames] = await Promise.all([superiorsOf(supabase, allRequests.map((r) => r.employee_id)), displayNames(supabase, allRequests.map((r) => r.reviewed_by))]);
+  const canDecideRow = (r: LeaveView) => {
+    if (access.ownEmployeeIds.has(r.employee_id)) return false;
+    const sup = superiors.get(r.employee_id);
+    return sup ? sup.userId === session.userId || isSuper : isLeaveApprover;
+  };
+  const approvalTextOf = (r: LeaveView) => {
+    const who = approverName("leave", superiors.get(r.employee_id));
+    const by = r.reviewer_name ?? (r.reviewed_by ? reviewerNames.get(r.reviewed_by) : null);
+    if (r.status === "approved") return `Approved by ${by ?? who}`;
+    if (r.status === "rejected") return `Rejected by ${by ?? who}`;
+    return `Approval by: ${who}`;
+  };
   const inMonth = filterByMonth(allRequests, month, (r) => r.start_date);
+  const waitingForMe = allRequests.filter((r) => r.status === "pending" && superiors.get(r.employee_id)?.userId === session.userId).length;
 
   // the AL / MC balance of every staff for one year: for the people who look after the staff leave
   const thisYear = Number(todayInMalaysia().slice(0, 4));
@@ -66,7 +134,7 @@ export default async function LeavePage({
     ? await untyped(supabase).from("leave_balance_adjustments").select("employee_id, year, al_entitled, al_taken_before, mc_entitled, mc_taken_before").eq("year", balanceYear).in("employee_id", staffForBalance.map((e) => e.id))
     : { data: [] };
   const adjOf = (id: string) => ((adjRows ?? []) as (LeaveAdjustment & { employee_id: string })[]).filter((a) => a.employee_id === id);
-  const balances = staffForBalance.map((e) => ({ e, b: leaveBalanceForYear(e.join_date, allRequests.filter((r) => r.employee_id === e.id), balanceYear, adjOf(e.id)) }));
+  const balances = staffForBalance.map((e) => ({ e, b: leaveBalanceForYear(e.join_date, visible.filter((r) => r.employee_id === e.id), balanceYear, adjOf(e.id)) }));
   const q = sp.q?.trim().toLowerCase() ?? "";
   const { sort, dir } = readSort(sp, SORTS, "submitted", "desc");
   const requests = sortBy(
@@ -89,9 +157,12 @@ export default async function LeavePage({
         <div>
           <h1 className="text-[22px] font-extrabold text-text">Leave Requests</h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">
-            {requests.length} leave request{requests.length === 1 ? "" : "s"} · {canKeyIn || isViewer ? "all employees you can access" : "your own"}
-            {monthLabel ? <span className="font-semibold text-text"> · {monthLabel}</span> : null}
+            {requests.length} leave request{requests.length === 1 ? "" : "s"} · {canKeyIn || isViewer ? "all employees you can access" : teamRows.length || team.leave.length ? "your own and your staff's" : "your own"}
+            <span className="font-semibold text-text"> · {monthLabel ?? "All months"}</span>
           </p>
+          {waitingForMe > 0 && (
+            <p className="mt-1 text-[13px] font-semibold text-warning">{waitingForMe} leave request{waitingForMe === 1 ? "" : "s"} of your staff waiting for your approval.</p>
+          )}
         </div>
         {canKeyIn && (
           <Link href={`/hr/leave/new${query}`} className="flex h-9 items-center rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">
@@ -151,7 +222,7 @@ export default async function LeavePage({
         </details>
       )}
 
-      <MonthFilter />
+      <MonthFilter allowAll />
 
       <ListFilters keep={{ company: requestedId, month }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/hr/leave${query}${month ? `${query ? "&" : "?"}month=${month}` : ""}`}>
         <FilterField label="Staff name">
@@ -177,11 +248,11 @@ export default async function LeavePage({
         ) : (
           <div className="divide-y divide-border">
             {requests.map((r) => {
-              const admin = access.isAdminOf(r.company_id);
+              const admin = !!r.company_id && access.isAdminOf(r.company_id);
               return (
                 <LeaveItem
                   key={r.id}
-                  canDecide={canApprove}
+                  canDecide={canDecideRow(r)}
                   canChange={admin || isEditor || (access.ownEmployeeIds.has(r.employee_id) && r.status === "pending")}
                   leave={{
                     id: r.id,
@@ -196,6 +267,8 @@ export default async function LeavePage({
                     reason: r.reason,
                     status: r.status,
                     documentId: r.document_id,
+                    approvalText: approvalTextOf(r),
+                    decisionRemarks: r.decision_remarks,
                   }}
                 />
               );

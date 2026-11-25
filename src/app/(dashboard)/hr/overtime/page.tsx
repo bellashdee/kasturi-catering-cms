@@ -24,6 +24,7 @@ import { buildReportRows } from "@/lib/reports/buildRows";
 import { Select } from "@/components/ui/Select";
 import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
 import { readSort, sortBy } from "@/lib/listSort";
+import { approverName, displayNames, superiorsOf } from "@/lib/hr/superiors";
 
 const SORTS = { date: "Date", staff: "Staff name", hours: "Hours", status: "Status" };
 
@@ -96,6 +97,16 @@ export default async function OvertimePage({
       ? sortBy(Array.from(byStaff.values()), "name", dir, { name: (s: Summary) => s.name })
       : sortBy(Array.from(byStaff.values()), "total", sort === "hours" ? dir : "desc", { total: (s: Summary) => s.total });
   const pendingRequests = monthRecords.filter((r) => r.status === "pending_approval");
+  // who approves each OT (the staff member's superior) and who decided it
+  const [superiors, reviewerNames] = await Promise.all([superiorsOf(supabase, monthRecords.map((r) => r.employee_id)), displayNames(supabase, monthRecords.map((r) => r.reviewed_by))]);
+  const approvalTextOf = (r: (typeof monthRecords)[number]) => {
+    const who = approverName("ot", superiors.get(r.employee_id));
+    const by = r.reviewed_by ? reviewerNames.get(r.reviewed_by) : null;
+    if (r.status === "approved") return `Approved by ${by ?? who}`;
+    if (r.status === "rejected") return `Rejected by ${by ?? who}`;
+    if (r.status === "pending_approval" || r.status === "submitted") return `Approval by: ${who}`;
+    return null;
+  };
   const monthLabel = `${MONTH_LABEL[month - 1]} ${year}`;
 
   const { headers, tableRows } = buildReportRows(
@@ -165,13 +176,14 @@ export default async function OvertimePage({
       )}
 
       {pendingRequests.length > 0 && (
-        <SectionCard title={`Pending Manager Approval (${pendingRequests.length})`}>
+        <SectionCard title={`Waiting for approval (${pendingRequests.length})`}>
           <div className="-mx-5 -mb-5 divide-y divide-border">
             {pendingRequests.map((r) => (
               <Link key={r.id} href={`/hr/overtime/${r.id}`} className="flex items-center justify-between px-5 py-3 text-[13px] hover:bg-bg">
                 <div>
                   <div className="font-semibold text-text">{r.employees?.full_name} <span className="font-normal text-text-secondary">· {formatHours(Number(r.hours))} on {formatMalaysiaDate(`${r.work_date}T12:00:00+08:00`)}</span></div>
                   <div className="text-xs text-text-muted">{r.reason || "No reason given"} · {r.companies?.name}</div>
+                  {approvalTextOf(r) && <div className="mt-0.5 text-xs font-semibold text-primary">{approvalTextOf(r)}</div>}
                 </div>
                 <StatusBadge tone="warning">Review</StatusBadge>
               </Link>
@@ -203,6 +215,7 @@ export default async function OvertimePage({
                     <span className="ml-2 font-normal text-text-secondary">{formatHours(Number(r.hours))} · {formatMalaysiaDate(`${r.work_date}T12:00:00+08:00`)}{r.ot_start_time && r.ot_end_time ? ` · ${r.ot_start_time.slice(0, 5)}–${r.ot_end_time.slice(0, 5)}` : ""}</span>
                   </div>
                   <div className="text-xs text-text-muted">{r.reason || "No reason given"} · {r.companies?.name}</div>
+                  {approvalTextOf(r) && <div className="mt-0.5 text-xs font-semibold text-primary">{approvalTextOf(r)}</div>}
                 </div>
                 <StatusBadge tone={OT_STATUS_TONE[r.status] ?? "neutral"}>{OT_STATUS_LABEL[r.status] ?? r.status}</StatusBadge>
               </Link>

@@ -25,6 +25,10 @@ export type LeaveItemData = {
   reason: string | null;
   status: string;
   documentId: string | null;
+  /** who approves it ("Approval by: ...") or who decided it ("Approved by ...") */
+  approvalText?: string | null;
+  /** the remark of the person who decided */
+  decisionRemarks?: string | null;
 };
 
 const inputClass = "mt-1 h-9 w-full rounded-lg border border-border-strong bg-surface px-2 text-[13px] outline-none focus:border-primary";
@@ -123,10 +127,12 @@ export function LeaveItem({ leave, canDecide, canChange, compact = false }: { le
         </div>
         {leave.reason && <div className="mt-0.5 text-xs text-text-secondary">{leave.reason}</div>}
         {leave.documentId && <DocumentViewLink documentId={leave.documentId} label="📎 MC / file" className="mt-0.5 text-xs" />}
+        {leave.approvalText && <div className="mt-1 text-xs font-semibold text-primary">{leave.approvalText}</div>}
+        {leave.decisionRemarks && <div className="mt-0.5 text-xs text-text-secondary">Remark: {leave.decisionRemarks}</div>}
       </div>
       <div className="flex flex-wrap items-center justify-end gap-3">
         <StatusBadge tone={leave.status === "approved" ? "success" : leave.status === "rejected" ? "danger" : "warning"}>{LEAVE_STATUS_LABEL[leave.status] ?? leave.status}</StatusBadge>
-        {leave.status === "pending" && canDecide && <LeaveRowActions leaveId={leave.id} />}
+        {leave.status === "pending" && canDecide && <LeaveRowActions leaveId={leave.id} withRemarks />}
         {canChange && (
           <RecordActions<LeaveSnapshot>
             onEdit={() => { setError(null); setEditing(true); }}

@@ -18,6 +18,8 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 import { OvertimeRecordActions } from "@/components/hr/OvertimeRecordActions";
 import { OvertimeReviewPanel } from "@/components/hr/OvertimeReviewPanel";
+import { approverName, displayNames, superiorsOf } from "@/lib/hr/superiors";
+import { untyped } from "@/lib/kitchenPurchase/shared";
 
 const AUDIT_LABEL: Record<string, string> = {
   ot_created: "Created (draft)",
@@ -51,13 +53,17 @@ export default async function OvertimeDetailPage({ params }: { params: Promise<{
     notFound();
   }
 
-  const [auditLog, monthlyTotal, { data: isManager }, { data: isAdmin }, reviewer] = await Promise.all([
+  // the OT is approved by the staff member's superior (or a Super Admin; without a superior, the OT approvers)
+  const [auditLog, monthlyTotal, { data: isManager }, { data: isAdmin }, reviewerNames, superiors] = await Promise.all([
     listOvertimeAuditLog(supabase, id),
     countedHoursForMonth(supabase, ot.employee_id, ot.work_date),
-    supabase.rpc("user_can_approve_ot", { target_company_id: ot.company_id }),
+    untyped(supabase).rpc("user_can_decide_staff_request", { target_employee_id: ot.employee_id, request_kind: "ot" }),
     supabase.rpc("user_is_company_admin", { target_company_id: ot.company_id }),
-    ot.reviewed_by ? supabase.from("profiles").select("full_name").eq("id", ot.reviewed_by).maybeSingle() : Promise.resolve({ data: null }),
+    displayNames(supabase, [ot.reviewed_by]),
+    superiorsOf(supabase, [ot.employee_id]),
   ]);
+  const reviewer = { data: ot.reviewed_by ? { full_name: reviewerNames.get(ot.reviewed_by) ?? null } : null };
+  const approver = approverName("ot", superiors.get(ot.employee_id));
 
   const isOwnRecord = ot.employees?.user_id === session.userId;
   const canEditOwn = isOwnRecord || isAdmin === true;
@@ -77,6 +83,7 @@ export default async function OvertimeDetailPage({ params }: { params: Promise<{
     ["Total OT Hours", formatHours(Number(ot.hours))],
     ["Submission Date / Time", ot.submitted_at ? `${formatMalaysiaDateTime(ot.submitted_at)} (Malaysia time)` : "Not submitted yet"],
     ["Monthly OT total (counted)", `${formatHours(monthlyTotal)} of ${OT_MONTHLY_LIMIT} hrs`],
+    ["Approval by", approver],
   ];
 
   const labelClass = "text-[11px] font-bold uppercase tracking-wide text-text-muted";
@@ -102,9 +109,10 @@ export default async function OvertimeDetailPage({ params }: { params: Promise<{
           </p>
         </div>
       )}
-      {ot.exceeds_limit && ot.status === "pending_approval" && (
+      {ot.status === "pending_approval" && (
         <div className="rounded-xl border border-warning/40 bg-warning-bg px-4 py-2.5 text-[13px] font-semibold text-warning">
-          Pending Manager Approval — this OT takes the month above {OT_MONTHLY_LIMIT} hours, so it is not confirmed until a manager approves it.
+          Waiting for approval by {approver}
+          {ot.exceeds_limit ? ` — this OT takes the month above ${OT_MONTHLY_LIMIT} hours.` : "."} It is not counted until it is approved.
         </div>
       )}
 
@@ -121,16 +129,16 @@ export default async function OvertimeDetailPage({ params }: { params: Promise<{
             <dd className="mt-0.5 text-text">{ot.reason || "—"}</dd>
           </div>
           <div className="col-span-2">
-            <dt className={labelClass}>Manager&apos;s approval</dt>
+            <dt className={labelClass}>Attachment</dt>
             <dd className="mt-0.5">{ot.document_id ? <DocumentViewLink documentId={ot.document_id} /> : <span className="text-text-muted">None</span>}</dd>
           </div>
         </dl>
       </SectionCard>
 
       {decided && (
-        <SectionCard title="Manager Decision">
+        <SectionCard title="Decision">
           <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
-            <div><dt className={labelClass}>Manager</dt><dd className="mt-0.5 font-semibold text-text">{reviewer.data?.full_name ?? "—"}</dd></div>
+            <div><dt className={labelClass}>Decided by</dt><dd className="mt-0.5 font-semibold text-text">{reviewer.data?.full_name ?? "—"}</dd></div>
             <div><dt className={labelClass}>Decision date / time</dt><dd className="mt-0.5 font-semibold text-text">{formatMalaysiaDateTime(ot.reviewed_at)}</dd></div>
             <div><dt className={labelClass}>Decision</dt><dd className="mt-0.5 font-semibold text-text">{OT_STATUS_LABEL[ot.status]}</dd></div>
             <div><dt className={labelClass}>Approved OT hours</dt><dd className="mt-0.5 font-semibold text-text">{ot.approved_hours !== null ? formatHours(Number(ot.approved_hours)) : "—"}</dd></div>
@@ -140,12 +148,12 @@ export default async function OvertimeDetailPage({ params }: { params: Promise<{
       )}
 
       {canDecide && (
-        <SectionCard title={ot.status === "pending_approval" ? "Manager Review — OT Request" : "Manager Review"}>
+        <SectionCard title="Approve or reject">
           <OvertimeReviewPanel overtimeId={id} requestedHours={Number(ot.hours)} />
         </SectionCard>
       )}
-      {isManager === true && isOwnRecord && OT_DECIDABLE_STATUSES.includes(ot.status as OtStatus) && (
-        <p className="text-[12.5px] text-text-muted">You cannot approve or reject your own OT. Another approver (Saiful, Redza, Atiq or Ismaizal) must review it.</p>
+      {isOwnRecord && OT_DECIDABLE_STATUSES.includes(ot.status as OtStatus) && (
+        <p className="text-[12.5px] text-text-muted">You cannot approve or reject your own OT. {approver} must review it.</p>
       )}
 
       {canEditOwn && ["draft", "submitted", "pending_approval"].includes(ot.status) && (

@@ -56,15 +56,20 @@ export async function planPush(event: PushEvent): Promise<Plan> {
       let extra: string[] = [];
       const relatedId = str(r.related_id);
       if (str(r.related_table) === "leave_requests" && relatedId) {
-        const { data } = await admin.from("leave_requests").select("leave_type, start_date, end_date, employees(full_name)").eq("id", relatedId).maybeSingle();
-        const name = ((data as { employees?: { full_name?: string } } | null)?.employees?.full_name ?? "").trim();
+        const { data } = await admin.from("leave_requests").select("leave_type, start_date, end_date, employees(full_name, superior_user_id)").eq("id", relatedId).maybeSingle();
+        const emp = (data as { employees?: { full_name?: string; superior_user_id?: string | null } } | null)?.employees;
+        const name = (emp?.full_name ?? "").trim();
         if (data) what = `Leave request${name ? `: ${name}` : ""} (${str((data as Row).start_date)} to ${str((data as Row).end_date)})`;
-        // leave is approved by Madam Penny only: she alone is told
+        // the staff member's superior approves the leave: they alone are told (staff without a superior: the leave approvers)
+        if (emp?.superior_user_id) return { userIds: without([emp.superior_user_id], r.requested_by), payload: { title: "Leave waiting for your approval", body: what, url: "/profile/team", tag: `approval-${str(r.id)}` } };
         return { userIds: without(await listUserIds(admin, "leave_approvers"), r.requested_by), payload: { title: "Approval waiting", body: what, url: "/priority-centre#approvals", tag: `approval-${str(r.id)}` } };
       } else if (str(r.related_table) === "overtime_records" && relatedId) {
-        const { data } = await admin.from("overtime_records").select("hours, work_date, employees(full_name)").eq("id", relatedId).maybeSingle();
-        const name = ((data as { employees?: { full_name?: string } } | null)?.employees?.full_name ?? "").trim();
+        const { data } = await admin.from("overtime_records").select("hours, work_date, employees(full_name, superior_user_id)").eq("id", relatedId).maybeSingle();
+        const emp = (data as { employees?: { full_name?: string; superior_user_id?: string | null } } | null)?.employees;
+        const name = (emp?.full_name ?? "").trim();
         if (data) what = `OT request${name ? `: ${name}` : ""} (${str((data as Row).work_date)}, ${String((data as Row).hours ?? "")} h)`;
+        // the staff member's superior approves the OT: they alone are told
+        if (emp?.superior_user_id) return { userIds: without([emp.superior_user_id], r.requested_by), payload: { title: "OT waiting for your approval", body: what, url: "/profile/team", tag: `approval-${str(r.id)}` } };
         extra = await listUserIds(admin, "ot_approvers");
       }
       const ids = [...(await userIdsWithRole(admin, "super_admin")), ...(await userIdsWithRole(admin, "company_admin", str(r.company_id) || null)), ...extra];

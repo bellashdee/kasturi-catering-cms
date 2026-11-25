@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { untyped } from "@/lib/kitchenPurchase/shared";
 import { diffChanges, recordEditHistory } from "@/lib/hr/editHistory";
 import { TRACKED_EMPLOYEE_COLUMNS, TRACKED_PRIVATE_COLUMNS } from "@/lib/hr/changeFields";
 import { createClient } from "@/lib/supabase/server";
@@ -756,9 +757,10 @@ export async function requestLeave(input: LeaveInput) {
   if (!input.employeeId || !input.companyId) throw new Error("Choose the staff member.");
   if (!LEAVE_TYPES.includes(input.leaveType)) throw new Error("Choose the leave type.");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(input.endDate) || input.endDate < input.startDate) throw new Error("The end date must be on or after the start date.");
-  // "already approved" can only be keyed in by the person who approves leave (Madam Penny); everybody else's key-in waits for her
-  const { data: leaveApprover } = await supabase.rpc("user_can_approve_leave");
-  const status = privileged && owns !== true && input.status === "approved" && leaveApprover === true ? "approved" : "pending";
+  // "already approved" can only be keyed in by someone who may approve this staff member's leave (their superior or a Super Admin);
+  // everybody else's key-in waits for the superior
+  const { data: canDecide } = await untyped(supabase).rpc("user_can_decide_staff_request", { target_employee_id: input.employeeId, request_kind: "leave" });
+  const status = privileged && owns !== true && input.status === "approved" && canDecide === true ? "approved" : "pending";
 
   const { data: leave, error: leaveError } = await supabase
     .from("leave_requests")
@@ -808,32 +810,21 @@ export async function requestLeave(input: LeaveInput) {
   return leave;
 }
 
-export async function decideLeave(leaveRequestId: string, decision: "approved" | "rejected") {
-  const { supabase } = await requireUser();
-
-  const { data: leave, error: fetchError } = await supabase
-    .from("leave_requests")
-    .select("id, approval_id, employee_id, company_id")
-    .eq("id", leaveRequestId)
-    .single();
-  if (fetchError) throw fetchError;
-  // leave is approved or rejected by Madam Penny only (the database enforces it too)
-  const { data: approver } = await supabase.rpc("user_can_approve_leave");
-  if (approver !== true) throw new Error("Only Madam Penny can approve or reject leave.");
-
-  const { error: updateError } = await supabase
-    .from("leave_requests")
-    .update({ status: decision })
-    .eq("id", leaveRequestId);
-  if (updateError) throw updateError;
-
-  if (leave.approval_id) {
-    await supabase.from("approvals").update({ status: decision }).eq("id", leave.approval_id);
-  }
-
-  revalidatePath("/hr/leave");
-  revalidatePath(`/hr/${leave.employee_id}`);
-  revalidatePath("/");
+/**
+ * Approve or reject a leave request: the superior of the staff member (or a Super Admin; for staff without a superior, the leave
+ * approvers). The checks run in the database (decide_staff_leave), because a superior is not always an admin of the staff member's company.
+ */
+export async function decideLeave(leaveRequestId: string, decision: "approved" | "rejected", remarks?: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { error } = await untyped(supabase).rpc("decide_staff_leave", { p_leave_id: leaveRequestId, p_decision: decision, p_remarks: remarks?.trim() || null });
+    if (error) throw new Error(error.message);
+    revalidatePath("/hr/leave");
+    revalidatePath("/profile/team");
+    revalidatePath("/profile/leave");
+    revalidatePath("/");
+    return {};
+  }, "Could not save the decision. Please try again.");
 }
 
 export type PayrollInput = {
