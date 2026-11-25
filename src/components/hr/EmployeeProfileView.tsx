@@ -256,6 +256,7 @@ export async function EmployeeProfileView({
             <Field label="Date Promoted" value={employee.date_promoted} />
             <Field label="Date Resigned" value={employee.resign_date} />
             <Field label="Employment Type" value={EMPLOYMENT_TYPE_LABEL[employee.employment_type] ?? employee.employment_type} />
+            <Field label="Weekly Off Day" value={(employee.off_days ?? []).length ? (employee.off_days ?? []).map((d) => ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][d]).join(", ") : null} />
             <Field label="Status" value={EMPLOYEE_STATUS_LABEL[employee.status] ?? employee.status} />
             {canSeePayroll && <Field label="Basic Rate" value={basicRate != null ? formatCurrency(basicRate) : null} />}
             <Field label="Pay Basis" value={!canSeePrivate ? restricted : privateDetails?.pay_basis} />

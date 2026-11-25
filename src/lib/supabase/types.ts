@@ -2126,6 +2126,7 @@ export type Database = {
           religion: string | null
           short_name: string | null
           employee_no: string | null
+          off_days: number[]
           old_ic_no: string | null
           passport_no: string | null
           home_phone: string | null
@@ -2175,6 +2176,7 @@ export type Database = {
           religion?: string | null
           short_name?: string | null
           employee_no?: string | null
+          off_days?: number[]
           old_ic_no?: string | null
           passport_no?: string | null
           home_phone?: string | null
@@ -2224,6 +2226,7 @@ export type Database = {
           religion?: string | null
           short_name?: string | null
           employee_no?: string | null
+          off_days?: number[]
           old_ic_no?: string | null
           passport_no?: string | null
           home_phone?: string | null

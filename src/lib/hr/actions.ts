@@ -44,6 +44,8 @@ export type EmployeeInput = {
   maritalStatus?: string;
   branch?: string;
   shortName?: string;
+  /** weekly off day(s): 0 = Sunday ... 6 = Saturday */
+  offDays?: number[];
   // Personnel Information form
   employeeNo?: string;
   oldIcNo?: string;
@@ -186,7 +188,13 @@ function personalColumns(input: Partial<EmployeeInput>) {
   if (gender && gender !== "Male" && gender !== "Female") throw new Error("Select Male or Female.");
   const dob = text(input.dateOfBirth) ?? dobFromIc(input.icPassportNo);
   if (dob && !/^\d{4}-\d{2}-\d{2}$/.test(dob)) throw new Error("Enter a valid date of birth.");
-  return { date_of_birth: dob, nationality: text(input.nationality), gender, race: text(input.race), religion: text(input.religion), marital_status: text(input.maritalStatus), branch: text(input.branch), short_name: text(input.shortName)?.toUpperCase() ?? null };
+  return { date_of_birth: dob, nationality: text(input.nationality), gender, race: text(input.race), religion: text(input.religion), marital_status: text(input.maritalStatus), branch: text(input.branch), short_name: text(input.shortName)?.toUpperCase() ?? null, ...offDaysColumn(input.offDays) };
+}
+
+/** The weekly off day(s), only when the form sends them: whole days 0 (Sunday) to 6 (Saturday), each once, in order. */
+function offDaysColumn(days: number[] | undefined) {
+  if (days === undefined) return {};
+  return { off_days: [...new Set(days.map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort((a, b) => a - b) };
 }
 
 /** The staff data is for Madam Penny and Nabilah only (the Super Admins): anyone else may only see their own record and ask for a change. */

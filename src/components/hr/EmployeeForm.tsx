@@ -33,6 +33,8 @@ function Section({ title, note, children }: { title: string; note?: string; chil
   );
 }
 
+const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
 export function EmployeeForm({
   companies,
   defaultCompanyId,
@@ -85,6 +87,7 @@ export function EmployeeForm({
     maritalStatus: initial?.maritalStatus ?? "",
     branch: initial?.branch ?? "",
     shortName: initial?.shortName ?? "",
+    offDays: initial?.offDays ?? [],
     employeeNo: initial?.employeeNo ?? "",
     oldIcNo: initial?.oldIcNo ?? "",
     passportNo: initial?.passportNo ?? "",
@@ -403,6 +406,25 @@ export function EmployeeForm({
         <div>
           <label className={labelClass}>Short Name (label on the birthday calendar)</label>
           <input value={form.shortName} onChange={(e) => set("shortName", e.target.value.toUpperCase())} className={`${inputClass} uppercase`} placeholder="e.g. SYAMIE" />
+        </div>
+        <div>
+          <label className={labelClass}>Weekly Off Day</label>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {WEEKDAY_NAMES.map((name, day) => {
+              const on = (form.offDays ?? []).includes(day);
+              return (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, offDays: on ? (f.offDays ?? []).filter((d) => d !== day) : [...(f.offDays ?? []), day].sort((a, b) => a - b) }))}
+                  className={`rounded-full border px-3 py-1.5 text-[12.5px] font-semibold ${on ? "border-primary bg-primary text-white" : "border-border-strong bg-surface text-text"}`}
+                >
+                  {name}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-1 text-[11.5px] text-text-muted">The day(s) of the week this staff member is off. Tap again to remove.</p>
         </div>
       </Section>
 
