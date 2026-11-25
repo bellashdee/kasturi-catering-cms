@@ -52,7 +52,8 @@ export default async function DutyRosterPage({ searchParams }: { searchParams: P
     db.from("kitchen_rosters").select("id, company_id, kitchen, month, public_holidays, notes, prepared_at, approved_at").eq("company_id", company.id).order("month", { ascending: false }),
     db.rpc("user_can_edit_kitchen_roster"),
     supabase.rpc("current_user_is_super_admin"),
-    supabase.from("employees").select("id, full_name, company_id, position, companies(name)").in("company_id", targetCompanyIds).eq("status", "active").order("full_name"),
+    // the "Add staff" choices: the kitchen staff only (kitchen_roster_staff), with their short name
+    db.from("kitchen_roster_staff").select("employee_id, full_name, short_name").order("sort_order"),
   ]);
   const all = (rosters ?? []) as RosterRecord[];
   const kitchens = [...new Set([DEFAULT_KITCHEN, ...all.map((r) => r.kitchen), kitchen])].sort();
@@ -94,11 +95,7 @@ export default async function DutyRosterPage({ searchParams }: { searchParams: P
         previousMonth={previous ? previous.month.slice(0, 7) : null}
         codes={(codes ?? []) as ShiftCode[]}
         kitchens={kitchens}
-        staff={((staff ?? []) as { id: string; full_name: string; position: string | null; companies: { name: string } | null }[]).map((e) => ({
-          id: e.id,
-          name: e.full_name,
-          detail: [e.position, e.companies?.name].filter(Boolean).join(" · "),
-        }))}
+        staff={((staff ?? []) as { employee_id: string; full_name: string; short_name: string }[]).map((e) => ({ id: e.employee_id, name: e.full_name, shortName: e.short_name }))}
         canEdit={canEditFlag === true}
         canApprove={superFlag === true}
         savedMonths={all.filter((r) => r.kitchen === kitchen).map((r) => r.month.slice(0, 7))}

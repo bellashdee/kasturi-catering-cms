@@ -7,7 +7,7 @@ import { CODE_COLORS, SUMMARY_CODES, daysOfMonth, rosterTitle, shiftHours, shift
 import { downloadTableExcel, printTablePdf, type ExportTable } from "@/lib/export/tableExport";
 import { formatMalaysiaDate } from "@/lib/format";
 
-type StaffOption = { id: string; name: string; detail: string };
+type StaffOption = { id: string; name: string; shortName: string };
 
 const btn = "h-9 rounded-lg border border-border-strong bg-surface px-3.5 text-[13px] font-semibold text-text hover:bg-surface-alt disabled:opacity-50";
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -94,9 +94,9 @@ export function DutyRosterBoard({
 
   const addRow = () => {
     const picked = staff.find((s) => s.id === adding.employeeId);
-    const name = (adding.name.trim() || picked?.name || "").toUpperCase();
+    const name = (adding.name.trim() || picked?.shortName || picked?.name || "").toUpperCase();
     if (!name) return setError("Choose a staff member or type the name to show on the roster.");
-    if (rows.some((r) => r.displayName.toUpperCase() === name)) return setError(`${name} is already on the roster.`);
+    if (rows.some((r) => r.displayName.toUpperCase() === name || (picked && r.employeeId === picked.id))) return setError(`${name} is already on the roster.`);
     setError(null);
     change((rs) => [...rs, { employeeId: picked?.id ?? null, displayName: name, codes: {} }]);
     setAdding({ employeeId: "", name: "" });
@@ -344,17 +344,19 @@ export function DutyRosterBoard({
         {canEdit && (
           <div className="flex flex-wrap items-end gap-2 border-t border-border px-4 py-3 print:hidden">
             <label className="flex flex-col gap-1 text-[12px] font-semibold text-text-secondary">
-              Add staff
+              Add kitchen staff
               <select value={adding.employeeId} onChange={(e) => setAdding({ ...adding, employeeId: e.target.value })} className="h-9 w-64 rounded-lg border border-border-strong bg-surface px-2 text-[13px] text-text">
                 <option value="">Choose a staff member…</option>
-                {staff.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}{s.detail ? ` — ${s.detail}` : ""}</option>
-                ))}
+                {staff
+                  .filter((s) => !rows.some((r) => r.employeeId === s.id))
+                  .map((s) => (
+                    <option key={s.id} value={s.id}>{s.name} ({s.shortName})</option>
+                  ))}
               </select>
             </label>
             <label className="flex flex-col gap-1 text-[12px] font-semibold text-text-secondary">
               Name on the roster (optional)
-              <input value={adding.name} onChange={(e) => setAdding({ ...adding, name: e.target.value })} placeholder="e.g. CHEF MUSA" className="h-9 w-48 rounded-lg border border-border-strong px-3 text-[13px] text-text" />
+              <input value={adding.name} onChange={(e) => setAdding({ ...adding, name: e.target.value })} placeholder="Short name is used if empty" className="h-9 w-48 rounded-lg border border-border-strong px-3 text-[13px] text-text" />
             </label>
             <button type="button" onClick={addRow} className={btn}>+ Add to roster</button>
           </div>
