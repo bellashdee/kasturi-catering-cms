@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useTabVisible } from "@/components/layout/SectionAccess";
 
 const TABS = [
+  { href: "/supplier-procurement/vendors", label: "Vendor Contacts", match: (p: string) => p.startsWith("/supplier-procurement/vendors") },
   { href: "/supplier-procurement", label: "Suppliers", match: (p: string) => p === "/supplier-procurement" || /^\/supplier-procurement\/[0-9a-f-]{36}/.test(p) },
   { href: "/supplier-procurement/items", label: "Items & Prices", match: (p: string) => p.startsWith("/supplier-procurement/items") },
   { href: "/supplier-procurement/kitchen-requests", label: "Kitchen Requests", match: (p: string) => p.startsWith("/supplier-procurement/kitchen-requests") },
@@ -13,7 +14,6 @@ const TABS = [
   { href: "/supplier-procurement/invoices", label: "Invoices", match: (p: string) => p.startsWith("/supplier-procurement/invoices") },
   { href: "/supplier-procurement/notes", label: "Credit / Debit Notes", match: (p: string) => p.startsWith("/supplier-procurement/notes") },
   { href: "/supplier-procurement/soa", label: "SOA", match: (p: string) => p.startsWith("/supplier-procurement/soa") },
-  { href: "/supplier-procurement/vendors", label: "Vendor Contacts", match: (p: string) => p.startsWith("/supplier-procurement/vendors") },
 ];
 
 export function SupplierProcurementSubNav() {
