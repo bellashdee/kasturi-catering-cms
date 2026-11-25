@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { VENDOR_CATEGORIES, orderedCategories, type VendorContact } from "@/lib/procurement/vendorContacts";
 import { deleteVendorContact, saveVendorContact, type VendorContactInput } from "@/lib/procurement/vendorContactActions";
 import { downloadTableExcel, printTablePdf, type ExportTable } from "@/lib/export/tableExport";
+import { FILTER_FIELD, FILTER_INPUT } from "@/components/shared/ListFilters";
 
 const blank = (category = ""): VendorContactInput => ({ category, name: "", contactPerson: "", address: "", phone: "", cellPhone: "", email: "", notes: "" });
 const toInput = (c: VendorContact): VendorContactInput => ({
@@ -19,31 +20,55 @@ const toInput = (c: VendorContact): VendorContactInput => ({
   notes: c.notes ?? "",
 });
 
+const btnLg = "rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text disabled:opacity-50";
 const btn = "h-9 rounded-lg border border-border-strong bg-surface px-3.5 text-[13px] font-semibold text-text hover:bg-surface-alt disabled:opacity-50";
 const field = "h-10 w-full rounded-lg border border-border-strong bg-white px-3 text-[13.5px] outline-none focus:border-primary";
 
-/** The Vendor Contact List: one card per category (Baker, Car / Shuttle, Photographer ...) with the name, address and phones of each vendor. */
-export function VendorContactBoard({ contacts }: { contacts: VendorContact[] }) {
+const SORTS = { name: "Name", category: "Category", phone: "Phone" } as const;
+type SortKey = keyof typeof SORTS;
+const COLS = "grid grid-cols-[1.4fr_1fr_1fr_1fr_1fr_1.4fr_7.5rem]";
+
+/**
+ * The Vendor Contact List, laid out like the Suppliers list: the title with the count and the buttons, the sub menu, one filter bar
+ * (search, category, sort, order) and a table with one row per vendor. Edit opens the form above the table.
+ */
+export function VendorContactBoard({ contacts, subNav }: { contacts: VendorContact[]; subNav?: React.ReactNode }) {
   const router = useRouter();
   const [form, setForm] = useState<VendorContactInput | null>(null);
   const [customCategory, setCustomCategory] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [showEmpty, setShowEmpty] = useState(true);
+  // what is typed in the filter bar, and what is applied (Apply Filters), like the other lists
+  const [draft, setDraft] = useState({ q: "", category: "", sort: "category" as SortKey, dir: "asc" as "asc" | "desc" });
+  const [applied, setApplied] = useState(draft);
   const [pending, startTransition] = useTransition();
 
-  const q = search.trim().toLowerCase();
-  const shown = useMemo(
-    () => contacts.filter((c) => !q || [c.name, c.category, c.contact_person, c.phone, c.cell_phone, c.address, c.notes].some((v) => (v ?? "").toLowerCase().includes(q))),
-    [contacts, q],
-  );
-  const categories = orderedCategories(contacts).filter((cat) => (showEmpty && !q) || shown.some((c) => c.category === cat));
+  const q = applied.q.trim().toLowerCase();
+  const shown = useMemo(() => {
+    const rows = contacts.filter(
+      (c) =>
+        (!applied.category || c.category === applied.category) &&
+        (!q || [c.name, c.category, c.contact_person, c.phone, c.cell_phone, c.address, c.email, c.notes].some((v) => (v ?? "").toLowerCase().includes(q))),
+    );
+    const order = orderedCategories(contacts);
+    const key = (c: VendorContact): [string | number, string] =>
+      applied.sort === "category" ? [order.indexOf(c.category), c.name] : applied.sort === "phone" ? [c.cell_phone || c.phone || "~", c.name] : [c.name, c.category];
+    const sorted = [...rows].sort((a, b) => {
+      const [a1, a2] = key(a);
+      const [b1, b2] = key(b);
+      const first = typeof a1 === "number" && typeof b1 === "number" ? a1 - b1 : String(a1).localeCompare(String(b1), undefined, { numeric: true, sensitivity: "base" });
+      return first || a2.localeCompare(b2, undefined, { sensitivity: "base" });
+    });
+    return applied.dir === "desc" ? sorted.reverse() : sorted;
+  }, [contacts, applied, q]);
+  const usedCategories = orderedCategories(contacts).filter((cat) => contacts.some((c) => c.category === cat));
+  const filtered = !!(q || applied.category);
 
   const open = (value: VendorContactInput) => {
     setError(null);
     setCustomCategory(!!value.category && !(VENDOR_CATEGORIES as readonly string[]).includes(value.category));
     setForm(value);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const save = () => {
@@ -71,27 +96,73 @@ export function VendorContactBoard({ contacts }: { contacts: VendorContact[] }) 
   const table: ExportTable = {
     title: "Vendor Contact List",
     subtitle: `Signature Solution Sdn Bhd & Kasturi Indah Sdn Bhd · ${shown.length} vendor${shown.length === 1 ? "" : "s"}`,
-    columns: ["Category", "Name", "Contact person", "Address", "Phone", "Cell phone", "Email", "Notes"],
-    rows: orderedCategories(shown).flatMap((cat) =>
-      shown.filter((c) => c.category === cat).map((c) => [cat, c.name, c.contact_person ?? "", c.address ?? "", c.phone ?? "", c.cell_phone ?? "", c.email ?? "", c.notes ?? ""]),
-    ),
+    columns: ["Name", "Category", "Contact person", "Phone", "Cell phone", "Address", "Email", "Notes"],
+    rows: shown.map((c) => [c.name, c.category, c.contact_person ?? "", c.phone ?? "", c.cell_phone ?? "", c.address ?? "", c.email ?? "", c.notes ?? ""]),
     landscape: true,
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2.5">
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search vendor, category or phone..." className="h-10 w-72 rounded-lg border border-border bg-surface px-3 text-[13px] outline-none" />
-        <label className="flex items-center gap-2 text-[13px] text-text-secondary">
-          <input type="checkbox" checked={showEmpty} onChange={(e) => setShowEmpty(e.target.checked)} />
-          Show empty categories
-        </label>
-        <div className="ml-auto flex flex-wrap gap-2">
-          <button type="button" className={btn} disabled={table.rows.length === 0} onClick={() => downloadTableExcel(table)}>Export Excel</button>
-          <button type="button" className={btn} disabled={table.rows.length === 0} onClick={() => printTablePdf(table, window.open("", "_blank"))}>Print</button>
-          <button type="button" onClick={() => open(blank())} className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">+ Add Vendor</button>
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-[22px] font-extrabold text-text">Supplier & Procurement</h1>
+          <p className="mt-0.5 text-[13px] text-text-secondary">
+            {contacts.length} vendor{contacts.length === 1 ? "" : "s"} · Vendor Contact List shared by Signature Solution Sdn Bhd and Kasturi Indah Sdn Bhd
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2.5">
+          <button type="button" className={btnLg} disabled={table.rows.length === 0} onClick={() => downloadTableExcel(table)}>Export Excel</button>
+          <button type="button" className={btnLg} disabled={table.rows.length === 0} onClick={() => printTablePdf(table, window.open("", "_blank"))}>Print</button>
+          <button type="button" onClick={() => open(blank(applied.category))} className="rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-white">+ New Vendor</button>
         </div>
       </div>
+
+      {subNav}
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          setApplied(draft);
+        }}
+        className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-surface p-4 shadow-sm print:hidden"
+      >
+        <label className={FILTER_FIELD}>
+          <span className="leading-4">Search</span>
+          <input value={draft.q} onChange={(e) => setDraft({ ...draft, q: e.target.value })} placeholder="Search vendors by name or phone..." className={`${FILTER_INPUT} w-60`} />
+        </label>
+        <label className={FILTER_FIELD}>
+          <span className="leading-4">Category</span>
+          <select value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })} className={`${FILTER_INPUT} w-48`}>
+            <option value="">All categories</option>
+            {usedCategories.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </label>
+        <label className={FILTER_FIELD}>
+          <span className="leading-4">Sort by</span>
+          <select value={draft.sort} onChange={(e) => setDraft({ ...draft, sort: e.target.value as SortKey })} className={`${FILTER_INPUT} w-44`}>
+            {Object.entries(SORTS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+          </select>
+        </label>
+        <label className={FILTER_FIELD}>
+          <span className="leading-4">Order</span>
+          <select value={draft.dir} onChange={(e) => setDraft({ ...draft, dir: e.target.value as "asc" | "desc" })} className={`${FILTER_INPUT} w-36`}>
+            <option value="asc">Ascending</option>
+            <option value="desc">Descending</option>
+          </select>
+        </label>
+        <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">Apply Filters</button>
+        <button
+          type="button"
+          onClick={() => {
+            const empty = { q: "", category: "", sort: "category" as SortKey, dir: "asc" as const };
+            setDraft(empty);
+            setApplied(empty);
+          }}
+          className="h-9 rounded-lg border border-border-strong bg-surface px-3 text-[13px] font-semibold text-text"
+        >
+          Clear
+        </button>
+      </form>
 
       {error && !form && <div className="rounded-lg bg-danger-bg px-3 py-2 text-[13px] text-danger">{error}</div>}
 
@@ -162,69 +233,61 @@ export function VendorContactBoard({ contacts }: { contacts: VendorContact[] }) 
         </div>
       )}
 
-      {categories.length === 0 ? (
-        <div className="py-6 text-center text-[13px] text-text-muted">No vendor matches this search.</div>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {categories.map((cat) => {
-            const list = shown.filter((c) => c.category === cat).sort((a, b) => a.name.localeCompare(b.name));
-            return (
-              <div key={cat} className="flex flex-col rounded-xl border border-border bg-surface p-4 shadow-sm">
-                <div className="mb-2 flex items-center justify-between">
-                  <div className="text-[13px] font-extrabold uppercase tracking-[0.08em] text-text">{cat}</div>
-                  <button type="button" onClick={() => open(blank(cat))} className="text-[12.5px] font-semibold text-primary hover:underline">+ Add</button>
-                </div>
-                {list.length === 0 ? (
-                  <div className="space-y-1.5 text-[12.5px] text-text-muted">
-                    {["Name", "Address", "Phone", "Cell Phone"].map((l) => (
-                      <div key={l} className="border-b border-dashed border-border pb-1">{l}:</div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="divide-y divide-border">
-                    {list.map((c) => (
-                      <div key={c.id} className="py-2 text-[12.5px]">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="text-[13.5px] font-bold text-text">{c.name}</div>
-                          <div className="flex shrink-0 gap-2">
-                            {confirmDelete === c.id ? (
-                              <>
-                                <button type="button" disabled={pending} onClick={() => remove(c.id)} className="font-semibold text-danger">Yes, delete</button>
-                                <button type="button" onClick={() => setConfirmDelete(null)} className="font-semibold text-text-secondary">No</button>
-                              </>
-                            ) : (
-                              <>
-                                <button type="button" onClick={() => open(toInput(c))} className="font-semibold text-primary hover:underline">Edit</button>
-                                <button type="button" onClick={() => setConfirmDelete(c.id)} className="font-semibold text-text-secondary hover:text-danger">Delete</button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        {c.contact_person && <div className="text-text-secondary">Contact: {c.contact_person}</div>}
-                        <div className="text-text-secondary">Address: <span className="text-text">{c.address || "—"}</span></div>
-                        <div className="text-text-secondary">Phone: {c.phone ? <a href={`tel:${c.phone}`} className="text-text hover:underline">{c.phone}</a> : "—"}</div>
-                        <div className="text-text-secondary">
-                          Cell Phone:{" "}
-                          {c.cell_phone ? (
-                            <>
-                              <a href={`tel:${c.cell_phone}`} className="text-text hover:underline">{c.cell_phone}</a>
-                              <a href={`https://wa.me/${c.cell_phone.replace(/\D/g, "").replace(/^0/, "60")}`} target="_blank" rel="noreferrer" className="ml-2 font-semibold text-success hover:underline">WhatsApp</a>
-                            </>
-                          ) : (
-                            "—"
-                          )}
-                        </div>
-                        {c.email && <div className="text-text-secondary">Email: <a href={`mailto:${c.email}`} className="text-text hover:underline">{c.email}</a></div>}
-                        {c.notes && <div className="mt-0.5 text-text-muted">{c.notes}</div>}
-                      </div>
-                    ))}
-                  </div>
-                )}
+      <div className="rounded-xl border border-border bg-surface shadow-sm">
+        {shown.length === 0 ? (
+          <div className="px-5 py-8 text-center text-[13px] text-text-muted">{filtered ? "No vendors match these filters." : "No vendors yet. Press + New Vendor to add one."}</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <div className="min-w-[980px]">
+              <div className={`${COLS} border-b border-border bg-surface-alt px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-text-muted`}>
+                <div>Name</div>
+                <div>Category</div>
+                <div>Contact</div>
+                <div>Phone</div>
+                <div>Cell Phone</div>
+                <div>Address</div>
+                <div className="text-right">Action</div>
               </div>
-            );
-          })}
-        </div>
-      )}
+              {shown.map((c) => (
+                <div key={c.id} className={`${COLS} items-start gap-2 border-b border-border px-5 py-3.5 text-[13.5px] last:border-b-0 hover:bg-surface-alt`}>
+                  <div>
+                    <button type="button" onClick={() => open(toInput(c))} className="text-left font-semibold text-text hover:text-primary">{c.name}</button>
+                    {c.email && <div className="text-[12px] text-text-muted"><a href={`mailto:${c.email}`} className="hover:underline">{c.email}</a></div>}
+                    {c.notes && <div className="text-[12px] text-text-muted">{c.notes}</div>}
+                  </div>
+                  <div className="text-text-secondary">{c.category}</div>
+                  <div className="text-text-secondary">{c.contact_person || "—"}</div>
+                  <div className="text-text-secondary">{c.phone ? <a href={`tel:${c.phone}`} className="hover:underline">{c.phone}</a> : "—"}</div>
+                  <div className="text-text-secondary">
+                    {c.cell_phone ? (
+                      <>
+                        <a href={`tel:${c.cell_phone}`} className="hover:underline">{c.cell_phone}</a>
+                        <a href={`https://wa.me/${c.cell_phone.replace(/\D/g, "").replace(/^0/, "60")}`} target="_blank" rel="noreferrer" className="block text-[12px] font-semibold text-success hover:underline">WhatsApp</a>
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </div>
+                  <div className="text-text-secondary">{c.address || "—"}</div>
+                  <div className="flex justify-end gap-3 text-[12.5px]">
+                    {confirmDelete === c.id ? (
+                      <>
+                        <button type="button" disabled={pending} onClick={() => remove(c.id)} className="font-semibold text-danger">Yes, delete</button>
+                        <button type="button" onClick={() => setConfirmDelete(null)} className="font-semibold text-text-secondary">No</button>
+                      </>
+                    ) : (
+                      <>
+                        <button type="button" onClick={() => open(toInput(c))} className="font-semibold text-primary hover:underline">Edit</button>
+                        <button type="button" onClick={() => setConfirmDelete(c.id)} className="font-semibold text-text-secondary hover:text-danger">Delete</button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
