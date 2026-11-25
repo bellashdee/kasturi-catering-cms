@@ -53,6 +53,7 @@ export const MODULE_SECTIONS: Record<string, Section[]> = {
     { key: "driver-logistics:drivers", label: "Drivers Information", href: "/driver-logistics/drivers", prefixes: ["/driver-logistics/drivers"] },
     { key: "driver-logistics:vehicles", label: "Vehicles", href: "/driver-logistics/vehicles", prefixes: ["/driver-logistics/vehicles"] },
     { key: "driver-logistics:maintenance", label: "Maintenance", href: "/driver-logistics/maintenance", prefixes: ["/driver-logistics/maintenance"] },
+    { key: "driver-logistics:equipment", label: "Equipment Checklist", href: "/driver-logistics/equipment", prefixes: ["/driver-logistics/equipment"] },
     { key: "driver-logistics:attendance", label: "Attendance (Clock In / Out)", href: "/driver-logistics/attendance", prefixes: ["/driver-logistics/attendance"] },
   ],
   hr: [

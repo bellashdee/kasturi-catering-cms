@@ -18,6 +18,10 @@ const GROUPS: { title: string; tabs: Tab[] }[] = [
     ],
   },
   {
+    title: "Manage Equipment",
+    tabs: [{ href: "/driver-logistics/equipment", label: "Equipment Checklist", match: (p) => p.startsWith("/driver-logistics/equipment") }],
+  },
+  {
     title: "Manage My Staff",
     tabs: [{ href: "/driver-logistics/attendance", label: "Attendance (Clock In / Out)", match: (p) => p.startsWith("/driver-logistics/attendance") }],
   },
