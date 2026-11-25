@@ -14,6 +14,7 @@ const TABS = [
   { href: "/kitchen/wastage", label: "Wastage", match: (p: string) => p.startsWith("/kitchen/wastage") },
   { href: "/kitchen/purchase-requests", label: "Purchase Requests", match: (p: string) => p.startsWith("/kitchen/purchase-requests") },
   { href: "/kitchen/reports", label: "Daily Report", match: (p: string) => p.startsWith("/kitchen/reports") },
+  { href: "/kitchen/roster", label: "Duty Roster", match: (p: string) => p.startsWith("/kitchen/roster") },
 ];
 
 /** Made for catering events: not shown while O2 Life (the restaurant) is the only company viewed. */
