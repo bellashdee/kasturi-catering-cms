@@ -44,10 +44,13 @@ export default async function VendorContactsPage({ searchParams }: { searchParam
     .order("name")
     .limit(5000);
 
-  return (
-    <div className="flex flex-col gap-5">
-      {header}
-      {error ? <EmptyRow text={`The vendor list could not be loaded: ${error.message}`} /> : <VendorContactBoard contacts={(data ?? []) as VendorContact[]} />}
-    </div>
-  );
+  if (error) {
+    return (
+      <div className="flex flex-col gap-5">
+        {header}
+        <EmptyRow text={`The vendor list could not be loaded: ${error.message}`} />
+      </div>
+    );
+  }
+  return <VendorContactBoard contacts={(data ?? []) as VendorContact[]} subNav={<SupplierProcurementSubNav />} />;
 }
