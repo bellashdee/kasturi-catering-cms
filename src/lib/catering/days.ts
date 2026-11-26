@@ -1,7 +1,7 @@
 import { MEAL_TYPE_LABEL, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
 
 /**
- * An optional second menu for one day: menu, pax, meal types, service type and price per meal.
+ * An optional second menu for one day: menu, pax, meal types, service type, price per meal and its own set-up / event / end time.
  * Its amount (pax x price per meal) is added to the amount of the day, so it is part of the total.
  */
 export type SecondChoice = {
@@ -10,6 +10,10 @@ export type SecondChoice = {
   mealTypes: string[];
   serviceType: string;
   pricePerMeal?: number;
+  /** When this menu is set up (kitchen side), served and when it ends; all optional ("HH:MM"). */
+  setupTime?: string;
+  eventTime?: string;
+  endTime?: string;
 };
 
 export const emptySecondChoice = (): SecondChoice => ({ menu: "", mealTypes: [], serviceType: "" });

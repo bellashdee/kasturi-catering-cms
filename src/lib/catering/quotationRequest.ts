@@ -263,5 +263,8 @@ export function describeSecondChoice(c: SecondChoice, labels: { meal: Record<str
     `Meal type: ${c.mealTypes.map((m) => labels.meal[m] ?? m).join(", ") || "-"}`,
     `Service type: ${labels.service[c.serviceType] ?? c.serviceType}`,
     `Price / meal: ${c.pricePerMeal !== undefined ? `RM ${c.pricePerMeal.toFixed(2)}` : "-"}`,
+    ...(c.setupTime ? [`Set-up time: ${c.setupTime.slice(0, 5)}`] : []),
+    ...(c.eventTime ? [`Event time: ${c.eventTime.slice(0, 5)}`] : []),
+    ...(c.endTime ? [`Event end time: ${c.endTime.slice(0, 5)}`] : []),
   ].join("\n");
 }
