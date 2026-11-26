@@ -126,7 +126,16 @@ function sanitizeSecondChoice(c: SecondChoice | undefined, label: string): Secon
   const mealTypes = c.mealTypes ?? [];
   if (mealTypes.some((m) => !MEAL_TYPE_LABEL[m])) throw new Error(`${label}: select a valid meal type.`);
   if (c.pricePerMeal !== undefined && !(c.pricePerMeal >= 0)) throw new Error(`${label}: the price per meal cannot be negative.`);
-  return { menu, pax: c.pax, mealTypes, serviceType: c.serviceType, pricePerMeal: c.pricePerMeal };
+  return {
+    menu,
+    pax: c.pax,
+    mealTypes,
+    serviceType: c.serviceType,
+    pricePerMeal: c.pricePerMeal,
+    setupTime: sanitizeTime(c.setupTime, `${label}: the set-up time`),
+    eventTime: sanitizeTime(c.eventTime, `${label}: the event time`),
+    endTime: sanitizeTime(c.endTime, `${label}: the event end time`),
+  };
 }
 
 /**
