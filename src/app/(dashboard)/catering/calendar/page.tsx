@@ -10,6 +10,8 @@ import { CalendarUndoBanner } from "@/components/catering/CalendarUndoBanner";
 import { EventCalendarView } from "@/components/catering/EventCalendarView";
 import { DateOnlyEventButton } from "@/components/catering/DateOnlyEventButton";
 import { SIGNATURE_COMPANY_ID } from "@/lib/catering/constants";
+import { loadUpcomingJdt } from "@/lib/catering/jdtSchedule";
+import { UpcomingJdtEvents } from "@/components/catering/UpcomingJdtEvents";
 import { CALENDAR_VIEWS, PHASE_LABEL, addDays, dateLabel, loadCalendarEntries, monthStart, rangeOf, shiftMonth, startOfWeek, type CalendarView } from "@/lib/catering/calendar";
 
 const VIEW_LABEL: Record<CalendarView, string> = { month: "Month", week: "Week", day: "Day", list: "Upcoming" };
@@ -43,6 +45,8 @@ export default async function CateringCalendarPage({ searchParams }: { searchPar
   const canAddDateOnly = canAddEvents === true && targetCompanyIds.includes(SIGNATURE_COMPANY_ID);
 
   const today = todayInMalaysia();
+  // UPCOMING JDT EVENTS (Signature Solution): shown on the Event Calendar only
+  const jdtRows = targetCompanyIds.includes(SIGNATURE_COMPANY_ID) ? await loadUpcomingJdt(today).catch(() => []) : [];
   const view: CalendarView = CALENDAR_VIEWS.includes(sp.view as CalendarView) ? (sp.view as CalendarView) : "month";
   const date = sp.date && DATE_RE.test(sp.date) && !Number.isNaN(Date.parse(`${sp.date}T00:00:00Z`)) ? sp.date : today;
   const showTentative = sp.tentative !== "0";
@@ -97,9 +101,14 @@ export default async function CateringCalendarPage({ searchParams }: { searchPar
 
       <CalendarUndoBanner />
 
-      {canAddDateOnly && (
-        <div className="flex flex-wrap items-start gap-2">
-          <DateOnlyEventButton query={query} />
+      {(canAddDateOnly || jdtRows.length > 0) && (
+        <div className="flex flex-wrap items-center gap-3">
+          {canAddDateOnly && <DateOnlyEventButton query={query} />}
+          {jdtRows.length > 0 && (
+            <a href="#upcoming-jdt" className="text-[13px] font-semibold text-blue-800 hover:underline">
+              {`${jdtRows.length} upcoming JDT date(s) — see the list under the calendar ↓`}
+            </a>
+          )}
         </div>
       )}
 
@@ -161,6 +170,12 @@ export default async function CateringCalendarPage({ searchParams }: { searchPar
       </div>
 
       <EventCalendarView view={view} date={date} today={today} entries={entries} href={(v, d) => params(v, d)} eventHref={eventHref} adminCompanyIds={adminCompanyIds} query={query} />
+
+      {jdtRows.length > 0 && (
+        <div id="upcoming-jdt">
+          <UpcomingJdtEvents rows={jdtRows} canOpen query={query} />
+        </div>
+      )}
     </div>
   );
 }

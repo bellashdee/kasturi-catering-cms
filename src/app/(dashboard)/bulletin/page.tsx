@@ -1,7 +1,4 @@
 import { redirect } from "next/navigation";
-import { canAccessModule } from "@/lib/modules";
-import { UpcomingJdtEvents } from "@/components/catering/UpcomingJdtEvents";
-import { loadUpcomingJdt } from "@/lib/catering/jdtSchedule";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
@@ -82,14 +79,10 @@ export default async function BulletinPage({ searchParams }: { searchParams: Pro
     reactions: reactionsOf(p.id),
   }));
 
-  // the JDT match dates coming up, for every department (O2 Life, the restaurant, does not cater for JDT)
-  const o2Only = companies.length > 0 && targetCompanyIds.length === 1 && companies.find((c) => c.id === targetCompanyIds[0])?.name === "O2 Life";
-  const jdtRows = o2Only ? [] : await loadUpcomingJdt(today).catch(() => []);
   return (
     <SoftPage>
       <SoftHeader title="Bulletin Board" subtitle="News about the company and the work, for every staff member." />
       <SoftGreeting fullName={session.fullName} line="Stay in the know: the latest news is right here." dateLabel={formatMalaysiaLongDate()} />
-      {jdtRows.length > 0 && <UpcomingJdtEvents rows={jdtRows} canOpen={canAccessModule(session.allowedModules, "catering")} query={requestedId ? `?company=${requestedId}` : ""} />}
       <MonthFilter />
       {leaveToday.length > 0 ? (
         <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm">

@@ -1,8 +1,4 @@
 import Link from "next/link";
-import { todayInMalaysia } from "@/lib/format";
-import { canAccessModule } from "@/lib/modules";
-import { UpcomingJdtEvents } from "@/components/catering/UpcomingJdtEvents";
-import { loadUpcomingJdt } from "@/lib/catering/jdtSchedule";
 import { redirect } from "next/navigation";
 import { getSessionContext } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -103,13 +99,9 @@ export default async function ReportsHubPage({
     ? [REPORTS.find((r) => r.key === "breakdown")!, ...REPORTS.filter((r) => !RESTAURANT_HIDDEN.has(r.key) && r.key !== "breakdown").map((r) => RESTAURANT_TEXT[r.key] ? { ...r, ...RESTAURANT_TEXT[r.key] } : r)]
     : REPORTS.filter((r) => r.key !== "breakdown");
 
-  const jdtRows = onlyO2 ? [] : await loadUpcomingJdt(todayInMalaysia()).catch(() => []);
-
   return (
     <SoftPage>
       <SoftHeader title="Reports" subtitle={onlyO2 ? "Restoran Bara Ikan Bakar Senibong: sales, costs and profit from the recorded figures." : "Real, live figures from every module — nothing here is hardcoded."} />
-
-      {jdtRows.length > 0 && <UpcomingJdtEvents rows={jdtRows} canOpen={canAccessModule(session.allowedModules, "catering")} query={query} />}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {reports.map((r) => (
