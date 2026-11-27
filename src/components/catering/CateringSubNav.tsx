@@ -9,7 +9,7 @@ import { WorkflowTabs, type WorkGroup } from "@/components/layout/WorkflowTabs";
  */
 const GROUPS: WorkGroup[] = [
   {
-    title: "Sales & events (in order)",
+    title: "Sales & events",
     steps: true,
     tabs: [
       { href: "/catering/quotation-requests", label: "Quotation Requests", match: (p) => p.startsWith("/catering/quotation-requests") },

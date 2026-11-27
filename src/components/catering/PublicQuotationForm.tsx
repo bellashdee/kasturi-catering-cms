@@ -211,13 +211,13 @@ export function PublicQuotationForm({ companySlug, fixedCustomer, fixedAgent }: 
 
       {fixedCustomer ? (
         <div>
-          <div className={sectionTitle}>1. Customer</div>
+          <div className={sectionTitle}>Customer</div>
           <div className="mt-1.5 rounded-lg border border-border bg-surface-alt px-3 py-2.5 text-sm font-bold text-text">{fixedCustomer}</div>
         </div>
       ) : (
         <>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className={sectionTitle}>1. Customer information</div>
+            <div className={sectionTitle}>Customer information</div>
             <button type="button" onClick={() => { setAdding((a) => !a); setCustomerMessage(null); }} className="rounded-lg border border-primary px-3 py-1.5 text-[12.5px] font-semibold text-primary">
               {adding ? "Close" : "+ New customer (not in the list)"}
             </button>
@@ -305,7 +305,7 @@ export function PublicQuotationForm({ companySlug, fixedCustomer, fixedAgent }: 
         </>
       )}
 
-      <div className={sectionTitle}>2. Event information</div>
+      <div className={sectionTitle}>Event information</div>
       <div>
         <label className={labelClass}>Event name *</label>
         <textarea required maxLength={500} rows={2} value={form.eventName} onChange={(e) => set("eventName", e.target.value)} className="mt-1.5 w-full resize-y rounded-lg border border-border-strong px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" placeholder="e.g. Annual Conference 2026 (press Enter for a new line)" />
@@ -326,8 +326,8 @@ export function PublicQuotationForm({ companySlug, fixedCustomer, fixedAgent }: 
       </div>
 
       <div>
-        <div className={sectionTitle}>3. Event days, meals &amp; menu</div>
-        <p className="mb-3 mt-1.5 text-[12.5px] text-text-secondary">One block for each day of the event (1 day, or 3-5 days for a conference). Fill in ① date &amp; time, ② meals &amp; service, ③ menu &amp; price. Use &quot;Add next day&quot; to copy the previous day.</p>
+        <div className={sectionTitle}>Event days, meals &amp; menu</div>
+        <p className="mb-3 mt-1.5 text-[12.5px] text-text-secondary">One block for each day of the event (1 day, or 3-5 days for a conference). Fill in the date &amp; time, meals &amp; service, then the menu &amp; price. Use &quot;Add next day&quot; to copy the previous day.</p>
         <EventDaysEditor days={days} onChange={setDays} secondService={false} secondChoice mealRequired endTime />
       </div>
 

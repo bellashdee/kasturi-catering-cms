@@ -9,7 +9,7 @@ import { WorkflowTabs, type WorkGroup } from "@/components/layout/WorkflowTabs";
  */
 const GROUPS: WorkGroup[] = [
   {
-    title: "Daily work (in order)",
+    title: "Daily work",
     steps: true,
     tabs: [
       { href: "/driver-logistics/duty-roster", label: "Daily Duty Roster", match: (p) => p.startsWith("/driver-logistics/duty-roster") },

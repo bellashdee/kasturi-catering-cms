@@ -75,9 +75,8 @@ export function FinanceAdminSubNav() {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-1 border-b border-border">
-        {row.map((tab, i) => (
-          <Link key={tab.key} href={withCompany(tab.href)} className={`${tabClass(tab.active)} flex items-center gap-1.5`}>
-            <span className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-extrabold ${tab.active ? "bg-primary text-white" : "bg-surface-alt text-text-secondary"}`}>{i + 1}</span>
+        {row.map((tab) => (
+          <Link key={tab.key} href={withCompany(tab.href)} className={tabClass(tab.active)}>
             {tab.label}
           </Link>
         ))}

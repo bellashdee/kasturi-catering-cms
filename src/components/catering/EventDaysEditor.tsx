@@ -103,7 +103,7 @@ export function EventDaysEditor({
           </div>
 
           <div className={part}>
-          <div className={partTitle}>① Date &amp; time</div>
+          <div className={partTitle}>Date &amp; time</div>
           {/* two per row, so each 12-hour time (hour : minute AM/PM) has room; one per row on a phone */}
           <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
             <div>
@@ -129,7 +129,7 @@ export function EventDaysEditor({
           </div>
 
           <div className={part}>
-          <div className={partTitle}>② Meals &amp; service</div>
+          <div className={partTitle}>Meals &amp; service</div>
           <div>
             <label className={labelClass}>{mealRequired ? "Meal type *" : "Meal type"}</label>
             <MealTypeSelect value={day.mealTypes} onToggle={(key) => toggleMeal(i, key)} />
@@ -183,7 +183,7 @@ export function EventDaysEditor({
           </div>
 
           <div className={part}>
-            <div className={partTitle}>③ Menu &amp; price</div>
+            <div className={partTitle}>Menu &amp; price</div>
             <div className={labelClass}>Menu details</div>
             <MenuPointsInput value={day.menuDetails ?? ""} onChange={(v) => patch(i, { menuDetails: v })} />
             <div className="mt-3 grid grid-cols-1 items-end gap-3 sm:grid-cols-[12rem_1fr]">
@@ -214,7 +214,7 @@ export function EventDaysEditor({
 
           {secondChoice && (
             <div className={part}>
-              <div className={partTitle}>④ Second menu (optional)</div>
+              <div className={partTitle}>Second menu (optional)</div>
               <p className="mb-2 text-xs text-text-muted">Alternative menus for this day, up to 5 a day (for example one for each meal type). Their amount (pax x price per meal) is added to the total.</p>
               <div className="flex flex-col gap-3">
                 {secondMenusOf(day).map((menu, n) => (

@@ -44,11 +44,14 @@ export function DutyRosterBoard({
   const days = useMemo(() => daysOfMonth(roster.month), [roster.month]);
   const codeMap = useMemo(() => new Map(codes.map((c) => [c.code, c])), [codes]);
 
-  const [rows, setRows] = useState<RosterRow[]>(roster.rows);
+  // a month with no roster yet starts with every kitchen staff member already listed (no adding one by one)
+  const startRows = (): RosterRow[] =>
+    roster.rows.length > 0 || !canEdit ? roster.rows : staff.map((st) => ({ employeeId: st.id, displayName: (st.shortName || st.name).toUpperCase(), codes: {} }));
+  const [rows, setRows] = useState<RosterRow[]>(startRows);
   const [ph, setPh] = useState<number[]>(roster.publicHolidays);
   const [notes, setNotes] = useState(roster.notes ?? "");
   const [brush, setBrush] = useState<string>(codes.find((c) => c.code === "A4")?.code ?? codes[0]?.code ?? "N");
-  const [dirty, setDirty] = useState(false);
+  const [dirty, setDirty] = useState(roster.rows.length === 0 && canEdit && staff.length > 0);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [adding, setAdding] = useState({ employeeId: "", name: "" });
@@ -92,10 +95,14 @@ export function DutyRosterBoard({
       return copy;
     });
 
+  /** The kitchen staff not on this roster yet (e.g. a new staff member). */
+  const missing = staff.filter((st) => !rows.some((r) => r.employeeId === st.id));
+  const addAllMissing = () => change((rs) => [...rs, ...missing.map((st) => ({ employeeId: st.id, displayName: (st.shortName || st.name).toUpperCase(), codes: {} }))]);
+
   const addRow = () => {
     const picked = staff.find((s) => s.id === adding.employeeId);
     const name = (adding.name.trim() || picked?.shortName || picked?.name || "").toUpperCase();
-    if (!name) return setError("Choose a staff member or type the name to show on the roster.");
+    if (!name) return setError("Type the name of the person to add (all the kitchen staff are already on the roster).");
     if (rows.some((r) => r.displayName.toUpperCase() === name || (picked && r.employeeId === picked.id))) return setError(`${name} is already on the roster.`);
     setError(null);
     change((rs) => [...rs, { employeeId: picked?.id ?? null, displayName: name, codes: {} }]);
@@ -160,11 +167,10 @@ export function DutyRosterBoard({
 
   const chip = (code: string | undefined) => (code ? CODE_COLORS[codeMap.get(code)?.color ?? "neutral"] ?? CODE_COLORS.neutral : "");
 
-  /** One numbered step of the roster work (1 month & kitchen, 2 staff, 3 shifts, 4 save & approve). */
-  const step = (n: number, title: string, hint: string | null, content: ReactNode, extra = "") => (
+  /** One step of the roster work (month & kitchen, staff, shifts, save & approve). */
+  const step = (title: string, hint: string | null, content: ReactNode, extra = "") => (
     <section className={`rounded-xl border border-border bg-surface p-4 shadow-sm ${extra}`}>
       <div className="mb-3 flex items-start gap-2.5">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-[13px] font-extrabold text-white">{n}</span>
         <div>
           <div className="text-[15px] font-extrabold text-text">{title}</div>
           {hint && <div className="text-[12.5px] text-text-secondary">{hint}</div>}
@@ -180,8 +186,7 @@ export function DutyRosterBoard({
       {message && <div className="rounded-lg bg-success-bg px-3 py-2 text-[13px] text-success">{message}</div>}
 
       {step(
-        1,
-        "Choose the month and the kitchen",
+                "Choose the month and the kitchen",
         canEdit && previousMonth ? `Starting a new month? Copy last month's roster, then change what is different.` : null,
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-end gap-3">
@@ -235,34 +240,28 @@ export function DutyRosterBoard({
 
       {canEdit &&
         step(
-          2,
-          "Add the kitchen staff",
-          "Each staff member added becomes one row of the roster.",
+          "Kitchen staff",
+          missing.length === 0
+            ? "All the kitchen staff are already listed in the roster below. Only add someone else here (e.g. a part-timer)."
+            : `${missing.length} kitchen staff member(s) are not on this roster yet.`,
           <div className="flex flex-wrap items-end gap-2">
+            {missing.length > 0 && (
+              <button type="button" onClick={addAllMissing} className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white">
+                {`+ Add ${missing.map((m) => m.shortName || m.name).join(", ")}`}
+              </button>
+            )}
             <label className="flex flex-col gap-1 text-[12px] font-semibold text-text-secondary">
-              Add kitchen staff
-              <select value={adding.employeeId} onChange={(e) => setAdding({ ...adding, employeeId: e.target.value })} className="h-9 w-64 rounded-lg border border-border-strong bg-surface px-2 text-[13px] text-text">
-                <option value="">Choose a staff member…</option>
-                {staff
-                  .filter((s) => !rows.some((r) => r.employeeId === s.id))
-                  .map((s) => (
-                    <option key={s.id} value={s.id}>{s.name} ({s.shortName})</option>
-                  ))}
-              </select>
+              Someone else (name)
+              <input value={adding.name} onChange={(e) => setAdding({ employeeId: "", name: e.target.value })} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addRow())} placeholder="e.g. ALI (part-time)" className="h-9 w-52 rounded-lg border border-border-strong px-3 text-[13px] text-text" />
             </label>
-            <label className="flex flex-col gap-1 text-[12px] font-semibold text-text-secondary">
-              Name on the roster (optional)
-              <input value={adding.name} onChange={(e) => setAdding({ ...adding, name: e.target.value })} placeholder="Short name is used if empty" className="h-9 w-48 rounded-lg border border-border-strong px-3 text-[13px] text-text" />
-            </label>
-            <button type="button" onClick={addRow} className={btn}>+ Add to roster</button>
+            <button type="button" onClick={addRow} className={btn}>+ Add</button>
           </div>,
           "print:hidden",
         )}
 
       {canEdit &&
         step(
-          3,
-          "Choose a shift, then tap the days",
+                    "Choose a shift, then tap the days",
           "Tap a shift below, then tap the boxes in the roster to fill them. Tap a date at the top of the roster to mark a public holiday.",
           <div className="flex flex-wrap gap-1.5">
             {codes.map((c) => (
@@ -383,8 +382,7 @@ export function DutyRosterBoard({
       </div>
 
       {step(
-        canEdit ? 4 : 2,
-        canEdit ? "Save, then get it approved" : "Approval & notes",
+                canEdit ? "Save, then get it approved" : "Approval & notes",
         canEdit ? "Press Save roster after every change. The roster is then approved, and can be printed or exported." : null,
         <div className="flex flex-col gap-3">
           {dirty && <div className="rounded-lg border border-warning/40 bg-warning-bg px-3 py-2 text-[13px] font-semibold text-warning">You have changes that are not saved yet. Press Save roster.</div>}

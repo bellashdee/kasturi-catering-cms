@@ -10,7 +10,7 @@ import { WorkflowTabs, type WorkGroup } from "@/components/layout/WorkflowTabs";
  */
 const GROUPS: WorkGroup[] = [
   {
-    title: "Daily work (in order)",
+    title: "Daily work",
     steps: true,
     tabs: [
       { href: "/kitchen", label: "Production Schedule", match: (p) => p === "/kitchen" || /^\/kitchen\/[0-9a-f-]{36}$/.test(p) },
