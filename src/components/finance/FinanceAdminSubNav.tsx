@@ -12,9 +12,9 @@ type Tab = Page | { label: string; pages: Page[]; alsoMatch?: Match };
 
 const isCategory = (params: URLSearchParams, category: string) => (params.get("category") ?? "supplier") === category;
 
+// in the order of the money work: bill the customers, receive their payments, pay suppliers / rental / utilities, follow what is still
+// owed, then the results (Event P&L, Monthly Costing)
 const TABS: Tab[] = [
-  { href: "/admin", label: "Monthly Costing", match: (p) => p === "/admin" },
-  { href: "/finance/event-pnl", label: "Event P&L", match: (p) => p.startsWith("/finance/event-pnl") },
   { href: "/finance/invoices", label: "Customer Invoices", match: (p) => p.startsWith("/finance/invoices") },
   { href: "/finance/payment-proofs", label: "Payments Received", match: (p) => p.startsWith("/finance/payment-proofs") || p.startsWith("/finance/receive-payments") },
   {
@@ -35,6 +35,8 @@ const TABS: Tab[] = [
       { href: "/finance/outstanding", label: "Outstanding Payment", match: (p) => p.startsWith("/finance/outstanding") },
     ],
   },
+  { href: "/finance/event-pnl", label: "Event P&L", match: (p) => p.startsWith("/finance/event-pnl") },
+  { href: "/admin", label: "Monthly Costing", match: (p) => p === "/admin" },
 ];
 
 /** Made for catering events and their customers: not shown while O2 Life (the restaurant) is the only company viewed. */
@@ -55,7 +57,9 @@ export function FinanceAdminSubNav() {
   const company = searchParams.get("company");
   const withCompany = (href: string) => (company ? `${href}?company=${company}` : href);
 
-  const tabs: Tab[] = restaurant && canOpenReports ? [TABS[0], BREAKDOWN_TAB, ...TABS.slice(1)] : TABS;
+  // the restaurant's Monthly Breakdown follows Monthly Costing
+  const costingAt = TABS.findIndex((t) => "href" in t && t.href === "/admin");
+  const tabs: Tab[] = restaurant && canOpenReports ? [...TABS.slice(0, costingAt + 1), BREAKDOWN_TAB, ...TABS.slice(costingAt + 1)] : TABS;
   const row = tabs.flatMap((tab) => {
     if ("href" in tab) {
       if (!visible(tab.href) || (restaurant && EVENT_TABS.has(tab.href))) return [];
@@ -71,8 +75,9 @@ export function FinanceAdminSubNav() {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-1 border-b border-border">
-        {row.map((tab) => (
-          <Link key={tab.key} href={withCompany(tab.href)} className={tabClass(tab.active)}>
+        {row.map((tab, i) => (
+          <Link key={tab.key} href={withCompany(tab.href)} className={`${tabClass(tab.active)} flex items-center gap-1.5`}>
+            <span className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-extrabold ${tab.active ? "bg-primary text-white" : "bg-surface-alt text-text-secondary"}`}>{i + 1}</span>
             {tab.label}
           </Link>
         ))}

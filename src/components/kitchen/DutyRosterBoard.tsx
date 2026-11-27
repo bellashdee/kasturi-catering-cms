@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { approveRoster, saveRoster } from "@/lib/kitchen/rosterActions";
 import { CODE_COLORS, SUMMARY_CODES, daysOfMonth, rosterTitle, shiftHours, shiftMonth, type Roster, type RosterRow, type ShiftCode } from "@/lib/kitchen/roster";
@@ -160,10 +160,31 @@ export function DutyRosterBoard({
 
   const chip = (code: string | undefined) => (code ? CODE_COLORS[codeMap.get(code)?.color ?? "neutral"] ?? CODE_COLORS.neutral : "");
 
+  /** One numbered step of the roster work (1 month & kitchen, 2 staff, 3 shifts, 4 save & approve). */
+  const step = (n: number, title: string, hint: string | null, content: ReactNode, extra = "") => (
+    <section className={`rounded-xl border border-border bg-surface p-4 shadow-sm ${extra}`}>
+      <div className="mb-3 flex items-start gap-2.5">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-[13px] font-extrabold text-white">{n}</span>
+        <div>
+          <div className="text-[15px] font-extrabold text-text">{title}</div>
+          {hint && <div className="text-[12.5px] text-text-secondary">{hint}</div>}
+        </div>
+      </div>
+      {content}
+    </section>
+  );
+
   return (
     <div className="flex flex-col gap-4">
-      {/* month, kitchen and the buttons */}
-      <div className="flex flex-wrap items-end gap-3">
+      {error && <div className="rounded-lg bg-danger-bg px-3 py-2 text-[13px] text-danger">{error}</div>}
+      {message && <div className="rounded-lg bg-success-bg px-3 py-2 text-[13px] text-success">{message}</div>}
+
+      {step(
+        1,
+        "Choose the month and the kitchen",
+        canEdit && previousMonth ? `Starting a new month? Copy last month's roster, then change what is different.` : null,
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-end gap-3">
         <div className="flex items-center gap-1.5">
           <button type="button" aria-label="Previous month" className={btn} onClick={() => go({ month: shiftMonth(roster.month, -1) })}>‹</button>
           <input
@@ -193,39 +214,56 @@ export function DutyRosterBoard({
             </div>
           )}
         </label>
-        <div className="ml-auto flex flex-wrap gap-2">
-          <button type="button" className={btn} disabled={rows.length === 0} onClick={() => downloadTableExcel(table)}>Export Excel</button>
-          <button type="button" className={btn} disabled={rows.length === 0} onClick={() => printTablePdf(table, window.open("", "_blank"))}>Print</button>
-          {canEdit && previousMonth && (
-            <button type="button" className={btn} onClick={copyPrevious}>Copy from {monthText(previousMonth)}</button>
-          )}
-          {canEdit && (
-            <button type="button" disabled={pending || !dirty} onClick={save} className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-white disabled:opacity-50">
-              {pending ? "Saving…" : "Save roster"}
-            </button>
-          )}
-        </div>
-      </div>
-
+            {canEdit && previousMonth && (
+              <button type="button" className={btn} onClick={copyPrevious}>Copy from {monthText(previousMonth)}</button>
+            )}
+          </div>
       {savedMonths.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 text-[12px] text-text-secondary">
-          Saved months:
-          {[...savedMonths].sort().map((m) => (
-            <button key={m} type="button" onClick={() => go({ month: m })} className={`rounded-full border px-2.5 py-0.5 font-semibold ${m === roster.month ? "border-primary bg-primary text-white" : "border-border-strong bg-surface text-text hover:bg-surface-alt"}`}>
-              {monthText(m).slice(0, 3)} {m.slice(0, 4)}
-            </button>
-          ))}
-        </div>
+            <div className="flex flex-wrap items-center gap-1.5 text-[12px] text-text-secondary">
+              Saved months:
+              {[...savedMonths].sort().map((m) => (
+                <button key={m} type="button" onClick={() => go({ month: m })} className={`rounded-full border px-2.5 py-0.5 font-semibold ${m === roster.month ? "border-primary bg-primary text-white" : "border-border-strong bg-surface text-text hover:bg-surface-alt"}`}>
+                  {monthText(m).slice(0, 3)} {m.slice(0, 4)}
+                </button>
+              ))}
+            </div>
+          )}
+
+        </div>,
+        "print:hidden",
       )}
 
-      {error && <div className="rounded-lg bg-danger-bg px-3 py-2 text-[13px] text-danger">{error}</div>}
-      {message && <div className="rounded-lg bg-success-bg px-3 py-2 text-[13px] text-success">{message}</div>}
-      {dirty && <div className="rounded-lg border border-warning/40 bg-warning-bg px-3 py-2 text-[13px] font-semibold text-warning">You have changes that are not saved yet. Press Save roster.</div>}
+      {canEdit &&
+        step(
+          2,
+          "Add the kitchen staff",
+          "Each staff member added becomes one row of the roster.",
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="flex flex-col gap-1 text-[12px] font-semibold text-text-secondary">
+              Add kitchen staff
+              <select value={adding.employeeId} onChange={(e) => setAdding({ ...adding, employeeId: e.target.value })} className="h-9 w-64 rounded-lg border border-border-strong bg-surface px-2 text-[13px] text-text">
+                <option value="">Choose a staff member…</option>
+                {staff
+                  .filter((s) => !rows.some((r) => r.employeeId === s.id))
+                  .map((s) => (
+                    <option key={s.id} value={s.id}>{s.name} ({s.shortName})</option>
+                  ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-[12px] font-semibold text-text-secondary">
+              Name on the roster (optional)
+              <input value={adding.name} onChange={(e) => setAdding({ ...adding, name: e.target.value })} placeholder="Short name is used if empty" className="h-9 w-48 rounded-lg border border-border-strong px-3 text-[13px] text-text" />
+            </label>
+            <button type="button" onClick={addRow} className={btn}>+ Add to roster</button>
+          </div>,
+          "print:hidden",
+        )}
 
-      {/* the brush: which code a tap puts in */}
-      {canEdit && (
-        <div className="rounded-xl border border-border bg-surface p-3 shadow-sm print:hidden">
-          <div className="mb-2 text-[12px] font-semibold text-text-secondary">Choose a shift, then tap the days to fill them. Tap a date at the top to mark a public holiday.</div>
+      {canEdit &&
+        step(
+          3,
+          "Choose a shift, then tap the days",
+          "Tap a shift below, then tap the boxes in the roster to fill them. Tap a date at the top of the roster to mark a public holiday.",
           <div className="flex flex-wrap gap-1.5">
             {codes.map((c) => (
               <button
@@ -243,8 +281,9 @@ export function DutyRosterBoard({
               Clear
             </button>
           </div>
-        </div>
-      )}
+,
+          "print:hidden",
+        )}
 
       {/* the roster */}
       <div className="rounded-xl border border-border bg-surface shadow-sm">
@@ -341,42 +380,23 @@ export function DutyRosterBoard({
           </div>
         )}
 
-        {canEdit && (
-          <div className="flex flex-wrap items-end gap-2 border-t border-border px-4 py-3 print:hidden">
-            <label className="flex flex-col gap-1 text-[12px] font-semibold text-text-secondary">
-              Add kitchen staff
-              <select value={adding.employeeId} onChange={(e) => setAdding({ ...adding, employeeId: e.target.value })} className="h-9 w-64 rounded-lg border border-border-strong bg-surface px-2 text-[13px] text-text">
-                <option value="">Choose a staff member…</option>
-                {staff
-                  .filter((s) => !rows.some((r) => r.employeeId === s.id))
-                  .map((s) => (
-                    <option key={s.id} value={s.id}>{s.name} ({s.shortName})</option>
-                  ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1 text-[12px] font-semibold text-text-secondary">
-              Name on the roster (optional)
-              <input value={adding.name} onChange={(e) => setAdding({ ...adding, name: e.target.value })} placeholder="Short name is used if empty" className="h-9 w-48 rounded-lg border border-border-strong px-3 text-[13px] text-text" />
-            </label>
-            <button type="button" onClick={addRow} className={btn}>+ Add to roster</button>
-          </div>
-        )}
       </div>
 
-      {/* shift times, notes and signatures, like the bottom of the Excel roster */}
-      <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
-        <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
-          <div className="mb-2 text-[13px] font-extrabold uppercase tracking-wide text-text">Shift codes</div>
-          <div className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
-            {codes.map((c) => (
-              <div key={c.code} className="flex items-center gap-2 text-[12.5px]">
-                <span className={`inline-block min-w-[38px] rounded px-1.5 py-0.5 text-center font-bold ${chip(c.code)}`}>{c.code}</span>
-                <span className="text-text">{c.is_work ? shiftHours(c) : c.label}</span>
-              </div>
-            ))}
+      {step(
+        canEdit ? 4 : 2,
+        canEdit ? "Save, then get it approved" : "Approval & notes",
+        canEdit ? "Press Save roster after every change. The roster is then approved, and can be printed or exported." : null,
+        <div className="flex flex-col gap-3">
+          {dirty && <div className="rounded-lg border border-warning/40 bg-warning-bg px-3 py-2 text-[13px] font-semibold text-warning">You have changes that are not saved yet. Press Save roster.</div>}
+          <div className="flex flex-wrap gap-2">
+            {canEdit && (
+              <button type="button" disabled={pending || !dirty} onClick={save} className="h-10 rounded-lg bg-primary px-5 text-[14px] font-bold text-white disabled:opacity-50">
+                {pending ? "Saving…" : "Save roster"}
+              </button>
+            )}
+            <button type="button" className={btn} disabled={rows.length === 0} onClick={() => printTablePdf(table, window.open("", "_blank"))}>Print</button>
+            <button type="button" className={btn} disabled={rows.length === 0} onClick={() => downloadTableExcel(table)}>Export Excel</button>
           </div>
-        </div>
-        <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 shadow-sm">
           <div className="grid grid-cols-2 gap-4 text-[12.5px]">
             <div>
               <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Prepared by</div>
@@ -401,8 +421,21 @@ export function DutyRosterBoard({
             )}
           </label>
           {!canEdit && <div className="text-[12px] text-text-muted">Only Chef Atiq (or a Super Admin) can change this roster.</div>}
+        </div>,
+      )}
+
+      {/* the shift times, like the bottom of the Excel roster */}
+        <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
+          <div className="mb-2 text-[13px] font-extrabold uppercase tracking-wide text-text">Shift codes</div>
+          <div className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
+            {codes.map((c) => (
+              <div key={c.code} className="flex items-center gap-2 text-[12.5px]">
+                <span className={`inline-block min-w-[38px] rounded px-1.5 py-0.5 text-center font-bold ${chip(c.code)}`}>{c.code}</span>
+                <span className="text-text">{c.is_work ? shiftHours(c) : c.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
     </div>
   );
 }

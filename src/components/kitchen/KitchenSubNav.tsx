@@ -1,20 +1,37 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
 import { useTabVisible } from "@/components/layout/SectionAccess";
 import { useIncludesRestaurant, useRestaurantView } from "@/components/layout/RestaurantView";
+import { WorkflowTabs, type WorkGroup } from "@/components/layout/WorkflowTabs";
 
-const TABS = [
-  { href: "/kitchen", label: "Production Schedule", match: (p: string) => p === "/kitchen" || /^\/kitchen\/[0-9a-f-]{36}$/.test(p) },
-  { href: "/kitchen/plan", label: "Cooking Plan", match: (p: string) => p.startsWith("/kitchen/plan") },
-  { href: "/kitchen/recipes", label: "Recipes", match: (p: string) => p.startsWith("/kitchen/recipes") },
-  { href: "/kitchen/packages", label: "Package Menu", match: (p: string) => p.startsWith("/kitchen/packages") },
-  { href: "/kitchen/stock", label: "Stock", match: (p: string) => p.startsWith("/kitchen/stock") },
-  { href: "/kitchen/wastage", label: "Wastage", match: (p: string) => p.startsWith("/kitchen/wastage") },
-  { href: "/kitchen/purchase-requests", label: "Purchase Requests", match: (p: string) => p.startsWith("/kitchen/purchase-requests") },
-  { href: "/kitchen/reports", label: "Daily Report", match: (p: string) => p.startsWith("/kitchen/reports") },
-  { href: "/kitchen/roster", label: "Duty Roster", match: (p: string) => p.startsWith("/kitchen/roster") },
+/**
+ * In the order of the kitchen's work: see the events to cook for, plan the cooking, ask Purchasing for what is missing, receive / check
+ * the stock (and the restaurant's wastage), then the day's report. The kitchen staff roster and the menus / recipes are set up apart.
+ */
+const GROUPS: WorkGroup[] = [
+  {
+    title: "Daily work (in order)",
+    steps: true,
+    tabs: [
+      { href: "/kitchen", label: "Production Schedule", match: (p) => p === "/kitchen" || /^\/kitchen\/[0-9a-f-]{36}$/.test(p) },
+      { href: "/kitchen/plan", label: "Cooking Plan", match: (p) => p.startsWith("/kitchen/plan") },
+      { href: "/kitchen/purchase-requests", label: "Purchase Requests", match: (p) => p.startsWith("/kitchen/purchase-requests") },
+      { href: "/kitchen/stock", label: "Stock", match: (p) => p.startsWith("/kitchen/stock") },
+      { href: "/kitchen/wastage", label: "Wastage", match: (p) => p.startsWith("/kitchen/wastage") },
+      { href: "/kitchen/reports", label: "Daily Report", match: (p) => p.startsWith("/kitchen/reports") },
+    ],
+  },
+  {
+    title: "Kitchen staff",
+    tabs: [{ href: "/kitchen/roster", label: "Duty Roster", match: (p) => p.startsWith("/kitchen/roster") }],
+  },
+  {
+    title: "Menus & recipes",
+    tabs: [
+      { href: "/kitchen/packages", label: "Package Menu", match: (p) => p.startsWith("/kitchen/packages") },
+      { href: "/kitchen/recipes", label: "Recipes", match: (p) => p.startsWith("/kitchen/recipes") },
+    ],
+  },
 ];
 
 /** Made for catering events: not shown while O2 Life (the restaurant) is the only company viewed. */
@@ -24,30 +41,13 @@ const EVENT_TABS = new Set(["/kitchen", "/kitchen/plan", "/kitchen/packages"]);
 const RESTAURANT_TABS = new Set(["/kitchen/wastage"]);
 
 export function KitchenSubNav() {
-  const pathname = usePathname();
   const visible = useTabVisible();
   const restaurant = useRestaurantView();
   const includesRestaurant = useIncludesRestaurant();
-  const searchParams = useSearchParams();
-  const company = searchParams.get("company");
-
   return (
-    <div className="flex flex-wrap gap-1 border-b border-border">
-      {TABS.filter((tab) => visible(RESTAURANT_TABS.has(tab.href) ? "/kitchen/stock" : tab.href) && !(restaurant && EVENT_TABS.has(tab.href)) && (includesRestaurant || !RESTAURANT_TABS.has(tab.href))).map((tab) => {
-        const active = tab.match(pathname);
-        const href = company ? `${tab.href}?company=${company}` : tab.href;
-        return (
-          <Link
-            key={tab.href}
-            href={href}
-            className={`border-b-2 px-3.5 py-2.5 text-[13.5px] font-semibold ${
-              active ? "border-primary text-primary" : "border-transparent text-text-secondary hover:text-text"
-            }`}
-          >
-            {tab.label}
-          </Link>
-        );
-      })}
-    </div>
+    <WorkflowTabs
+      groups={GROUPS}
+      show={(tab) => visible(RESTAURANT_TABS.has(tab.href) ? "/kitchen/stock" : tab.href) && !(restaurant && EVENT_TABS.has(tab.href)) && (includesRestaurant || !RESTAURANT_TABS.has(tab.href))}
+    />
   );
 }

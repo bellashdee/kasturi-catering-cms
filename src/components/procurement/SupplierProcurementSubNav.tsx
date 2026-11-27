@@ -1,45 +1,41 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
 import { useTabVisible } from "@/components/layout/SectionAccess";
+import { WorkflowTabs, type WorkGroup } from "@/components/layout/WorkflowTabs";
 
-const TABS = [
-  { href: "/supplier-procurement/vendors", label: "Vendor Contacts", match: (p: string) => p.startsWith("/supplier-procurement/vendors") },
-  { href: "/supplier-procurement", label: "Suppliers", match: (p: string) => p === "/supplier-procurement" || /^\/supplier-procurement\/[0-9a-f-]{36}/.test(p) },
-  { href: "/supplier-procurement/items", label: "Items & Prices", match: (p: string) => p.startsWith("/supplier-procurement/items") },
-  { href: "/supplier-procurement/kitchen-requests", label: "Kitchen Requests", match: (p: string) => p.startsWith("/supplier-procurement/kitchen-requests") },
-  { href: "/supplier-procurement/price-quotes", label: "Supplier Quotes", match: (p: string) => p.startsWith("/supplier-procurement/price-quotes") },
-  { href: "/supplier-procurement/orders", label: "Purchase Orders", match: (p: string) => p.startsWith("/supplier-procurement/orders") || p.startsWith("/supplier-procurement/requests") },
-  { href: "/supplier-procurement/invoices", label: "Invoices", match: (p: string) => p.startsWith("/supplier-procurement/invoices") },
-  { href: "/supplier-procurement/notes", label: "Credit / Debit Notes", match: (p: string) => p.startsWith("/supplier-procurement/notes") },
-  { href: "/supplier-procurement/soa", label: "SOA", match: (p: string) => p.startsWith("/supplier-procurement/soa") },
-  { href: "/supplier-procurement/jdt-snacks", label: "JDT Snacks", match: (p: string) => p.startsWith("/supplier-procurement/jdt-snacks") },
+/**
+ * In the order of the buying work: the kitchen asks, suppliers quote, a purchase order goes out, the supplier's invoice (and any credit /
+ * debit note) comes in, then the statement of account. JDT snack requests have their own page; the suppliers and their items / prices
+ * are the records behind it all.
+ */
+const GROUPS: WorkGroup[] = [
+  {
+    title: "Buying (in order)",
+    steps: true,
+    tabs: [
+      { href: "/supplier-procurement/kitchen-requests", label: "Kitchen Requests", match: (p) => p.startsWith("/supplier-procurement/kitchen-requests") },
+      { href: "/supplier-procurement/price-quotes", label: "Supplier Quotes", match: (p) => p.startsWith("/supplier-procurement/price-quotes") },
+      { href: "/supplier-procurement/orders", label: "Purchase Orders", match: (p) => p.startsWith("/supplier-procurement/orders") || p.startsWith("/supplier-procurement/requests") },
+      { href: "/supplier-procurement/invoices", label: "Invoices", match: (p) => p.startsWith("/supplier-procurement/invoices") },
+      { href: "/supplier-procurement/notes", label: "Credit / Debit Notes", match: (p) => p.startsWith("/supplier-procurement/notes") },
+      { href: "/supplier-procurement/soa", label: "SOA", match: (p) => p.startsWith("/supplier-procurement/soa") },
+    ],
+  },
+  {
+    title: "JDT",
+    tabs: [{ href: "/supplier-procurement/jdt-snacks", label: "JDT Snacks", match: (p) => p.startsWith("/supplier-procurement/jdt-snacks") }],
+  },
+  {
+    title: "Suppliers & items",
+    tabs: [
+      { href: "/supplier-procurement", label: "Suppliers", match: (p) => p === "/supplier-procurement" || /^\/supplier-procurement\/[0-9a-f-]{36}/.test(p) },
+      { href: "/supplier-procurement/items", label: "Items & Prices", match: (p) => p.startsWith("/supplier-procurement/items") },
+      { href: "/supplier-procurement/vendors", label: "Vendor Contacts", match: (p) => p.startsWith("/supplier-procurement/vendors") },
+    ],
+  },
 ];
 
 export function SupplierProcurementSubNav() {
-  const pathname = usePathname();
   const visible = useTabVisible();
-  const searchParams = useSearchParams();
-  const company = searchParams.get("company");
-
-  return (
-    <div className="flex flex-wrap gap-1 border-b border-border">
-      {TABS.filter((tab) => visible(tab.href)).map((tab) => {
-        const active = tab.match(pathname);
-        const href = company ? `${tab.href}?company=${company}` : tab.href;
-        return (
-          <Link
-            key={tab.href}
-            href={href}
-            className={`border-b-2 px-3.5 py-2.5 text-[13.5px] font-semibold ${
-              active ? "border-primary text-primary" : "border-transparent text-text-secondary hover:text-text"
-            }`}
-          >
-            {tab.label}
-          </Link>
-        );
-      })}
-    </div>
-  );
+  return <WorkflowTabs groups={GROUPS} show={(tab) => visible(tab.href)} />;
 }
