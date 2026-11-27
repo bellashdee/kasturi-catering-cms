@@ -14,6 +14,7 @@ function pageTitle(pathname: string, priorityTitle: string, restaurant: boolean)
   if (pathname.startsWith("/priority-centre")) return priorityTitle;
   if (pathname.startsWith("/payroll-centre")) return "Payroll Centre";
   if (pathname.startsWith("/bulletin")) return "Bulletin Board";
+  if (pathname.startsWith("/signature-dashboard")) return "Signature Solution Dashboard";
   const found = MODULES.find((m) => [m.href, ...(m.matchPrefixes ?? [])].some((p) => pathname === p || pathname.startsWith(`${p}/`)));
   return (restaurant && found ? RESTAURANT_MODULE_LABEL[found.key] : undefined) ?? found?.label ?? "Central Management System";
 }

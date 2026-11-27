@@ -6,7 +6,7 @@ import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { StatusBadge } from "@/components/StatusBadge";
-import { SALES_AGENTS, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
+import { SALES_AGENTS, SERVICE_TYPE_LABEL, SIGNATURE_COMPANY_ID } from "@/lib/catering/constants";
 import { dayPax, type EventDay } from "@/lib/catering/days";
 import { TRACKING_STATUS_LABEL, TRACKING_STATUS_TONE } from "@/lib/catering/quotationRequest";
 import { formatMalaysiaDate, formatMalaysiaDateTime } from "@/lib/format";
@@ -104,6 +104,15 @@ export default async function QuotationRequestsPage({ searchParams }: { searchPa
       </div>
 
       <CateringSubNav />
+
+      {targetCompanyIds.includes(SIGNATURE_COMPANY_ID) && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 shadow-sm">
+          <Link href={`/catering/quotation-requests/whatsapp${query}`} className="rounded-lg bg-primary px-4 py-2 text-[13.5px] font-bold text-white">
+            + Import from WhatsApp (Signature Solution)
+          </Link>
+          <span className="text-[12.5px] text-text-secondary">Paste the Boss&apos;s WhatsApp message: the AI fills in a quotation request, JDT match dates or a JDT training snack request for you to check.</span>
+        </div>
+      )}
 
       <MonthFilter />
 

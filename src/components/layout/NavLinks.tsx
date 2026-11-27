@@ -220,10 +220,13 @@ export function MainDashboardLink() {
 
 /** The links under Main Dashboard: the person's own work first (Priority Centre / My Tasks), then the Bulletin Board. */
 export function TopLinks({ taskLabel = "Priority Centre" }: { taskLabel?: string }) {
+  // the Signature Solution Dashboard (JDT schedule, quotation requests, snack requests); not for the restaurant view
+  const restaurant = useRestaurantView();
   return (
     <>
       <NavItem href="/priority-centre" icon="priority" label={taskLabel} />
       <NavItem href="/bulletin" icon="bulletin" label="Bulletin Board" />
+      {!restaurant && <NavItem href="/signature-dashboard" icon="dashboard" label="Signature Dashboard" />}
     </>
   );
 }

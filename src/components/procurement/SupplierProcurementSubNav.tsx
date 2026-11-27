@@ -14,6 +14,7 @@ const TABS = [
   { href: "/supplier-procurement/invoices", label: "Invoices", match: (p: string) => p.startsWith("/supplier-procurement/invoices") },
   { href: "/supplier-procurement/notes", label: "Credit / Debit Notes", match: (p: string) => p.startsWith("/supplier-procurement/notes") },
   { href: "/supplier-procurement/soa", label: "SOA", match: (p: string) => p.startsWith("/supplier-procurement/soa") },
+  { href: "/supplier-procurement/jdt-snacks", label: "JDT Snacks", match: (p: string) => p.startsWith("/supplier-procurement/jdt-snacks") },
 ];
 
 export function SupplierProcurementSubNav() {

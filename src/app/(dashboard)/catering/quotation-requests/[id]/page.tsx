@@ -18,6 +18,9 @@ import { NEEDS_LABEL, typedExtras } from "@/lib/catering/customerNeeds";
 import { CustomerNeedsView } from "@/components/catering/CustomerNeedsView";
 import { formatCurrency, formatMalaysiaDate, formatMalaysiaDateTime, formatPrice, formatTime12 } from "@/lib/format";
 import { RequestDetailsEditor, RequestNotes, RequestTrackingForm } from "@/components/catering/QuotationRequestInbox";
+import { sessionExtrasLines } from "@/lib/catering/quotationRequest";
+import { untyped } from "@/lib/kitchenPurchase/shared";
+import { isDateOnlyStatus } from "@/lib/catering/constants";
 
 const card = "rounded-xl border border-border bg-surface p-5 shadow-sm";
 const heading = "mb-3 text-[13px] font-extrabold uppercase tracking-wide text-text-muted";
@@ -43,6 +46,11 @@ export default async function QuotationRequestPage({ params, searchParams }: { p
   if (!r) notFound();
 
   const days = (r.days as unknown as EventDay[]) ?? [];
+  // made from a WhatsApp message of the Boss: the original message is kept with the request
+  const waId = (r as unknown as { whatsapp_import_id: string | null }).whatsapp_import_id;
+  const wa = waId ? ((await untyped(supabase).from("whatsapp_imports").select("id, original_message, imported_at").eq("id", waId).maybeSingle()).data as { id: string; original_message: string; imported_at: string } | null) : null;
+  // linked to a JDT date-only event already on the calendar: that event is updated from this request (no second event)
+  const linkedEvent = r.catering_event_id ? (await supabase.from("catering_events").select("id, status").eq("id", r.catering_event_id).maybeSingle()).data : null;
   const extras = (r.extra_items as unknown as ExtraItem[]) ?? [];
   const additional = additionalRows(r.additional as AdditionalServices | null, extras);
   // the extra items the agent typed in (the additional requirement lines are listed above them)
@@ -71,7 +79,19 @@ export default async function QuotationRequestPage({ params, searchParams }: { p
           {r.event_name} · {r.customer_name} · sent by {r.sales_agent} on {formatMalaysiaDateTime(r.created_at)}
           {r.companies?.name ? ` · ${r.companies.name}` : ""}
         </p>
-        {r.catering_event_id ? (
+        {r.catering_event_id && linkedEvent && isDateOnlyStatus(linkedEvent.status) ? (
+          <div className="mt-2 rounded-lg border-l-[4px] border-blue-600 bg-blue-50 px-3 py-2 text-[13px] text-text">
+            This request is for a JDT date already on the calendar (date only, menu &amp; pax pending). Fill that same event from this request — no second event is made:
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              <Link href={`/catering/${r.catering_event_id}/edit?fromRequest=${r.id}${company ? `&company=${company}` : ""}`} className="rounded-lg bg-primary px-3 py-1.5 text-[13px] font-semibold text-white">
+                Update the JDT event from this request
+              </Link>
+              <Link href={`/catering/${r.catering_event_id}${query}`} className="rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-[13px] font-semibold text-text">
+                Open the event
+              </Link>
+            </div>
+          </div>
+        ) : r.catering_event_id ? (
           <p className="mt-1 text-[12.5px] text-text-muted">
             An event was made from this request: <Link href={`/catering/${r.catering_event_id}${query}`} className="font-semibold text-primary">open the event</Link>
           </p>
@@ -84,6 +104,16 @@ export default async function QuotationRequestPage({ params, searchParams }: { p
           </div>
         )}
       </div>
+
+      {wa && (
+        <details className="rounded-xl border border-border bg-surface p-4 shadow-sm" open>
+          <summary className="cursor-pointer text-[13px] font-extrabold uppercase tracking-wide text-text-muted">{`Original WhatsApp message (imported ${formatMalaysiaDateTime(wa.imported_at)})`}</summary>
+          <pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap rounded-lg bg-surface-alt p-3 text-[13px] text-text">{wa.original_message}</pre>
+          <Link href={`/catering/quotation-requests/whatsapp?id=${wa.id}${company ? `&company=${company}` : ""}`} className="mt-1 inline-block text-[12.5px] font-semibold text-primary hover:underline">
+            See what the AI read and what was edited →
+          </Link>
+        </details>
+      )}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[3fr_2fr]">
         <div className="flex flex-col gap-5">
@@ -154,6 +184,7 @@ export default async function QuotationRequestPage({ params, searchParams }: { p
                       {menuRows(d.menuDetails).map((m, n) => <li key={n}>{m}</li>)}
                     </ol>
                   )}
+                  {sessionExtrasLines(d).length > 0 && <div className="mt-1 whitespace-pre-line rounded bg-surface px-2 py-1 text-xs font-semibold text-text">{sessionExtrasLines(d).join("\n")}</div>}
                   {secondMenusOf(d).map((m, n) => (
                     <div key={n} className="mt-2 rounded border border-border bg-surface px-3 py-2">
                       <div className="font-semibold text-text">Second menu {n + 1} <span className="text-xs font-normal text-text-muted">(included in the total)</span></div>
@@ -167,6 +198,7 @@ export default async function QuotationRequestPage({ params, searchParams }: { p
                         </div>
                       )}
                       <div className="whitespace-pre-line text-xs text-text-muted">{m.menu}</div>
+                      {sessionExtrasLines(m).length > 0 && <div className="mt-1 whitespace-pre-line text-xs font-semibold text-text">{sessionExtrasLines(m).join("\n")}</div>}
                     </div>
                   ))}
                   {daySecondMenusAmount(d) > 0 && <div className="mt-1 text-xs font-semibold text-text">Day total (main menu + second menus): {formatPrice(dayAmount(d))}</div>}

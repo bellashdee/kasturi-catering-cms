@@ -4,10 +4,11 @@ import { getSessionContext } from "@/lib/auth";
 import { getEvent, listEventDays, toEventDays } from "@/lib/catering/queries";
 import { EventForm } from "@/components/catering/EventForm";
 import { eventNeeds, needsFormValue } from "@/lib/catering/customerNeeds";
+import type { EventDay } from "@/lib/catering/days";
 
 type PackageRow = { id: string; name: string; price_per_pax: number; minimum_pax: number; company_id: string; package_menu_items: { meal_type: string; item_name: string; sort_order: number }[] };
 
-export default async function EditEventPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditEventPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ fromRequest?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
@@ -21,7 +22,17 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
     notFound();
   }
 
-  const days = toEventDays(await listEventDays(supabase, id));
+  let days = toEventDays(await listEventDays(supabase, id));
+  // "Update the JDT event from this request": a request linked to this (date-only) event fills the same event; nothing new is made
+  const { fromRequest: fromRequestId } = await searchParams;
+  let filledFrom: { code: string; location: string | null; remarks: string | null } | null = null;
+  if (fromRequestId && /^[0-9a-f-]{36}$/i.test(fromRequestId)) {
+    const { data: req } = await supabase.from("quotation_requests").select("id, request_code, days, location, remarks, catering_event_id").eq("id", fromRequestId).maybeSingle();
+    if (req && req.catering_event_id === id && Array.isArray(req.days) && req.days.length > 0) {
+      days = req.days as unknown as EventDay[];
+      filledFrom = { code: req.request_code ?? "", location: req.location, remarks: req.remarks };
+    }
+  }
   // an older event made from a quotation request starts from that request's answers
   const { data: fromRequest } = await supabase.from("quotation_requests").select("requirements, additional, extra_items").eq("catering_event_id", id).maybeSingle();
   const initialNeeds = needsFormValue(eventNeeds(event, fromRequest), { kitchenSetup: event.kitchen_setup, cateringSetup: event.catering_setup, remarks: event.remarks });
@@ -36,6 +47,11 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
   return (
     <div className="mx-auto max-w-2xl">
       <h1 className="text-[22px] font-extrabold text-text">Edit {event.event_name}</h1>
+      {filledFrom && (
+        <div className="mt-3 rounded-lg border-l-[4px] border-blue-600 bg-blue-50 px-3 py-2 text-[13px] text-text">
+          {`Filled in from quotation request ${filledFrom.code} (WhatsApp). This is the same event (same date and record): check every field and press Save. Then change the status to Ready for Planning or Confirmed on the event page.`}
+        </div>
+      )}
       <div className="mt-5 rounded-xl border border-border bg-surface p-6 shadow-sm">
         <EventForm
           eventId={id}
@@ -61,7 +77,7 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
             autocountQuotationNo: event.autocount_quotation_no ?? "",
             autocountInvoiceNo: event.autocount_invoice_no ?? "",
             pricePerPax: event.price_per_pax !== null ? Number(event.price_per_pax) : undefined,
-            location: event.location ?? "",
+            location: event.location ?? filledFrom?.location ?? "",
             paxCount: event.pax_count ?? undefined,
             eventType: event.event_type,
             packageMenuId: event.package_menu_id ?? undefined,
@@ -73,7 +89,7 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
             secondServiceType: event.second_service_type ?? "",
             secondServicePax: event.second_service_pax ?? undefined,
             eventDetails: event.event_details ?? "",
-            remarks: event.remarks ?? "",
+            remarks: [event.remarks, filledFrom?.remarks].filter(Boolean).join("\n\n"),
             status: event.status,
           }}
         />

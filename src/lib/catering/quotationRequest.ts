@@ -1,6 +1,6 @@
 import { formatTime12 } from "@/lib/format";
 import { MEAL_TYPE_LABEL, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
-import { secondMenusOf, type EventDay, type SecondChoice } from "@/lib/catering/days";
+import { breakdownText, secondMenusOf, type EventDay, type SecondChoice, type SessionExtras } from "@/lib/catering/days";
 
 export type { SecondChoice };
 
@@ -249,10 +249,23 @@ export function withSecondMenusInRemarks(d: EventDay): EventDay {
   return {
     ...d,
     remarks:
-      [d.remarks, ...menus.map((m, n) => describeSecondChoice(m, { meal: MEAL_TYPE_LABEL, service: SERVICE_TYPE_LABEL }, menus.length > 1 ? n + 1 : undefined))]
+      [d.remarks, sessionExtrasLines(d).join("\n"), ...menus.map((m, n) => describeSecondChoice(m, { meal: MEAL_TYPE_LABEL, service: SERVICE_TYPE_LABEL }, menus.length > 1 ? n + 1 : undefined))]
         .filter(Boolean)
         .join("\n\n") || undefined,
   };
+}
+
+/** The WhatsApp-import details of a meal session, as text lines (pax per group, delivery, instructions). */
+export function sessionExtrasLines(c: SessionExtras): string[] {
+  return [
+    ...(c.sessionName ? [`Session: ${c.sessionName}`] : []),
+    ...((c.paxBreakdown ?? []).length > 0 ? [`Pax breakdown: ${breakdownText(c.paxBreakdown)}`] : []),
+    ...(c.deliveryDate || c.deliveryTime || c.deliveryLocation
+      ? [`Delivery: ${[c.deliveryDate, c.deliveryTime ? formatTime12(c.deliveryTime) : "", c.deliveryLocation].filter(Boolean).join(" · ")}`]
+      : []),
+    ...(c.deliveryInstructions ? [`Delivery instructions: ${c.deliveryInstructions}`] : []),
+    ...(c.specialInstructions ? [`Special instructions: ${c.specialInstructions}`] : []),
+  ];
 }
 
 /** Plain-text version of one second menu of a day, written into the event when the request is approved. */
@@ -267,5 +280,6 @@ export function describeSecondChoice(c: SecondChoice, labels: { meal: Record<str
     ...(c.setupTime ? [`Set-up time: ${formatTime12(c.setupTime)}`] : []),
     ...(c.eventTime ? [`Event time: ${formatTime12(c.eventTime)}`] : []),
     ...(c.endTime ? [`Event end time: ${formatTime12(c.endTime)}`] : []),
+    ...sessionExtrasLines(c),
   ].join("\n");
 }

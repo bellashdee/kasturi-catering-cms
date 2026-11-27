@@ -14,7 +14,25 @@ export type SecondChoice = {
   setupTime?: string;
   eventTime?: string;
   endTime?: string;
+} & SessionExtras;
+
+/** Kept with a meal session imported from a WhatsApp message (Signature Solution): its name, pax per group and delivery. All optional. */
+export type SessionExtras = {
+  /** e.g. "Packfood", "VIP – Halftime" */
+  sessionName?: string;
+  /** pax per department / group, names as the Boss wrote them; pax null = Pending */
+  paxBreakdown?: { category: string; pax: number | null }[];
+  deliveryDate?: string;
+  deliveryTime?: string;
+  deliveryLocation?: string;
+  deliveryInstructions?: string;
+  specialInstructions?: string;
 };
+
+/** "Marshal 20 · Medic 10 · Ballboys Pending" */
+export function breakdownText(lines: { category: string; pax: number | null }[] | undefined): string {
+  return (lines ?? []).map((l) => `${l.category} ${l.pax ?? "Pending"}`).join(" · ");
+}
 
 export const emptySecondChoice = (): SecondChoice => ({ menu: "", mealTypes: [], serviceType: "" });
 
@@ -45,7 +63,7 @@ export type EventDay = {
   secondMenus?: SecondChoice[];
   /** Older requests: the single second choice (read through secondMenusOf; new requests use secondMenus). */
   secondChoice?: SecondChoice;
-};
+} & SessionExtras;
 
 /** Total guests for one day: the first service type's pax plus the second's. */
 export function dayPax(day: Pick<EventDay, "servicePax" | "secondServiceType" | "secondServicePax">): number {
