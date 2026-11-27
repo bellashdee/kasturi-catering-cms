@@ -2,7 +2,8 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { signOutOfDevice } from "@/lib/offline/signOut";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import { CompanySelector, CompanyQuickLinks } from "./CompanySelector";
 import { MainDashboardLink, ModuleLinks, ProfileLink, TopLinks, SettingsLink, SidebarCollapsedContext, labelClass } from "./NavLinks";
 import { useMobileNav } from "./MobileNavContext";
@@ -27,6 +28,7 @@ export function Sidebar({ companies, allowedModules, badges, taskLinkLabel, show
   const { open, setOpen } = useMobileNav();
   const pathname = usePathname();
   const router = useRouter();
+  const { t } = useI18n();
 
   // open = the words are shown; closed = only the logo and the icons (the choice is kept on this computer)
   const collapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, () => false);
@@ -40,7 +42,7 @@ export function Sidebar({ companies, allowedModules, badges, taskLinkLabel, show
   }
 
   async function logOut() {
-    await createClient().auth.signOut();
+    if (!(await signOutOfDevice(t))) return;
     router.push("/login");
     router.refresh();
   }

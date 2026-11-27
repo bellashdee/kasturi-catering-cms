@@ -12,6 +12,7 @@ import { canAccessModule } from "@/lib/modules";
 import { countPendingSubmissions } from "@/lib/catering/pending";
 import { LanguageBootstrap } from "@/components/i18n/LanguageBootstrap";
 import { SessionGuard } from "@/components/auth/SessionGuard";
+import { OfflineProvider } from "@/components/offline/OfflineProvider";
 import { CompanyTheme, CompanyThemeScript } from "@/components/layout/CompanyTheme";
 import { PageTools } from "@/components/layout/PageTools";
 import { Suspense } from "react";
@@ -51,6 +52,7 @@ export default async function DashboardLayout({
       <RestaurantViewProvider o2Id={o2Id} accessibleIds={accessibleIds} allowedModules={session.allowedModules}>
       <LanguageBootstrap profileLanguage={profile?.language ?? null} />
       <SessionGuard />
+      <OfflineProvider userId={session.userId} />
       <CompanyThemeScript companies={companies ?? []} />
       <Suspense fallback={null}>
         <CompanyTheme companies={companies ?? []} />

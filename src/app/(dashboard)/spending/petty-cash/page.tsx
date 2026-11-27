@@ -17,6 +17,7 @@ import { AmountOrigin } from "@/components/shared/AmountOrigin";
 import { ExportListButtons } from "@/components/procurement/ExportListButtons";
 import { fileSlug, formatRm, monthLabel, spendSummary } from "@/lib/pettyCash/summary";
 import { PettyCashEntryForm } from "@/components/pettyCash/PettyCashEntryForm";
+import { QueuedChanges } from "@/components/offline/QueuedChanges";
 import { PettyCashHolderBar } from "@/components/pettyCash/PettyCashHolderBar";
 import { PettyCashOverview } from "@/components/pettyCash/PettyCashOverview";
 import { OperationPettyCashRowActions } from "@/components/operationPettyCash/OperationPettyCashRowActions";
@@ -338,6 +339,8 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
           ))}
         </div>
       )}
+
+      <QueuedChanges ops={["opPettyCash.create"]} />
 
       {who.name && !everyone && (
         <PettyCashEntryForm

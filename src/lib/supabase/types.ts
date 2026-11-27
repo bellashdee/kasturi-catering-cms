@@ -6757,6 +6757,93 @@ export type Database = {
           },
         ]
       }
+      offline_mutations: {
+        Row: {
+          client_created_at: string | null
+          device_id: string
+          id: string
+          op: string
+          received_at: string
+          result: Json | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          client_created_at?: string | null
+          device_id: string
+          id: string
+          op: string
+          received_at?: string
+          result?: Json | null
+          status: string
+          user_id?: string
+        }
+        Update: {
+          client_created_at?: string | null
+          device_id?: string
+          id?: string
+          op?: string
+          received_at?: string
+          result?: Json | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sync_conflicts: {
+        Row: {
+          base_version: Json | null
+          company_id: string | null
+          detected_at: string
+          device_id: string
+          id: string
+          local_version: Json
+          mutation_id: string
+          op: string
+          record_id: string | null
+          resolution: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          server_version: Json | null
+          table_name: string
+          user_id: string
+        }
+        Insert: {
+          base_version?: Json | null
+          company_id?: string | null
+          detected_at?: string
+          device_id: string
+          id?: string
+          local_version: Json
+          mutation_id: string
+          op: string
+          record_id?: string | null
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          server_version?: Json | null
+          table_name: string
+          user_id?: string
+        }
+        Update: {
+          base_version?: Json | null
+          company_id?: string | null
+          detected_at?: string
+          device_id?: string
+          id?: string
+          local_version?: Json
+          mutation_id?: string
+          op?: string
+          record_id?: string | null
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          server_version?: Json | null
+          table_name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       wastage_log: {
         Row: {
           company_id: string

@@ -4,11 +4,11 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { recordAudit } from "@/lib/audit";
 import { runAction, type ActionResult } from "@/lib/actionResult";
-import { todayInMalaysia } from "@/lib/format";
 import { autoCountNoOnSave } from "@/lib/finance/autocountCosts";
 import { assertOwnPerson } from "@/lib/pettyCash/access";
 import { addReceipts } from "@/lib/documents/receipts";
 import type { EntryType, OperationPettyCashRow } from "./constants";
+import { validatePettyCashEntry as validate, pettyCashLabel as label } from "./rules";
 import { checkCategoryShares, checkSplitShares, type SplitShare } from "@/lib/categorySplit";
 
 async function requireHolder() {
@@ -30,6 +30,8 @@ export async function canUseOperationPettyCash(): Promise<boolean> {
 }
 
 export type PettyCashEntryInput = {
+  /** the id made on the device for a single new entry (optional): sent again it is never saved twice */
+  id?: string;
   companyId: string;
   entryType: EntryType;
   entryDate: string;
@@ -69,18 +71,6 @@ function parts(input: PettyCashEntryInput): SplitShare[] {
   return byCategory ? byCategory.map((s) => ({ ...s, companyId: input.companyId })) : [{ companyId: input.companyId, category: input.category?.trim() ?? "", amount: input.amount }];
 }
 
-function validate(input: PettyCashEntryInput) {
-  if (!input.personName?.trim()) throw new Error("Choose whose petty cash this is: the name.");
-  if (input.entryType !== "top_up" && input.entryType !== "expense") throw new Error("Choose whether the money was received or spent.");
-  if (input.paymentMethod !== "cash" && input.paymentMethod !== "online_transfer") throw new Error(input.entryType === "top_up" ? "Choose how the money was received: cash or online transfer." : "Choose how the money was paid: cash or online transfer.");
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.entryDate)) throw new Error("Select the date.");
-  if (input.entryDate > todayInMalaysia()) throw new Error("The date cannot be in the future.");
-  if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("Enter an amount more than 0.");
-}
-
-const label = (r: { entry_type: string; amount: number | string; entry_date: string; description: string | null }) =>
-  `${r.entry_type === "top_up" ? "Received" : "Spent"} RM ${Number(r.amount).toFixed(2)} · ${r.entry_date}${r.description ? ` · ${r.description}` : ""}`;
-
 function refresh() {
   revalidatePath("/spending/petty-cash");
 }
@@ -96,6 +86,7 @@ export async function createPettyCashEntry(input: PettyCashEntryInput): Promise<
       .from("operation_petty_cash")
       .insert(
         split.map((part) => ({
+          ...(split.length === 1 && input.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.id) ? { id: input.id } : {}),
           company_id: part.companyId,
           entry_type: input.entryType,
           entry_date: input.entryDate,

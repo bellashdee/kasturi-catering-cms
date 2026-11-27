@@ -4,19 +4,9 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { runAction, type ActionResult } from "@/lib/actionResult";
 import { recordAudit } from "@/lib/audit";
-import { WASTAGE_PATH, WASTAGE_REASONS, type WastageRow } from "@/lib/kitchen/wastage";
+import { WASTAGE_PATH, cleanWastageInput as clean, describeWastage as describe, type WastageInput, type WastageRow } from "@/lib/kitchen/wastage";
 
-export type WastageInput = {
-  companyId: string;
-  wastedOn: string;
-  item: string;
-  quantity: number;
-  unit?: string;
-  reason: string;
-  estimatedValue?: number | null;
-  notes?: string;
-  documentId?: string | null;
-};
+export type { WastageInput };
 
 async function requireUser() {
   const supabase = await createClient();
@@ -26,29 +16,6 @@ async function requireUser() {
   if (!user) throw new Error("Not signed in.");
   return { supabase, userId: user.id };
 }
-
-/** Checks what was typed and returns the values ready to save (a problem the person can fix is thrown as a message and returned as the result). */
-function clean(input: WastageInput) {
-  const item = input.item.trim().replace(/\s+/g, " ");
-  if (!item) throw new Error("Enter the item that was thrown away.");
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.wastedOn)) throw new Error("Choose the date.");
-  if (!Number.isFinite(input.quantity) || input.quantity <= 0) throw new Error("Enter a quantity more than 0.");
-  if (!(WASTAGE_REASONS as readonly string[]).includes(input.reason)) throw new Error("Choose the reason.");
-  const value = input.estimatedValue;
-  if (value !== null && value !== undefined && (!Number.isFinite(value) || value < 0)) throw new Error("The estimated value cannot be less than 0.");
-  return {
-    wasted_on: input.wastedOn,
-    item,
-    quantity: input.quantity,
-    unit: input.unit?.trim() || null,
-    reason: input.reason,
-    estimated_value: value === null || value === undefined ? null : value,
-    notes: input.notes?.trim() || null,
-    document_id: input.documentId || null,
-  };
-}
-
-const describe = (r: { item: string; quantity: number | string; unit: string | null; reason: string }) => `${r.item}: ${Number(r.quantity)} ${r.unit ?? ""} (${r.reason})`.replace(/\s+\(/, " (");
 
 function refresh() {
   revalidatePath(WASTAGE_PATH);
@@ -60,7 +27,8 @@ export async function createWastage(input: WastageInput): Promise<ActionResult<{
   return runAction(async () => {
     const values = clean(input);
     const { supabase, userId } = await requireUser();
-    const { data, error } = await supabase.from("wastage_log").insert({ ...values, company_id: input.companyId, created_by: userId }).select("id").single();
+    const clientId = input.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.id) ? { id: input.id } : {};
+    const { data, error } = await supabase.from("wastage_log").insert({ ...clientId, ...values, company_id: input.companyId, created_by: userId }).select("id").single();
     if (error || !data) throw error ?? new Error("Could not save the entry.");
     await recordAudit({ companyId: input.companyId, relatedTable: "wastage_log", relatedId: data.id, action: "created", newValue: describe(values) });
     refresh();

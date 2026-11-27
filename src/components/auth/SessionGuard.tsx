@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { signOutOfDevice } from "@/lib/offline/signOut";
 
 export const KEEP_SIGNED_IN_KEY = "kcms-keep-signed-in";
 
@@ -14,9 +14,8 @@ export function SessionGuard() {
     try {
       if (localStorage.getItem(KEEP_SIGNED_IN_KEY) === "0" && !sessionStorage.getItem("kcms-alive")) {
         localStorage.removeItem(KEEP_SIGNED_IN_KEY);
-        void createClient()
-          .auth.signOut()
-          .then(() => window.location.assign("/login"));
+        // nothing is asked: changes not sent yet stay on this device for this person
+        void signOutOfDevice(undefined, { ask: false }).then(() => window.location.assign("/login"));
         return;
       }
       sessionStorage.setItem("kcms-alive", "1");

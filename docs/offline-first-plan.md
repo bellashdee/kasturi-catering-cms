@@ -70,3 +70,84 @@ AI Assistant, imports (FeedMe, Excel, PDF extraction), and every page outside th
 Local `next dev` + Chrome DevTools offline mode: offline refresh of a visited page, create/edit offline, reopen the browser, reconnect and
 sync, replay the same mutation twice (no duplicate), two users editing one row (conflict), logout/login as another user (no data seen).
 Not testable here: real Android/iOS devices, iOS Safari install and storage eviction, Background Sync on real phones.
+
+## 7. What was built
+
+| Piece | Files |
+| --- | --- |
+| Service worker (app shell, per-user page copies, offline page, Background Sync wake-up; push notifications unchanged) | `public/sw.js` |
+| Offline view policy (mirrored in the worker; `node scripts/check-offline-policy.mjs` checks both lists and that no payroll/HR/finance/report/admin page is kept) | `src/lib/offline/policy.ts`, `scripts/check-offline-policy.mjs` |
+| IndexedDB per user: outbox, attachments, conflicts, meta; device id | `src/lib/offline/db.ts` |
+| Queue + sync engine (triggers, Web Locks, back-off, attachments uploaded once, conflicts kept) | `src/lib/offline/sync.ts`, `src/lib/offline/types.ts` |
+| Sync endpoint (runs as the signed-in user; idempotent; ordered) and conflict choice | `src/app/api/sync/route.ts`, `src/app/api/sync/resolve/route.ts`, `src/lib/offline/server/{core,handlers,dbLog}.ts` |
+| Sign-out that keeps unsent changes and removes cached pages | `src/lib/offline/signOut.ts`, `ProfileMenu.tsx`, `Sidebar.tsx`, `SessionGuard.tsx` |
+| Status pill on every signed-in page (ONLINE / OFFLINE / SYNCING / SYNC FAILED), panel with last sync, pending, failed, SYNC NOW, conflicts (Keep mine / Keep the saved version), install guide | `src/components/offline/{OfflineProvider,SyncStatus,QueuedChanges,InstallGuide}.tsx`, `Topbar.tsx`, `(dashboard)/layout.tsx` |
+| Offline-capable forms | `WastageForm.tsx`, `WastageRowActions.tsx`, `DeliveryStatusSelect.tsx`, `PettyCashEntryForm.tsx` (+ their pages show "Made offline, not saved on the server yet") |
+| Same validation for online and offline saves (moved, not changed) | `src/lib/kitchen/wastage.ts` (`cleanWastageInput`), `src/lib/operationPettyCash/rules.ts` |
+| Device-made ids also on the normal online save (a save whose answer was lost and is then queued can never be saved twice) | `createWastage`, `createPettyCashEntry` (single entry) accept an optional `id` |
+| Database | `supabase/migrations/20261128000001_offline_sync.sql` (`offline_mutations`, `sync_conflicts`, RLS: own rows; company admins can read conflicts) + types in `src/lib/supabase/types.ts` |
+| Malay text | `src/lib/i18n/dictionaries/ms.ts` (86 entries) |
+
+### How a change travels
+
+1. The form tries the normal Server Action. If the device is offline (or the call fails with a network error) the change is written to
+   IndexedDB instead: `{ id (UUID = idempotency key), op, recordId, companyId, payload, base (updated_at / status seen), userId,
+   deviceId, createdAt }`, photos as blobs. The write is confirmed only when the IndexedDB transaction completes.
+2. The engine sends due changes in creation order to `POST /api/sync` (max 50 per call): photos first (uploaded once; the document id
+   is saved on the device before the change is sent), then the batch.
+3. The server, as the signed-in user: skips a change already recorded as applied (`offline_mutations`), otherwise runs the handler.
+   Creates insert with `id = recordId` (a replay hits the primary key and is answered "duplicate"); updates/deletes are conditional on
+   the version the user saw; a passing error stops the rest of the batch so order is kept.
+4. The device deletes a change only on "applied" / "duplicate". "conflict" moves it to the conflicts store (and `sync_conflicts`);
+   "rejected" keeps it with the reason (Try again / Discard); "retry" and server errors keep it with back-off (5 s doubling to 30 min).
+   No connection is not a failure: the change stays "waiting".
+
+## 8. Deploy
+
+1. Review and merge the PR into `master`; Vercel deploys it as usual (no new environment variables).
+2. Apply `supabase/migrations/20261128000001_offline_sync.sql` to the production project **after approval** (Supabase SQL editor or
+   `supabase db push`). Until it is applied the sync still works and stays idempotent (device ids as primary keys, version checks), but
+   no server-side record of offline changes and conflicts is kept (a warning is logged).
+3. Nothing else changes for people who never go offline: online saves use the same Server Actions as before.
+
+## 9. Known limitations
+
+- Only the operations in §3 can be made offline. Other forms keep their normal behaviour and show their usual error without a
+  connection.
+- An offline copy of a page is the page as it was when last opened (at most 80 pages per person, renewed at most every 15 minutes when
+  opened). New records made offline appear in the "Made offline" box, not in the list, until they are synced.
+- A record made offline cannot be edited again before it is synced (discard and make it again instead).
+- Background Sync exists only in Chrome / Edge / Android; Safari and Firefox send the queue when the app is opened or comes back online.
+- iOS may delete the storage of a web app that is not opened for several weeks, and only the Home Screen app keeps its own storage.
+- Data on the device is separated per person by the app, not encrypted: someone with full access to the browser profile (developer
+  tools) could read it. Sign-out removes the cached pages; unsent changes are kept until they are sent.
+- Signed-out (session expired) devices cannot send: the queue waits until the same person signs in again.
+
+## 10. Test results (local, 28 Nov 2026)
+
+Run against `next build` + `next start` in a real Microsoft Edge (headless, fresh profile, driven over the DevTools protocol, network
+switched off with DevTools offline mode and by stopping the server). The production database was **not** used: a local-only test page
+fed the real sync core and the real Wastage handlers with an in-memory database (the test page and script are kept outside the repo).
+22 of 22 checks passed:
+
+| Scenario | Result |
+| --- | --- |
+| First visit online: service worker active and in control, app files and the page kept for that user | pass |
+| Online save goes straight through, queue empty | pass |
+| Offline save kept in IndexedDB as "waiting"; status shows OFFLINE (LUAR TALIAN) | pass |
+| Refresh while offline (server stopped): the kept copy opens; the queued change is still there | pass |
+| Page never opened before, offline: offline page explaining why | pass |
+| Browser closed and opened again offline: queued change still there | pass |
+| Connection back: change applied once; the device removes it only after the server confirmed | pass |
+| Sync again: no duplicate | pass |
+| Server applied the change but the answer was lost: kept as failed, retried, applied exactly once | pass |
+| Server error (503): kept as failed with one attempt counted, status SYNC FAILED (SEGERAK GAGAL); sent by SYNC NOW | pass |
+| Two users edit one record: conflict detected, the other user's version not overwritten, both versions shown, "Keep mine" applies over the newer version | pass |
+| Sign-out with an unsent change: that user's kept pages removed, the next user sees none of it; the change stays in the first user's own database and is sent once when that user signs in again | pass |
+
+Also checked: `tsc --noEmit`, ESLint on every changed file, `node scripts/check-offline-policy.mjs`, `next build`.
+
+Not tested here: real phones and tablets, iOS Safari / Home Screen app (no Apple device), Background Sync on a real Android device,
+the real Supabase handlers against the real database (no test project; the migration is not applied), and the offline forms inside the
+signed-in pages (signing in needs a real account). Seen once: when the browser process was killed abruptly (not closed), the next start
+did not find the service worker yet, so the first offline open showed the browser's own offline page; a normal close/restart worked.

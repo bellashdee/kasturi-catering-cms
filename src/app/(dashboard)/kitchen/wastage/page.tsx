@@ -11,6 +11,7 @@ import { formatCurrency, formatMalaysiaDate } from "@/lib/format";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { KitchenSubNav } from "@/components/kitchen/KitchenSubNav";
 import { WastageRowActions } from "@/components/kitchen/WastageRowActions";
+import { QueuedChanges } from "@/components/offline/QueuedChanges";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 import { ExportButtons } from "@/components/shared/ExportButtons";
 import { MonthFilter } from "@/components/MonthFilter";
@@ -124,6 +125,7 @@ export default async function WastagePage({
       </div>
 
       <KitchenSubNav />
+      <QueuedChanges ops={["wastage.create", "wastage.update", "wastage.delete"]} />
       <MonthFilter />
 
       <ListFilters keep={keep} sortOptions={SORTS} sort={sort} dir={dir} clearHref={clearHref}>
@@ -186,7 +188,7 @@ export default async function WastagePage({
                   <td className="max-w-[260px] px-3 py-2.5 text-text-secondary">{r.notes ?? "—"}</td>
                   <td className="px-3 py-2.5">{r.document_id ? <DocumentViewLink documentId={r.document_id} label="📷 View" /> : <span className="text-text-secondary">—</span>}</td>
                   <td className="px-4 py-2.5 print:hidden">
-                    {canChange(r) && <WastageRowActions id={r.id} item={r.item} editHref={`/kitchen/wastage/${r.id}/edit${query}`} />}
+                    {canChange(r) && <WastageRowActions id={r.id} item={r.item} editHref={`/kitchen/wastage/${r.id}/edit${query}`} companyId={r.company_id} updatedAt={r.updated_at} />}
                   </td>
                 </tr>
               ))}
