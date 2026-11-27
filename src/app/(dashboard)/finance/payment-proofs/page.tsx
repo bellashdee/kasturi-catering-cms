@@ -13,6 +13,8 @@ import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { ReceiptPdfImport } from "@/components/finance/ReceiptPdfImport";
 import { PaymentProofReviewRow, type InvoiceOption } from "@/components/finance/PaymentProofReviewRow";
 import { ViewProofButton } from "@/components/finance/ViewProofButton";
+import { PrintProofButton } from "@/components/finance/PrintProofButton";
+import type { ProofPrintDetails } from "@/lib/finance/printProof";
 import { MonthFilter } from "@/components/MonthFilter";
 import { monthLabelOf, monthRange } from "@/lib/monthFilter";
 import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
@@ -24,6 +26,20 @@ const SORTS = { sent: "Date sent", paid: "Payment date", customer: "Customer", i
 
 const outstandingOf = (i: { amount: number; tax_amount: number | null; customer_payments: { amount: number }[] }) =>
   Math.max(0, Number(i.amount) + Number(i.tax_amount ?? 0) - i.customer_payments.reduce((t, p) => t + Number(p.amount), 0));
+
+type ProofRow = { invoice_number: string; payment_date: string; payment_method: string; amount: number | null; reference: string | null; sales_agent: string; created_at: string; remarks: string | null; status: string; companies: { name: string } | null };
+const printDetailsOf = (p: ProofRow, customer: string | null): ProofPrintDetails => ({
+  invoiceNumber: p.invoice_number,
+  company: p.companies?.name ?? null,
+  customer,
+  paidDate: formatMalaysiaDate(`${p.payment_date}T12:00:00+08:00`),
+  method: PAYMENT_METHOD_LABEL[p.payment_method] ?? p.payment_method,
+  amount: p.amount !== null ? formatPrice(Number(p.amount)) : null,
+  reference: p.reference,
+  sentBy: `${p.sales_agent} on ${formatMalaysiaDate(p.created_at)}`,
+  remarks: p.remarks,
+  status: p.status === "approved" ? "Approved" : p.status === "rejected" ? "Rejected" : "Waiting for review",
+});
 
 export default async function PaymentProofsPage({ searchParams }: { searchParams: Promise<{ company?: string; month?: string; q?: string; sort?: string; dir?: string }> }) {
   const session = await getSessionContext();
@@ -145,6 +161,7 @@ export default async function PaymentProofsPage({ searchParams }: { searchParams
                     defaultAmount={p.amount !== null ? Number(p.amount) : matched ? outstandingOf(matched) : null}
                     defaultDate={p.payment_date}
                     today={today}
+                    printDetails={printDetailsOf(p as unknown as ProofRow, customerOf(p))}
                   />
                 </div>
               );
@@ -171,7 +188,14 @@ export default async function PaymentProofsPage({ searchParams }: { searchParams
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    {p.proof_path ? <ViewProofButton proofId={p.id} /> : <span className="text-[12.5px] text-text-muted">No proof file</span>}
+                    {p.proof_path ? (
+                      <>
+                        <ViewProofButton proofId={p.id} />
+                        <PrintProofButton proofId={p.id} details={printDetailsOf(p as unknown as ProofRow, customerOf(p))} />
+                      </>
+                    ) : (
+                      <span className="text-[12.5px] text-text-muted">No proof file</span>
+                    )}
                     {inv && <Link href={`/finance/invoices/${inv.id}${query}`} className="text-[13px] font-semibold text-primary">Open invoice</Link>}
                     <StatusBadge tone={p.status === "approved" ? "success" : "neutral"}>{p.status === "approved" ? "Approved" : "Rejected"}</StatusBadge>
                   </div>

@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { approvePaymentProof, getPaymentProofUrl, rejectPaymentProof } from "@/lib/finance/paymentProofActions";
 import { formatPrice } from "@/lib/format";
 import { Select } from "@/components/ui/Select";
+import { PrintProofButton } from "@/components/finance/PrintProofButton";
+import type { ProofPrintDetails } from "@/lib/finance/printProof";
 
 export type InvoiceOption = { id: string; label: string; outstanding: number };
 
@@ -18,6 +20,7 @@ export function PaymentProofReviewRow({
   defaultAmount,
   defaultDate,
   today,
+  printDetails,
 }: {
   proofId: string;
   matchedInvoiceId: string | null;
@@ -26,6 +29,7 @@ export function PaymentProofReviewRow({
   defaultAmount: number | null;
   defaultDate: string;
   today: string;
+  printDetails?: ProofPrintDetails;
 }) {
   const router = useRouter();
   const [invoiceId, setInvoiceId] = useState(matchedInvoiceId ?? "");
@@ -101,6 +105,7 @@ export function PaymentProofReviewRow({
             {busy === "view" ? "Opening..." : "View proof"}
           </button>
         )}
+        {hasProof && printDetails && <PrintProofButton proofId={proofId} details={printDetails} variant="button" />}
         <button type="button" onClick={approve} disabled={busy !== null || !invoiceId || !(Number(amount) > 0)} className="h-10 rounded-lg bg-primary px-4 text-[14px] font-semibold text-white disabled:opacity-50">
           {busy === "approve" ? "Recording..." : "Approve & record payment"}
         </button>

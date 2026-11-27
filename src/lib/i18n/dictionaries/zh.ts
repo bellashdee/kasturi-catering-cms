@@ -4240,6 +4240,8 @@ const dictionary: Record<string, string> = {
  "View Date": "查看日期",
  "View Invoice": "查看发票",
  "View proof": "查看证明",
+ "Print proof": "打印证明",
+ "Preparing...": "准备中...",
  "View Purchase Order": "查看采购订单",
  "VIEWING": "当前查看",
  "Viewing:": "正在查看:",

@@ -4168,6 +4168,8 @@ const dictionary: Record<string, string> = {
  "View Date": "Tarikh Paparan",
  "View Invoice": "Lihat Invois",
  "View proof": "Lihat bukti",
+ "Print proof": "Cetak bukti",
+ "Preparing...": "Menyediakan...",
  "View Purchase Order": "Lihat Pesanan Pembelian",
  "VIEWING": "MELIHAT",
  "Viewing:": "Sedang melihat:",

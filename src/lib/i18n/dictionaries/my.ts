@@ -4226,6 +4226,8 @@ const dictionary: Record<string, string> = {
  "View Date": "ကြည့်ရှုသည့်ရက်",
  "View Invoice": "ငွေတောင်းခံလွှာ ကြည့်ရန်",
  "View proof": "သက်သေ ကြည့်မည်",
+ "Print proof": "သက်သေ ပုံနှိပ်မည်",
+ "Preparing...": "ပြင်ဆင်နေသည်...",
  "View Purchase Order": "ဝယ်ယူမှုအမိန့် ကြည့်မည်",
  "VIEWING": "ကြည့်နေသည်",
  "Viewing:": "ကြည့်နေသည်:",
