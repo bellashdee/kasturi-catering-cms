@@ -163,7 +163,7 @@ export default async function QuotationRequestPage({ params, searchParams }: { p
                       </div>
                       {(m.setupTime || m.eventTime || m.endTime) && (
                         <div className="text-xs text-text-secondary">
-                          {[m.setupTime && `Set-up ${m.setupTime.slice(0, 5)}`, m.eventTime && `Event ${m.eventTime.slice(0, 5)}`, m.endTime && `Ends ${m.endTime.slice(0, 5)}`].filter(Boolean).join(" · ")}
+                          {[m.setupTime && `Set-up ${formatTime12(m.setupTime)}`, m.eventTime && `Event ${formatTime12(m.eventTime)}`, m.endTime && `Ends ${formatTime12(m.endTime)}`].filter(Boolean).join(" · ")}
                         </div>
                       )}
                       <div className="whitespace-pre-line text-xs text-text-muted">{m.menu}</div>

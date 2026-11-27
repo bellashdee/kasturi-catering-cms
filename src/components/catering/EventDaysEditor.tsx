@@ -1,5 +1,6 @@
 "use client";
 
+import { TimeInput12 } from "@/components/ui/TimeInput12";
 import { MAX_EVENT_DAYS, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
 import { MealTypeSelect } from "@/components/catering/MealTypeSelect";
 import { MAX_SECOND_MENUS, dayAmount, dayMainAmount, daySecondMenusAmount, dayPax, emptySecondChoice, secondMenusOf, type EventDay } from "@/lib/catering/days";
@@ -102,16 +103,16 @@ export function EventDaysEditor({
             </div>
             <div>
               <label className={labelClass}>Set-up time (kitchen side) *</label>
-              <input type="time" required value={day.setupTime ?? ""} onChange={(e) => patch(i, { setupTime: e.target.value })} className={inputClass} />
+              <TimeInput12 required value={day.setupTime} onChange={(v) => patch(i, { setupTime: v })} fieldClass={inputClass} ariaLabel="Set-up time" />
             </div>
             <div>
               <label className={labelClass}>Event time *</label>
-              <input type="time" required value={day.eventTime ?? ""} onChange={(e) => patch(i, { eventTime: e.target.value })} className={inputClass} />
+              <TimeInput12 required value={day.eventTime} onChange={(v) => patch(i, { eventTime: v })} fieldClass={inputClass} ariaLabel="Event time" />
             </div>
             {endTime && (
               <div>
                 <label className={labelClass}>Event end time</label>
-                <input type="time" value={day.endTime ?? ""} onChange={(e) => patch(i, { endTime: e.target.value || undefined })} className={inputClass} />
+                <TimeInput12 value={day.endTime} onChange={(v) => patch(i, { endTime: v || undefined })} fieldClass={inputClass} ariaLabel="Event end time" />
               </div>
             )}
           </div>

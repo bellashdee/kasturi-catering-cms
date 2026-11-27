@@ -1,3 +1,4 @@
+import { formatTime12 } from "@/lib/format";
 import { MEAL_TYPE_LABEL, SERVICE_TYPE_LABEL } from "@/lib/catering/constants";
 import { secondMenusOf, type EventDay, type SecondChoice } from "@/lib/catering/days";
 
@@ -263,8 +264,8 @@ export function describeSecondChoice(c: SecondChoice, labels: { meal: Record<str
     `Meal type: ${c.mealTypes.map((m) => labels.meal[m] ?? m).join(", ") || "-"}`,
     `Service type: ${labels.service[c.serviceType] ?? c.serviceType}`,
     `Price / meal: ${c.pricePerMeal !== undefined ? `RM ${c.pricePerMeal.toFixed(2)}` : "-"}`,
-    ...(c.setupTime ? [`Set-up time: ${c.setupTime.slice(0, 5)}`] : []),
-    ...(c.eventTime ? [`Event time: ${c.eventTime.slice(0, 5)}`] : []),
-    ...(c.endTime ? [`Event end time: ${c.endTime.slice(0, 5)}`] : []),
+    ...(c.setupTime ? [`Set-up time: ${formatTime12(c.setupTime)}`] : []),
+    ...(c.eventTime ? [`Event time: ${formatTime12(c.eventTime)}`] : []),
+    ...(c.endTime ? [`Event end time: ${formatTime12(c.endTime)}`] : []),
   ].join("\n");
 }

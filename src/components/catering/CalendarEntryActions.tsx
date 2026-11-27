@@ -1,5 +1,6 @@
 "use client";
 
+import { TimeInput12 } from "@/components/ui/TimeInput12";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -132,11 +133,11 @@ export function CalendarEntryActions({ entry, canDelete, query, canQuickEdit = t
             </div>
             <div>
               <label className={labelClass}>Set-up time (kitchen) *</label>
-              <input type="time" required value={form.setupTime} onChange={(e) => setForm((f) => ({ ...f, setupTime: e.target.value }))} className={inputClass} />
+              <TimeInput12 required value={form.setupTime} onChange={(v) => setForm((f) => ({ ...f, setupTime: v }))} fieldClass={inputClass} ariaLabel="Set-up time" />
             </div>
             <div>
               <label className={labelClass}>Event / food-ready time *</label>
-              <input type="time" required value={form.eventTime} onChange={(e) => setForm((f) => ({ ...f, eventTime: e.target.value }))} className={inputClass} />
+              <TimeInput12 required value={form.eventTime} onChange={(v) => setForm((f) => ({ ...f, eventTime: v }))} fieldClass={inputClass} ariaLabel="Event time" />
             </div>
             <div className="col-span-2">
               <label className={labelClass}>Venue</label>
