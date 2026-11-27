@@ -118,6 +118,39 @@ export default async function SupplierSoaDetailPage({ params, searchParams }: { 
         </div>
         <div className="mt-3 text-[12px] text-text-secondary">Any discrepancy in this statement must be reported to us in writing within 10 days.</div>
       </div>
+
+      {s.monthly.length > 0 && (
+        <div className="overflow-x-auto rounded-xl border border-border bg-surface shadow-sm print:hidden">
+          <div className="px-5 py-3.5 text-[14px] font-bold text-text">
+            Monthly tally: invoices keyed in vs PV issued
+            <div className="text-[12.5px] font-normal text-text-secondary">PV issued = the PVs marked paid in Admin &amp; Finance → Supplier Payment, by paid date. Difference = invoices − returns − PV. The PVs are not taken off the SOA balance.</div>
+          </div>
+          <table className="w-full min-w-[640px] border-t border-border text-[13.5px]">
+            <thead>
+              <tr className="bg-surface-alt text-left text-[12px] font-bold uppercase tracking-wide text-text-secondary">
+                <th className="px-5 py-2.5">Month</th>
+                <th className="px-3 py-2.5 text-right">Invoices keyed in (RM)</th>
+                <th className="px-3 py-2.5 text-right">Returns / CN (RM)</th>
+                <th className="px-3 py-2.5 text-right">PV issued (RM)</th>
+                <th className="px-3 py-2.5 text-right">Difference (RM)</th>
+                <th className="px-5 py-2.5 text-right">SOA balance at month end (RM)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {[...s.monthly].reverse().map((m) => (
+                <tr key={m.month}>
+                  <td className="px-5 py-2.5 font-semibold text-text">{new Date(`${m.month}-01T00:00:00Z`).toLocaleDateString("en-GB", { month: "short", year: "numeric", timeZone: "UTC" })}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums">{money2(m.purchases)}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-text-secondary">{m.returns ? money2(m.returns) : "—"}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums">{m.pvIssued ? money2(m.pvIssued) : "—"}</td>
+                  <td className={`px-3 py-2.5 text-right font-semibold tabular-nums ${Math.abs(m.difference) < 0.005 ? "text-success" : "text-text"}`}>{Math.abs(m.difference) < 0.005 ? "Tally" : money2(m.difference)}</td>
+                  <td className="px-5 py-2.5 text-right font-bold tabular-nums">{money2(m.closing)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

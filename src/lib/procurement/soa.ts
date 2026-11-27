@@ -24,7 +24,18 @@ export type SoaStatement = {
   balance: number;
   /** Current, 1 month, 2 months, 3 months, 4 months, 5 & over */
   aging: [number, number, number, number, number, number];
+  /**
+   * Month by month (YYYY-MM), to tally with Admin & Finance: invoices and debit notes keyed in, credit notes, the PVs issued (paid) in
+   * Admin & Finance → Supplier Payment, the difference, and the SOA balance at the end of the month. The PVs are shown beside the
+   * invoices only; they are not taken off the SOA balance (many pay invoices not keyed in yet).
+   */
+  monthly: { month: string; purchases: number; returns: number; pvIssued: number; difference: number; closing: number }[];
+  /** the PVs issued to this supplier (Admin & Finance), for the tally */
+  pvIssuedTotal: number;
 };
+
+/** A paid PV of Admin & Finance → Supplier Payment whose payee could not be matched to one supplier of that company. */
+export type UnmatchedPayment = { company_id: string; payee_name: string; amount: number; paid_date: string | null; reference: string };
 
 export const AGING_LABELS = ["CURRENT", "1 MONTH", "2 MONTHS", "3 MONTHS", "4 MONTHS", "5 & OVER"] as const;
 
@@ -96,20 +107,44 @@ function ageBalance(lines: SoaLine[], statementDate: string): SoaStatement["agin
   return aging.map(round2) as SoaStatement["aging"];
 }
 
+/** Month by month: purchases (IN + DN), returns (CN), the PVs issued in Admin & Finance, the difference and the SOA balance at month end. */
+function monthlyTally(lines: SoaLine[], pvs: Map<string, number>): SoaStatement["monthly"] {
+  const months = new Map<string, { purchases: number; returns: number; closing: number | null }>();
+  for (const l of lines) {
+    const m = l.date.slice(0, 7);
+    const row = months.get(m) ?? { purchases: 0, returns: 0, closing: null };
+    if (l.type === "IN" || l.type === "DN") row.purchases += l.cr - l.dr;
+    else if (l.type === "CN") row.returns += l.dr - l.cr;
+    row.closing = l.balance;
+    months.set(m, row);
+  }
+  for (const m of Array.from(pvs.keys())) if (!months.has(m)) months.set(m, { purchases: 0, returns: 0, closing: null });
+  let last = 0;
+  return Array.from(months.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([month, r]) => {
+      if (r.closing !== null) last = r.closing;
+      const pvIssued = round2(pvs.get(month) ?? 0);
+      return { month, purchases: round2(r.purchases), returns: round2(r.returns), pvIssued, difference: round2(r.purchases - r.returns - pvIssued), closing: round2(last) };
+    });
+}
+
 /**
  * The statements of every supplier of these companies (or of one supplier), up to the statement date.
- * Draft invoices are left out; payments count only once they are marked paid.
+ * Draft invoices are left out; supplier payments count once they are marked paid. The paid PVs of Admin & Finance → Supplier Payment
+ * are matched to the supplier for the monthly tally only.
  */
-export async function loadSoaStatements(supabase: DB, companyIds: string[], statementDate: string, supplierId?: string): Promise<SoaStatement[]> {
-  const [suppliers, invoices, notes, payments] = await Promise.all([
-    fetchAll((from, to) => {
-      let q = supabase
+export async function loadSoaStatements(supabase: DB, companyIds: string[], statementDate: string, supplierId?: string, out?: { unmatchedPayments: UnmatchedPayment[] }): Promise<SoaStatement[]> {
+  const [allSuppliers, invoices, notes, payments, financePayments] = await Promise.all([
+    fetchAll((from, to) =>
+      supabase
         .from("suppliers")
         .select("id, company_id, name, account_code, billing_address, phone, payment_terms, companies(name, legal_name, registration_no)")
-        .in("company_id", companyIds);
-      if (supplierId) q = q.eq("id", supplierId);
-      return q.order("name").order("id").range(from, to);
-    }),
+        .in("company_id", companyIds)
+        .order("name")
+        .order("id")
+        .range(from, to),
+    ),
     fetchAll((from, to) => {
       let q = supabase
         .from("supplier_invoices")
@@ -138,7 +173,19 @@ export async function loadSoaStatements(supabase: DB, companyIds: string[], stat
       if (supplierId) q = q.eq("supplier_invoices.supplier_id", supplierId);
       return q.order("id").range(from, to);
     }),
+    // the PVs issued in Admin & Finance → Supplier Payment (paid), matched to the supplier by name within the same company (for the tally)
+    fetchAll((from, to) =>
+      supabase
+        .from("finance_payments")
+        .select("id, company_id, payee_name, invoice_number, amount, paid_date, payment_reference, voucher_number")
+        .in("company_id", companyIds)
+        .eq("category", "supplier")
+        .eq("status", "paid")
+        .order("id")
+        .range(from, to),
+    ),
   ]);
+  const suppliers = supplierId ? allSuppliers.filter((x) => x.id === supplierId) : allSuppliers;
 
   const linesBySupplier = new Map<string, Omit<SoaLine, "balance">[]>();
   const add = (sid: string, l: Omit<SoaLine, "balance">) => linesBySupplier.set(sid, [...(linesBySupplier.get(sid) ?? []), l]);
@@ -167,6 +214,32 @@ export async function loadSoaStatements(supabase: DB, companyIds: string[], stat
     });
   }
 
+  // a PV belongs to the supplier of the same company whose name is the same (ignoring dots, spaces and "Sdn Bhd"), or, when only one
+  // supplier fits, whose name contains the other ("Harvest Frozen" → "Harvest Frozen Food Sdn Bhd")
+  const nameKey = (n: string) => n.toUpperCase().replace(/[^A-Z0-9]/g, "").replace(/SDNBHD$|BHD$|ENTERPRISE$|ENT$/, "");
+  const byCompany = new Map<string, { id: string; key: string }[]>();
+  for (const x of allSuppliers) byCompany.set(x.company_id, [...(byCompany.get(x.company_id) ?? []), { id: x.id, key: nameKey(x.name) }]);
+  const unmatched: UnmatchedPayment[] = [];
+  const pvBySupplier = new Map<string, Map<string, number>>();
+  for (const f of financePayments) {
+    const key = nameKey(f.payee_name ?? "");
+    const list = byCompany.get(f.company_id) ?? [];
+    let hit = key ? list.filter((x) => x.key === key) : [];
+    if (hit.length !== 1 && key.length >= 6) hit = list.filter((x) => x.key.length >= 6 && (x.key.includes(key) || key.includes(x.key)));
+    const reference = f.voucher_number || f.payment_reference || f.invoice_number || "";
+    if (hit.length !== 1 || !f.paid_date) {
+      if (!supplierId) unmatched.push({ company_id: f.company_id, payee_name: f.payee_name ?? "", amount: Number(f.amount), paid_date: f.paid_date, reference });
+      continue;
+    }
+    if (f.paid_date > statementDate) continue;
+    if (supplierId && hit[0].id !== supplierId) continue;
+    const m = f.paid_date.slice(0, 7);
+    const per = pvBySupplier.get(hit[0].id) ?? new Map<string, number>();
+    per.set(m, (per.get(m) ?? 0) + Number(f.amount));
+    pvBySupplier.set(hit[0].id, per);
+  }
+  if (out) out.unmatchedPayments = unmatched;
+
   return suppliers.map((s) => {
     const raw = (linesBySupplier.get(s.id) ?? []).sort((a, b) => a.date.localeCompare(b.date) || TYPE_ORDER[a.type] - TYPE_ORDER[b.type] || a.ref.localeCompare(b.ref));
     let bal = 0;
@@ -190,6 +263,8 @@ export async function loadSoaStatements(supabase: DB, companyIds: string[], stat
       lines,
       balance: bal,
       aging: ageBalance(lines, statementDate),
+      monthly: monthlyTally(lines, pvBySupplier.get(s.id) ?? new Map()),
+      pvIssuedTotal: round2(Array.from((pvBySupplier.get(s.id) ?? new Map<string, number>()).values()).reduce((t, v) => t + v, 0)),
     };
   });
 }
