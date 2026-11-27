@@ -32,7 +32,7 @@ export function SecondChoiceEditor({ value, onChange }: { value: SecondChoice; o
         <textarea maxLength={3000} value={value.menu} onChange={(e) => patch({ menu: e.target.value })} className={areaClass} placeholder="Menu for the second menu" />
       </div>
 
-      <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mt-3 grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
         <div>
           <label className={labelClass}>Set-up time (kitchen side)</label>
           <TimeInput12 value={value.setupTime} onChange={(v) => patch({ setupTime: v || undefined })} fieldClass={inputClass} ariaLabel="Set-up time" />

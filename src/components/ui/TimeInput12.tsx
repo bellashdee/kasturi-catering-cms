@@ -46,18 +46,18 @@ export function TimeInput12({
   };
 
   const base = fieldClass.split(/\s+/).filter((c) => !/^(mt-|w-|px-)/.test(c)).join(" ");
-  const sel = `${base} min-w-0 flex-1 px-2`;
+  const sel = `${base} min-w-0 flex-1 px-1.5 text-center`;
   return (
-    <div className={`mt-1.5 flex items-center gap-1.5 ${className}`} role="group" aria-label={ariaLabel}>
+    <div className={`mt-1.5 flex min-w-0 items-center gap-1 ${className}`} role="group" aria-label={ariaLabel}>
       <select required={required} value={hour} onChange={(e) => emit(e.target.value, minute, period)} className={sel} aria-label="Hour">
-        <option value="">Hour</option>
+        <option value="">--</option>
         {Array.from({ length: 12 }, (_, i) => String(i + 1)).map((h) => (
           <option key={h} value={h}>{h}</option>
         ))}
       </select>
       <span className="text-text-muted">:</span>
       <select value={minute} onChange={(e) => emit(hour, e.target.value, period)} className={sel} aria-label="Minute">
-        {!minute && <option value="">Min</option>}
+        {!minute && <option value="">--</option>}
         {minutes.map((x) => (
           <option key={x} value={x}>{x}</option>
         ))}

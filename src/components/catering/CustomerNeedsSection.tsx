@@ -15,8 +15,8 @@ const inputClass =
   "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
 const areaClass =
   "mt-1.5 h-20 w-full resize-none rounded-lg border border-border-strong px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
-const labelClass = "text-[12.5px] font-semibold text-text-secondary";
-const sectionTitle = "text-[14px] font-extrabold text-text";
+const labelClass = "text-[13px] font-semibold text-text";
+const sectionTitle = "mt-2 border-b-2 border-primary/30 pb-1.5 text-[16px] font-extrabold text-text";
 
 /** What the extra items and the additional requirement add to the estimated total. */
 export function customerNeedsAmount(v: CustomerNeedsValue): number {

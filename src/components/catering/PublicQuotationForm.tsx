@@ -26,8 +26,8 @@ const TYPE_OPTIONS = EVENT_TYPE_OPTIONS.map(([value, label]) => ({ value, label 
 
 const inputClass =
   "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
-const labelClass = "text-[12.5px] font-semibold text-text-secondary";
-const sectionTitle = "text-[14px] font-extrabold text-text";
+const labelClass = "text-[13px] font-semibold text-text";
+const sectionTitle = "mt-2 border-b-2 border-primary/30 pb-1.5 text-[16px] font-extrabold text-text";
 
 type Header = Omit<QuotationRequestInput, "days" | "extraItems" | "additional" | "requirements" | "attachments" | "kitchenSetup" | "cateringSetup" | "remarks">;
 
@@ -211,13 +211,13 @@ export function PublicQuotationForm({ companySlug, fixedCustomer, fixedAgent }: 
 
       {fixedCustomer ? (
         <div>
-          <div className={sectionTitle}>Customer</div>
+          <div className={sectionTitle}>1. Customer</div>
           <div className="mt-1.5 rounded-lg border border-border bg-surface-alt px-3 py-2.5 text-sm font-bold text-text">{fixedCustomer}</div>
         </div>
       ) : (
         <>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className={sectionTitle}>Customer information</div>
+            <div className={sectionTitle}>1. Customer information</div>
             <button type="button" onClick={() => { setAdding((a) => !a); setCustomerMessage(null); }} className="rounded-lg border border-primary px-3 py-1.5 text-[12.5px] font-semibold text-primary">
               {adding ? "Close" : "+ New customer (not in the list)"}
             </button>
@@ -305,31 +305,29 @@ export function PublicQuotationForm({ companySlug, fixedCustomer, fixedAgent }: 
         </>
       )}
 
-      <div className={sectionTitle}>Event information</div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-[2fr_1fr]">
-        <div>
-          <label className={labelClass}>Event name *</label>
-          <textarea required maxLength={500} rows={2} value={form.eventName} onChange={(e) => set("eventName", e.target.value)} className="mt-1.5 w-full resize-y rounded-lg border border-border-strong px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" placeholder="e.g. Annual Conference 2026 (press Enter for a new line)" />
-        </div>
+      <div className={sectionTitle}>2. Event information</div>
+      <div>
+        <label className={labelClass}>Event name *</label>
+        <textarea required maxLength={500} rows={2} value={form.eventName} onChange={(e) => set("eventName", e.target.value)} className="mt-1.5 w-full resize-y rounded-lg border border-border-strong px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" placeholder="e.g. Annual Conference 2026 (press Enter for a new line)" />
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label className={labelClass}>Event type *</label>
           <ChoiceSelect required value={form.eventType} onChange={(v) => set("eventType", v)} options={TYPE_OPTIONS} placeholder="Search and choose the event type" className={inputClass} />
         </div>
-      </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label className={labelClass}>Event location *</label>
           <input required maxLength={300} value={form.location} onChange={(e) => set("location", e.target.value)} className={inputClass} placeholder="e.g. Dewan Serbaguna, Menara ABC" />
         </div>
-        <div>
-          <label className={labelClass}>Address</label>
-          <input maxLength={500} value={form.eventAddress} onChange={(e) => set("eventAddress", e.target.value)} className={inputClass} placeholder="Full address of the venue" />
-        </div>
+      </div>
+      <div>
+        <label className={labelClass}>Address of the venue</label>
+        <input maxLength={500} value={form.eventAddress} onChange={(e) => set("eventAddress", e.target.value)} className={inputClass} placeholder="Full address of the venue" />
       </div>
 
       <div>
-        <div className={sectionTitle}>Event days, meals &amp; menu</div>
-        <p className="mb-2 text-xs text-text-muted">One block for each day of the event (1 day, or 3-5 days for a conference): date, times, meals, service type, pax and menu. Use &quot;Add next day&quot; to copy the previous day.</p>
+        <div className={sectionTitle}>3. Event days, meals &amp; menu</div>
+        <p className="mb-3 mt-1.5 text-[12.5px] text-text-secondary">One block for each day of the event (1 day, or 3-5 days for a conference). Fill in ① date &amp; time, ② meals &amp; service, ③ menu &amp; price. Use &quot;Add next day&quot; to copy the previous day.</p>
         <EventDaysEditor days={days} onChange={setDays} secondService={false} secondChoice mealRequired endTime />
       </div>
 
@@ -362,7 +360,7 @@ export function PublicQuotationForm({ companySlug, fixedCustomer, fixedAgent }: 
         <input tabIndex={-1} autoComplete="off" value={form.website} onChange={(e) => set("website", e.target.value)} />
       </div>
 
-      <button type="submit" disabled={step !== "idle"} className="rounded-lg bg-primary px-5 py-2.5 text-[13.5px] font-semibold text-white disabled:opacity-60">
+      <button type="submit" disabled={step !== "idle"} className="mt-2 w-full rounded-xl bg-primary px-5 py-3.5 text-[15px] font-bold text-white shadow-sm disabled:opacity-60 sm:w-auto">
         {step === "uploading" ? "Uploading attachments..." : step === "saving" ? "Sending..." : "Send quotation request"}
       </button>
     </form>

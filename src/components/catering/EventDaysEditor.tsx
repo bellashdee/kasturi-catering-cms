@@ -13,7 +13,10 @@ const SERVICE_OPTIONS = Object.entries(SERVICE_TYPE_LABEL).map(([value, label]) 
 
 const inputClass =
   "mt-1.5 h-10 w-full rounded-lg border border-border-strong px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
-const labelClass = "text-[12.5px] font-semibold text-text-secondary";
+const labelClass = "text-[13px] font-semibold text-text";
+/** the small heading of each part of a day (Date & time, Meals & service, Menu & price ...) */
+const partTitle = "mb-2 flex items-center gap-2 text-[12px] font-extrabold uppercase tracking-wide text-text-muted";
+const part = "rounded-lg border border-border bg-surface p-3";
 const areaClass =
   "mt-1.5 h-16 w-full resize-none rounded-lg border border-border-strong px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10";
 
@@ -86,9 +89,12 @@ export function EventDaysEditor({
   return (
     <div className="flex flex-col gap-4">
       {days.map((day, i) => (
-        <div key={i} className="rounded-xl border border-border bg-surface-alt p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="text-[13px] font-extrabold text-text">Day {i + 1}</div>
+        <div key={i} className="flex flex-col gap-3 rounded-xl border border-border bg-surface-alt p-3 sm:p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-primary px-3 py-1 text-[13px] font-extrabold text-white">Day {i + 1}</span>
+              {day.dayDate && <span className="text-[13px] font-semibold text-text-secondary">{new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date(`${day.dayDate}T00:00:00Z`))}</span>}
+            </div>
             {days.length > 1 && (
               <button type="button" onClick={() => onChange(days.filter((_, idx) => idx !== i))} className="text-xs font-semibold text-danger">
                 Remove day
@@ -96,7 +102,10 @@ export function EventDaysEditor({
             )}
           </div>
 
-          <div className={`grid gap-4 ${endTime ? "grid-cols-4" : "grid-cols-3"}`}>
+          <div className={part}>
+          <div className={partTitle}>① Date &amp; time</div>
+          {/* two per row, so each 12-hour time (hour : minute AM/PM) has room; one per row on a phone */}
+          <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
             <div>
               <label className={labelClass}>Event date *</label>
               <input type="date" required value={day.dayDate} onChange={(e) => patch(i, { dayDate: e.target.value })} className={inputClass} />
@@ -117,12 +126,16 @@ export function EventDaysEditor({
             )}
           </div>
 
-          <div className="mt-3">
+          </div>
+
+          <div className={part}>
+          <div className={partTitle}>② Meals &amp; service</div>
+          <div>
             <label className={labelClass}>{mealRequired ? "Meal type *" : "Meal type"}</label>
             <MealTypeSelect value={day.mealTypes} onToggle={(key) => toggleMeal(i, key)} />
           </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-4">
+          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className={labelClass}>Service type *</label>
               <ChoiceSelect
@@ -167,25 +180,41 @@ export function EventDaysEditor({
             )}
           </div>
 
-          <div className="mt-3 grid grid-cols-[2fr_1fr] gap-4">
-            <div>
-              <div className={labelClass}>Menu details</div>
-              <MenuPointsInput value={day.menuDetails ?? ""} onChange={(v) => patch(i, { menuDetails: v })} />
-            </div>
-            <div>
-              <label className={labelClass}>Price per pax (RM)</label>
-              <input type="number" min="0" step="0.01" value={day.pricePerPax ?? ""} onChange={(e) => patch(i, { pricePerPax: e.target.value ? Number(e.target.value) : undefined })} className={inputClass} placeholder="e.g. 35.00" />
-              <div className="mt-2 text-xs text-text-muted">
-                Total pax: <span className="font-semibold text-text">{dayPax(day) || "—"}</span>
-                {day.pricePerPax ? <> · Amount: <span className="font-semibold text-text">{formatPrice(dayMainAmount(day))}</span></> : null}
-                {daySecondMenusAmount(day) > 0 ? <> · Second menus: <span className="font-semibold text-text">{formatPrice(daySecondMenusAmount(day))}</span> · Day total: <span className="font-semibold text-text">{formatPrice(dayAmount(day))}</span></> : null}
+          </div>
+
+          <div className={part}>
+            <div className={partTitle}>③ Menu &amp; price</div>
+            <div className={labelClass}>Menu details</div>
+            <MenuPointsInput value={day.menuDetails ?? ""} onChange={(v) => patch(i, { menuDetails: v })} />
+            <div className="mt-3 grid grid-cols-1 items-end gap-3 sm:grid-cols-[12rem_1fr]">
+              <div>
+                <label className={labelClass}>Price per pax (RM)</label>
+                <input type="number" min="0" step="0.01" value={day.pricePerPax ?? ""} onChange={(e) => patch(i, { pricePerPax: e.target.value ? Number(e.target.value) : undefined })} className={inputClass} placeholder="e.g. 35.00" />
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 rounded-lg bg-surface-alt px-3 py-2 text-[13px] text-text-secondary">
+                <span>
+                  Pax: <b className="text-text">{dayPax(day) || "—"}</b>
+                </span>
+                <span>
+                  Amount: <b className="text-text">{day.pricePerPax ? formatPrice(dayMainAmount(day)) : "—"}</b>
+                </span>
+                {daySecondMenusAmount(day) > 0 && (
+                  <>
+                    <span>
+                      Second menus: <b className="text-text">{formatPrice(daySecondMenusAmount(day))}</b>
+                    </span>
+                    <span>
+                      Day total: <b className="text-text">{formatPrice(dayAmount(day))}</b>
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           </div>
 
           {secondChoice && (
-            <div className="mt-3">
-              <div className="text-[13px] font-extrabold text-text">Second menu (optional)</div>
+            <div className={part}>
+              <div className={partTitle}>④ Second menu (optional)</div>
               <p className="mb-2 text-xs text-text-muted">Alternative menus for this day, up to 5 a day (for example one for each meal type). Their amount (pax x price per meal) is added to the total.</p>
               <div className="flex flex-col gap-3">
                 {secondMenusOf(day).map((menu, n) => (
@@ -201,7 +230,7 @@ export function EventDaysEditor({
                 ))}
               </div>
               {secondMenusOf(day).length < MAX_SECOND_MENUS ? (
-                <button type="button" onClick={() => patch(i, { secondChoice: undefined, secondMenus: [...secondMenusOf(day), emptySecondChoice()] })} className="mt-2 text-[12.5px] font-semibold text-primary">
+                <button type="button" onClick={() => patch(i, { secondChoice: undefined, secondMenus: [...secondMenusOf(day), emptySecondChoice()] })} className="mt-2 rounded-lg border border-dashed border-primary px-3 py-2 text-[13px] font-semibold text-primary hover:bg-primary/5">
                   + Add second menu
                 </button>
               ) : (
@@ -210,7 +239,7 @@ export function EventDaysEditor({
             </div>
           )}
 
-          <div className="mt-3">
+          <div className={part}>
             <label className={labelClass}>Remarks for this day</label>
             <textarea value={day.remarks ?? ""} onChange={(e) => patch(i, { remarks: e.target.value })} className={areaClass} placeholder="Anything special for this day" />
           </div>
@@ -220,17 +249,17 @@ export function EventDaysEditor({
       <div className="flex flex-wrap items-center gap-4">
         {days.length < MAX_EVENT_DAYS && (
           <>
-            <button type="button" onClick={() => addDay(true)} className="text-[12.5px] font-semibold text-primary">
+            <button type="button" onClick={() => addDay(true)} className="rounded-lg border border-primary bg-surface px-3 py-2 text-[13px] font-semibold text-primary hover:bg-primary/5">
               + Add next day (copy of previous day)
             </button>
-            <button type="button" onClick={() => addDay(false)} className="text-[12.5px] font-semibold text-text-secondary">
+            <button type="button" onClick={() => addDay(false)} className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-[13px] font-semibold text-text-secondary hover:bg-surface-alt">
               + Add empty day
             </button>
           </>
         )}
       </div>
 
-      <div className="rounded-lg border border-border bg-surface px-4 py-3 text-[13px] text-text-secondary">
+      <div className="rounded-lg border-l-[4px] border-primary bg-surface px-4 py-3 text-[13.5px] text-text-secondary">
         {days.length} day(s) · Biggest day: <span className="font-semibold text-text">{peakPax} pax</span> · Total servings over all days: <span className="font-semibold text-text">{mealPax}</span>
         {totalAmount > 0 && <> · Total at the prices above: <span className="font-semibold text-text">{formatPrice(totalAmount)}</span></>}
       </div>
