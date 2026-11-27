@@ -12,6 +12,7 @@ import { CopyLink } from "@/components/driver/CopyLink";
 import { FinanceAdminSubNav } from "@/components/finance/FinanceAdminSubNav";
 import { ReceiptPdfImport } from "@/components/finance/ReceiptPdfImport";
 import { PaymentProofReviewRow, type InvoiceOption } from "@/components/finance/PaymentProofReviewRow";
+import { ViewProofButton } from "@/components/finance/ViewProofButton";
 import { MonthFilter } from "@/components/MonthFilter";
 import { monthLabelOf, monthRange } from "@/lib/monthFilter";
 import { FILTER_INPUT, FilterField, ListFilters } from "@/components/shared/ListFilters";
@@ -163,8 +164,14 @@ export default async function PaymentProofsPage({ searchParams }: { searchParams
                   <div>
                     <span className="font-semibold text-text">Invoice {p.invoice_number}</span>
                     <span className="ml-2 text-[13px] text-text-secondary">{p.sales_agent} · {formatMalaysiaDate(p.created_at)}{p.review_note ? ` · ${p.review_note}` : ""}</span>
+                    <div className="text-[12.5px] text-text-secondary">
+                      Paid {formatMalaysiaDate(`${p.payment_date}T12:00:00+08:00`)} · {PAYMENT_METHOD_LABEL[p.payment_method] ?? p.payment_method}
+                      {p.amount !== null ? ` · ${formatPrice(Number(p.amount))}` : ""}
+                      {p.reference ? ` · Ref ${p.reference}` : ""}
+                    </div>
                   </div>
                   <div className="flex items-center gap-3">
+                    {p.proof_path ? <ViewProofButton proofId={p.id} /> : <span className="text-[12.5px] text-text-muted">No proof file</span>}
                     {inv && <Link href={`/finance/invoices/${inv.id}${query}`} className="text-[13px] font-semibold text-primary">Open invoice</Link>}
                     <StatusBadge tone={p.status === "approved" ? "success" : "neutral"}>{p.status === "approved" ? "Approved" : "Rejected"}</StatusBadge>
                   </div>
