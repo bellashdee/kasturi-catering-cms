@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { MONEY_EXCLUDE_FILTER } from "@/lib/catering/constants";
 import type { Database } from "@/lib/supabase/types";
 import { resolvePeriod, type DateRange } from "@/lib/finance/constants";
 import { getMonthlyCostBreakdown, getMonthlyRevenue, listSpending } from "@/lib/finance/queries";
@@ -31,6 +32,7 @@ export async function getCateringReportRows(supabase: DB, companyIds: string[], 
     .in("company_id", companyIds)
     .gte("event_date", start)
     .lte("event_date", end)
+    .not("status", "in", MONEY_EXCLUDE_FILTER)
     .order("event_date", { ascending: false });
   if (error) throw error;
 

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { assertValidAssignee } from "@/lib/driver/assignee";
 import type { Database } from "@/lib/supabase/types";
-import { SALES_AGENTS } from "@/lib/catering/constants";
+import { SALES_AGENTS, isDateOnlyStatus } from "@/lib/catering/constants";
 import { recordAudit } from "@/lib/audit";
 import { dayPax, normalizeMenu, type EventDay } from "@/lib/catering/days";
 import { validateDays, validateServiceDetails, validateTimes } from "@/lib/catering/validation";
@@ -171,6 +171,11 @@ function dayRows(companyId: string, eventId: string, input: EventInput) {
 
 function validateEvent(input: EventInput) {
   validateContact(input);
+  // a date-only event (Date Confirmed / Details Pending) needs only its date: the menu, pax and times come later
+  if (isDateOnlyStatus(input.status)) {
+    if (!input.eventDate && !(input.days ?? []).some((d) => d.dayDate)) throw new Error("Choose the date.");
+    return;
+  }
   if ((input.days?.length ?? 0) > 0) validateDays(input.days ?? []);
   else {
     validateTimes(input);
@@ -192,7 +197,7 @@ async function createEventWork(input: EventInput): Promise<{ id: string }> {
   const { supabase } = await requireUser();
   await requireEventCreator(supabase);
   validateEvent(input);
-  const needs = needsColumns(input, false);
+  const needs = needsColumns(input, isDateOnlyStatus(input.status));
   const { data, error } = await supabase
     .from("catering_events")
     .insert({
@@ -341,6 +346,27 @@ async function updateEventWork(eventId: string, input: EventInput) {
  * record to work from, automatically. Both modules just read tables that
  * already exist — no extra plumbing needed once they get their own UI.
  */
+/**
+ * The status chosen on the event page. A date-only event (Date Confirmed / Details Pending) moves on to Ready for Planning or later
+ * only once its menu and pax are filled in (with Edit on the same event), so no planned event is left without them.
+ */
+export async function changeEventStatus(eventId: string, status: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const { supabase } = await requireUser();
+    const { data: event, error } = await supabase.from("catering_events").select("id, status, pax_count, menu_description").eq("id", eventId).single();
+    if (error || !event) throw new Error("This event was not found.");
+    if (isDateOnlyStatus(event.status) && ["ready_for_planning", "confirmed", "in_production", "delivered", "completed"].includes(status)) {
+      const days = await listDaysForWork(supabase, eventId);
+      const hasPax = days.length > 0 ? days.every((d) => d.service_pax > 0) : (event.pax_count ?? 0) > 0;
+      const { count: menuDays } = await supabase.from("catering_event_days").select("id", { count: "exact", head: true }).eq("catering_event_id", eventId).not("menu_details", "is", null);
+      const hasMenu = !!event.menu_description?.trim() || (days.length > 0 && (menuDays ?? 0) === days.length);
+      if (!hasPax || !hasMenu) throw new Error(`Fill in the ${[!hasMenu && "menu", !hasPax && "pax"].filter(Boolean).join(" and ")} first: press Edit on this event, save, then change the status.`);
+    }
+    await updateEventStatus(eventId, status);
+    return {};
+  }, "Could not change the status. Please try again.");
+}
+
 export async function updateEventStatus(eventId: string, status: string) {
   const { supabase } = await requireUser();
 

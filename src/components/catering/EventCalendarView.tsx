@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { EVENT_STATUS_LABEL, MEAL_TYPE_LABEL } from "@/lib/catering/constants";
+import { EVENT_STATUS_LABEL, JDT_EVENT_TYPE, MEAL_TYPE_LABEL } from "@/lib/catering/constants";
 import { addDays, dateLabel, monthGrid, startOfWeek, type CalendarEntry, type CalendarView, type EventPhase } from "@/lib/catering/calendar";
 import { CalendarEntryActions } from "@/components/catering/CalendarEntryActions";
 import { formatTime12 } from "@/lib/format";
@@ -8,11 +8,27 @@ const PHASE_STYLE: Record<EventPhase, string> = {
   request: "border-l-[3px] border-dotted border-info bg-info-bg/60 text-text",
   confirmed: "border-l-[3px] border-success bg-success-bg text-text",
   tentative: "border-l-[3px] border-dashed border-warning bg-warning-bg/60 text-text",
+  date: "border-l-[4px] border-blue-600 bg-blue-100 text-text",
+  pending: "border-l-[4px] border-yellow-500 bg-yellow-100 text-text",
   finished: "border-l-[3px] border-border-strong bg-surface-alt text-text-secondary",
   cancelled: "border-l-[3px] border-danger bg-danger-bg/60 text-text-muted line-through",
 };
 
-const PHASE_MARK: Record<EventPhase, string> = { request: "✉", confirmed: "●", tentative: "◌", finished: "✓", cancelled: "✕" };
+const PHASE_MARK: Record<EventPhase, string> = { request: "✉", confirmed: "●", tentative: "◌", date: "◆", pending: "◇", finished: "✓", cancelled: "✕" };
+
+/** A date-only entry (Date Confirmed / Details Pending): the date is known, the menu and pax are not yet. */
+const isDateOnly = (e: CalendarEntry) => e.phase === "date" || e.phase === "pending";
+/** An away match kept on the calendar for information only (no catering). */
+const isAway = (e: CalendarEntry) => /\bAWAY\b/i.test(e.eventName);
+
+/** "JDT MATCH – DATE CONFIRMED" (or the event name for another date-only event). */
+function dateOnlyHeadline(e: CalendarEntry): string {
+  const what = e.eventType === JDT_EVENT_TYPE ? "JDT MATCH" : e.eventName.toUpperCase();
+  return `${what} – ${isAway(e) ? "AWAY (NO CATERING)" : e.phase === "date" ? "DATE CONFIRMED" : "DETAILS PENDING"}`;
+}
+
+/** The match itself, e.g. "JDT FC vs KL CITY FC" from "JDT Match – JDT FC vs KL CITY FC". */
+const matchDetail = (e: CalendarEntry) => e.eventName.replace(/^JDT Match\s*[–-]\s*/i, "").replace(/^AWAY:\s*/i, "").replace(/\s*\(no catering\)$/i, "");
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -50,7 +66,16 @@ function Chip({ e, eventHref, plain = false }: { e: CalendarEntry; eventHref: Pr
   const title = `${e.customerName ? `${e.customerName} · ` : ""}${e.eventName} · ${e.kind === "request" ? "Quotation request" : EVENT_STATUS_LABEL[e.status] ?? e.status} · ${e.pax} pax${e.venue ? ` · ${e.venue}` : ""}`;
   const className = `block rounded px-1.5 py-1 text-[11.5px] font-semibold leading-tight ${plain ? "" : "hover:opacity-80"} ${PHASE_STYLE[e.phase]}`;
   const detail = [e.pax > 0 ? `${e.pax} pax` : "", mealsText(e), formatTime12(e.eventTime)].filter(Boolean).join(" · ");
-  const body = (
+  const body = isDateOnly(e) ? (
+    <>
+      <span className="block truncate">
+        <span aria-hidden="true">{PHASE_MARK[e.phase]} </span>
+        {dateOnlyHeadline(e)}
+      </span>
+      <span className="block truncate text-[10.5px] font-medium opacity-80">{[matchDetail(e), formatTime12(e.eventTime)].filter(Boolean).join(" · ")}</span>
+      {!isAway(e) && <span className="block truncate text-[10.5px] font-semibold opacity-80">Menu: Pending · Pax: Pending</span>}
+    </>
+  ) : (
     <>
       <span className="block truncate">
         <span aria-hidden="true">{PHASE_MARK[e.phase]} </span>
@@ -81,6 +106,20 @@ function EntryCard({ e, eventHref, canDelete, query }: { e: CalendarEntry; event
           {e.dayNumber && e.dayCount > 1 && <span className="text-[12px] text-text-muted">{`Day ${e.dayNumber} of ${e.dayCount}`}</span>}
           <span className="ml-auto text-[12px] text-text-muted">{e.companyName}</span>
         </div>
+        {isDateOnly(e) && (
+          <div className="mt-1.5 text-[13px] font-bold text-text">
+            {dateOnlyHeadline(e)}
+            <span className="ml-2 font-semibold text-text-secondary">{matchDetail(e)}</span>
+          </div>
+        )}
+        {isDateOnly(e) ? (
+          <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1 text-[12.5px] text-text-secondary sm:grid-cols-4">
+            <span>{`Menu: ${isAway(e) ? "No catering" : e.menu ? "Received" : "Pending"}`}</span>
+            <span>{`Pax: ${isAway(e) ? "No catering" : e.pax > 0 ? e.pax : "Pending"}`}</span>
+            <span>{`${e.eventType === JDT_EVENT_TYPE ? "Kick-off" : "Time"}: ${e.eventTime ? formatTime12(e.eventTime) : "Not provided"}`}</span>
+            <span>{`Customer: ${e.customerName || "—"}`}</span>
+          </div>
+        ) : (
         <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1 text-[12.5px] text-text-secondary sm:grid-cols-4">
           <span>{`Customer: ${e.customerName || "—"}`}</span>
           <span>{`Pax: ${e.pax > 0 ? e.pax : "—"}`}</span>
@@ -88,6 +127,7 @@ function EntryCard({ e, eventHref, canDelete, query }: { e: CalendarEntry; event
           <span>{`Set-up (kitchen): ${e.setupTime ? formatTime12(e.setupTime) : "—"}`}</span>
           <span>{`Kitchen PIC: ${e.pic || "—"}`}</span>
         </div>
+        )}
         {e.venue && <div className="mt-1 text-[12.5px] text-text-secondary">{`Venue: ${e.venue}`}</div>}
         {e.mealTypes.length > 0 && <div className="mt-1 text-[12.5px] text-text-secondary">{`Meals (${e.mealTypes.length}): ${e.mealTypes.map((m) => MEAL_TYPE_LABEL[m] ?? m).join(", ")}`}</div>}
         {e.menu && <div className="mt-1 whitespace-pre-line text-[12.5px] text-text">{e.menu}</div>}
@@ -97,6 +137,7 @@ function EntryCard({ e, eventHref, canDelete, query }: { e: CalendarEntry; event
         key={`${e.key}:${e.date}:${e.eventTime}:${e.setupTime}:${e.pax}:${e.status}`}
         entry={{ kind: e.kind, eventId: e.eventId, requestId: e.requestId, dayId: e.dayId, status: e.status, eventName: e.eventName, date: e.date, eventTime: e.eventTime, setupTime: e.setupTime, venue: e.venue, pax: e.pax, twoServices: e.twoServices }}
         canDelete={canDelete && e.kind === "event"}
+        canQuickEdit={!isDateOnly(e)}
         query={query}
       />
     </div>

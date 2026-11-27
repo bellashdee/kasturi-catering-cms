@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createEvent, updateEvent, type EventInput } from "@/lib/catering/actions";
-import { ACTIVE_SALES_AGENTS, eventTypeOptions } from "@/lib/catering/constants";
+import { ACTIVE_SALES_AGENTS, eventTypeOptions, isDateOnlyStatus } from "@/lib/catering/constants";
 import { dayAmount, dayPax, normalizeMenu, type EventDay } from "@/lib/catering/days";
 import { withSecondMenusInRemarks } from "@/lib/catering/quotationRequest";
 import { emptyCustomerNeeds, extraItemsOf, type CustomerNeedsValue } from "@/lib/catering/customerNeeds";
@@ -111,6 +111,8 @@ export function EventForm({
   const customersForCompany = customers.filter((c) => c.company_id === form.companyId);
   const packagesForCompany = packageMenus.filter((p) => p.company_id === form.companyId);
   const singleDay = days.length === 1;
+  // a date-only event (Date Confirmed / Details Pending): the menu, pax, times and answers may stay empty until they come in
+  const dateOnly = isDateOnlyStatus(form.status);
 
   function set<K extends keyof EventInput>(key: K, value: EventInput[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -128,7 +130,11 @@ export function EventForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const noMeal = days.findIndex((d) => d.mealTypes.length === 0);
+    if (dateOnly && days.some((d) => !d.dayDate)) {
+      setError("Choose the date.");
+      return;
+    }
+    const noMeal = dateOnly ? -1 : days.findIndex((d) => d.mealTypes.length === 0);
     if (noMeal >= 0) {
       setError(`Day ${noMeal + 1}: select at least one meal type.`);
       return;
@@ -153,7 +159,7 @@ export function EventForm({
           eventTime: only.eventTime,
           endTime: only.endTime,
           setupTime: only.setupTime,
-          paxCount: dayPax(only),
+          paxCount: dateOnly && dayPax(only) === 0 ? undefined : dayPax(only),
           mealTypes: only.mealTypes,
           serviceType: only.serviceType,
           servicePax: only.servicePax,
@@ -178,8 +184,14 @@ export function EventForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} noValidate={dateOnly} className="flex flex-col gap-4">
       {error && <div className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">{error}</div>}
+      {dateOnly && (
+        <div className="rounded-lg border-l-[4px] border-blue-600 bg-blue-50 px-3 py-2 text-[13px] text-text">
+          <b>Date-only event ({form.status === "date_confirmed" ? "Date Confirmed" : "Details Pending"}).</b> Menu, pax, times and costing may stay empty. Fill in what has come in and press Save; this is the same event, so nothing is created twice.
+          When the menu and pax are in, change the status to <b>Ready for Planning</b> or <b>Confirmed</b> on the event page.
+        </div>
+      )}
       {fromRequest && (
         <div className="rounded-lg border border-border bg-surface-alt px-3 py-2 text-[13px] text-text">
           Filled in from quotation request <span className="font-bold">{fromRequest.code}</span>. Check every field, then press Create Event: the request is linked to the new event.
@@ -222,6 +234,8 @@ export function EventForm({
             <Select value={form.status} onChange={(e) => set("status", e.target.value)} className={inputClass}>
               <option value="enquiry">Enquiry</option>
               <option value="quoted">Quoted</option>
+              <option value="date_confirmed">Date Confirmed (menu & pax pending)</option>
+              <option value="details_pending">Details Pending</option>
               <option value="confirmed">Confirmed</option>
             </Select>
           </div>

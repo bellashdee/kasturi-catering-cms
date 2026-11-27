@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MONEY_EXCLUDE_FILTER } from "@/lib/catering/constants";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
@@ -106,6 +107,7 @@ export default async function EventSummaryReportPage({
     .in("company_id", admins)
     .gte("event_date", `${year}-01-01`)
     .lte("event_date", `${year}-12-31`)
+    .not("status", "in", MONEY_EXCLUDE_FILTER)
     .order("event_date")
     .order("event_name");
   if (error) throw error;

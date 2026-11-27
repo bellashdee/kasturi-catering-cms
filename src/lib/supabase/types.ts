@@ -6940,6 +6940,9 @@ export type Database = {
       event_status:
         | "enquiry"
         | "quoted"
+        | "date_confirmed"
+        | "details_pending"
+        | "ready_for_planning"
         | "confirmed"
         | "in_production"
         | "delivered"
@@ -7085,6 +7088,9 @@ export const Constants = {
       event_status: [
         "enquiry",
         "quoted",
+        "date_confirmed",
+        "details_pending",
+        "ready_for_planning",
         "confirmed",
         "in_production",
         "delivered",

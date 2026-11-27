@@ -15,6 +15,8 @@ export async function listPlannerEvents(supabase: DB, companyId: string, today: 
     .select("id, event_name, event_date, status, pax_count, customers(name)")
     .eq("company_id", companyId)
     .neq("status", "cancelled")
+    // a date-only event (menu & pax pending) cannot be bought for yet
+    .not("status", "in", "(date_confirmed,details_pending)")
     .gte("event_date", addDays(today, -183))
     .order("event_date")
     .limit(2000);

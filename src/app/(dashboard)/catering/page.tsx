@@ -22,9 +22,10 @@ const SORTS = { date: "Event date", customer: "Customer", reference: "Event refe
 const STATUS_ORDER = Object.keys(EVENT_STATUS_LABEL);
 
 function statusTone(status: string): "success" | "warning" | "danger" | "info" | "neutral" {
-  if (status === "completed" || status === "confirmed") return "success";
+  if (status === "completed" || status === "confirmed" || status === "ready_for_planning") return "success";
   if (status === "cancelled") return "danger";
-  if (status === "enquiry") return "warning";
+  if (status === "enquiry" || status === "details_pending") return "warning";
+  if (status === "date_confirmed") return "info";
   if (status === "quoted" || status === "in_production" || status === "delivered") return "info";
   return "neutral";
 }

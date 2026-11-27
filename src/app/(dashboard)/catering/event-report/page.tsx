@@ -108,7 +108,7 @@ export default async function EventReportPage({ searchParams }: { searchParams: 
   const overallMargin = revenue === 0 ? null : (profit / revenue) * 100;
 
   // charts: the events by status, and the events with the biggest revenue (the margin beside each; a loss is flagged)
-  const STATUS_COLOR: Record<string, string> = { enquiry: "#7fb8e6", quoted: "#8a8f98", confirmed: "#2f7fc1", in_production: "#1e3a5f", delivered: "#b8794a", completed: "#2e9e6b", cancelled: RED };
+  const STATUS_COLOR: Record<string, string> = { enquiry: "#7fb8e6", quoted: "#8a8f98", date_confirmed: "#2563eb", details_pending: "#eab308", ready_for_planning: "#5aa469", confirmed: "#2f7fc1", in_production: "#1e3a5f", delivered: "#b8794a", completed: "#2e9e6b", cancelled: RED };
   const byStatus = STATUS_ORDER.map((k) => ({ label: EVENT_STATUS_LABEL[k], value: rows.filter((r) => r.status === k).length, color: STATUS_COLOR[k] }));
   const topEvents = [...counted]
     .filter((r) => r.pnl.netRevenue > 0)

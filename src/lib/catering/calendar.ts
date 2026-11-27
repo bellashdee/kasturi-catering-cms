@@ -10,11 +10,13 @@ export const CALENDAR_VIEWS: CalendarView[] = ["month", "week", "day", "list"];
  * How an entry is shown: a quotation request from a sales agent that is not yet an event ("request"), a tentative booking
  * (enquiry / quoted), a confirmed event, a finished one, or a cancelled one.
  */
-export type EventPhase = "request" | "tentative" | "confirmed" | "finished" | "cancelled";
+export type EventPhase = "request" | "tentative" | "date" | "pending" | "confirmed" | "finished" | "cancelled";
 
 export function phaseOf(status: string): EventPhase {
   if (status === "cancelled") return "cancelled";
-  if (status === "confirmed" || status === "in_production") return "confirmed";
+  if (status === "date_confirmed") return "date";
+  if (status === "details_pending") return "pending";
+  if (status === "confirmed" || status === "in_production" || status === "ready_for_planning") return "confirmed";
   if (status === "delivered" || status === "completed") return "finished";
   return "tentative";
 }
@@ -22,7 +24,9 @@ export function phaseOf(status: string): EventPhase {
 export const PHASE_LABEL: Record<EventPhase, string> = {
   request: "Quotation request (not approved yet)",
   tentative: "Tentative (enquiry / quoted)",
-  confirmed: "Confirmed",
+  date: "Date confirmed (menu & pax pending)",
+  pending: "Details pending",
+  confirmed: "Confirmed / ready for planning",
   finished: "Delivered / completed",
   cancelled: "Cancelled",
 };
@@ -40,6 +44,8 @@ export type CalendarEntry = {
   eventName: string;
   status: string;
   phase: EventPhase;
+  /** the event category (e.g. football_jdt) */
+  eventType: string;
   companyName: string;
   /** the customer who ordered the event ("" when it has none) */
   customerName: string;
@@ -124,7 +130,7 @@ const QUOTATION_RANK: Record<string, number> = { accepted: 4, sent: 3, draft: 2,
  */
 export async function loadCalendarEntries(supabase: DB, companyIds: string[], start: string, end: string, today: string): Promise<CalendarEntry[]> {
   if (companyIds.length === 0) return [];
-  const eventSelect = "id, event_name, status, location, pic_name, pax_count, event_date, event_time, setup_time, meal_types, menu_description, company_id, second_service_type, service_pax, companies(name), customers(name)";
+  const eventSelect = "id, event_name, status, event_type, location, pic_name, pax_count, event_date, event_time, setup_time, meal_types, menu_description, company_id, second_service_type, service_pax, companies(name), customers(name)";
 
   const [{ data: inRange, error: e1 }, { data: dayRows, error: e2 }] = await Promise.all([
     supabase.from("catering_events").select(eventSelect).in("company_id", companyIds).gte("event_date", start).lte("event_date", end),
@@ -167,6 +173,7 @@ export async function loadCalendarEntries(supabase: DB, companyIds: string[], st
         eventName: ev.event_name,
         status: ev.status,
         phase: phaseOf(ev.status),
+        eventType: ev.event_type,
         companyName: ev.companies?.name ?? "",
         customerName: ev.customers?.name ?? "",
         date: d.day_date,
@@ -197,6 +204,7 @@ export async function loadCalendarEntries(supabase: DB, companyIds: string[], st
       eventName: ev.event_name,
       status: ev.status,
       phase: phaseOf(ev.status),
+      eventType: ev.event_type,
       companyName: ev.companies?.name ?? "",
       customerName: ev.customers?.name ?? "",
       date: ev.event_date,

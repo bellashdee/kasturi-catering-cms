@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { MONEY_EXCLUDE_FILTER } from "@/lib/catering/constants";
 import type { Database } from "@/lib/supabase/types";
 import { monthDateRange } from "@/lib/finance/constants";
 import {
@@ -72,6 +73,8 @@ async function loadRows(supabase: DB, companyIds: string[], start: string, end: 
     .in("company_id", companyIds)
     .gte("event_date", start)
     .lte("event_date", end)
+    // date-only events (menu & pax pending) and Ready for Planning are not in any P&L until the event is Confirmed
+    .not("status", "in", MONEY_EXCLUDE_FILTER)
     .order("event_date", { ascending: true });
   if (filters.status) query = query.eq("status", filters.status as Database["public"]["Enums"]["event_status"]);
   if (filters.salesAgent) query = query.eq("sales_agent", filters.salesAgent);

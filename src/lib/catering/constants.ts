@@ -1,6 +1,9 @@
 export const EVENT_STATUS_LABEL: Record<string, string> = {
   enquiry: "Enquiry",
   quoted: "Quoted",
+  date_confirmed: "Date Confirmed",
+  details_pending: "Details Pending",
+  ready_for_planning: "Ready for Planning",
   confirmed: "Confirmed",
   in_production: "In Production",
   delivered: "Delivered",
@@ -29,6 +32,7 @@ export const EVENT_TYPE_OPTIONS: [string, string][] = [
   ["exhibition", "Exhibition"],
   ["family_day", "Family Day"],
   ["farewell_party", "Farewell Party"],
+  ["football_jdt", "Football / JDT"],
   ["fundraising_event", "Fundraising Event"],
   ["gala_dinner", "Gala Dinner"],
   ["government_event", "Government Event"],
@@ -166,3 +170,22 @@ export const SERVICE_TYPE_LABEL: Record<string, string> = {
   pre_plated: "Preplated",
   hidang: "Serve",
 };
+
+/**
+ * Date-only events: the date is confirmed (e.g. a JDT match) but the menu and pax are not in yet. They show on the calendar and the
+ * Upcoming JDT Events list, but never in money reports, costing, kitchen planning or purchasing.
+ */
+export const DATE_ONLY_STATUSES = ["date_confirmed", "details_pending"];
+export const isDateOnlyStatus = (status: string | null | undefined) => DATE_ONLY_STATUSES.includes(status ?? "");
+
+/** Statuses kept out of revenue, P&L and costing reports: the date-only ones and Ready for Planning (money waits for Confirmed). */
+export const NOT_IN_MONEY_STATUSES = [...DATE_ONLY_STATUSES, "ready_for_planning"];
+/** For a query: .not("status", "in", MONEY_EXCLUDE_FILTER) leaves the date-only and Ready for Planning events out. */
+export const MONEY_EXCLUDE_FILTER = `(${["date_confirmed", "details_pending", "ready_for_planning"].join(",")})`;
+export const countsForMoney = (status: string | null | undefined) => !NOT_IN_MONEY_STATUSES.includes(status ?? "");
+
+/** The "Football / JDT" event category. */
+export const JDT_EVENT_TYPE = "football_jdt";
+/** The JDT customer of Signature Solution. */
+export const JDT_CUSTOMER_ID = "a30a2abd-0607-4fc9-966d-a7be7b3c43aa";
+export const SIGNATURE_COMPANY_ID = "bf86ef51-fc00-4331-aef6-a0deaee07183";

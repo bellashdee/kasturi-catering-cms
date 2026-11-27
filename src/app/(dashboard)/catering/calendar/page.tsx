@@ -8,6 +8,8 @@ import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { CateringSubNav } from "@/components/catering/CateringSubNav";
 import { CalendarUndoBanner } from "@/components/catering/CalendarUndoBanner";
 import { EventCalendarView } from "@/components/catering/EventCalendarView";
+import { DateOnlyEventButton } from "@/components/catering/DateOnlyEventButton";
+import { SIGNATURE_COMPANY_ID } from "@/lib/catering/constants";
 import { CALENDAR_VIEWS, PHASE_LABEL, addDays, dateLabel, loadCalendarEntries, monthStart, rangeOf, shiftMonth, startOfWeek, type CalendarView } from "@/lib/catering/calendar";
 
 const VIEW_LABEL: Record<CalendarView, string> = { month: "Month", week: "Week", day: "Day", list: "Upcoming" };
@@ -36,6 +38,9 @@ export default async function CateringCalendarPage({ searchParams }: { searchPar
   );
   const adminCompanyIds = adminFlags.filter(([, isAdmin]) => isAdmin).map(([id]) => id);
   const query = sp.company ? `?company=${sp.company}` : "";
+  // a date-only event (JDT match) is added by the Quotation Request people, for Signature Solution only
+  const { data: canAddEvents } = await supabase.rpc("user_has_quotation_request_access");
+  const canAddDateOnly = canAddEvents === true && targetCompanyIds.includes(SIGNATURE_COMPANY_ID);
 
   const today = todayInMalaysia();
   const view: CalendarView = CALENDAR_VIEWS.includes(sp.view as CalendarView) ? (sp.view as CalendarView) : "month";
@@ -76,6 +81,7 @@ export default async function CateringCalendarPage({ searchParams }: { searchPar
 
   const confirmed = entries.filter((e) => e.phase === "confirmed").length;
   const tentative = entries.filter((e) => e.phase === "tentative").length;
+  const dateOnly = entries.filter((e) => e.phase === "date" || e.phase === "pending").length;
   const requests = entries.filter((e) => e.phase === "request").length;
   const alerts = entries.filter((e) => e.alert).length;
   const btn = "rounded-lg border border-border-strong bg-surface px-3 py-2 text-[13px] font-semibold text-text hover:bg-surface-alt";
@@ -90,6 +96,12 @@ export default async function CateringCalendarPage({ searchParams }: { searchPar
       <CateringSubNav />
 
       <CalendarUndoBanner />
+
+      {canAddDateOnly && (
+        <div className="flex flex-wrap items-start gap-2">
+          <DateOnlyEventButton query={query} />
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -116,6 +128,7 @@ export default async function CateringCalendarPage({ searchParams }: { searchPar
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] text-text-secondary">
         <span className="font-semibold text-text">{`${confirmed} confirmed`}</span>
         <span>{`${tentative} tentative`}</span>
+        {dateOnly > 0 && <span className="font-semibold text-blue-700">{`${dateOnly} date only (menu & pax pending)`}</span>}
         <span>{`Quotation requests waiting: ${requests}`}</span>
         {alerts > 0 && <span className="font-bold text-danger">{`⚠ ${alerts} need attention`}</span>}
         <span className="flex items-center gap-1.5">
@@ -128,7 +141,16 @@ export default async function CateringCalendarPage({ searchParams }: { searchPar
           <span className="inline-block h-3 w-3 rounded-sm border-l-[3px] border-dashed border-warning bg-warning-bg/60" /> {PHASE_LABEL.tentative}
         </span>
         <span className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-3 rounded-sm border-l-[4px] border-blue-600 bg-blue-100" /> {PHASE_LABEL.date}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-3 rounded-sm border-l-[4px] border-yellow-500 bg-yellow-100" /> {PHASE_LABEL.pending}
+        </span>
+        <span className="flex items-center gap-1.5">
           <span className="inline-block h-3 w-3 rounded-sm border-l-[3px] border-border-strong bg-surface-alt" /> {PHASE_LABEL.finished}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-3 rounded-sm border-l-[3px] border-danger bg-danger-bg/60" /> {PHASE_LABEL.cancelled}
         </span>
         <Link href={params(view, date, { tentative: showTentative ? "0" : undefined })} className="font-semibold text-primary hover:underline">
           {showTentative ? "Hide tentative" : "Show tentative"}

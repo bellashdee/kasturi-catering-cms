@@ -9,6 +9,8 @@ import { buildReminders, type Reminder } from "@/lib/notifications/reminders";
 import { canAccessModule } from "@/lib/modules";
 import { syncPriorityNotifications } from "@/lib/priority/sync";
 import { isRestaurantScope, restaurantRedirect } from "@/lib/restaurantView";
+import { loadUpcomingJdt } from "@/lib/catering/jdtSchedule";
+import { formatTime12 } from "@/lib/format";
 
 export type RemindersResult = { ok: true; items: Reminder[] } | { ok: false; error: string };
 
@@ -42,6 +44,25 @@ export async function getReminders(companyId: string | null): Promise<RemindersR
       items.unshift(...mine);
     } catch (err) {
       console.warn("Priority Centre reminders could not be loaded:", err instanceof Error ? err.message : err);
+    }
+    // JDT match dates in the next 7 days whose menu or pax is still pending: every department is told (Kitchen, Operations, Purchasing, Drivers ...)
+    if (!isRestaurantScope(companies ?? [], targetCompanyIds)) {
+      try {
+        const today = todayInMalaysia();
+        const soon = (await loadUpcomingJdt(today, 7)).filter((r) => !r.away && r.status !== "cancelled" && (r.menu === "Pending" || r.pax === "Pending"));
+        const canOpen = canAccessModule(session.allowedModules, "catering");
+        for (const r of soon.reverse()) {
+          const [y, m, d] = r.date.split("-");
+          items.unshift({
+            severity: r.date === today ? "danger" : "warning",
+            title: `JDT match ${d}/${m}/${y}: menu ${r.menu === "Pending" ? "pending" : "in"}, pax ${r.pax === "Pending" ? "pending" : "in"}`,
+            meta: `Signature Solution · ${[r.match, r.kickOff ? `kick-off ${formatTime12(r.kickOff)}` : "", r.venue ?? ""].filter(Boolean).join(" · ")}`,
+            href: canOpen ? `/catering/${r.id}` : "/bulletin",
+          });
+        }
+      } catch (err) {
+        console.warn("JDT reminders could not be loaded:", err instanceof Error ? err.message : err);
+      }
     }
     // O2 Life is the restaurant: no reminder that opens a catering or Operation Management page (events, deliveries, vehicles, drivers)
     if (isRestaurantScope(companies ?? [], targetCompanyIds)) items = items.filter((i) => restaurantRedirect((i.href ?? "").split("?")[0]) === null);

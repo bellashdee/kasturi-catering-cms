@@ -1,4 +1,5 @@
 import { PieChart, sumBy } from "@/components/reports/PieChart";
+import { MONEY_EXCLUDE_FILTER } from "@/lib/catering/constants";
 import { parseDateRange } from "@/lib/finance/constants";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -70,6 +71,7 @@ export default async function CateringReportPage({
     .in("company_id", targetCompanyIds)
     .gte("event_date", `${year}-01-01`)
     .lte("event_date", `${year}-12-31`)
+    .not("status", "in", MONEY_EXCLUDE_FILTER)
     .not("customer_id", "is", null);
   const byCustomer = new Map<string, TopCustomer>();
   for (const e of yearEvents ?? []) {

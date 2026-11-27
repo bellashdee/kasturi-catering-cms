@@ -1,4 +1,5 @@
 import { Suspense, cache } from "react";
+import { MONEY_EXCLUDE_FILTER } from "@/lib/catering/constants";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -35,7 +36,7 @@ const getPayments = cache(async (ids: string, year: number) => {
   return data ?? [];
 });
 const getEvents = cache(async (ids: string, year: number) => {
-  const { data } = await (await createClient()).from("catering_events").select("service_type, meal_types, pax_count, total_amount, status, event_date").in("company_id", ids.split(",")).gte("event_date", `${year}-01-01`).lte("event_date", `${year}-12-31`);
+  const { data } = await (await createClient()).from("catering_events").select("service_type, meal_types, pax_count, total_amount, status, event_date").in("company_id", ids.split(",")).gte("event_date", `${year}-01-01`).lte("event_date", `${year}-12-31`).not("status", "in", MONEY_EXCLUDE_FILTER);
   return data ?? [];
 });
 const getMonthlyPurchases = cache(async (ids: string, year: number) => {

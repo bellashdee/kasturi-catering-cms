@@ -20,6 +20,8 @@ import {
   QUOTATION_STATUS_LABEL,
   PAYMENT_STATUS_LABEL,
   STAFF_ROLE_LABEL,
+  isDateOnlyStatus,
+  JDT_EVENT_TYPE,
 } from "@/lib/catering/constants";
 import { formatCurrency, formatMalaysiaDateTime, formatPrice, formatTime12 } from "@/lib/format";
 import { AmountOrigin } from "@/components/shared/AmountOrigin";
@@ -157,6 +159,18 @@ export default async function EventDetailPage({
           <EventDeleteAction eventId={id} name={event.event_name} listHref={`/catering${query}`} />
         </div>
       </div>
+
+      {isDateOnlyStatus(event.status) && (
+        <div className={`rounded-xl border-l-[4px] px-4 py-3 text-[13.5px] text-text ${event.status === "date_confirmed" ? "border-blue-600 bg-blue-50" : "border-yellow-500 bg-yellow-50"}`}>
+          <div className="font-extrabold">{`${event.event_type === JDT_EVENT_TYPE ? "JDT MATCH" : "DATE ONLY"} – ${event.status === "date_confirmed" ? "DATE CONFIRMED" : "DETAILS PENDING"}`}</div>
+          <div className="mt-0.5">
+            {`Menu: ${event.menu_description?.trim() || eventDays.some((d) => d.menuDetails) ? "Received" : "Pending"} · Pax: ${event.pax_count ? event.pax_count : "Pending"}`}
+          </div>
+          <div className="mt-1 text-[12.5px] text-text-secondary">
+            When JDT sends the menu and pax: press <b>Edit</b> on this event, fill in the menu, pax and costing, save, then change the status to <b>Ready for Planning</b> or <b>Confirmed</b>. It stays the same event (same date and record), so nothing is created twice. Until it is Confirmed it is not counted in revenue, P&amp;L or costing reports.
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-4 gap-4">
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
