@@ -30,7 +30,7 @@ export default async function SupplierSoaDetailPage({ params, searchParams }: { 
   const back = new URLSearchParams();
   if (requestedId) back.set("company", requestedId);
   if (dateParam) back.set("date", statementDate);
-  const backHref = `/supplier-procurement/soa${back.size ? `?${back.toString()}` : ""}`;
+  const backHref = `/supplier-procurement/soa/statements${back.size ? `?${back.toString()}` : ""}`;
 
   return (
     <div className="flex flex-col gap-5">

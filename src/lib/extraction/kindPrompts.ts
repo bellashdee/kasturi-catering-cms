@@ -1,5 +1,7 @@
+import { SUPPLIER_SOA_PROMPT } from "./soaPrompt";
 // The per-module field schemas the extractor is asked to fill. Each module keeps reading the same flat JSON it always did.
 export const KIND_PROMPTS: Record<string, string> = {
+  supplier_soa: SUPPLIER_SOA_PROMPT,
   employee_certificate: `You are reading a staff document: a food handling certificate, typhoid certificate, work permit, training certificate, medical certificate (MC), confirmation letter, or letter of appointment/offer (LOA). Extract the following fields from the image/document and respond with ONLY a JSON object, no other text:
 {
   "cert_type": one of "food_handling" | "typhoid" | "work_permit" | "training" | "medical_certificate" | "confirmation_letter" | "loa" | "other",

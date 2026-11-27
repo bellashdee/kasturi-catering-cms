@@ -6,6 +6,7 @@ export const DOCUMENT_TYPES = [
   "quotation",
   "delivery_order",
   "payment_voucher",
+  "supplier_statement",
   "receipt",
   "bank_payment_proof",
   "purchase_order",
@@ -24,6 +25,7 @@ export const DOCUMENT_TYPE_LABEL: Record<DocumentType, string> = {
   quotation: "Quotation",
   delivery_order: "Delivery order",
   payment_voucher: "Payment voucher",
+  supplier_statement: "Supplier statement of account (SOA)",
   receipt: "Receipt",
   bank_payment_proof: "Bank payment proof",
   purchase_order: "Purchase order",
@@ -38,6 +40,7 @@ export const DOCUMENT_TYPE_LABEL: Record<DocumentType, string> = {
 /** The document types each module's form makes sense for. A different detected type produces a warning, never a block. */
 export const EXPECTED_TYPES: Record<string, DocumentType[]> = {
   supplier_invoice: ["supplier_invoice", "receipt", "delivery_order"],
+  supplier_soa: ["supplier_statement"],
   purchase_receipt: ["supplier_invoice", "receipt", "delivery_order"],
   customer_invoice: ["customer_invoice"],
   customer_event_invoice: ["customer_invoice", "event_order_beo", "quotation", "delivery_order"],

@@ -52,8 +52,28 @@ const LETTERHEADS: { match: RegExp; registrationNo?: string; addressLines: strin
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const TYPE_ORDER: Record<SoaLineType, number> = { IN: 0, DN: 1, CN: 2, PV: 3 };
 
+/** A supplier name compared without dots, spaces and "Sdn Bhd" / "Enterprise". */
+export const supplierNameKey = (n: string) => n.toUpperCase().replace(/[^A-Z0-9]/g, "").replace(/SDNBHD$|BHD$|ENTERPRISE$|ENT$/, "");
+
+/**
+ * Finds the supplier a PV (Admin & Finance → Supplier Payment) was paid to: the supplier of the same company whose name is the same
+ * (ignoring dots, spaces and "Sdn Bhd"), or, when only one supplier fits, whose name contains the other ("Harvest Frozen" → "Harvest
+ * Frozen Food Sdn Bhd"). Never across companies. Returns null when no single supplier fits.
+ */
+export function payeeMatcher(suppliers: { id: string; company_id: string; name: string }[]): (companyId: string, payee: string) => string | null {
+  const byCompany = new Map<string, { id: string; key: string }[]>();
+  for (const x of suppliers) byCompany.set(x.company_id, [...(byCompany.get(x.company_id) ?? []), { id: x.id, key: supplierNameKey(x.name) }]);
+  return (companyId, payee) => {
+    const key = supplierNameKey(payee);
+    const list = byCompany.get(companyId) ?? [];
+    let hit = key ? list.filter((x) => x.key === key) : [];
+    if (hit.length !== 1 && key.length >= 6) hit = list.filter((x) => x.key.length >= 6 && (x.key.includes(key) || key.includes(x.key)));
+    return hit.length === 1 ? hit[0].id : null;
+  };
+}
+
 /** Reads every row of a query, 1000 at a time (the database gives at most 1000 rows per request). */
-async function fetchAll<T>(page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>): Promise<T[]> {
+export async function fetchAll<T>(page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>): Promise<T[]> {
   const out: T[] = [];
   for (let from = 0; ; from += 1000) {
     const { data, error } = await page(from, from + 999);
@@ -216,16 +236,12 @@ export async function loadSoaStatements(supabase: DB, companyIds: string[], stat
 
   // a PV belongs to the supplier of the same company whose name is the same (ignoring dots, spaces and "Sdn Bhd"), or, when only one
   // supplier fits, whose name contains the other ("Harvest Frozen" → "Harvest Frozen Food Sdn Bhd")
-  const nameKey = (n: string) => n.toUpperCase().replace(/[^A-Z0-9]/g, "").replace(/SDNBHD$|BHD$|ENTERPRISE$|ENT$/, "");
-  const byCompany = new Map<string, { id: string; key: string }[]>();
-  for (const x of allSuppliers) byCompany.set(x.company_id, [...(byCompany.get(x.company_id) ?? []), { id: x.id, key: nameKey(x.name) }]);
+  const findSupplier = payeeMatcher(allSuppliers);
   const unmatched: UnmatchedPayment[] = [];
   const pvBySupplier = new Map<string, Map<string, number>>();
   for (const f of financePayments) {
-    const key = nameKey(f.payee_name ?? "");
-    const list = byCompany.get(f.company_id) ?? [];
-    let hit = key ? list.filter((x) => x.key === key) : [];
-    if (hit.length !== 1 && key.length >= 6) hit = list.filter((x) => x.key.length >= 6 && (x.key.includes(key) || key.includes(x.key)));
+    const found = findSupplier(f.company_id, f.payee_name ?? "");
+    const hit = found ? [{ id: found }] : [];
     const reference = f.voucher_number || f.payment_reference || f.invoice_number || "";
     if (hit.length !== 1 || !f.paid_date) {
       if (!supplierId) unmatched.push({ company_id: f.company_id, payee_name: f.payee_name ?? "", amount: Number(f.amount), paid_date: f.paid_date, reference });
