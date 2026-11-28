@@ -24,7 +24,10 @@ import { isRestaurantScope } from "@/lib/restaurantView";
 const sum = (v: number[]) => v.reduce((t, x) => t + x, 0);
 const TOP = 10;
 /** The sales agent of Signature Solution Catering (the JDT game match invoices). */
-const SSC_AGENT = "Mr. Ismaizal";
+/** JDT FC SDN BHD (the Signature Solution Catering match food and the Signature Solution monthly invoices) is a direct company job: no sales agent,
+ * no commission. Mr. Ismaizal only forwards the chats of JDT's management; he does not handle JDT, so nothing of JDT is credited to him. */
+const isDirectJob = (customerName: string | null | undefined, description: string | null | undefined) =>
+  /\bJDT\s*FC\b/i.test(customerName ?? "") || (description ?? "").includes("Signature Solution Catering");
 
 // Each thing the page reads is read once per request, whichever blocks use it (the blocks below load on their own, so the top of the page shows
 // first and the rest follows as it is ready). `ids` is the company ids joined with commas, so the same read is found again.
@@ -342,11 +345,18 @@ async function People({ ids, year, month, query, requestedId }: BlockProps) {
     .slice(0, TOP)
     .map(([label, c]) => ({ label, value: c.value, note: `${c.count} invoice${c.count === 1 ? "" : "s"}` }));
 
-  // top sales agents: the invoices of the year credited to the sales agent on the customer's details (Signature Solution Catering: Mr. Ismaizal)
+  // top sales agents: the invoices of the year credited to the sales agent on the customer's details. JDT FC SDN BHD is a direct company job
+  // (no agent, no commission): it is shown on its own line, never credited to anybody
   const agentBy = new Map<string, { value: number; count: number; customers: Set<string> }>();
   const noAgent = { value: 0, count: 0 };
+  const direct = { value: 0, count: 0 };
   for (const i of yearInvoices) {
-    const agent = i.customers?.sales_agent?.trim() || ((i.description ?? "").includes("Signature Solution Catering") ? SSC_AGENT : "");
+    if (isDirectJob(i.customers?.name, i.description)) {
+      direct.value += invoiceTotal(i);
+      direct.count += 1;
+      continue;
+    }
+    const agent = i.customers?.sales_agent?.trim() || "";
     if (!agent) {
       noAgent.value += invoiceTotal(i);
       noAgent.count += 1;
@@ -371,8 +381,13 @@ async function People({ ids, year, month, query, requestedId }: BlockProps) {
         <More to={`/reports/revenue?view=invoiced${requestedId ? `&company=${requestedId}` : ""}`}>Revenue Report · Invoices issued</More>
       </SectionCard>
       <SectionCard title={`Top Sales Agents — ${periodOf(year, month)}`}>
-        <Note>Invoices of the {month ? "month" : "year"} credited to the sales agent on the customer&apos;s details (Signature Solution Catering: {SSC_AGENT}). Biggest first.</Note>
+        <Note>Invoices of the {month ? "month" : "year"} credited to the sales agent on the customer&apos;s details. Biggest first. JDT FC SDN BHD is a direct company job (no agent, no commission).</Note>
         <ColumnChart items={agents} empty="No customer with a sales agent was invoiced this year." />
+        {direct.count > 0 && (
+          <p className="mt-3 text-[12px] text-text-secondary">
+            Direct company job, JDT FC SDN BHD (no sales agent, no commission): {formatCurrency(direct.value)} from {direct.count} invoice{direct.count === 1 ? "" : "s"}, not in the chart.
+          </p>
+        )}
         {noAgent.count > 0 && (
           <p className="mt-3 text-[12px] text-text-secondary">
             No sales agent on the customer: {formatCurrency(noAgent.value)} from {noAgent.count} invoice{noAgent.count === 1 ? "" : "s"}, not in the chart. Fill in the sales agent on the customer to count it.
