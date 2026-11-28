@@ -1,9 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Each deploy has its own id (its commit). A tab left open on an older version then loads the new version in full on the next link it
-  // opens (Next.js compares the ids), instead of carrying on with old screens: a phone kept showing the removed language chooser.
-  deploymentId: process.env.VERCEL_GIT_COMMIT_SHA ? process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 12) : undefined,
   // The Kitchen "Purchase List" section was removed: old links and bookmarks go to the purchase requests instead.
   async redirects() {
     return [
