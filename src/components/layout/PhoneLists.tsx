@@ -48,17 +48,23 @@ function labelLists(main: Element) {
     for (const child of Array.from(parent.children)) {
       if (!(child instanceof HTMLElement)) continue;
       const grid = FIXED_GRID.exec(child.className)?.[0];
-      if (!grid) continue;
       // a header row: the same grid as the rows, written in capitals
-      if (child.className.includes("uppercase")) {
+      if (grid && child.className.includes("uppercase")) {
         labels = Array.from(child.children).map((c) => clean(c.textContent));
         token = grid;
         setIfChanged(child, "data-phone-head", "");
         continue;
       }
-      if (!labels || grid !== token || child.children.length !== labels.length) continue;
-      setIfChanged(child, "data-phone-row", "");
-      Array.from(child.children).forEach((c, i) => setIfChanged(c, "data-label", labels![i]));
+      if (!labels) continue;
+      // a row is the grid itself, or a grid inside a box of its own (a row with its buttons under it, as on Catering Events)
+      const rows = grid
+        ? [child]
+        : Array.from(child.children).filter((c): c is HTMLElement => c instanceof HTMLElement && FIXED_GRID.exec(c.className)?.[0] === token);
+      for (const row of rows) {
+        if (FIXED_GRID.exec(row.className)?.[0] !== token || row.children.length !== labels.length) continue;
+        setIfChanged(row, "data-phone-row", "");
+        Array.from(row.children).forEach((c, i) => setIfChanged(c, "data-label", labels![i]));
+      }
     }
   });
 }

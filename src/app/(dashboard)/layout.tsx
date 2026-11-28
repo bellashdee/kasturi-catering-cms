@@ -57,11 +57,15 @@ export default async function DashboardLayout({
       <Suspense fallback={null}>
         <CompanyTheme companies={companies ?? []} />
       </Suspense>
+      {/* keyboard users jump past the menu and the header straight to the page (shown only when reached with Tab) */}
+      <a href="#main-content" className="sr-only z-[100] rounded-lg bg-primary px-4 py-2.5 text-[14px] font-semibold text-white shadow-md focus:not-sr-only focus:fixed focus:left-3 focus:top-3">
+        Skip to main content
+      </a>
       <div className="flex h-screen overflow-hidden bg-bg print:block print:h-auto print:overflow-visible">
         <Sidebar companies={companies ?? []} allowedModules={session.allowedModules} badges={{ catering: pendingCatering }} taskLinkLabel={taskLabel} showPayroll={showPayroll} scopedToOwnCompanies={!session.hasAllCompaniesAccess} userName={session.fullName} roleLabel={ROLE_LABEL[session.role]} showDashboard={false} />
         <div className="flex min-w-0 flex-1 flex-col print:block">
           <Topbar session={session} companies={companies ?? []} priorityTitle={taskLabel} />
-          <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-7 print:overflow-visible print:p-0">
+          <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-7 print:overflow-visible print:p-0">
             <Suspense fallback={null}>
               <PageTools />
             </Suspense>

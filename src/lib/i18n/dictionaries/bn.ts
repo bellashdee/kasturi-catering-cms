@@ -3672,6 +3672,7 @@ const dictionary: Record<string, string> = {
  "Single": "অবিবাহিত",
  "Six-month trend": "ছয় মাসের ট্রেন্ড",
  "Skip": "বাদ দিন",
+ "Skip to main content": "মূল বিষয়বস্তুতে যান",
  "Skipped": "বাদ দেওয়া হয়েছে",
  "Social Media": "সোশ্যাল মিডিয়া",
  "Social media content planning across all campaigns.": "সব ক্যাম্পেইন জুড়ে সোশ্যাল মিডিয়া কনটেন্ট পরিকল্পনা।",

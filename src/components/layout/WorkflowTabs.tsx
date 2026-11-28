@@ -28,7 +28,7 @@ export function WorkflowTabs({ groups, show }: { groups: WorkGroup[]; show: (tab
                   key={tab.href}
                   href={company ? `${tab.href}?company=${company}` : tab.href}
                   aria-current={active ? "page" : undefined}
-                  className={`flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-[13.5px] font-semibold ${active ? "border-primary text-primary" : "border-transparent text-text-secondary hover:text-text"}`}
+                  className={`flex items-center gap-1.5 rounded-t-md border-b-2 px-3 py-2.5 text-[13.5px] font-semibold ${active ? "border-primary bg-primary/[0.06] text-primary" : "border-transparent text-text-secondary hover:border-border-strong hover:bg-surface-alt hover:text-text"}`}
                 >
                   {tab.label}
                 </Link>

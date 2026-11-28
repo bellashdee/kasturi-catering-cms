@@ -3666,6 +3666,7 @@ const dictionary: Record<string, string> = {
  "Single": "လူပျို/အပျို",
  "Six-month trend": "ခြောက်လ လမ်းကြောင်း",
  "Skip": "ကျော်ရန်",
+ "Skip to main content": "အဓိက အကြောင်းအရာသို့ ကျော်ရန်",
  "Skipped": "ကျော်ထားသည်",
  "Social Media": "လူမှုမီဒီယာ",
  "Social media content planning across all campaigns.": "ကမ်ပိန်းအားလုံးရှိ လူမှုမီဒီယာ အကြောင်းအရာ စီစဉ်မှု။",

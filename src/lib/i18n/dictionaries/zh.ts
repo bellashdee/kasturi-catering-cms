@@ -3679,6 +3679,7 @@ const dictionary: Record<string, string> = {
  "Single": "未婚",
  "Six-month trend": "六个月趋势",
  "Skip": "跳过",
+ "Skip to main content": "跳到主要内容",
  "Skipped": "已跳过",
  "Social Media": "社交媒体",
  "Social media content planning across all campaigns.": "所有推广活动的社交媒体内容规划。",

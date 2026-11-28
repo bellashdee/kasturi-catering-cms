@@ -3889,6 +3889,7 @@ const dictionary: Record<string, string> = {
  "Single": "Bujang",
  "Six-month trend": "Trend enam bulan",
  "Skip": "Langkau",
+ "Skip to main content": "Langkau ke kandungan utama",
  "Skipped": "Dilangkau",
  "Social Media": "Media Sosial",
  "Social media content planning across all campaigns.": "Perancangan kandungan media sosial merentasi semua kempen.",

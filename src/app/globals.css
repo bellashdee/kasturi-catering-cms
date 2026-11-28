@@ -75,6 +75,10 @@
   --chart-soft: #9cc3e6;
   --soft-badge-bg: #fbf3df;
   --soft-badge-edge: #cfae67;
+
+  /* Motion tokens (every company): one quick, calm rhythm for hover / focus / press feedback */
+  --dur-fast: 150ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 }
 
 
@@ -379,13 +383,24 @@ aside :is(a, button, span, div, p) { font-weight: 700 !important; }
 aside :is(.text-sidebar-text\/75, .text-sidebar-text\/70, .text-sidebar-text\/60, .text-sidebar-text\/55) { color: var(--color-sidebar-text) !important; }
 
 /* Calm, consistent interaction feedback */
-a, button, select, input, textarea, summary { transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease; }
+a, button, select, input, textarea, summary { transition: background-color var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard), border-color var(--dur-fast) var(--ease-standard), box-shadow var(--dur-fast) var(--ease-standard), filter var(--dur-fast) var(--ease-standard); }
 :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+/* On the dark side bar the company's main colour is too close to the bar: the ring takes the menu's letter colour */
+aside :focus-visible { outline-color: var(--color-sidebar-text); }
+/* The page area itself takes focus from "Skip to main content" without a ring around the whole page */
+main#main-content:focus-visible { outline: none; }
 @media (prefers-reduced-motion: reduce) { *:not(body) { transition: none !important; animation: none !important; } }
 
 /* Tables: never let a long name or amount push the page wider than the screen */
 main table { max-width: 100%; }
 main td, main th { overflow-wrap: anywhere; }
+/* Tablets and laptops: a column is never squeezed narrower than its longest word, so a header ("AutoCount"), an amount ("RM 15,769.00") or a
+   date is never cut in the middle; only a word too long for the whole table is broken, and a wide table scrolls inside its own box. */
+@media (min-width: 768px) {
+  main td, main th { overflow-wrap: break-word; }
+  /* a figure column (right-aligned): "RM" and the amount stay on one line */
+  main td.text-right { white-space: nowrap; }
+}
 
 /*
  * A field's name sits above its box with a little room, on every page: a label in a plain block (not a flex / grid row, where the label and the
@@ -422,4 +437,55 @@ a {
     max-width: 100%;
     overflow-x: hidden;
   }
+}
+
+/*
+ * Design system for every page (UI/UX Pro Max: "Minimalism & Swiss" for a data-dense finance / operations dashboard). It works through the
+ * classes the pages already use, so all pages change together; the colours stay the company's (tokens above).
+ * In the base layer: a class written on an element (its own cursor, hover, border, background) still wins over these defaults.
+ */
+@layer base {
+  /* Anything that can be clicked shows the hand; a control that cannot be used says so */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary,
+  select:not(:disabled),
+  input:is([type="checkbox"], [type="radio"], [type="file"], [type="color"]):not(:disabled),
+  label:has(> input:is([type="checkbox"], [type="radio"]):not(:disabled)) {
+    cursor: pointer;
+  }
+  :is(button, select, input, textarea):disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+  button:disabled { opacity: 0.55; }
+
+  /* Press feedback within a tenth of a second, without moving anything on the page */
+  button:not(:disabled):active,
+  [role="button"]:not([aria-disabled="true"]):active { filter: brightness(0.94); }
+
+  /* Selected text takes a light wash of the company's colour */
+  ::selection { background-color: color-mix(in srgb, var(--color-primary) 22%, transparent); }
+
+  /*
+   * Tables (lists, reports, statements): figures in columns line up digit under digit; the header row is set off by a firmer line; the rows of
+   * a list are separated by a hairline and the row under the pointer is tinted, so the eye can follow one row across many columns.
+   */
+  main :is(td, th) { font-variant-numeric: tabular-nums; }
+  main table:has(> thead) > thead > tr:last-child > th { border-bottom: 1px solid var(--color-border-strong); vertical-align: bottom; }
+  main table:has(> thead) > tbody > tr + tr > :is(td, th) { border-top: 1px solid var(--color-border); }
+  main table:has(> thead) > tbody > tr:hover > :is(td, th) { background-color: color-mix(in srgb, var(--color-primary) 5%, transparent); }
+
+  /* Boxes that scroll sideways (wide tables) or downwards (long lists) get a thin scroll bar in the page's colours */
+  main :is(.overflow-x-auto, .overflow-auto, .overflow-y-auto) {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-strong) transparent;
+  }
+}
+
+/* The main button of a form or bar (company colour) darkens a little under the pointer, on every page, even where the page set no hover */
+:is(button, a).bg-primary:not(:disabled):hover { background-color: var(--color-primary-hover); }
+
+@media print {
+  main table:has(> thead) > tbody > tr:hover > :is(td, th) { background-color: transparent; }
 }
