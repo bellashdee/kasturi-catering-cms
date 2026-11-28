@@ -6721,6 +6721,15 @@ const dictionary: Record<string, string> = {
  "{0} · saved when you press Save": "{0} · disimpan apabila anda tekan Save",
  "The QR photo could not be uploaded.": "Gambar QR tidak dapat dimuat naik.",
  "The QR photo could not be filed: you have no access to Signature Solution or Kasturi Indah.": "Gambar QR tidak dapat disimpan: anda tiada akses ke Signature Solution atau Kasturi Indah.",
+ "from invoice": "dari invois",
+ "quotation amount": "jumlah sebut harga",
+ "not counted": "tidak dikira",
+ "Recorded in the P&L": "Direkod dalam P&L",
+ "From the invoice (not recorded in the P&L yet)": "Daripada invois (belum direkod dalam P&L)",
+ "Quotation amount (no invoice yet)": "Jumlah sebut harga (belum ada invois)",
+ "No amount yet": "Belum ada jumlah",
+ "Nothing is recorded in this P&L yet, so the revenue is the event's invoice(s) before tax (the same figure every report uses). Record it as revenue to confirm it.": "Belum ada yang direkod dalam P&L ini, jadi hasilnya ialah invois event ini sebelum cukai (angka yang sama digunakan oleh setiap laporan). Rekodkannya sebagai hasil untuk mengesahkannya.",
+ "No revenue recorded and no invoice yet, so the revenue is the event's quotation amount (the same figure every report uses).": "Belum ada hasil direkod dan belum ada invois, jadi hasilnya ialah jumlah sebut harga event ini (angka yang sama digunakan oleh setiap laporan).",
 };
 
 export default dictionary;

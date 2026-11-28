@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listCustomerInvoices } from "@/lib/finance/queries";
+import { invoiceBalance, isOpenInvoice } from "@/lib/finance/outstanding";
 import { listSupplierInvoices } from "@/lib/procurement/queries";
 import { INVOICE_STATUS_LABEL, isOverdue } from "@/lib/finance/constants";
 import { formatCurrency, todayInMalaysia, addDaysToDateIso, mondayOfWeekIso } from "@/lib/format";
@@ -80,14 +81,15 @@ export default async function OutstandingPaymentPage({
 
   if (view === "customer") {
     const invoices = await listCustomerInvoices(supabase, targetCompanyIds);
+    // the same outstanding as every report: issued and not settled (not drafts or quotations waiting for review), with tax, less payments
     rows = invoices
-      .filter((i) => i.status !== "paid")
+      .filter((i) => isOpenInvoice(i.status) && invoiceBalance(i) > 0)
       .map((i) => ({
         id: i.id,
         counterparty: i.customers?.name ?? "—",
         invoiceNumber: i.invoice_number,
         invoiceDate: i.invoice_date,
-        amount: Number(i.amount) + Number(i.tax_amount ?? 0) - i.customer_payments.reduce((t, p) => t + Number(p.amount), 0),
+        amount: invoiceBalance(i),
         dueDate: i.due_date,
         status: i.status,
         companyName: i.companies?.name ?? "—",

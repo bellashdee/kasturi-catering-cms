@@ -85,10 +85,15 @@ export default async function CateringCalendarPage({ searchParams }: { searchPar
           ? dateLabel(date, { weekday: "long", day: "numeric", month: "long", year: "numeric" })
           : `${dateLabel(date, { day: "numeric", month: "short" })} – ${dateLabel(addDays(date, 30), { day: "numeric", month: "short", year: "numeric" })}`;
 
-  const confirmed = entries.filter((e) => e.phase === "confirmed").length;
-  const tentative = entries.filter((e) => e.phase === "tentative").length;
-  const dateOnly = entries.filter((e) => e.phase === "date" || e.phase === "pending").length;
-  const requests = entries.filter((e) => e.phase === "request").length;
+  // the counts are of EVENTS (a multi-day event once) inside the period shown: in the month view the grid also shows days of the weeks
+  // before and after, which are not counted, so the numbers tally with the Event P&L and the reports of the same month
+  const inPeriod = view === "month" ? entries.filter((e) => e.date.slice(0, 7) === monthStart(date).slice(0, 7)) : entries;
+  const countEvents = (list: typeof entries) => new Set(list.map((e) => (e.kind === "request" ? `r:${e.requestId ?? e.key}` : `e:${e.eventId}`))).size;
+  // confirmed = confirmed, in production, ready for planning, delivered and completed (an event that has taken place is still a confirmed one)
+  const confirmed = countEvents(inPeriod.filter((e) => e.phase === "confirmed" || e.phase === "finished"));
+  const tentative = countEvents(inPeriod.filter((e) => e.phase === "tentative"));
+  const dateOnly = countEvents(inPeriod.filter((e) => e.phase === "date" || e.phase === "pending"));
+  const requests = countEvents(inPeriod.filter((e) => e.phase === "request"));
   const alerts = entries.filter((e) => e.alert).length;
   const btn = "rounded-lg border border-border-strong bg-surface px-3 py-2 text-[13px] font-semibold text-text hover:bg-surface-alt";
 

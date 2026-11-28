@@ -1,5 +1,7 @@
 import { Suspense, cache } from "react";
 import { MONEY_EXCLUDE_FILTER } from "@/lib/catering/constants";
+import { countsInTotals } from "@/lib/finance/eventRevenue";
+import { fetchAll } from "@/lib/supabase/fetchAll";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -35,12 +37,14 @@ const getInvoices = cache(async (ids: string) => listCustomerInvoices(await crea
 const getSupplierOwed = cache(async (ids: string) => listSupplierOwed(await createClient(), ids.split(",")));
 const getSpending = cache(async (ids: string, year: number) => listSpending(await createClient(), ids.split(","), `${year}-01-01`, `${year}-12-31`));
 const getPayments = cache(async (ids: string, year: number) => {
-  const { data } = await (await createClient()).from("customer_payments").select("amount, payment_date").in("company_id", ids.split(",")).gte("payment_date", `${year}-01-01`).lte("payment_date", `${year}-12-31`);
-  return data ?? [];
+  const supabase = await createClient();
+  // every payment of the year (page by page: one read stops at 1,000 rows)
+  return fetchAll((from, to) => supabase.from("customer_payments").select("amount, payment_date").in("company_id", ids.split(",")).gte("payment_date", `${year}-01-01`).lte("payment_date", `${year}-12-31`).order("id").range(from, to));
 });
 const getEvents = cache(async (ids: string, year: number) => {
   const { data } = await (await createClient()).from("catering_events").select("service_type, meal_types, pax_count, total_amount, status, event_date").in("company_id", ids.split(",")).gte("event_date", `${year}-01-01`).lte("event_date", `${year}-12-31`).not("status", "in", MONEY_EXCLUDE_FILTER);
-  return data ?? [];
+  // the counted events only (not Cancelled, Enquiry or Quoted): the same rule as the Event P&L and the other reports
+  return (data ?? []).filter((e) => countsInTotals(e.status));
 });
 const getMonthlyPurchases = cache(async (ids: string, year: number) => {
   const { data } = await (await createClient()).from("monthly_purchases").select("month, purchase_amount").in("company_id", ids.split(",")).eq("year", year);
@@ -49,7 +53,7 @@ const getMonthlyPurchases = cache(async (ids: string, year: number) => {
 
 /**
  * Sales of each company, month by month: the monthly sales keyed in for the company (the figure Monthly Costing and the Admin dashboard use);
- * a month with none keyed counts the invoices issued in it, tax included. The Sales card and the comparison with last year both use it.
+ * a month with none keyed counts the invoices issued in it, before tax. The Sales card and the comparison with last year both use it.
  */
 const getSalesByCompany = cache(async (ids: string, year: number) => {
   const { by, keyed } = await salesByCompanyMonth(await createClient(), ids.split(","), year);

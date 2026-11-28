@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
-import { eventPnlCompanyIds, eventPnlCompanies, eventPnlReviewItems, getEventPnlDetail, listEventPnl } from "@/lib/finance/eventPnlQueries";
+import { countedRows, eventPnlCompanyIds, eventPnlCompanies, eventPnlReviewItems, getEventPnlDetail, listEventPnl } from "@/lib/finance/eventPnlQueries";
 import {
   ADDITIONAL_COST_TYPE_LABEL,
   ANY_DIRECT_COST_TYPE_LABEL,
@@ -108,7 +108,7 @@ export async function GET(request: Request) {
   const year = Number(url.searchParams.get("year")) || now.year;
   const month = Math.min(12, Math.max(1, Number(url.searchParams.get("month")) || now.month));
   const rowsData = await listEventPnl(supabase, adminIds, { year, month, search: url.searchParams.get("q") ?? undefined, customer: url.searchParams.get("customer") ?? undefined, status: url.searchParams.get("status") ?? undefined });
-  const totals = totalEventPnl(rowsData.map((r) => r.pnl));
+  const totals = totalEventPnl(countedRows(rowsData).map((r) => r.pnl));
   const scope = requested ? pnlCompanies.find((c) => c.id === requested)?.name ?? "" : "Signature Solution + Kasturi Indah (consolidated)";
   const review = await eventPnlReviewItems(supabase, adminIds, year, month);
   const flagged = rowsData.filter((r) => r.flags.length > 0);

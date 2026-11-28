@@ -749,6 +749,16 @@ export async function saveMonthlySales(input: { companyId: string; year: number;
   );
   if (error) throw error;
 
+  // a single total replaces a catering / daily split entered before (otherwise the reports add the month up twice)
+  const { error: clearError } = await supabase
+    .from("monthly_sales")
+    .delete()
+    .eq("company_id", input.companyId)
+    .eq("year", input.year)
+    .eq("month", input.month)
+    .in("sales_type", ["catering", "daily"]);
+  if (clearError) throw clearError;
+
   revalidatePath("/admin");
   revalidatePath("/reports/monthly-costing");
 }

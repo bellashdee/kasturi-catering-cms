@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { MONEY_EXCLUDE_FILTER } from "@/lib/catering/constants";
+import { countsInTotals, revenueEntriesFor, type RevenueSource } from "@/lib/finance/eventRevenue";
 import type { Database } from "@/lib/supabase/types";
 import { monthDateRange } from "@/lib/finance/constants";
 import {
@@ -54,7 +55,14 @@ export type EventPnlRow = {
   pnl: EventPnl;
   flags: DataFlag[];
   budget: ReturnType<typeof budgetVsActual>;
+  /** where the revenue comes from: the P&L entries, else the invoices, else the quotation amount (see eventRevenue.ts) */
+  revenueSource: RevenueSource;
+  /** counted in the totals and the number of events (Cancelled, Enquiry and Quoted are listed but never added up) */
+  counted: boolean;
 };
+
+/** The rows that are added up in totals (the same rule on every page). */
+export const countedRows = <T extends { counted: boolean }>(rows: T[]) => rows.filter((r) => r.counted);
 
 type SheetRow = { food_cost: number; ingredient_cost: number; staff_cost: number; transport_cost: number; equipment_cost: number; other_cost: number };
 
@@ -69,7 +77,7 @@ async function loadRows(supabase: DB, companyIds: string[], start: string, end: 
   if (companyIds.length === 0) return [];
   let query = supabase
     .from("catering_events")
-    .select("id, company_id, event_name, event_reference, event_date, status, pax_count, sales_agent, customers(name), companies(name)")
+    .select("id, company_id, event_name, event_reference, event_date, status, pax_count, sales_agent, total_amount, customers(name), companies(name)")
     .in("company_id", companyIds)
     .gte("event_date", start)
     .lte("event_date", end)
@@ -105,13 +113,19 @@ async function loadRows(supabase: DB, companyIds: string[], start: string, end: 
     supabase.from("event_budgets").select("catering_event_id, budget_revenue, budget_direct_costs, budget_additional_costs").in("catering_event_id", ids),
     // supplier invoices, company expenses, petty cash and staff claims keyed in with the event's AutoCount invoice number count as its direct costs straight away
     autoCountCosts(supabase, ids),
-    supabase.from("customer_invoices").select("catering_event_id, invoice_number").in("catering_event_id", ids).order("invoice_number"),
+    supabase.from("customer_invoices").select("catering_event_id, invoice_number, amount, status").in("catering_event_id", ids).order("invoice_number"),
   ]);
   for (const r of [revenue, costs, sheets, budgets, customerInvoices]) if (r.error) throw r.error;
 
   return list.map((e) => {
-    const pnl = computeEventPnl(
+    const ownInvoices = (customerInvoices.data ?? []).filter((i) => i.catering_event_id === e.id);
+    const { entries, source } = revenueEntriesFor(
       (revenue.data ?? []).filter((r) => r.catering_event_id === e.id),
+      ownInvoices,
+      e.total_amount,
+    );
+    const pnl = computeEventPnl(
+      entries,
       [...(costs.data ?? []).filter((c) => c.catering_event_id === e.id), ...autoCountCostsOf(fromAutoCount, e.id)],
       combineSheets((sheets.data ?? []).filter((s) => s.catering_event_id === e.id)),
     );
@@ -131,6 +145,8 @@ async function loadRows(supabase: DB, companyIds: string[], start: string, end: 
       pnl,
       flags: dataFlagsFor(pnl, e.status),
       budget: budgetVsActual(pnl, budget ?? null),
+      revenueSource: source,
+      counted: countsInTotals(e.status),
     };
   });
 }
@@ -166,7 +182,7 @@ export async function eventPnlTrend(supabase: DB, companyIds: string[], year: nu
   const rows = await loadRows(supabase, companyIds, first, last, {});
   return months.map(({ y, m }) => {
     const key = `${y}-${String(m).padStart(2, "0")}`;
-    const inMonth = rows.filter((r) => r.eventDate.startsWith(key));
+    const inMonth = countedRows(rows).filter((r) => r.eventDate.startsWith(key));
     const t = totalEventPnl(inMonth.map((r) => r.pnl));
     return { key, label: new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-GB", { month: "short", year: "2-digit", timeZone: "UTC" }), revenue: t.netRevenue, directCosts: t.directCosts, netProfit: t.netProfit, margin: t.margin, events: t.events };
   });
@@ -207,7 +223,7 @@ export async function eventPnlReviewItems(supabase: DB, companyIds: string[], ye
 export async function getEventPnlDetail(supabase: DB, eventId: string) {
   const { data: event, error } = await supabase
     .from("catering_events")
-    .select("id, company_id, event_name, event_reference, event_date, status, pax_count, event_type, location, customers(name), companies(name)")
+    .select("id, company_id, event_name, event_reference, event_date, status, pax_count, event_type, location, total_amount, customers(name), companies(name)")
     .eq("id", eventId)
     .maybeSingle();
   if (error) throw error;
@@ -231,7 +247,9 @@ export async function getEventPnlDetail(supabase: DB, eventId: string) {
   const sheet = combineSheets(sheets.data ?? []);
   const autoCountLinked = fromAutoCount.filter((s) => s.eventId === eventId);
   const autoCountIds = new Set(autoCountLinked.filter((s) => s.source === "supplier_invoice").map((s) => s.id));
-  const pnl = computeEventPnl(revenue.data ?? [], [...(costs.data ?? []), ...autoCountCostsOf(autoCountLinked, eventId)], sheet);
+  // the same revenue rule as the list: recorded entries, else the invoices, else the quotation amount
+  const { entries: revenueUsed, source: revenueSource } = revenueEntriesFor(revenue.data ?? [], invoices.data ?? [], event.total_amount);
+  const pnl = computeEventPnl(revenueUsed, [...(costs.data ?? []), ...autoCountCostsOf(autoCountLinked, eventId)], sheet);
   return {
     event,
     revenue: revenue.data ?? [],
@@ -242,6 +260,7 @@ export async function getEventPnlDetail(supabase: DB, eventId: string) {
     invoices: invoices.data ?? [],
     budget: budget.data ?? null,
     pnl,
+    revenueSource,
     budgetComparison: budgetVsActual(pnl, (budget.data as Budget) ?? null),
     flags: dataFlagsFor(pnl, event.status),
     /** Supplier invoices, company expenses, petty cash and staff claims keyed in with this event's AutoCount invoice number: already counted as direct costs. */

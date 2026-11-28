@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { listCustomerInvoices } from "@/lib/finance/queries";
+import { invoiceBalance, isOpenInvoice } from "@/lib/finance/outstanding";
 import { INVOICE_STATUS_LABEL, isOverdue } from "@/lib/finance/constants";
 import { formatCurrency } from "@/lib/format";
 import { parseInvoiceDateFilter } from "@/lib/finance/dateFilter";
@@ -64,8 +65,9 @@ export default async function CustomerInvoicesPage({
   });
   const monthLabel = monthLabelOf(month);
   const filtered = dateFilter.active || !!monthLabel || !!customerQuery || !!sp.status;
-  const outstanding = invoices.filter((i) => i.status !== "paid");
-  const totalOutstanding = outstanding.reduce((t, i) => t + Number(i.amount), 0);
+  // the same outstanding as every report: issued and not settled (not drafts or quotations waiting for review), with tax, less payments
+  const outstanding = invoices.filter((i) => isOpenInvoice(i.status) && invoiceBalance(i) > 0);
+  const totalOutstanding = outstanding.reduce((t, i) => t + invoiceBalance(i), 0);
   const overdueCount = outstanding.filter((i) => isOverdue(i.due_date, i.status)).length;
 
   return (

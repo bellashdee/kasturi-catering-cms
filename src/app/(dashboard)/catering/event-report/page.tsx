@@ -98,8 +98,8 @@ export default async function EventReportPage({ searchParams }: { searchParams: 
   const completed = rows.filter((r) => r.status === "completed").length;
   const cancelled = rows.filter((r) => r.status === "cancelled").length;
   const upcoming = rows.filter((r) => r.eventDate >= today && r.status !== "cancelled" && r.status !== "completed").length;
-  // money: only events that are not cancelled, and only the figures saved on their P&L
-  const counted = rows.filter((r) => r.status !== "cancelled");
+  // money: the counted events only (not Cancelled, Enquiry or Quoted), with the same revenue rule as the Event P&L
+  const counted = rows.filter((r) => r.counted);
   const revenue = round2(counted.reduce((t, r) => t + r.pnl.netRevenue, 0));
   const costs = round2(counted.reduce((t, r) => t + r.pnl.directCosts + r.pnl.additionalExpenses, 0));
   const profit = round2(revenue - costs);

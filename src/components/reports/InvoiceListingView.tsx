@@ -22,7 +22,8 @@ const ENTITIES = {
 } as const;
 type EntityKey = keyof typeof ENTITIES;
 
-const YEAR = malaysiaYearMonth().year;
+/** this year, worked out on every request (a value kept at load would stay on the old year after New Year until the server restarts) */
+const thisYear = () => malaysiaYearMonth().year;
 const sum = (rows: InvoiceListingRow[], i: 4 | 5 | 6) => rows.reduce((t, r) => t + r[i], 0);
 const monthOf = (r: InvoiceListingRow) => Number(r[1].slice(5, 7));
 const dmy = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
@@ -37,8 +38,8 @@ async function loadRows(supabase: Awaited<ReturnType<typeof createClient>>): Pro
     .from("customer_invoices")
     .select("invoice_number, invoice_date, amount, tax_amount, description, companies(name), customers(name, account_code)")
     .not("status", "in", "(draft,pending_review)")
-    .gte("invoice_date", `${YEAR}-01-01`)
-    .lte("invoice_date", `${YEAR}-12-31`)
+    .gte("invoice_date", `${thisYear()}-01-01`)
+    .lte("invoice_date", `${thisYear()}-12-31`)
     .order("invoice_date")
     .order("invoice_number")
     .range(0, 4999);
@@ -60,7 +61,7 @@ async function loadRows(supabase: Awaited<ReturnType<typeof createClient>>): Pro
  * Solution, its catering sales (the JDT game match invoices) or the rest.
  */
 async function loadKeyedSales(supabase: Awaited<ReturnType<typeof createClient>>, entity: EntityKey): Promise<(number | null)[]> {
-  const { data } = await supabase.from("monthly_sales").select("month, sales_type, sales_amount, companies(name)").eq("year", YEAR);
+  const { data } = await supabase.from("monthly_sales").select("month, sales_type, sales_amount, companies(name)").eq("year", thisYear());
   const out: (number | null)[] = Array(12).fill(null);
   for (const s of data ?? []) {
     const company = s.companies?.name;
@@ -79,14 +80,14 @@ function MonthBars({ values }: { values: number[] }) {
   const group = W / 12;
   const bw = group * 0.62;
   return (
-    <svg viewBox={`0 0 ${W} ${H + 40}`} role="img" aria-label={`Invoiced by month ${YEAR}`} className="w-full [print-color-adjust:exact]">
+    <svg viewBox={`0 0 ${W} ${H + 40}`} role="img" aria-label={`Invoiced by month ${thisYear()}`} className="w-full [print-color-adjust:exact]">
       {values.map((v, i) => {
         const h = max > 0 ? Math.max((v / max) * H, v > 0 ? 2 : 0) : 0;
         const x = i * group + (group - bw) / 2;
         return (
           <g key={i}>
             <rect x={x} y={22 + H - h} width={bw} height={h} rx="2" style={{ fill: "var(--color-navy-700)" }}>
-              <title>{`${MONTH_LABEL[i]} ${YEAR}: ${formatCurrency(v)}`}</title>
+              <title>{`${MONTH_LABEL[i]} ${thisYear()}: ${formatCurrency(v)}`}</title>
             </rect>
             {v > 0 && (
               <text x={x + bw / 2} y={18 + H - h} textAnchor="middle" fontSize="9" style={{ fill: "var(--color-text-secondary)" }}>
@@ -163,7 +164,7 @@ export async function InvoiceListingView({ entity: entityParam, month: monthPara
   });
   const total = sum(rows, 6);
   const lastMonthWithInvoices = Math.max(0, ...entity.rows.map(monthOf));
-  const periodLabel = month === 0 ? `Jan – ${MONTH_LABEL[Math.max(lastMonthWithInvoices, 1) - 1].slice(0, 3)} ${YEAR}` : `${MONTH_LABEL[month - 1]} ${YEAR}`;
+  const periodLabel = month === 0 ? `Jan – ${MONTH_LABEL[Math.max(lastMonthWithInvoices, 1) - 1].slice(0, 3)} ${thisYear()}` : `${MONTH_LABEL[month - 1]} ${thisYear()}`;
 
   const debtors = new Map<string, { count: number; total: number }>();
   for (const r of rows) {
@@ -234,7 +235,7 @@ export async function InvoiceListingView({ entity: entityParam, month: monthPara
         <ListFilters keep={{ view: "invoiced", entity: entityKey }} sortOptions={SORTS} sort={sort} dir={dir} clearHref={`/reports/revenue?view=invoiced&entity=${entityKey}`}>
           <FilterField label="Month">
             <Select name="month" defaultValue={month} className={`${FILTER_INPUT} w-44`}>
-              <option value={0}>Whole year ({YEAR})</option>
+              <option value={0}>Whole year ({thisYear()})</option>
               {MONTH_LABEL.map((m, i) => (
                 <option key={m} value={i + 1}>{m}</option>
               ))}
@@ -275,7 +276,7 @@ export async function InvoiceListingView({ entity: entityParam, month: monthPara
         <Stat label="Average per month" value={formatCurrency(monthsWithInvoices ? sum(entity.rows, 6) / monthsWithInvoices : 0)} sub={`Whole year, ${monthsWithInvoices} months with invoices`} />
       </div>
 
-      <SectionCard title={`Invoiced by Month — ${entity.label} ${YEAR}`}>
+      <SectionCard title={`Invoiced by Month — ${entity.label} ${thisYear()}`}>
         <MonthBars values={byMonth} />
       </SectionCard>
 
@@ -300,7 +301,7 @@ export async function InvoiceListingView({ entity: entityParam, month: monthPara
       </SectionCard>
 
       <ReportTable
-        filenameBase={`invoice-listing-${entityKey}-${month === 0 ? YEAR : `${YEAR}-${month}`}`}
+        filenameBase={`invoice-listing-${entityKey}-${month === 0 ? thisYear() : `${thisYear()}-${month}`}`}
         headers={headers}
         rows={tableRows}
         emptyText="No invoices in this period."
@@ -318,7 +319,7 @@ function EntityTab({ k, active, month, total }: { k: EntityKey; active: EntityKe
       className={`flex flex-col gap-0.5 rounded-xl border px-3 py-2.5 transition ${on ? "border-primary bg-info-bg" : "border-border hover:border-primary"}`}
     >
       <span className="text-[13.5px] font-bold text-text">{e.label}</span>
-      <span className="text-[11.5px] text-text-secondary">{k === "ss-catering" ? "Food for JDT game match events" : `${YEAR}`}</span>
+      <span className="text-[11.5px] text-text-secondary">{k === "ss-catering" ? "Food for JDT game match events" : `${thisYear()}`}</span>
       <span className="mt-1 text-[16px] font-extrabold tabular-nums text-text">{formatCurrency(total)}</span>
     </Link>
   );

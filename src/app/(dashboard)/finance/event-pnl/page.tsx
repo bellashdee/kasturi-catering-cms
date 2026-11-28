@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
-import { eventPnlCompanyIds, eventPnlCompanies, eventPnlReviewItems, eventPnlTrend, listEventPnl } from "@/lib/finance/eventPnlQueries";
+import { countedRows, eventPnlCompanyIds, eventPnlCompanies, eventPnlReviewItems, eventPnlTrend, listEventPnl } from "@/lib/finance/eventPnlQueries";
 import { eventPnlRowEditInfo, shownSlot } from "@/lib/finance/eventPnlRowEdit";
 import { EventPnlRowActions } from "@/components/finance/EventPnlRowActions";
 import { DATA_FLAG_LABEL, formatChange, formatMargin, percentChange, totalEventPnl, VERDICT_LABEL, VERDICT_TONE } from "@/lib/finance/eventPnl";
@@ -82,7 +82,8 @@ export default async function MonthlyEventPnlPage({ searchParams }: { searchPara
     profit: (r) => r.pnl.netProfit,
   });
   const editInfo = await eventPnlRowEditInfo(supabase, rows.map((r) => r.id));
-  const totals = totalEventPnl(rows.map((r) => r.pnl));
+  // Cancelled, Enquiry and Quoted events are listed but not added up (the same rule as every report)
+  const totals = totalEventPnl(countedRows(rows).map((r) => r.pnl));
   const companyName = sp.company && pnlCompanies.find((c) => c.id === sp.company)?.name;
   const scopeLabel = companyName ?? "Signature Solution + Kasturi Indah (consolidated)";
   const periodLabel = `${MONTH_LABEL[month - 1]} ${year}`;
@@ -92,14 +93,14 @@ export default async function MonthlyEventPnlPage({ searchParams }: { searchPara
   const flagged = rows.filter((r) => r.flags.length > 0);
   const byCompany = pnlCompanies
     .filter((c) => adminIds.includes(c.id))
-    .map((c) => ({ company: c, t: totalEventPnl(rows.filter((r) => r.company_id === c.id).map((r) => r.pnl)) }));
+    .map((c) => ({ company: c, t: totalEventPnl(countedRows(rows).filter((r) => r.company_id === c.id).map((r) => r.pnl)) }));
 
   const exportQuery = new URLSearchParams({ year: String(year), month: String(month) });
   for (const k of ["company", "q", "customer", "status", "sort", "dir"] as const) if (sp[k]) exportQuery.set(k, sp[k]!);
 
   // each total, by event: tapping a total lists the events in it; each event opens its Event P&L, where every entry shows its bill
   const byEvent = (pick: (r: (typeof rows)[number]) => number): TotalPart[] =>
-    rows.filter((r) => Math.abs(pick(r)) >= 0.005).map((r) => ({ group: r.companyName, amount: pick(r), date: r.eventDate, label: [r.eventName, ...r.autoCountNos].filter(Boolean).join(" · "), origin: { kind: "event_pnl" as const, id: r.id }, billIds: [] }));
+    countedRows(rows).filter((r) => Math.abs(pick(r)) >= 0.005).map((r) => ({ group: r.companyName, amount: pick(r), date: r.eventDate, label: [r.eventName, ...r.autoCountNos].filter(Boolean).join(" · "), origin: { kind: "event_pnl" as const, id: r.id }, billIds: [] }));
   const totalOf = (value: number, title: string, pick: (r: (typeof rows)[number]) => number) => <TotalOrigin total={value} title={title} text={money(value)} parts={byEvent(pick)} explain="The total of the events listed below. Open an event (ⓘ) to see each of its entries and their bills." />;
   const cards: { label: string; value: React.ReactNode; tone?: string }[] = [
     { label: "Total Event Revenue", value: totalOf(totals.netRevenue, "Total Event Revenue", (r) => r.pnl.netRevenue) },
@@ -205,7 +206,13 @@ export default async function MonthlyEventPnlPage({ searchParams }: { searchPara
                     <td className="px-3 py-2.5 font-semibold text-text"><Link href={`/finance/event-pnl/${r.id}`} className="hover:text-primary hover:underline">{r.eventName}</Link></td>
                     <td className="px-3 py-2.5 text-text-secondary">{r.companyName}</td>
                     <td className="px-3 py-2.5 text-text-secondary">{r.customerName ?? "—"}</td>
-                    <td className="px-3 py-2.5 text-right"><Link href={`/finance/event-pnl/${r.id}`} title="Open the event: every entry and its bill" className="underline decoration-dotted underline-offset-2 hover:text-primary">{money(r.pnl.netRevenue)}</Link></td>
+                    <td className="px-3 py-2.5 text-right">
+                      <Link href={`/finance/event-pnl/${r.id}`} title="Open the event: every entry and its bill" className="underline decoration-dotted underline-offset-2 hover:text-primary">{money(r.pnl.netRevenue)}</Link>
+                      {/* where the revenue comes from when nothing is recorded in the P&L yet; and the events that are listed but not added up */}
+                      {r.revenueSource === "invoice" && <span className="block text-[10.5px] italic text-text-muted">from invoice</span>}
+                      {r.revenueSource === "quotation" && <span className="block text-[10.5px] italic text-warning">quotation amount</span>}
+                      {!r.counted && <span className="block text-[10.5px] font-semibold text-text-muted">not counted</span>}
+                    </td>
                     <td className="px-3 py-2.5 text-right"><Link href={`/finance/event-pnl/${r.id}`} title="Open the event: every entry and its bill" className="underline decoration-dotted underline-offset-2 hover:text-primary">{money(r.pnl.directCosts)}</Link></td>
                     <td className={`px-3 py-2.5 text-right ${r.pnl.grossProfit < 0 ? "text-danger" : ""}`}><Link href={`/finance/event-pnl/${r.id}`} title="Open the event: every entry and its bill" className="underline decoration-dotted underline-offset-2 hover:text-primary">{money(r.pnl.grossProfit)}</Link></td>
                     <td className="px-3 py-2.5 text-right"><Link href={`/finance/event-pnl/${r.id}`} title="Open the event: every entry and its bill" className="underline decoration-dotted underline-offset-2 hover:text-primary">{money(r.pnl.additionalExpenses)}</Link></td>

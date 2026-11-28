@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { MONEY_EXCLUDE_FILTER } from "@/lib/catering/constants";
+import { countsInTotals, revenueEntriesFor } from "@/lib/finance/eventRevenue";
+import { computeEventPnl } from "@/lib/finance/eventPnl";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
@@ -112,14 +114,23 @@ export default async function EventSummaryReportPage({
     .order("event_name");
   if (error) throw error;
 
+  // the revenue recorded in the Event P&L of each event (the same rule as the Event P&L: entries, else invoices, else the quotation amount)
+  const eventIds = (events ?? []).map((e) => e.id);
+  const { data: revenueEntries } = eventIds.length
+    ? await supabase.from("event_revenue_entries").select("catering_event_id, entry_type, amount").in("catering_event_id", eventIds)
+    : { data: [] as { catering_event_id: string; entry_type: string; amount: number }[] };
+
   const all = (events ?? [])
-    .filter((e) => e.status !== "cancelled")
+    // only the counted events (not Cancelled, Enquiry or Quoted): the same rule as the Event P&L and the other reports
+    .filter((e) => countsInTotals(e.status))
     .map((e) => {
       const invoices = (e.customer_invoices ?? []).filter((i) => i.status !== "draft" && i.status !== "pending_review");
+      const { entries } = revenueEntriesFor((revenueEntries ?? []).filter((r) => r.catering_event_id === e.id), e.customer_invoices ?? [], e.total_amount);
+      const revenue = computeEventPnl(entries, [], null).netRevenue;
       const total = invoices.reduce((t, i) => t + invoiceTotal(i), 0);
       const paid = invoices.reduce((t, i) => t + invoicePaid(i), 0);
       const pay: Pay = invoices.length === 0 ? "none" : paid >= total - 0.005 ? "paid" : paid > 0 ? "part" : "unpaid";
-      return { ...e, entity: entityOf(nameOf.get(e.company_id), e.event_name, e.customers?.name), revenue: Number(e.total_amount ?? 0), pay };
+      return { ...e, entity: entityOf(nameOf.get(e.company_id), e.event_name, e.customers?.name), revenue, pay };
     });
 
   const allowed = Array.from(new Set(all.map((e) => e.entity)));

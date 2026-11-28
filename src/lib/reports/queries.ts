@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { MONEY_EXCLUDE_FILTER } from "@/lib/catering/constants";
+import { countsInTotals, revenueEntriesFor } from "@/lib/finance/eventRevenue";
+import { fetchAll } from "@/lib/supabase/fetchAll";
 import type { Database } from "@/lib/supabase/types";
 import { resolvePeriod, type DateRange } from "@/lib/finance/constants";
 import { getMonthlyCostBreakdown, getMonthlyRevenue, listSpending } from "@/lib/finance/queries";
@@ -13,15 +15,18 @@ type DB = SupabaseClient<Database>;
 
 export async function getRevenueReportRows(supabase: DB, companyIds: string[], year: number, month: number, range?: DateRange) {
   const { start, end } = resolvePeriod(year, month, range);
-  const { data, error } = await supabase
-    .from("customer_payments")
-    .select("id, amount, payment_date, company_id, companies(name), customer_invoices(invoice_number, status, customers(name))")
-    .in("company_id", companyIds)
-    .gte("payment_date", start)
-    .lte("payment_date", end)
-    .order("payment_date", { ascending: false });
-  if (error) throw error;
-  return data;
+  // every payment of the period (page by page: one read stops at 1,000 rows)
+  return fetchAll((from, to) =>
+    supabase
+      .from("customer_payments")
+      .select("id, amount, payment_date, company_id, companies(name), customer_invoices(invoice_number, status, customers(name))")
+      .in("company_id", companyIds)
+      .gte("payment_date", start)
+      .lte("payment_date", end)
+      .order("payment_date", { ascending: false })
+      .order("id")
+      .range(from, to),
+  );
 }
 
 export async function getCateringReportRows(supabase: DB, companyIds: string[], year: number, month: number, range?: DateRange) {
@@ -39,12 +44,13 @@ export async function getCateringReportRows(supabase: DB, companyIds: string[], 
   const eventIds = (events ?? []).map((e) => e.id);
   const ids = eventIds.length > 0 ? eventIds : ["00000000-0000-0000-0000-000000000000"];
   // the same three sources as the Event P&L (Finance), so the two always tally: the costing sheet of the event, and the revenue and cost entries kept in the P&L
-  const [costingsRes, revenueRes, costEntriesRes, fromAutoCount] = await Promise.all([
+  const [costingsRes, revenueRes, costEntriesRes, fromAutoCount, invoicesRes] = await Promise.all([
     supabase.from("event_costing").select("catering_event_id, food_cost, ingredient_cost, staff_cost, transport_cost, equipment_cost, other_cost").in("catering_event_id", ids),
     supabase.from("event_revenue_entries").select("catering_event_id, entry_type, amount").in("catering_event_id", ids),
     supabase.from("event_cost_entries").select("catering_event_id, cost_class, cost_type, amount, cost_basis").in("catering_event_id", ids),
     // costs keyed in with the event's AutoCount invoice number (only for people who may see the Event P&L)
     autoCountCosts(supabase, eventIds).catch(() => []),
+    supabase.from("customer_invoices").select("catering_event_id, amount, status").in("catering_event_id", ids),
   ]);
 
   return (events ?? []).map((e) => {
@@ -57,12 +63,16 @@ export async function getCateringReportRows(supabase: DB, companyIds: string[], 
       equipment_cost: sheets.reduce((t, r) => t + Number(r.equipment_cost), 0),
       other_cost: sheets.reduce((t, r) => t + Number(r.other_cost), 0),
     };
-    const revenueEntries = (revenueRes.data ?? []).filter((r) => r.catering_event_id === e.id);
+    // the same revenue rule as the Event P&L: recorded entries, else the invoices, else the quotation amount
+    const { entries: revenueEntries, source: revenueSource } = revenueEntriesFor(
+      (revenueRes.data ?? []).filter((r) => r.catering_event_id === e.id),
+      (invoicesRes.data ?? []).filter((i) => i.catering_event_id === e.id),
+      e.total_amount,
+    );
     const pnl = computeEventPnl(revenueEntries, [...(costEntriesRes.data ?? []).filter((c) => c.catering_event_id === e.id), ...autoCountCostsOf(fromAutoCount, e.id)], sheet);
     const cost = pnl.directCosts + pnl.additionalExpenses;
-    // the revenue recorded in the Event P&L; an event with none recorded there keeps the amount of the event itself
-    const revenue = revenueEntries.length > 0 ? pnl.netRevenue : Number(e.total_amount ?? 0);
-    return { ...e, cost, revenue, margin: revenue - cost };
+    const revenue = pnl.netRevenue;
+    return { ...e, cost, revenue, margin: revenue - cost, revenueSource, counted: countsInTotals(e.status) };
   });
 }
 

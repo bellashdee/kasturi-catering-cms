@@ -1,4 +1,5 @@
 import { applyInvoiceDateFilter, type InvoiceDateFilter } from "@/lib/finance/dateFilter";
+import { fetchAll } from "@/lib/supabase/fetchAll";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { resolvePeriod, type DateRange } from "@/lib/finance/constants";
@@ -86,7 +87,9 @@ export async function listSpending(supabase: DB, companyIds: string[], from?: st
       .select("id, company_id, food_cost, ingredient_cost, staff_cost, transport_cost, equipment_cost, other_cost, catering_events!inner(event_date, event_name)")
       .in("company_id", companyIds)
       .gte("catering_events.event_date", start)
-      .lte("catering_events.event_date", end),
+      .lte("catering_events.event_date", end)
+      // the costing sheets of the counted events only (not date-only, Ready for Planning, Cancelled, Enquiry or Quoted): the same rule as the Event P&L
+      .not("catering_events.status", "in", "(date_confirmed,details_pending,ready_for_planning,cancelled,enquiry,quoted)"),
     supabase
       .from("supplier_payments")
       .select("id, company_id, amount, payment_date, receipt_document_id, supplier_invoices(department, document_id)")
@@ -375,15 +378,19 @@ export async function listBudgets(supabase: DB, companyIds: string[]) {
 }
 
 export async function listCustomerInvoices(supabase: DB, companyIds: string[], dateFilter?: InvoiceDateFilter) {
-  const { data, error } = await applyInvoiceDateFilter(
-    supabase
-      .from("customer_invoices")
-      .select("*, customers(name, sales_agent), companies(name), customer_payments(amount, payment_date)")
-      .in("company_id", companyIds),
-    dateFilter,
-  ).order("invoice_date", { ascending: false });
-  if (error) throw error;
-  return data;
+  // every invoice (read page by page: one read stops at 1,000 rows and the totals would leave the rest out)
+  return fetchAll((from, to) =>
+    applyInvoiceDateFilter(
+      supabase
+        .from("customer_invoices")
+        .select("*, customers(name, sales_agent), companies(name), customer_payments(amount, payment_date)")
+        .in("company_id", companyIds),
+      dateFilter,
+    )
+      .order("invoice_date", { ascending: false })
+      .order("id")
+      .range(from, to),
+  );
 }
 
 export async function getCustomerInvoice(supabase: DB, id: string) {

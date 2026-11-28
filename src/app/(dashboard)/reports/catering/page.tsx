@@ -1,5 +1,6 @@
 import { PieChart, sumBy } from "@/components/reports/PieChart";
 import { MONEY_EXCLUDE_FILTER } from "@/lib/catering/constants";
+import { countsInTotals } from "@/lib/finance/eventRevenue";
 import { parseDateRange } from "@/lib/finance/constants";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -64,7 +65,8 @@ export default async function CateringReportPage({
     margin: (r) => r.margin,
     status: [(r) => EVENT_STATUS_LABEL[r.status] ?? r.status, (r) => r.event_date],
   });
-  // repeat customers: the events of the whole year (one month rarely shows who comes back), without cancelled events unless that status is chosen
+  // repeat customers: the events of the whole year (one month rarely shows who comes back), only the counted ones (not Cancelled, Enquiry or
+  // Quoted) unless that status is chosen
   const { data: yearEvents } = await supabase
     .from("catering_events")
     .select("customer_id, total_amount, status, customers(name)")
@@ -75,7 +77,7 @@ export default async function CateringReportPage({
     .not("customer_id", "is", null);
   const byCustomer = new Map<string, TopCustomer>();
   for (const e of yearEvents ?? []) {
-    if (statusParam ? e.status !== statusParam : e.status === "cancelled") continue;
+    if (statusParam ? e.status !== statusParam : !countsInTotals(e.status)) continue;
     const name = e.customers?.name ?? "—";
     const c = byCustomer.get(e.customer_id as string) ?? { name, events: 0, revenue: 0 };
     c.events += 1;
@@ -83,8 +85,10 @@ export default async function CateringReportPage({
     byCustomer.set(e.customer_id as string, c);
   }
   const topCustomers = Array.from(byCustomer.values()).sort((a, b) => b.events - a.events || b.revenue - a.revenue).slice(0, 10);
-  const totalRevenue = rows.reduce((t, e) => t + e.revenue, 0);
-  const totalCost = rows.reduce((t, e) => t + e.cost, 0);
+  // the totals add up the counted events only (Cancelled, Enquiry and Quoted are listed, not added): the same rule as the Event P&L
+  const counted = rows.filter((r) => r.counted);
+  const totalRevenue = counted.reduce((t, e) => t + e.revenue, 0);
+  const totalCost = counted.reduce((t, e) => t + e.cost, 0);
 
   function statusTone(status: string): "success" | "warning" | "danger" | "info" {
     if (status === "completed" || status === "confirmed") return "success";
@@ -116,7 +120,7 @@ export default async function CateringReportPage({
         <Link href={`/reports${query}`} className="text-[12.5px] font-semibold text-text-secondary">← Back to Reports</Link>
         <h1 className="mt-2 text-[22px] font-extrabold text-text">Catering Report</h1>
         <p className="mt-0.5 text-[13px] text-text-secondary">
-          {rows.length} event{rows.length === 1 ? "" : "s"} · {formatCurrency(totalRevenue)} revenue · {formatCurrency(totalCost)} cost · {formatCurrency(totalRevenue - totalCost)} margin
+          {counted.length} event{counted.length === 1 ? "" : "s"}{rows.length > counted.length ? ` (+${rows.length - counted.length} not counted: cancelled, enquiry or quoted)` : ""} · {formatCurrency(totalRevenue)} revenue · {formatCurrency(totalCost)} cost · {formatCurrency(totalRevenue - totalCost)} margin
         </p>
       </div>
 
@@ -139,8 +143,8 @@ export default async function CateringReportPage({
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <PieChart title="Revenue by event type" slices={sumBy(rows, (r) => EVENT_TYPE_LABEL[r.event_type] ?? r.event_type, (r) => r.revenue)} />
-        <PieChart title="Cost by event type" slices={sumBy(rows, (r) => EVENT_TYPE_LABEL[r.event_type] ?? r.event_type, (r) => r.cost)} />
+        <PieChart title="Revenue by event type" slices={sumBy(counted, (r) => EVENT_TYPE_LABEL[r.event_type] ?? r.event_type, (r) => r.revenue)} />
+        <PieChart title="Cost by event type" slices={sumBy(counted, (r) => EVENT_TYPE_LABEL[r.event_type] ?? r.event_type, (r) => r.cost)} />
       </div>
 
       <TopCustomersChart title={`Top Repeat Customers — ${year} (number of events)`} customers={topCustomers} />

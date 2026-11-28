@@ -162,6 +162,12 @@ export default async function EventPnlDetailPage({ params }: { params: Promise<{
                 return total > 0 ? <div key={k}>{line(REVENUE_TYPE_LABEL[k], total, { negative: true, parts: revenueParts([k]) })}</div> : null;
               })}
               {line("Net event revenue", pnl.netRevenue, { bold: true, parts: revenueParts(), explain: "Gross revenue − discounts, refunds and credit notes (listed as minus)." })}
+              {detail.revenueSource === "invoice" && (
+                <p className="text-[11.5px] text-text-muted">Nothing is recorded in this P&amp;L yet, so the revenue is the event&apos;s invoice(s) before tax (the same figure every report uses). Record it as revenue to confirm it.</p>
+              )}
+              {detail.revenueSource === "quotation" && (
+                <p className="text-[11.5px] text-warning">No revenue recorded and no invoice yet, so the revenue is the event&apos;s quotation amount (the same figure every report uses).</p>
+              )}
             </div>
             <div className="py-2">
               <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Direct costs (actual)</div>
