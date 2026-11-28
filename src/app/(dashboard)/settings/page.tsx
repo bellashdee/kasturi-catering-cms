@@ -10,6 +10,7 @@ import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SettingsDisclosure, SettingsGroup, SettingsLink, SettingsProfileCard, SettingsRow } from "@/components/settings/SettingsList";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { ThemeSetting } from "@/components/settings/ThemeSetting";
+import { DataManagement } from "@/components/settings/DataManagement";
 import { AddMemberForm } from "@/components/settings/AddMemberForm";
 import { MemberActions } from "@/components/settings/MemberActions";
 import { DisplaySettings } from "@/components/settings/DisplaySettings";
@@ -165,6 +166,12 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       <h1 className="text-[22px] font-extrabold text-text">Settings</h1>
 
       <PersonalSettings fullName={session.fullName} email={session.email} role={ROLE_LABEL[session.role]} />
+
+      <div className="w-full max-w-3xl">
+        <SettingsGroup title="Data Management">
+          <DataManagement />
+        </SettingsGroup>
+      </div>
 
       <SettingsGroup title="Team" action={<AddMemberForm companies={companies} defaultCompanyId={selected?.id} />}>
         <div className="p-5">
