@@ -6692,6 +6692,14 @@ const dictionary: Record<string, string> = {
  "Bank Account": "Akaun Bank",
  "The bank account number should only have digits (5 to 20).": "Nombor akaun bank hanya boleh mengandungi angka (5 hingga 20).",
  "Choose the bank of the account.": "Pilih bank bagi akaun ini.",
+ "Print ▾": "Cetak ▾",
+ "Whole month": "Sebulan penuh",
+ "By week": "Ikut minggu",
+ "Week {0} ({1})": "Minggu {0} ({1})",
+ "Balance at the end of the week": "Baki pada akhir minggu",
+ "Total received (money in)": "Jumlah diterima (wang masuk)",
+ "Total spent": "Jumlah dibelanjakan",
+ "Total claimed": "Jumlah dituntut",
 };
 
 export default dictionary;

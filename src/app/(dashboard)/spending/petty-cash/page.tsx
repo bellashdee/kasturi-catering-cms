@@ -392,6 +392,7 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
                 headers={exportHeaders}
                 rows={exportRows}
                 moneyColumns={moneyColumns}
+                weekly={{ dateColumn: "Date", month, totalLabels: { "Received (RM)": "Total received (money in)", "Spent (RM)": "Total spent" }, companyAmountColumn: "Spent (RM)" }}
                 // 15 columns are too many for one printed page: the small related ones share a column there (Excel keeps them apart)
                 printGroups={[
                   { header: "Kind / Category", columns: ["Kind", "Category"] },

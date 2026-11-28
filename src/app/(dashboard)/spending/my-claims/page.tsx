@@ -239,6 +239,7 @@ export default async function MyClaimsPage({ searchParams }: { searchParams: Pro
             headers={exportHeaders}
             rows={exportRows}
             moneyColumns={["Amount (RM)"]}
+            weekly={{ dateColumn: "Date", month, totalLabels: { "Amount (RM)": "Total claimed" }, companyAmountColumn: "Amount (RM)" }}
             summary={summary}
           />
         }
