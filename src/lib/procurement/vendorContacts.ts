@@ -41,6 +41,8 @@ export type VendorContact = {
   bank_name: string | null;
   bank_account_no: string | null;
   bank_account_holder: string | null;
+  /** the vendor's payment QR (DuitNow / bank QR) photo, in the documents bucket */
+  payment_qr_document_id: string | null;
   /** the items (products / services) the vendor offers, with their prices */
   items: VendorContactItem[];
 };

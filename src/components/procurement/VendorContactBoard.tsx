@@ -6,6 +6,8 @@ import { MALAYSIAN_BANKS, VENDOR_CATEGORIES, itemLine, orderedCategories, type V
 import { deleteVendorContact, saveVendorContact, type VendorContactInput, type VendorItemInput } from "@/lib/procurement/vendorContactActions";
 import { downloadTableExcel, printTablePdf, type ExportTable } from "@/lib/export/tableExport";
 import { FILTER_FIELD, FILTER_INPUT } from "@/components/shared/ListFilters";
+import { uploadReceipt } from "@/lib/documents/upload";
+import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 
 const blankItem = (): VendorItemInput => ({ item: "", unit: "", price: "", notes: "" });
 const blank = (category = ""): VendorContactInput => ({ category, name: "", contactPerson: "", address: "", phone: "", cellPhone: "", email: "", notes: "", bankName: "", bankAccountNo: "", bankAccountHolder: "", items: [] });
@@ -23,6 +25,7 @@ const toInput = (c: VendorContact): VendorContactInput => ({
   bankAccountNo: c.bank_account_no ?? "",
   bankAccountHolder: c.bank_account_holder ?? "",
   items: c.items.map((i) => ({ item: i.item, unit: i.unit ?? "", price: i.price === null ? "" : String(i.price), notes: i.notes ?? "" })),
+  paymentQrDocumentId: c.payment_qr_document_id,
 });
 
 const btnLg = "rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text disabled:opacity-50";
@@ -37,9 +40,12 @@ const COLS = "grid grid-cols-[1.4fr_1fr_1fr_1fr_1fr_1.3fr_1.4fr_7.5rem]";
  * The Vendor Contact List, laid out like the Suppliers list: the title with the count and the buttons, the sub menu, one filter bar
  * (search, category, sort, order) and a table with one row per vendor. Edit opens the form above the table.
  */
-export function VendorContactBoard({ contacts, subNav }: { contacts: VendorContact[]; subNav?: React.ReactNode }) {
+export function VendorContactBoard({ contacts, subNav, uploadCompanyId = null }: { contacts: VendorContact[]; subNav?: React.ReactNode; uploadCompanyId?: string | null }) {
   const router = useRouter();
   const [form, setForm] = useState<VendorContactInput | null>(null);
+  // a new payment QR photo chosen in the form (uploaded when Save is pressed)
+  const [qrFile, setQrFile] = useState<File | null>(null);
+  const qrPreview = useMemo(() => (qrFile ? URL.createObjectURL(qrFile) : null), [qrFile]);
   const [customCategory, setCustomCategory] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -73,6 +79,7 @@ export function VendorContactBoard({ contacts, subNav }: { contacts: VendorConta
     setError(null);
     setCustomCategory(!!value.category && !(VENDOR_CATEGORIES as readonly string[]).includes(value.category));
     setForm(value);
+    setQrFile(null);
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -80,7 +87,20 @@ export function VendorContactBoard({ contacts, subNav }: { contacts: VendorConta
     if (!form) return;
     setError(null);
     startTransition(async () => {
-      const res = await saveVendorContact(form);
+      let toSave = form;
+      if (qrFile) {
+        if (!uploadCompanyId) {
+          setError("The QR photo could not be filed: you have no access to Signature Solution or Kasturi Indah.");
+          return;
+        }
+        try {
+          toSave = { ...form, paymentQrDocumentId: await uploadReceipt(uploadCompanyId, qrFile) };
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "The QR photo could not be uploaded.");
+          return;
+        }
+      }
+      const res = await saveVendorContact(toSave);
       if (res.ok) {
         setForm(null);
         router.refresh();
@@ -237,6 +257,35 @@ export function VendorContactBoard({ contacts, subNav }: { contacts: VendorConta
               Account no.
               <input className={field} inputMode="numeric" value={form.bankAccountNo} onChange={(e) => setForm({ ...form, bankAccountNo: e.target.value })} placeholder="Digits only" />
             </label>
+            <div className="flex flex-col gap-1 text-[12px] font-semibold text-text-secondary sm:col-span-2">
+              QR Pay (DuitNow / bank QR)
+              <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-white px-3 py-2">
+                {form.paymentQrDocumentId && !qrFile ? (
+                  <>
+                    <span className="text-[13px] font-semibold text-success">QR saved</span>
+                    <DocumentViewLink documentId={form.paymentQrDocumentId} label="View QR" />
+                    <button type="button" className="text-[12.5px] font-semibold text-text-secondary hover:text-danger" onClick={() => setForm({ ...form, paymentQrDocumentId: null })}>
+                      Remove QR
+                    </button>
+                  </>
+                ) : qrFile ? (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element -- a local preview of the chosen photo */}
+                    <img src={qrPreview ?? ""} alt="QR preview" className="h-20 w-20 rounded border border-border object-contain" />
+                    <span className="text-[12.5px] font-normal text-text-secondary">{qrFile.name} · saved when you press Save</span>
+                    <button type="button" className="text-[12.5px] font-semibold text-text-secondary hover:text-danger" onClick={() => setQrFile(null)}>
+                      Remove
+                    </button>
+                  </>
+                ) : (
+                  <span className="text-[12.5px] font-normal text-text-muted">No QR yet</span>
+                )}
+                <label className={`${btn} inline-flex cursor-pointer items-center`}>
+                  {form.paymentQrDocumentId || qrFile ? "Change QR" : "Attach QR"}
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => setQrFile(e.target.files?.[0] ?? null)} />
+                </label>
+              </div>
+            </div>
             <label className="flex flex-col gap-1 text-[12px] font-semibold text-text-secondary sm:col-span-2">
               Account holder name
               <input className={field} value={form.bankAccountHolder} onChange={(e) => setForm({ ...form, bankAccountHolder: e.target.value })} placeholder="As registered with the bank" />
@@ -319,8 +368,9 @@ export function VendorContactBoard({ contacts, subNav }: { contacts: VendorConta
                         {c.bank_account_holder && <div className="text-[12px] text-text-muted">{c.bank_account_holder}</div>}
                       </>
                     ) : (
-                      "—"
+                      !c.payment_qr_document_id && "—"
                     )}
+                    {c.payment_qr_document_id && <DocumentViewLink documentId={c.payment_qr_document_id} label="QR Pay" className="mt-0.5 block text-[12px] font-semibold text-primary hover:underline" />}
                   </div>
                   <div className="flex justify-end gap-3 text-[12.5px]">
                     {confirmDelete === c.id ? (

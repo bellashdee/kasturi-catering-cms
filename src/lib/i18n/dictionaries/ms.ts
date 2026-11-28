@@ -6710,6 +6710,17 @@ const dictionary: Record<string, string> = {
  "Notes (optional)": "Nota (pilihan)",
  "Item {0}: enter the item name (or remove the row).": "Item {0}: masukkan nama item (atau buang baris itu).",
  "{0}: the price should be a number, e.g. 85 or 85.50.": "{0}: harga mestilah nombor, cth. 85 atau 85.50.",
+ "QR Pay (DuitNow / bank QR)": "QR Pay (DuitNow / QR bank)",
+ "QR saved": "QR disimpan",
+ "View QR": "Lihat QR",
+ "Remove QR": "Buang QR",
+ "No QR yet": "Belum ada QR",
+ "Change QR": "Tukar QR",
+ "Attach QR": "Lampirkan QR",
+ "QR Pay": "QR Pay",
+ "{0} · saved when you press Save": "{0} · disimpan apabila anda tekan Save",
+ "The QR photo could not be uploaded.": "Gambar QR tidak dapat dimuat naik.",
+ "The QR photo could not be filed: you have no access to Signature Solution or Kasturi Indah.": "Gambar QR tidak dapat disimpan: anda tiada akses ke Signature Solution atau Kasturi Indah.",
 };
 
 export default dictionary;

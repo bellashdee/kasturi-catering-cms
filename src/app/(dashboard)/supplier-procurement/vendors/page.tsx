@@ -39,7 +39,7 @@ export default async function VendorContactsPage({ searchParams }: { searchParam
 
   const { data, error } = await untyped(supabase)
     .from("vendor_contacts")
-    .select("id, category, name, contact_person, address, phone, cell_phone, email, notes, bank_name, bank_account_no, bank_account_holder")
+    .select("id, category, name, contact_person, address, phone, cell_phone, email, notes, bank_name, bank_account_no, bank_account_holder, payment_qr_document_id")
     .order("category")
     .order("name")
     .limit(5000);
@@ -65,5 +65,7 @@ export default async function VendorContactsPage({ searchParams }: { searchParam
     itemsOf.set(i.vendor_contact_id, list);
   }
   const contacts = ((data ?? []) as Omit<VendorContact, "items">[]).map((c) => ({ ...c, items: itemsOf.get(c.id) ?? [] }));
-  return <VendorContactBoard contacts={contacts} subNav={<SupplierProcurementSubNav />} />;
+  // a QR photo is filed under one of the two companies (the list itself is shared by both)
+  const uploadCompanyId = (allCompanies ?? []).find((c) => accessibleIds.includes(c.id) && /signature solution|kasturi indah/i.test(c.name))?.id ?? null;
+  return <VendorContactBoard contacts={contacts} subNav={<SupplierProcurementSubNav />} uploadCompanyId={uploadCompanyId} />;
 }
