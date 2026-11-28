@@ -56,8 +56,14 @@ function Actions({ p, isApprover, onManage }: { p: PayableView; isApprover: bool
 
 const HEADERS = ["Priority", "Supplier", "Company", "Invoice / Ref", "Invoice date", "Due date", "Invoice amount (RM)", "Paid (RM)", "Confirmed outstanding (RM)", "Payment status", "Approval", "Notes", "Documents", "Action"];
 
+/** Rows drawn at first; the list is sorted most urgent first. About a thousand unpaid payables drawn at once made the page several MB. */
+const PAGE_ROWS = 100;
+
 export function PayablesTable({ rows, isApprover, events }: { rows: PayableView[]; isApprover: boolean; events: EventOption[] }) {
   const [selected, setSelected] = useState<string | null>(null);
+  const [limit, setLimit] = useState(PAGE_ROWS);
+  const shown = rows.slice(0, limit);
+  const rest = rows.length - shown.length;
   const current = selected ? rows.find((r) => `${r.type}:${r.id}` === selected) : undefined;
 
   if (rows.length === 0) {
@@ -77,7 +83,7 @@ export function PayablesTable({ rows, isApprover, events }: { rows: PayableView[
             </tr>
           </thead>
           <tbody>
-            {rows.map((p) => (
+            {shown.map((p) => (
               <tr key={`${p.type}:${p.id}`} className={`border-t border-border align-top ${p.priority === "urgent" ? "bg-danger-bg/30" : ""}`}>
                 <td className="px-3 py-3.5">
                   {p.priority ? <Pill tone={PRIORITY_TONE[p.priority]}>{PRIORITY_LABEL[p.priority]}</Pill> : <Pill tone="success">Paid</Pill>}
@@ -107,7 +113,7 @@ export function PayablesTable({ rows, isApprover, events }: { rows: PayableView[
 
       {/* tablets and phones: one card per payment */}
       <ul className="flex flex-col gap-3 lg:hidden">
-        {rows.map((p) => (
+        {shown.map((p) => (
           <li key={`${p.type}:${p.id}`} className={`rounded-lg border border-border p-3.5 ${p.priority === "urgent" ? "bg-danger-bg/30" : "bg-surface"}`}>
             <div className="flex flex-wrap items-center gap-1.5">
               {p.priority ? <Pill tone={PRIORITY_TONE[p.priority]}>{PRIORITY_LABEL[p.priority]}</Pill> : <Pill tone="success">Paid</Pill>}
@@ -130,6 +136,14 @@ export function PayablesTable({ rows, isApprover, events }: { rows: PayableView[
           </li>
         ))}
       </ul>
+
+      {rest > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-[13px] text-text-secondary">{`Showing ${shown.length} of ${rows.length} (most urgent first)`}</span>
+          <button type="button" onClick={() => setLimit((n) => n + PAGE_ROWS)} className={BTN_SM_GHOST}>{`Show ${Math.min(PAGE_ROWS, rest)} more`}</button>
+          <button type="button" onClick={() => setLimit(rows.length)} className={BTN_SM_GHOST}>{`Show all ${rows.length}`}</button>
+        </div>
+      )}
 
       {current && <PayableManager key={selected} p={current} isApprover={isApprover} events={events} onClose={() => setSelected(null)} />}
     </>
