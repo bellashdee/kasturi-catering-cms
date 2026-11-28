@@ -2,12 +2,12 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { VENDOR_CATEGORIES, orderedCategories, type VendorContact } from "@/lib/procurement/vendorContacts";
+import { MALAYSIAN_BANKS, VENDOR_CATEGORIES, orderedCategories, type VendorContact } from "@/lib/procurement/vendorContacts";
 import { deleteVendorContact, saveVendorContact, type VendorContactInput } from "@/lib/procurement/vendorContactActions";
 import { downloadTableExcel, printTablePdf, type ExportTable } from "@/lib/export/tableExport";
 import { FILTER_FIELD, FILTER_INPUT } from "@/components/shared/ListFilters";
 
-const blank = (category = ""): VendorContactInput => ({ category, name: "", contactPerson: "", address: "", phone: "", cellPhone: "", email: "", notes: "" });
+const blank = (category = ""): VendorContactInput => ({ category, name: "", contactPerson: "", address: "", phone: "", cellPhone: "", email: "", notes: "", bankName: "", bankAccountNo: "", bankAccountHolder: "" });
 const toInput = (c: VendorContact): VendorContactInput => ({
   id: c.id,
   category: c.category,
@@ -18,6 +18,9 @@ const toInput = (c: VendorContact): VendorContactInput => ({
   cellPhone: c.cell_phone ?? "",
   email: c.email ?? "",
   notes: c.notes ?? "",
+  bankName: c.bank_name ?? "",
+  bankAccountNo: c.bank_account_no ?? "",
+  bankAccountHolder: c.bank_account_holder ?? "",
 });
 
 const btnLg = "rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text disabled:opacity-50";
@@ -26,7 +29,7 @@ const field = "h-10 w-full rounded-lg border border-border-strong bg-white px-3 
 
 const SORTS = { name: "Name", category: "Category", phone: "Phone" } as const;
 type SortKey = keyof typeof SORTS;
-const COLS = "grid grid-cols-[1.4fr_1fr_1fr_1fr_1fr_1.4fr_7.5rem]";
+const COLS = "grid grid-cols-[1.4fr_1fr_1fr_1fr_1fr_1.3fr_1.4fr_7.5rem]";
 
 /**
  * The Vendor Contact List, laid out like the Suppliers list: the title with the count and the buttons, the sub menu, one filter bar
@@ -48,7 +51,7 @@ export function VendorContactBoard({ contacts, subNav }: { contacts: VendorConta
     const rows = contacts.filter(
       (c) =>
         (!applied.category || c.category === applied.category) &&
-        (!q || [c.name, c.category, c.contact_person, c.phone, c.cell_phone, c.address, c.email, c.notes].some((v) => (v ?? "").toLowerCase().includes(q))),
+        (!q || [c.name, c.category, c.contact_person, c.phone, c.cell_phone, c.address, c.email, c.notes, c.bank_name, c.bank_account_no, c.bank_account_holder].some((v) => (v ?? "").toLowerCase().includes(q))),
     );
     const order = orderedCategories(contacts);
     const key = (c: VendorContact): [string | number, string] =>
@@ -96,8 +99,8 @@ export function VendorContactBoard({ contacts, subNav }: { contacts: VendorConta
   const table: ExportTable = {
     title: "Vendor Contact List",
     subtitle: `Signature Solution Sdn Bhd & Kasturi Indah Sdn Bhd · ${shown.length} vendor${shown.length === 1 ? "" : "s"}`,
-    columns: ["Name", "Category", "Contact person", "Phone", "Cell phone", "Address", "Email", "Notes"],
-    rows: shown.map((c) => [c.name, c.category, c.contact_person ?? "", c.phone ?? "", c.cell_phone ?? "", c.address ?? "", c.email ?? "", c.notes ?? ""]),
+    columns: ["Name", "Category", "Contact person", "Phone", "Cell phone", "Address", "Email", "Bank", "Account no.", "Account holder", "Notes"],
+    rows: shown.map((c) => [c.name, c.category, c.contact_person ?? "", c.phone ?? "", c.cell_phone ?? "", c.address ?? "", c.email ?? "", c.bank_name ?? "", c.bank_account_no ?? "", c.bank_account_holder ?? "", c.notes ?? ""]),
     landscape: true,
   };
 
@@ -220,6 +223,22 @@ export function VendorContactBoard({ contacts, subNav }: { contacts: VendorConta
               Cell phone
               <input className={field} value={form.cellPhone} onChange={(e) => setForm({ ...form, cellPhone: e.target.value })} />
             </label>
+            <div className="mt-1 text-[13px] font-bold text-text sm:col-span-2">Bank account (for transfer)</div>
+            <label className="flex flex-col gap-1 text-[12px] font-semibold text-text-secondary">
+              Bank
+              <input className={field} list="vendor-banks" value={form.bankName} onChange={(e) => setForm({ ...form, bankName: e.target.value })} placeholder="e.g. Maybank" />
+              <datalist id="vendor-banks">
+                {MALAYSIAN_BANKS.map((b) => <option key={b} value={b} />)}
+              </datalist>
+            </label>
+            <label className="flex flex-col gap-1 text-[12px] font-semibold text-text-secondary">
+              Account no.
+              <input className={field} inputMode="numeric" value={form.bankAccountNo} onChange={(e) => setForm({ ...form, bankAccountNo: e.target.value })} placeholder="Digits only" />
+            </label>
+            <label className="flex flex-col gap-1 text-[12px] font-semibold text-text-secondary sm:col-span-2">
+              Account holder name
+              <input className={field} value={form.bankAccountHolder} onChange={(e) => setForm({ ...form, bankAccountHolder: e.target.value })} placeholder="As registered with the bank" />
+            </label>
             <label className="flex flex-col gap-1 text-[12px] font-semibold text-text-secondary sm:col-span-2">
               Notes (price, service area, remarks)
               <input className={field} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
@@ -246,6 +265,7 @@ export function VendorContactBoard({ contacts, subNav }: { contacts: VendorConta
                 <div>Phone</div>
                 <div>Cell Phone</div>
                 <div>Address</div>
+                <div>Bank Account</div>
                 <div className="text-right">Action</div>
               </div>
               {shown.map((c) => (
@@ -269,6 +289,20 @@ export function VendorContactBoard({ contacts, subNav }: { contacts: VendorConta
                     )}
                   </div>
                   <div className="text-text-secondary">{c.address || "—"}</div>
+                  <div className="text-text-secondary">
+                    {c.bank_account_no ? (
+                      <>
+                        <div className="font-semibold text-text">{c.bank_name}</div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="tabular-nums">{c.bank_account_no}</span>
+                          <CopyButton text={c.bank_account_no} />
+                        </div>
+                        {c.bank_account_holder && <div className="text-[12px] text-text-muted">{c.bank_account_holder}</div>}
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </div>
                   <div className="flex justify-end gap-3 text-[12.5px]">
                     {confirmDelete === c.id ? (
                       <>
@@ -289,5 +323,24 @@ export function VendorContactBoard({ contacts, subNav }: { contacts: VendorConta
         )}
       </div>
     </div>
+  );
+}
+
+/** Copies the account number, to paste into online banking. */
+function CopyButton({ text }: { text: string }) {
+  const [done, setDone] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        void navigator.clipboard?.writeText(text).then(() => {
+          setDone(true);
+          window.setTimeout(() => setDone(false), 1500);
+        });
+      }}
+      className="text-[11.5px] font-semibold text-primary hover:underline"
+    >
+      {done ? "Copied" : "Copy"}
+    </button>
   );
 }

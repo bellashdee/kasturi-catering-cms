@@ -17,6 +17,9 @@ export type VendorContactInput = {
   cellPhone: string;
   email: string;
   notes: string;
+  bankName: string;
+  bankAccountNo: string;
+  bankAccountHolder: string;
 };
 
 const clean = (v: string, max = 300) => {
@@ -50,7 +53,13 @@ export async function saveVendorContact(input: VendorContactInput): Promise<Acti
       cell_phone: clean(input.cellPhone, 40),
       email,
       notes: clean(input.notes, 600),
+      bank_name: clean(input.bankName, 80),
+      // the account number with spaces and dashes taken out, so it can be pasted straight into online banking
+      bank_account_no: clean((input.bankAccountNo ?? "").replace(/[\s-]/g, ""), 40),
+      bank_account_holder: clean(input.bankAccountHolder, 150),
     };
+    if (row.bank_account_no && !/^\d{5,20}$/.test(row.bank_account_no)) throw new Error("The bank account number should only have digits (5 to 20).");
+    if (row.bank_account_no && !row.bank_name) throw new Error("Choose the bank of the account.");
     const supabase = untyped(await createClient());
     let id = input.id;
     if (id) {

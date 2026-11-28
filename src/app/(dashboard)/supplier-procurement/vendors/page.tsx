@@ -39,7 +39,7 @@ export default async function VendorContactsPage({ searchParams }: { searchParam
 
   const { data, error } = await untyped(supabase)
     .from("vendor_contacts")
-    .select("id, category, name, contact_person, address, phone, cell_phone, email, notes")
+    .select("id, category, name, contact_person, address, phone, cell_phone, email, notes, bank_name, bank_account_no, bank_account_holder")
     .order("category")
     .order("name")
     .limit(5000);

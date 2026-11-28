@@ -37,7 +37,35 @@ export type VendorContact = {
   cell_phone: string | null;
   email: string | null;
   notes: string | null;
+  /** the vendor's bank account, for paying by bank transfer */
+  bank_name: string | null;
+  bank_account_no: string | null;
+  bank_account_holder: string | null;
 };
+
+/** Banks offered in the Bank box (any other bank can be typed). */
+export const MALAYSIAN_BANKS = [
+  "Maybank",
+  "CIMB Bank",
+  "Public Bank",
+  "RHB Bank",
+  "Hong Leong Bank",
+  "AmBank",
+  "Bank Islam",
+  "Bank Rakyat",
+  "Bank Simpanan Nasional (BSN)",
+  "Affin Bank",
+  "Alliance Bank",
+  "Bank Muamalat",
+  "Agrobank",
+  "MBSB Bank",
+  "OCBC Bank",
+  "UOB Bank",
+  "HSBC Bank",
+  "Standard Chartered",
+  "Al Rajhi Bank",
+  "Kuwait Finance House",
+];
 
 /** The categories to show: the fixed list first, then any other category that was typed in. */
 export function orderedCategories(contacts: { category: string }[]): string[] {

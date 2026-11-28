@@ -6682,6 +6682,16 @@ const dictionary: Record<string, string> = {
  "Subtotal {0} = {1}, as printed.": "Subjumlah {0} = {1}, seperti dicetak.",
  "An invoice with this number from this supplier is already saved, so it cannot be saved again.": "Invois dengan nombor ini daripada pembekal ini sudah disimpan, jadi ia tidak boleh disimpan lagi.",
  "The XML has no invoice lines.": "XML ini tiada baris invois.",
+ "Bank account (for transfer)": "Akaun bank (untuk pindahan)",
+ "Bank": "Bank",
+ "Account no.": "No. akaun",
+ "Account holder name": "Nama pemegang akaun",
+ "Account holder": "Pemegang akaun",
+ "Digits only": "Nombor sahaja",
+ "As registered with the bank": "Seperti yang didaftarkan dengan bank",
+ "Bank Account": "Akaun Bank",
+ "The bank account number should only have digits (5 to 20).": "Nombor akaun bank hanya boleh mengandungi angka (5 hingga 20).",
+ "Choose the bank of the account.": "Pilih bank bagi akaun ini.",
 };
 
 export default dictionary;
