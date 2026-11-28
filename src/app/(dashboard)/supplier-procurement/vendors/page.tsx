@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/auth";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { untyped } from "@/lib/kitchenPurchase/shared";
-import type { VendorContact } from "@/lib/procurement/vendorContacts";
+import type { VendorContact, VendorContactItem } from "@/lib/procurement/vendorContacts";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SupplierProcurementSubNav } from "@/components/procurement/SupplierProcurementSubNav";
 import { VendorContactBoard } from "@/components/procurement/VendorContactBoard";
@@ -52,5 +52,18 @@ export default async function VendorContactsPage({ searchParams }: { searchParam
       </div>
     );
   }
-  return <VendorContactBoard contacts={(data ?? []) as VendorContact[]} subNav={<SupplierProcurementSubNav />} />;
+  // the items and prices of every vendor, in the order they were typed
+  const { data: itemRows } = await untyped(supabase)
+    .from("vendor_contact_items")
+    .select("id, vendor_contact_id, item, unit, price, notes, sort_order")
+    .order("sort_order")
+    .limit(20000);
+  const itemsOf = new Map<string, VendorContactItem[]>();
+  for (const i of (itemRows ?? []) as VendorContactItem[]) {
+    const list = itemsOf.get(i.vendor_contact_id) ?? [];
+    list.push({ ...i, price: i.price === null ? null : Number(i.price) });
+    itemsOf.set(i.vendor_contact_id, list);
+  }
+  const contacts = ((data ?? []) as Omit<VendorContact, "items">[]).map((c) => ({ ...c, items: itemsOf.get(c.id) ?? [] }));
+  return <VendorContactBoard contacts={contacts} subNav={<SupplierProcurementSubNav />} />;
 }

@@ -20,7 +20,11 @@ export type VendorContactInput = {
   bankName: string;
   bankAccountNo: string;
   bankAccountHolder: string;
+  /** the items the vendor offers and their prices (the list replaces the one saved before) */
+  items?: VendorItemInput[];
 };
+
+export type VendorItemInput = { item: string; unit: string; price: string; notes: string };
 
 const clean = (v: string, max = 300) => {
   const t = (v ?? "").trim();
@@ -60,6 +64,14 @@ export async function saveVendorContact(input: VendorContactInput): Promise<Acti
     };
     if (row.bank_account_no && !/^\d{5,20}$/.test(row.bank_account_no)) throw new Error("The bank account number should only have digits (5 to 20).");
     if (row.bank_account_no && !row.bank_name) throw new Error("Choose the bank of the account.");
+    // the items: empty rows are left out; a price is optional but must be a number when given
+    const items = (input.items ?? [])
+      .map((i, n) => ({ item: clean(i.item, 200), unit: clean(i.unit, 40), price: (i.price ?? "").toString().replace(/[^\d.]/g, ""), notes: clean(i.notes, 300), n }))
+      .filter((i) => i.item || i.unit || i.price || i.notes);
+    for (const i of items) {
+      if (!i.item) throw new Error(`Item ${i.n + 1}: enter the item name (or remove the row).`);
+      if (i.price && !/^\d+(\.\d{1,2})?$/.test(i.price)) throw new Error(`${i.item}: the price should be a number, e.g. 85 or 85.50.`);
+    }
     const supabase = untyped(await createClient());
     let id = input.id;
     if (id) {
@@ -69,6 +81,21 @@ export async function saveVendorContact(input: VendorContactInput): Promise<Acti
       const { data, error } = await supabase.from("vendor_contacts").insert({ ...row, created_by: session.userId }).select("id").single();
       if (error) throw error;
       id = (data as { id: string }).id;
+    }
+    if (input.items) {
+      // the new list is saved first, then the old rows are removed (a failure keeps the old list, never an empty one)
+      const { data: before } = await supabase.from("vendor_contact_items").select("id").eq("vendor_contact_id", id);
+      if (items.length > 0) {
+        const { error } = await supabase.from("vendor_contact_items").insert(
+          items.map((i, n) => ({ vendor_contact_id: id, item: i.item, unit: i.unit, price: i.price ? Number(i.price) : null, notes: i.notes, sort_order: n, created_by: session.userId })),
+        );
+        if (error) throw error;
+      }
+      const old = ((before ?? []) as { id: string }[]).map((r) => r.id);
+      if (old.length > 0) {
+        const { error } = await supabase.from("vendor_contact_items").delete().in("id", old);
+        if (error) throw error;
+      }
     }
     revalidatePath("/supplier-procurement/vendors");
     return { id: id! };

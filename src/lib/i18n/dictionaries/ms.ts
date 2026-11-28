@@ -6700,6 +6700,14 @@ const dictionary: Record<string, string> = {
  "Total received (money in)": "Jumlah diterima (wang masuk)",
  "Total spent": "Jumlah dibelanjakan",
  "Total claimed": "Jumlah dituntut",
+ "Items & prices": "Item & harga",
+ "Items & prices ({0})": "Item & harga ({0})",
+ "No items yet. Add what this vendor sells or offers, with the price.": "Belum ada item. Tambah apa yang vendor ini jual atau tawarkan, berserta harganya.",
+ "Item, e.g. Kek coklat": "Item, cth. Kek coklat",
+ "Unit, e.g. 1 kg": "Unit, cth. 1 kg",
+ "Notes (optional)": "Nota (pilihan)",
+ "Item {0}: enter the item name (or remove the row).": "Item {0}: masukkan nama item (atau buang baris itu).",
+ "{0}: the price should be a number, e.g. 85 or 85.50.": "{0}: harga mestilah nombor, cth. 85 atau 85.50.",
 };
 
 export default dictionary;

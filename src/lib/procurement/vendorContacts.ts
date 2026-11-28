@@ -41,7 +41,23 @@ export type VendorContact = {
   bank_name: string | null;
   bank_account_no: string | null;
   bank_account_holder: string | null;
+  /** the items (products / services) the vendor offers, with their prices */
+  items: VendorContactItem[];
 };
+
+export type VendorContactItem = {
+  id: string;
+  vendor_contact_id: string;
+  item: string;
+  unit: string | null;
+  price: number | null;
+  notes: string | null;
+  sort_order: number;
+};
+
+/** "Kek coklat (1 kg) RM 85.00" */
+export const itemLine = (i: { item: string; unit: string | null; price: number | null }) =>
+  `${i.item}${i.unit ? ` (${i.unit})` : ""}${i.price !== null && i.price !== undefined ? ` RM ${Number(i.price).toFixed(2)}` : ""}`;
 
 /** Banks offered in the Bank box (any other bank can be typed). */
 export const MALAYSIAN_BANKS = [

@@ -2,12 +2,13 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { MALAYSIAN_BANKS, VENDOR_CATEGORIES, orderedCategories, type VendorContact } from "@/lib/procurement/vendorContacts";
-import { deleteVendorContact, saveVendorContact, type VendorContactInput } from "@/lib/procurement/vendorContactActions";
+import { MALAYSIAN_BANKS, VENDOR_CATEGORIES, itemLine, orderedCategories, type VendorContact } from "@/lib/procurement/vendorContacts";
+import { deleteVendorContact, saveVendorContact, type VendorContactInput, type VendorItemInput } from "@/lib/procurement/vendorContactActions";
 import { downloadTableExcel, printTablePdf, type ExportTable } from "@/lib/export/tableExport";
 import { FILTER_FIELD, FILTER_INPUT } from "@/components/shared/ListFilters";
 
-const blank = (category = ""): VendorContactInput => ({ category, name: "", contactPerson: "", address: "", phone: "", cellPhone: "", email: "", notes: "", bankName: "", bankAccountNo: "", bankAccountHolder: "" });
+const blankItem = (): VendorItemInput => ({ item: "", unit: "", price: "", notes: "" });
+const blank = (category = ""): VendorContactInput => ({ category, name: "", contactPerson: "", address: "", phone: "", cellPhone: "", email: "", notes: "", bankName: "", bankAccountNo: "", bankAccountHolder: "", items: [] });
 const toInput = (c: VendorContact): VendorContactInput => ({
   id: c.id,
   category: c.category,
@@ -21,6 +22,7 @@ const toInput = (c: VendorContact): VendorContactInput => ({
   bankName: c.bank_name ?? "",
   bankAccountNo: c.bank_account_no ?? "",
   bankAccountHolder: c.bank_account_holder ?? "",
+  items: c.items.map((i) => ({ item: i.item, unit: i.unit ?? "", price: i.price === null ? "" : String(i.price), notes: i.notes ?? "" })),
 });
 
 const btnLg = "rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text disabled:opacity-50";
@@ -51,7 +53,7 @@ export function VendorContactBoard({ contacts, subNav }: { contacts: VendorConta
     const rows = contacts.filter(
       (c) =>
         (!applied.category || c.category === applied.category) &&
-        (!q || [c.name, c.category, c.contact_person, c.phone, c.cell_phone, c.address, c.email, c.notes, c.bank_name, c.bank_account_no, c.bank_account_holder].some((v) => (v ?? "").toLowerCase().includes(q))),
+        (!q || [c.name, c.category, c.contact_person, c.phone, c.cell_phone, c.address, c.email, c.notes, c.bank_name, c.bank_account_no, c.bank_account_holder, ...c.items.map((i) => `${i.item} ${i.notes ?? ""}`)].some((v) => (v ?? "").toLowerCase().includes(q))),
     );
     const order = orderedCategories(contacts);
     const key = (c: VendorContact): [string | number, string] =>
@@ -99,8 +101,8 @@ export function VendorContactBoard({ contacts, subNav }: { contacts: VendorConta
   const table: ExportTable = {
     title: "Vendor Contact List",
     subtitle: `Signature Solution Sdn Bhd & Kasturi Indah Sdn Bhd · ${shown.length} vendor${shown.length === 1 ? "" : "s"}`,
-    columns: ["Name", "Category", "Contact person", "Phone", "Cell phone", "Address", "Email", "Bank", "Account no.", "Account holder", "Notes"],
-    rows: shown.map((c) => [c.name, c.category, c.contact_person ?? "", c.phone ?? "", c.cell_phone ?? "", c.address ?? "", c.email ?? "", c.bank_name ?? "", c.bank_account_no ?? "", c.bank_account_holder ?? "", c.notes ?? ""]),
+    columns: ["Name", "Category", "Contact person", "Phone", "Cell phone", "Address", "Email", "Bank", "Account no.", "Account holder", "Items & prices", "Notes"],
+    rows: shown.map((c) => [c.name, c.category, c.contact_person ?? "", c.phone ?? "", c.cell_phone ?? "", c.address ?? "", c.email ?? "", c.bank_name ?? "", c.bank_account_no ?? "", c.bank_account_holder ?? "", c.items.map(itemLine).join("; "), c.notes ?? ""]),
     landscape: true,
   };
 
@@ -239,6 +241,23 @@ export function VendorContactBoard({ contacts, subNav }: { contacts: VendorConta
               Account holder name
               <input className={field} value={form.bankAccountHolder} onChange={(e) => setForm({ ...form, bankAccountHolder: e.target.value })} placeholder="As registered with the bank" />
             </label>
+            <div className="mt-1 flex flex-col gap-2 sm:col-span-2">
+              <div className="text-[13px] font-bold text-text">Items & prices</div>
+              {(form.items ?? []).length === 0 && <div className="text-[12.5px] text-text-muted">No items yet. Add what this vendor sells or offers, with the price.</div>}
+              {(form.items ?? []).map((it, n) => {
+                const setItem = (patch: Partial<VendorItemInput>) => setForm({ ...form, items: (form.items ?? []).map((x, k) => (k === n ? { ...x, ...patch } : x)) });
+                return (
+                  <div key={n} className="grid grid-cols-2 gap-2 rounded-lg border border-border p-2 sm:grid-cols-[2fr_1fr_1fr_2fr_auto]">
+                    <input className={`${field} col-span-2 sm:col-span-1`} value={it.item} onChange={(e) => setItem({ item: e.target.value })} placeholder="Item, e.g. Kek coklat" aria-label="Item" />
+                    <input className={field} value={it.unit} onChange={(e) => setItem({ unit: e.target.value })} placeholder="Unit, e.g. 1 kg" aria-label="Unit" />
+                    <input className={field} inputMode="decimal" value={it.price} onChange={(e) => setItem({ price: e.target.value })} placeholder="Price (RM)" aria-label="Price (RM)" />
+                    <input className={`${field} col-span-2 sm:col-span-1`} value={it.notes} onChange={(e) => setItem({ notes: e.target.value })} placeholder="Notes (optional)" aria-label="Notes" />
+                    <button type="button" className={`${btn} col-span-2 sm:col-span-1`} onClick={() => setForm({ ...form, items: (form.items ?? []).filter((_, k) => k !== n) })}>Remove</button>
+                  </div>
+                );
+              })}
+              <button type="button" className={`${btn} self-start`} onClick={() => setForm({ ...form, items: [...(form.items ?? []), blankItem()] })}>+ Add item</button>
+            </div>
             <label className="flex flex-col gap-1 text-[12px] font-semibold text-text-secondary sm:col-span-2">
               Notes (price, service area, remarks)
               <input className={field} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
@@ -316,6 +335,23 @@ export function VendorContactBoard({ contacts, subNav }: { contacts: VendorConta
                       </>
                     )}
                   </div>
+                  {c.items.length > 0 && (
+                    <div className="col-span-full mt-1 rounded-lg bg-surface-alt px-3 py-2">
+                      <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-text-muted">Items & prices ({c.items.length})</div>
+                      <div className="grid gap-x-6 gap-y-0.5 text-[12.5px] sm:grid-cols-2 lg:grid-cols-3">
+                        {c.items.map((i) => (
+                          <div key={i.id} className="flex justify-between gap-3 border-b border-border/60 py-0.5 last:border-b-0">
+                            <span className="text-text">
+                              {i.item}
+                              {i.unit && <span className="text-text-muted"> · {i.unit}</span>}
+                              {i.notes && <span className="block text-[11.5px] text-text-muted">{i.notes}</span>}
+                            </span>
+                            <span className="whitespace-nowrap font-semibold tabular-nums text-text">{i.price !== null ? `RM ${i.price.toFixed(2)}` : "—"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
