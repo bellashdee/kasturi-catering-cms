@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
+import { fetchAll, fetchAllByIds } from "@/lib/supabase/fetchAll";
 import {
   computePayable,
   sortPayables,
@@ -43,12 +44,11 @@ const key = (type: string, id: string) => `${type}:${id}`;
  */
 export async function loadPayables(supabase: DB, companyIds: string[], today: string, only?: { type: PayableType; id: string }): Promise<PayableView[]> {
   if (companyIds.length === 0) return [];
-  const [{ data: finance, error: e1 }, { data: invoices, error: e2 }] = await Promise.all([
-    supabase.from("finance_payments").select("*, companies(name)").in("company_id", companyIds).eq("category", "supplier").neq("status", "cancelled"),
-    supabase.from("supplier_invoices").select("*, suppliers(name), companies(name)").in("company_id", companyIds).neq("status", "draft"),
+  // read page by page: the supplier invoices alone are close to the 1,000 rows one read returns
+  const [finance, invoices] = await Promise.all([
+    fetchAll((from, to) => supabase.from("finance_payments").select("*, companies(name)").in("company_id", companyIds).eq("category", "supplier").neq("status", "cancelled").order("id").range(from, to)),
+    fetchAll((from, to) => supabase.from("supplier_invoices").select("*, suppliers(name), companies(name)").in("company_id", companyIds).neq("status", "draft").order("id").range(from, to)),
   ]);
-  if (e1) throw e1;
-  if (e2) throw e2;
 
   let raws: RawPayable[] = [
     ...(finance ?? []).map<RawPayable>((p) => ({
@@ -95,24 +95,23 @@ export async function loadPayables(supabase: DB, companyIds: string[], today: st
   const invoiceIds = raws.filter((r) => r.type === "supplier_invoice").map((r) => r.id);
   const allIds = raws.map((r) => r.id);
 
-  const [ledgerFinance, ledgerInvoice, controls, proofs] = await Promise.all([
-    financeIds.length ? supabase.from("supplier_payments").select("*").in("finance_payment_id", financeIds) : Promise.resolve({ data: [], error: null }),
-    invoiceIds.length ? supabase.from("supplier_payments").select("*").in("supplier_invoice_id", invoiceIds) : Promise.resolve({ data: [], error: null }),
-    supabase.from("supplier_payment_controls").select("*").in("payable_id", allIds),
-    supabase.from("task_proofs").select("related_table, related_id, document_id, proof_type, documents(original_filename)").in("related_table", ["finance_payments", "supplier_invoices"]).in("related_id", allIds),
+  // over a thousand payables: their ids are sent in batches (one long list made the web address too long and the page failed)
+  const [ledgerFinanceRows, ledgerInvoiceRows, controlRows, proofRows] = await Promise.all([
+    fetchAllByIds(financeIds, (ids, from, to) => supabase.from("supplier_payments").select("*").in("finance_payment_id", ids).order("id").range(from, to)),
+    fetchAllByIds(invoiceIds, (ids, from, to) => supabase.from("supplier_payments").select("*").in("supplier_invoice_id", ids).order("id").range(from, to)),
+    fetchAllByIds(allIds, (ids, from, to) => supabase.from("supplier_payment_controls").select("*").in("payable_id", ids).order("id").range(from, to)),
+    fetchAllByIds(allIds, (ids, from, to) =>
+      supabase.from("task_proofs").select("related_table, related_id, document_id, proof_type, documents(original_filename)").in("related_table", ["finance_payments", "supplier_invoices"]).in("related_id", ids).order("id").range(from, to),
+    ),
   ]);
-  if (ledgerFinance.error) throw ledgerFinance.error;
-  if (ledgerInvoice.error) throw ledgerInvoice.error;
-  if (controls.error) throw controls.error;
-  if (proofs.error) throw proofs.error;
   const proofBy = new Map<string, { id: string; label: string }[]>();
-  for (const pr of proofs.data ?? []) {
+  for (const pr of proofRows) {
     const k = key(pr.related_table === "finance_payments" ? "finance_payment" : "supplier_invoice", pr.related_id);
     proofBy.set(k, [...(proofBy.get(k) ?? []), { id: pr.document_id, label: pr.documents?.original_filename ?? "Document" }]);
   }
 
   const ledgerBy = new Map<string, LedgerEntry[]>();
-  for (const l of [...(ledgerFinance.data ?? []), ...(ledgerInvoice.data ?? [])]) {
+  for (const l of [...ledgerFinanceRows, ...ledgerInvoiceRows]) {
     const k = l.finance_payment_id ? key("finance_payment", l.finance_payment_id) : key("supplier_invoice", l.supplier_invoice_id ?? "");
     const entry: LedgerEntry = {
       id: l.id,
@@ -129,7 +128,7 @@ export async function loadPayables(supabase: DB, companyIds: string[], today: st
     };
     ledgerBy.set(k, [...(ledgerBy.get(k) ?? []), entry]);
   }
-  const controlBy = new Map((controls.data ?? []).map((c) => [key(c.payable_type, c.payable_id), toControl(c)]));
+  const controlBy = new Map(controlRows.map((c) => [key(c.payable_type, c.payable_id), toControl(c)]));
 
   return sortPayables(
     raws.map((r) =>

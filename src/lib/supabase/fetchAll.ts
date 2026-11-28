@@ -12,3 +12,19 @@ export async function fetchAll<T>(page: (from: number, to: number) => PromiseLik
     if (got.length < size) return rows;
   }
 }
+
+/**
+ * Reads every row whose column is one of `ids`, for a long list of ids. The ids travel in the web address, and a few hundred of them make
+ * the address too long (the database then answers "Bad Request"), so they are sent 100 at a time, each batch read page by page.
+ * `page(chunk, from, to)` builds the query with `.in(column, chunk)`, a stable `.order(...)` and `.range(from, to)`.
+ */
+export async function fetchAllByIds<T>(
+  ids: readonly string[],
+  page: (chunk: string[], from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+  chunkSize = 100,
+): Promise<T[]> {
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += chunkSize) chunks.push(ids.slice(i, i + chunkSize));
+  const parts = await Promise.all(chunks.map((chunk) => fetchAll<T>((from, to) => page(chunk, from, to))));
+  return parts.flat();
+}

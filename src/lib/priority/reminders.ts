@@ -214,6 +214,10 @@ export async function saveNotifications(supabase: DB, userId: string, built: { c
   }
   const { data: unread } = await supabase.from("priority_notifications").select("id, item_type, item_id").eq("user_id", userId).is("read_at", null).limit(500);
   const stale = (unread ?? []).filter((n) => ["payable", "ops", "approval", "task", "approval-other", "event"].includes(n.item_type) && !built.activeKeys.has(`${n.item_type}|${n.item_id}`)).map((n) => n.id);
-  if (stale.length > 0) await supabase.from("priority_notifications").update({ read_at: new Date().toISOString() }).in("id", stale);
+  // 100 at a time: a few hundred ids in one request make the web address too long and nothing would be closed
+  const readAt = new Date().toISOString();
+  for (let i = 0; i < stale.length; i += 100) {
+    await supabase.from("priority_notifications").update({ read_at: readAt }).in("id", stale.slice(i, i + 100));
+  }
   await supabase.from("priority_reminder_settings").upsert({ user_id: userId, last_synced_at: new Date().toISOString() }, { onConflict: "user_id" });
 }
