@@ -6,7 +6,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ASSIGNABLE_MODULES } from "@/lib/modules";
 import { mergeAllowedSections, sectionSummary } from "@/lib/sections";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { SectionCard, EmptyRow } from "@/components/dashboard/SectionCard";
+import { EmptyRow } from "@/components/dashboard/SectionCard";
+import { SettingsDisclosure, SettingsGroup, SettingsLink, SettingsProfileCard, SettingsRow } from "@/components/settings/SettingsList";
+import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { AddMemberForm } from "@/components/settings/AddMemberForm";
 import { MemberActions } from "@/components/settings/MemberActions";
 import { DisplaySettings } from "@/components/settings/DisplaySettings";
@@ -35,6 +37,29 @@ async function loadInitialPasswords(members: Awaited<ReturnType<typeof listMembe
   return out;
 }
 
+/** Profile, Account and Preferences: the same for everyone (the grouped-list look of a phone's settings screen). */
+function PersonalSettings({ fullName, email, role }: { fullName: string; email: string; role: string }) {
+  return (
+    <div className="flex w-full max-w-3xl flex-col gap-6">
+      <SettingsProfileCard fullName={fullName} email={email} role={role} />
+      <SettingsGroup title="Account">
+        <SettingsLink href="/profile" icon="user" label="My Profile" hint="Your details, leave and claims" />
+        <SettingsRow icon="globe" label="Language">
+          <LanguageSwitcher align="right" />
+        </SettingsRow>
+      </SettingsGroup>
+      <SettingsGroup title="Preferences">
+        <SettingsDisclosure icon="text" label="Display" hint="Font and text size">
+          <DisplaySettings />
+        </SettingsDisclosure>
+        <SettingsDisclosure icon="bell" label="Notifications on this device">
+          <PushToggle />
+        </SettingsDisclosure>
+      </SettingsGroup>
+    </div>
+  );
+}
+
 const KIND_LABEL: Record<StaffKind, string> = { local: "Local staff", foreign: "Foreign staff", none: "No staff record" };
 const KIND_CLASS: Record<StaffKind, string> = { local: "bg-success-bg text-success", foreign: "bg-warning-bg text-warning", none: "bg-surface-alt text-text-muted" };
 
@@ -48,15 +73,10 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
   if (session.role !== "super_admin" || !session.hasAllCompaniesAccess) {
     return (
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-6">
         <h1 className="text-[22px] font-extrabold text-text">Settings</h1>
-        <SectionCard title="Display">
-          <DisplaySettings />
-        </SectionCard>
-        <SectionCard title="Notifications on this device">
-          <PushToggle />
-        </SectionCard>
-        <EmptyRow text="Only a Super Admin can manage team members." />
+        <PersonalSettings fullName={session.fullName} email={session.email} role={ROLE_LABEL[session.role]} />
+        <p className="max-w-3xl px-1 text-[12.5px] text-text-muted">Only a Super Admin can manage team members.</p>
       </div>
     );
   }
@@ -137,26 +157,22 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const withoutEmail = members.length - withEmail;
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-[22px] font-extrabold text-text">Settings</h1>
-          <p className="mt-0.5 text-[13px] text-text-secondary">
-            Add, edit, or remove team members and their access — internal use only, no public sign-up.
-          </p>
+    <div className="flex flex-col gap-6">
+      <h1 className="text-[22px] font-extrabold text-text">Settings</h1>
+
+      <PersonalSettings fullName={session.fullName} email={session.email} role={ROLE_LABEL[session.role]} />
+
+      <SettingsGroup title="Team" action={<AddMemberForm companies={companies} defaultCompanyId={selected?.id} />}>
+        <div className="p-5">
+        <div className="mb-3 flex items-center gap-2.5">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-text-secondary" aria-hidden="true">
+            <circle cx="7.3" cy="7" r="2.7" /><path d="M2.5 16.2c.7-2.7 2.5-4.2 4.8-4.2s4.1 1.5 4.8 4.2" /><path d="M12.6 4.6a2.6 2.6 0 0 1 0 4.9M14.2 12.2c1.6.5 2.7 1.8 3.3 4" />
+          </svg>
+          <div>
+            <div className="text-[14.5px] font-semibold text-text">{`Team Members (${members.length})`}</div>
+            <div className="text-[12.5px] text-text-muted">Add, edit, or remove team members and their access — internal use only, no public sign-up.</div>
+          </div>
         </div>
-        <AddMemberForm companies={companies} defaultCompanyId={selected?.id} />
-      </div>
-
-      <SectionCard title="Display">
-        <DisplaySettings />
-      </SectionCard>
-
-      <SectionCard title="Notifications on this device">
-        <PushToggle />
-      </SectionCard>
-
-      <SectionCard title={`Team Members (${members.length})`}>
         {selected && (
           <p className="-mt-1 mb-2 text-[12.5px] text-text-secondary">
             <b className="text-text">{selected.name}</b> — only the staff of the company you chose are listed. Choose All Companies to see everyone.
@@ -259,7 +275,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             ))}
           </div>
         )}
-      </SectionCard>
+        </div>
+      </SettingsGroup>
     </div>
   );
 }
