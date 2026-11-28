@@ -54,3 +54,11 @@ next-env.d.ts
 
 # Claude Code personal settings
 .claude/settings.local.json
+
+# confidential company data kept on this computer only (the repository is public): staff logins and lists, expense reports, recipes, FeedMe exports
+/REFERENCES/LOGIN STAFF/
+/REFERENCES/FEEDME/
+/O2 Life - Company Expenses - *.pdf
+/SENARAI PROFILE STAF BELUM LENGKAP.txt
+/SENARAI RESEPI IKUT KATEGORI.txt
+/SENARAI STAF BELUM LENGKAP.xlsx
