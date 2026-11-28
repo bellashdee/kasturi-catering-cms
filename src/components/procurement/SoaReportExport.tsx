@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { buildTablePdf, type ExportTable } from "@/lib/export/tableExport";
-import type { LedgerReport } from "@/lib/finance/supplierLedger";
+import type { LedgerReport, LedgerSort } from "@/lib/finance/supplierLedger";
+import { loadSoaReportForExport } from "@/lib/finance/supplierLedgerActions";
 
 const money = (n: number) => n.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const dmy = (iso: string) => iso.split("-").reverse().join("/");
@@ -44,13 +45,36 @@ const SUMMARY_COLUMNS = ["Company", "A/C No.", "Supplier", "Opening (RM)", "Invo
 const TX_COLUMNS = ["Company", "Supplier", "Date", "Type", "Reference", "Description", "Invoice / DN (RM)", "Payment / CN (RM)", "Balance (RM)"];
 
 /** PDF and Excel of the SOA report: the summary per supplier and company, and every transaction. Built from the report on the page. */
-export function SoaReportExport({ report, subtitle, filename }: { report: LedgerReport; subtitle: string; filename: string }) {
+export function SoaReportExport({
+  filters,
+  empty,
+  subtitle,
+  filename,
+}: {
+  filters: { company: string | null; supplierId: string | null; year: number; month: number; sort: LedgerSort; onlyActive: boolean };
+  empty: boolean;
+  subtitle: string;
+  filename: string;
+}) {
   const [busy, setBusy] = useState(false);
-  const empty = report.companies.every((c) => c.suppliers.length === 0);
+  const [error, setError] = useState<string | null>(null);
+
+  /** the report is read only when a button is pressed: the page does not carry a second copy of every transaction */
+  async function load(): Promise<LedgerReport | null> {
+    setError(null);
+    const r = await loadSoaReportForExport(filters);
+    if (!r.ok) {
+      setError(r.error);
+      return null;
+    }
+    return r.report;
+  }
 
   async function excel() {
     setBusy(true);
     try {
+      const report = await load();
+      if (!report) return;
       const XLSX = await import("xlsx");
       const book = XLSX.utils.book_new();
       const add = (name: string, columns: string[], rows: string[][]) => {
@@ -66,7 +90,10 @@ export function SoaReportExport({ report, subtitle, filename }: { report: Ledger
     }
   }
 
-  function pdf() {
+  async function pdf() {
+    setBusy(true);
+    const report = await load().finally(() => setBusy(false));
+    if (!report) return;
     const t = report.consolidated;
     const table: ExportTable = {
       title: "Supplier SOA Report",
@@ -90,9 +117,11 @@ export function SoaReportExport({ report, subtitle, filename }: { report: Ledger
       <button type="button" disabled={empty || busy} onClick={excel} className={buttonClass}>
         Export Excel
       </button>
-      <button type="button" disabled={empty} onClick={pdf} className={buttonClass}>
+      <button type="button" disabled={empty || busy} onClick={pdf} className={buttonClass}>
         Download PDF
       </button>
+      {busy && <span className="self-center text-[12px] text-text-secondary">Preparing…</span>}
+      {error && <span className="self-center text-[12px] font-semibold text-danger">{error}</span>}
     </div>
   );
 }

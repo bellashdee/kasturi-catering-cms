@@ -67,7 +67,14 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
   const params = await searchParams;
 
   const supabase = await createClient();
-  const { data: allCompanies } = await supabase.from("companies").select("id, name").order("name");
+  // asked at the same time, not one after another (the page opens faster)
+  const [{ data: allCompanies }, { data: ownRecord }, { data: directorOfFinance }] = await Promise.all([
+    supabase.from("companies").select("id, name").order("name"),
+    // the birthday (for the star sign line of the day) comes from the person's own staff record, when there is one
+    supabase.from("employees").select("date_of_birth").eq("user_id", session.userId).not("date_of_birth", "is", null).limit(1).maybeSingle(),
+    // Madam Penny's Daily Briefing (the supplier payments to pay, their figures and approvals) is for the Director of Finance only
+    supabase.rpc("user_gets_payment_reminders"),
+  ]);
   const companies = allCompanies ?? [];
   const { accessibleIds, targetCompanyIds } = resolveCompanyScope(session, companies, params.company);
   const accessibleCompanies = companies.filter((c) => accessibleIds.includes(c.id));
@@ -77,13 +84,9 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
 
   const now = nowMs();
   const today = todayInMalaysia(now);
-  // the birthday (for the star sign line of the day) comes from the person's own staff record, when there is one
-  const { data: ownRecord } = await supabase.from("employees").select("date_of_birth").eq("user_id", session.userId).not("date_of_birth", "is", null).limit(1).maybeSingle();
   const birthDate = ownRecord?.date_of_birth ?? null;
   const fullAccess = await getPriorityAccess(supabase, session, accessibleIds);
-  // Madam Penny's Daily Briefing (the supplier payments to pay, their figures and approvals) is for the Director of Finance only, who pays the suppliers:
-  // every other person, also another admin, sees their own day and their own tasks
-  const { data: directorOfFinance } = await supabase.rpc("user_gets_payment_reminders");
+  // the Director of Finance pays the suppliers: every other person, also another admin, sees their own day and their own tasks
   const access = directorOfFinance === true ? fullAccess : { ...fullAccess, canSeePayments: false, isApprover: false };
   const inScope = new Set(targetCompanyIds);
 

@@ -32,28 +32,30 @@ export default async function CateringCalendarPage({ searchParams }: { searchPar
   const sp = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, sp.company);
   if (targetCompanyIds.length === 0) return <EmptyRow text="You don't have access to any company yet." />;
-  const adminFlags = await Promise.all(
-    targetCompanyIds.map(async (id) => {
-      const { data } = await supabase.rpc("user_is_company_admin", { target_company_id: id });
-      return [id, data === true] as const;
-    }),
-  );
-  const adminCompanyIds = adminFlags.filter(([, isAdmin]) => isAdmin).map(([id]) => id);
   const query = sp.company ? `?company=${sp.company}` : "";
-  // a date-only event (JDT match) is added by the Quotation Request people, for Signature Solution only
-  const { data: canAddEvents } = await supabase.rpc("user_has_quotation_request_access");
-  const canAddDateOnly = canAddEvents === true && targetCompanyIds.includes(SIGNATURE_COMPANY_ID);
-
   const today = todayInMalaysia();
-  // UPCOMING JDT EVENTS (Signature Solution): shown on the Event Calendar only
-  const jdtRows = targetCompanyIds.includes(SIGNATURE_COMPANY_ID) ? await loadUpcomingJdt(today).catch(() => []) : [];
   const view: CalendarView = CALENDAR_VIEWS.includes(sp.view as CalendarView) ? (sp.view as CalendarView) : "month";
   const date = sp.date && DATE_RE.test(sp.date) && !Number.isNaN(Date.parse(`${sp.date}T00:00:00Z`)) ? sp.date : today;
   const showTentative = sp.tentative !== "0";
   const showCancelled = sp.cancelled === "1";
-
   const { start, end } = rangeOf(view, date);
-  const all = await loadCalendarEntries(supabase, targetCompanyIds, start, end, today);
+
+  // everything the calendar needs is asked at the same time (not one after another), so it opens faster
+  const [adminFlags, { data: canAddEvents }, jdtRows, all] = await Promise.all([
+    Promise.all(
+      targetCompanyIds.map(async (id) => {
+        const { data } = await supabase.rpc("user_is_company_admin", { target_company_id: id });
+        return [id, data === true] as const;
+      }),
+    ),
+    // a date-only event (JDT match) is added by the Quotation Request people, for Signature Solution only
+    supabase.rpc("user_has_quotation_request_access"),
+    // UPCOMING JDT EVENTS (Signature Solution): shown on the Event Calendar only
+    targetCompanyIds.includes(SIGNATURE_COMPANY_ID) ? loadUpcomingJdt(today).catch(() => []) : Promise.resolve([]),
+    loadCalendarEntries(supabase, targetCompanyIds, start, end, today),
+  ]);
+  const adminCompanyIds = adminFlags.filter(([, isAdmin]) => isAdmin).map(([id]) => id);
+  const canAddDateOnly = canAddEvents === true && targetCompanyIds.includes(SIGNATURE_COMPANY_ID);
   const entries = all.filter((e) => (e.phase !== "tentative" || showTentative) && (e.phase !== "cancelled" || showCancelled));
   const hiddenCancelled = all.filter((e) => e.phase === "cancelled").length;
 

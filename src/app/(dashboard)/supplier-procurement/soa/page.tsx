@@ -90,7 +90,12 @@ export default async function SupplierSoaReportPage({
             <span>Supplier SOA Report</span> · <span>{periodLabel}</span> ({dmy(start)} – {dmy(end)}) · <span>{scopeCompany}</span> · <span>{scopeSupplier}</span> · <span>{SORTS[sort]}</span> · <span>{`${supplierCount} supplier(s)`}</span>
           </p>
         </div>
-        <SoaReportExport report={shown} subtitle={subtitle} filename={`supplier-soa-${year}-${String(month).padStart(2, "0")}`} />
+        <SoaReportExport
+          filters={{ company: sp.company && targetCompanyIds.length === 1 ? sp.company : null, supplierId, year, month, sort, onlyActive }}
+          empty={shown.companies.every((c) => c.suppliers.length === 0)}
+          subtitle={subtitle}
+          filename={`supplier-soa-${year}-${String(month).padStart(2, "0")}`}
+        />
       </div>
 
       <SupplierProcurementSubNav />

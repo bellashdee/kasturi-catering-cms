@@ -3043,6 +3043,8 @@ const dictionary: Record<string, string> = {
  "Pending Verification": "Menunggu Pengesahan",
  "Pending Verification (": "Menunggu Pengesahan (",
  // Supplier SOA report, SOA reconciliation and payment voucher from the reconciliation
+ "Preparing…": "Sedang disediakan…",
+ "Could not prepare the report. Please try again.": "Laporan tidak dapat disediakan. Sila cuba lagi.",
  "Supplier SOA": "SOA Pembekal",
  "Reset": "Set semula",
  "SOA Report opens on November 2026, every company and every supplier, by supplier name A–Z: the opening balance carried forward, the invoices, debit notes, credit notes, payment vouchers and payments of the month, and the closing balance. Each company keeps its own ledger.": "Laporan SOA dibuka pada November 2026, setiap syarikat dan setiap pembekal, mengikut nama pembekal A–Z: baki awal dibawa ke hadapan, invois, nota debit, nota kredit, baucar bayaran dan bayaran bulan itu, dan baki penutup. Setiap syarikat mempunyai lejarnya sendiri.",

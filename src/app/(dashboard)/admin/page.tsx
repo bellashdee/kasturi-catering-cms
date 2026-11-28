@@ -50,10 +50,14 @@ export default async function AdminPage({
   const year = Number(yearParam) || nowYear;
   const month = Number(monthParam) || nowMonth;
 
-  const [allRows, sales, categories] = await Promise.all([
+  // one sales box per company: the company picked, or every company when viewing them all; asked together with the rest (faster)
+  const salesCompanies = companies.filter((c) => targetCompanyIds.includes(c.id)).sort((a, b) => a.name.localeCompare(b.name));
+  const singleCompanyId = targetCompanyIds.length === 1 ? targetCompanyIds[0] : null;
+  const [allRows, sales, categories, perCompanySales] = await Promise.all([
     getMonthlyCostBreakdown(supabase, targetCompanyIds, year, month),
     getMonthlySales(supabase, targetCompanyIds, year, month),
     listCostCategories(supabase, targetCompanyIds),
+    singleCompanyId ? Promise.resolve(null) : Promise.all(salesCompanies.map((c) => getMonthlySales(supabase, [c.id], year, month))),
   ]);
 
   const departments = Array.from(new Set(allRows.map((r) => r.department).filter((d): d is string => !!d))).sort();
@@ -68,13 +72,7 @@ export default async function AdminPage({
   const net = revenue - totalCost;
   const pct = (value: number) => (revenue > 0 ? `${((value / revenue) * 100).toFixed(2)}%` : "—");
   const profitPct = revenue > 0 ? (net / revenue) * 100 : null;
-  const singleCompanyId = targetCompanyIds.length === 1 ? targetCompanyIds[0] : null;
-
-  // one sales box per company: the company picked, or every company when viewing them all
-  const salesCompanies = companies.filter((c) => targetCompanyIds.includes(c.id)).sort((a, b) => a.name.localeCompare(b.name));
-  const salesByCompany = singleCompanyId
-    ? [sales]
-    : await Promise.all(salesCompanies.map((c) => getMonthlySales(supabase, [c.id], year, month)));
+  const salesByCompany = perCompanySales ?? [sales];
   const monthLabel = MONTH_LABEL[month - 1];
 
   const bySource = new Map<string, number>();

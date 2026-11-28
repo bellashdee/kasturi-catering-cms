@@ -40,14 +40,16 @@ export default async function LeavePage({
     return <EmptyRow text="You don't have access to any company yet." />;
   }
 
-  const access = await getHrAccess(supabase, session, targetCompanyIds);
+  // everything is asked at the same time (not one after another), so the page opens faster
   // a leave editor (Ms. Syaza, Ms. Nabilah) keys in and looks after the leave of the other staff too, without being an admin
-  const [{ data: editorFlag }, { data: viewerFlag }, { data: approverFlag }, { data: superFlag }, team] = await Promise.all([
+  const [access, { data: editorFlag }, { data: viewerFlag }, { data: approverFlag }, { data: superFlag }, team, companyLeave] = await Promise.all([
+    getHrAccess(supabase, session, targetCompanyIds),
     supabase.rpc("user_is_leave_editor"),
     supabase.rpc("user_can_view_staff_leave"),
     supabase.rpc("user_can_approve_leave"),
     supabase.rpc("current_user_is_super_admin"),
     myTeamRequests(supabase),
+    listLeaveForCompanies(supabase, targetCompanyIds),
   ]);
   const isEditor = editorFlag === true;
   const isViewer = viewerFlag === true;
@@ -56,7 +58,7 @@ export default async function LeavePage({
   const canKeyIn = access.adminAnywhere || isEditor;
   // only the people who may look at staff leave see it (the database enforces the same); anyone else only their own
   // the month is the month the leave starts in
-  const visible = (await listLeaveForCompanies(supabase, targetCompanyIds)).filter((r) => access.isAdminOf(r.company_id) || isEditor || isViewer || access.ownEmployeeIds.has(r.employee_id));
+  const visible = companyLeave.filter((r) => access.isAdminOf(r.company_id) || isEditor || isViewer || access.ownEmployeeIds.has(r.employee_id));
   // a superior also sees every leave of their own staff (to approve it), even of a company they are not an admin of
   const seen = new Set(visible.map((r) => r.id));
   const teamRows = team.leave
@@ -106,8 +108,18 @@ export default async function LeavePage({
     }),
     ...teamRows,
   ];
-  // who approves each leave (the staff member's superior) and who decided it
-  const [superiors, reviewerNames] = await Promise.all([superiorsOf(supabase, allRequests.map((r) => r.employee_id)), displayNames(supabase, allRequests.map((r) => r.reviewed_by))]);
+  // the AL / MC balance of every staff for one year: for the people who look after the staff leave
+  const thisYear = Number(todayInMalaysia().slice(0, 4));
+  const balanceYear = Number(sp.year) >= 2020 && Number(sp.year) <= thisYear + 1 ? Number(sp.year) : thisYear;
+  const showBalances = canKeyIn || isViewer;
+  // who approves each leave (the staff member's superior) and who decided it; the staff for the balances at the same time
+  const [superiors, reviewerNames, staffForBalance] = await Promise.all([
+    superiorsOf(supabase, allRequests.map((r) => r.employee_id)),
+    displayNames(supabase, allRequests.map((r) => r.reviewed_by)),
+    showBalances
+      ? supabase.from("employees").select("id, full_name, join_date, company_id, status, companies(name)").in("company_id", targetCompanyIds).eq("status", "active").order("full_name").then((r) => r.data ?? [])
+      : Promise.resolve([]),
+  ]);
   const canDecideRow = (r: LeaveView) => {
     if (access.ownEmployeeIds.has(r.employee_id)) return false;
     const sup = superiors.get(r.employee_id);
@@ -123,13 +135,6 @@ export default async function LeavePage({
   const inMonth = filterByMonth(allRequests, month, (r) => r.start_date);
   const waitingForMe = allRequests.filter((r) => r.status === "pending" && superiors.get(r.employee_id)?.userId === session.userId).length;
 
-  // the AL / MC balance of every staff for one year: for the people who look after the staff leave
-  const thisYear = Number(todayInMalaysia().slice(0, 4));
-  const balanceYear = Number(sp.year) >= 2020 && Number(sp.year) <= thisYear + 1 ? Number(sp.year) : thisYear;
-  const showBalances = canKeyIn || isViewer;
-  const staffForBalance = showBalances
-    ? ((await supabase.from("employees").select("id, full_name, join_date, company_id, status, companies(name)").in("company_id", targetCompanyIds).eq("status", "active").order("full_name")).data ?? [])
-    : [];
   const { data: adjRows } = showBalances && staffForBalance.length
     ? await untyped(supabase).from("leave_balance_adjustments").select("employee_id, year, al_entitled, al_taken_before, mc_entitled, mc_taken_before").eq("year", balanceYear).in("employee_id", staffForBalance.map((e) => e.id))
     : { data: [] };

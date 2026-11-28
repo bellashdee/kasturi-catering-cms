@@ -84,48 +84,53 @@ export async function EmployeeProfileView({
 }) {
   const id = employee.id;
   const canSeePrivate = canManageStaffPrivateDetails(session.role);
-  const canSeePayroll = await canUsePayrollCentre(supabase);
   const isAdmin = access.isAdminOf(employee.company_id);
   // a person sees (and changes) their own bank, KWSP, SOCSO and tax numbers; the salary stays with the admins
   const isOwn = access.ownEmployeeIds.has(employee.id);
   const canSeeOwnPrivate = canSeePrivate || isOwn;
-  // an admin marked "no staff privacy" (e.g. Ms. Syaza) does not see another staff member's personal details
-  const { data: privacyRestricted } = await supabase.rpc("user_privacy_restricted" as never);
-  const hidePersonal = privacyRestricted === true && !isOwn;
-  // the same person can have a staff record in each company he or she works for: all of them are shown together
-  const { data: sameName } = await supabase.from("employees").select("*, companies(name)").ilike("full_name", likeExact(employee.full_name)).order("created_at");
-  const records = (sameName ?? []).filter((r) => r.id === employee.id || access.canSee(r));
-  const recordIds = records.map((r) => r.id);
   const today = todayInMalaysia();
-  // the probation belongs to the person (one record), whichever company's staff record is open; only the admins see it
-  const probations = isAdmin ? await getProbationsForPerson(supabase, recordIds.length > 0 ? recordIds : [id], today) : [];
-  const { data: probationCompanies } = isAdmin
-    ? await supabase.from("companies").select("id, name, legal_name").in("id", Array.from(new Set([employee.company_id, ...probations.map((p) => p.probation.company_id)])))
-    : { data: null };
-  const companyOf = (companyId: string) => probationCompanies?.find((c) => c.id === companyId);
-  // the letters and papers kept for this person (the database only returns them to a Super Admin and to the person themself)
-  // the superior of this staff member (or a Super Admin; without a superior, the leave approvers) approves the leave
-  const [{ data: leaveApprover }, superiors] = await Promise.all([
+  // Everything that needs only this staff record is asked at the same time (not one after another), so the profile opens faster;
+  // what needs the person's other records (the same name in another company) follows in a second round, also all at once.
+  const [canSeePayroll, { data: privacyRestricted }, { data: sameName }, { data: leaveApprover }, superiors, leave, overtime, privateDetails] = await Promise.all([
+    canUsePayrollCentre(supabase),
+    // an admin marked "no staff privacy" (e.g. Ms. Syaza) does not see another staff member's personal details
+    supabase.rpc("user_privacy_restricted" as never),
+    // the same person can have a staff record in each company he or she works for: all of them are shown together
+    supabase.from("employees").select("*, companies(name)").ilike("full_name", likeExact(employee.full_name)).order("created_at"),
+    // the superior of this staff member (or a Super Admin; without a superior, the leave approvers) approves the leave
     untyped(supabase).rpc("user_can_decide_staff_request", { target_employee_id: id, request_kind: "leave" }),
     superiorsOf(supabase, [id]),
-  ]);
-  const leaveApproverName = approverName("leave", superiors.get(id));
-  const { data: fileRows } = await supabase
-    .from("employee_files")
-    .select("id, kind, title, issued_date, original_filename, created_at, companies(name)")
-    .in("employee_id", recordIds.length > 0 ? recordIds : [id])
-    .order("issued_date", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false });
-  const staffFiles: StaffFileRow[] = (fileRows ?? []).map((f) => ({ id: f.id, kind: f.kind, title: f.title, issued_date: f.issued_date, original_filename: f.original_filename, company: f.companies?.name ?? "" }));
-  const [{ data: allCertificates }, leave, overtime, payroll, privateDetails, basicRate] = await Promise.all([
-    supabase.from("employee_certificates").select("*").in("employee_id", recordIds.length > 0 ? recordIds : [id]).order("expiry_date", { ascending: true }),
     listLeaveForEmployee(supabase, id),
     listOvertimeForEmployee(supabase, id),
-    canSeePayroll ? listPayrollForEmployee(supabase, id) : Promise.resolve([]),
     canSeeOwnPrivate ? getEmployeePrivateDetails(supabase, id) : Promise.resolve(null),
+  ]);
+  const hidePersonal = privacyRestricted === true && !isOwn;
+  const records = (sameName ?? []).filter((r) => r.id === employee.id || access.canSee(r));
+  const recordIds = records.map((r) => r.id);
+  const personIds = recordIds.length > 0 ? recordIds : [id];
+  const leaveApproverName = approverName("leave", superiors.get(id));
+  const [{ probations, probationCompanies }, { data: fileRows }, { data: allCertificates }, payroll, basicRate] = await Promise.all([
+    // the probation belongs to the person (one record), whichever company's staff record is open; only the admins see it
+    (async () => {
+      if (!isAdmin) return { probations: [] as Awaited<ReturnType<typeof getProbationsForPerson>>, probationCompanies: null };
+      const list = await getProbationsForPerson(supabase, personIds, today);
+      const { data } = await supabase.from("companies").select("id, name, legal_name").in("id", Array.from(new Set([employee.company_id, ...list.map((p) => p.probation.company_id)])));
+      return { probations: list, probationCompanies: data };
+    })(),
+    // the letters and papers kept for this person (the database only returns them to a Super Admin and to the person themself)
+    supabase
+      .from("employee_files")
+      .select("id, kind, title, issued_date, original_filename, created_at, companies(name)")
+      .in("employee_id", personIds)
+      .order("issued_date", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false }),
+    supabase.from("employee_certificates").select("*").in("employee_id", personIds).order("expiry_date", { ascending: true }),
+    canSeePayroll ? listPayrollForEmployee(supabase, id) : Promise.resolve([]),
     // the salary is shown only to Ms. Penny Chan and Ms. Nabilah (the database returns nothing to anyone else, not even to the staff member)
     canSeePayroll ? getEmployeeBasicRate(supabase, id) : Promise.resolve(null),
   ]);
+  const companyOf = (companyId: string) => probationCompanies?.find((c) => c.id === companyId);
+  const staffFiles: StaffFileRow[] = (fileRows ?? []).map((f) => ({ id: f.id, kind: f.kind, title: f.title, issued_date: f.issued_date, original_filename: f.original_filename, company: f.companies?.name ?? "" }));
 
   const restricted = "Restricted (Admin only)";
   const priv = <T,>(v: T): T | string => (hidePersonal ? "Private" : v);
