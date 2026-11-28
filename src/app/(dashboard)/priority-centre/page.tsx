@@ -109,7 +109,12 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
   // create the reminders that are due now (never twice for the same item and period), then read them
   let notifications = notes.data ?? [];
   try {
-    await syncWithData(supabase, { access, payables: allPayables, tasks: allTasks }, now);
+    await syncWithData(supabase, { access, payables: allPayables, tasks: allTasks }, now, {
+      settings: settings.settings,
+      otherApprovals: otherApprovalsAll,
+      events: eventsAll,
+      getsPaymentReminders: directorOfFinance === true,
+    });
     const { data } = await supabase.from("priority_notifications").select("id, severity, title, body, href, created_at").eq("user_id", session.userId).is("read_at", null).order("created_at", { ascending: false }).limit(50);
     notifications = data ?? [];
   } catch (err) {

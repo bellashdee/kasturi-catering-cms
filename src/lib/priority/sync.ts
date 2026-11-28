@@ -16,16 +16,27 @@ export type PriorityData = {
   tasks: PriorityTask[];
 };
 
+/** What the reminders need that a page may already have read (with the same access and day). */
+export type Preloaded = {
+  settings: Awaited<ReturnType<typeof loadReminderSettings>>["settings"];
+  otherApprovals: Awaited<ReturnType<typeof loadOtherPendingApprovals>>;
+  events: Awaited<ReturnType<typeof loadEventsNeedingDecision>>;
+  getsPaymentReminders: boolean | null;
+};
+
 /** Creates the reminders that are due for the signed-in person from data already loaded (see saveNotifications for duplicates). */
-export async function syncWithData(supabase: DB, data: PriorityData, now = Date.now()) {
+export async function syncWithData(supabase: DB, data: PriorityData, now = Date.now(), preloaded?: Preloaded) {
   const { access } = data;
   const today = todayInMalaysia(now);
-  const [{ settings }, otherApprovals, events, { data: gets }] = await Promise.all([
-    loadReminderSettings(supabase, access.userId),
-    access.canSeePayments ? loadOtherPendingApprovals(supabase, access.adminCompanyIds) : Promise.resolve([]),
-    access.canSeePayments ? loadEventsNeedingDecision(supabase, access.adminCompanyIds, today) : Promise.resolve([]),
-    supabase.rpc("user_gets_payment_reminders"),
-  ]);
+  // the Priority Centre page has already read these (same person, same day): they are not read a second time
+  const [{ settings }, otherApprovals, events, { data: gets }] = preloaded
+    ? [{ settings: preloaded.settings }, preloaded.otherApprovals, preloaded.events, { data: preloaded.getsPaymentReminders }]
+    : await Promise.all([
+        loadReminderSettings(supabase, access.userId),
+        access.canSeePayments ? loadOtherPendingApprovals(supabase, access.adminCompanyIds) : Promise.resolve([]),
+        access.canSeePayments ? loadEventsNeedingDecision(supabase, access.adminCompanyIds, today) : Promise.resolve([]),
+        supabase.rpc("user_gets_payment_reminders"),
+      ]);
   // the reminders about outstanding supplier payments go only to the Director of Finance, who pays the suppliers: nobody else gets them
   // (the supplier payments are left out here, so the ones already waiting for anybody else are closed by saveNotifications)
   const payables = gets === true ? data.payables : [];
