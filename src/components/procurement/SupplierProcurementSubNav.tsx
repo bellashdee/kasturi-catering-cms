@@ -17,6 +17,7 @@ const GROUPS: WorkGroup[] = [
       { href: "/supplier-procurement/price-quotes", label: "Supplier Quotes", match: (p) => p.startsWith("/supplier-procurement/price-quotes") },
       { href: "/supplier-procurement/orders", label: "Purchase Orders", match: (p) => p.startsWith("/supplier-procurement/orders") || p.startsWith("/supplier-procurement/requests") },
       { href: "/supplier-procurement/invoices", label: "Invoices", match: (p) => p.startsWith("/supplier-procurement/invoices") },
+      { href: "/supplier-procurement/ai-invoices", label: "AI Invoice Reader", match: (p) => p.startsWith("/supplier-procurement/ai-invoices") },
       { href: "/supplier-procurement/notes", label: "Credit / Debit Notes", match: (p) => p.startsWith("/supplier-procurement/notes") },
       { href: "/supplier-procurement/soa", label: "SOA", match: (p) => p.startsWith("/supplier-procurement/soa") },
     ],

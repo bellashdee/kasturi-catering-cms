@@ -49,6 +49,18 @@ export type Database = {
           },
         ]
       }
+      ai_invoice_jobs: {
+        Row: AiInvoiceJobRow
+        Insert: Partial<AiInvoiceJobRow> & { company_id: string; document_id: string; original_filename: string }
+        Update: Partial<AiInvoiceJobRow>
+        Relationships: []
+      }
+      ai_invoice_events: {
+        Row: AiInvoiceEventRow
+        Insert: Partial<AiInvoiceEventRow> & { job_id: string; company_id: string; action: string }
+        Update: Partial<AiInvoiceEventRow>
+        Relationships: []
+      }
       ai_kitchen_sessions: {
         Row: {
           company_id: string
@@ -7007,6 +7019,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_ai_invoice_job: { Args: { p_job_id?: string | null }; Returns: AiInvoiceJobRow[] }
       current_user_is_super_admin: { Args: never; Returns: boolean }
       user_can_use_operation_petty_cash: { Args: never; Returns: boolean }
       user_can_use_payroll_centre: { Args: never; Returns: boolean }
@@ -7240,3 +7253,61 @@ export const Constants = {
     },
   },
 } as const
+
+/** AI Smart Invoice Reader: one uploaded supplier invoice file and its (unapproved) reading. */
+export type AiInvoiceJobRow = {
+  id: string
+  company_id: string
+  document_id: string
+  original_filename: string
+  file_sha256: string | null
+  file_size: number | null
+  detected_format: string | null
+  detected_mime: string | null
+  status: "queued" | "processing" | "extracted" | "needs_review" | "duplicate" | "failed" | "approved" | "rejected"
+  attempts: number
+  max_attempts: number
+  next_attempt_at: string
+  locked_at: string | null
+  locked_by: string | null
+  error_code: string | null
+  error_message: string | null
+  error_recovery: string | null
+  provider: string | null
+  model: string | null
+  original: Json | null
+  edited: Json | null
+  report: Json | null
+  checks: Json | null
+  needs_review: boolean
+  matched_supplier_id: string | null
+  purchase_order_id: string | null
+  supplier_name: string | null
+  invoice_number: string | null
+  invoice_date: string | null
+  total_amount: number | null
+  po_number: string | null
+  event_reference: string | null
+  supplier_invoice_id: string | null
+  duplicate_override: boolean
+  reviewed_by: string | null
+  approved_by: string | null
+  approved_at: string | null
+  rejected_by: string | null
+  rejected_at: string | null
+  reject_reason: string | null
+  client_upload_id: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type AiInvoiceEventRow = {
+  id: string
+  job_id: string
+  company_id: string
+  action: string
+  actor: string | null
+  details: Json | null
+  created_at: string
+}

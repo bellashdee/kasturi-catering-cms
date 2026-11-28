@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { GeminiError, geminiGenerateDetailed, isLightModel, type AiProvider, type GeminiPart } from "@/lib/ai/gemini";
 import { basePromptFor, wrapperInstructions } from "./docTypes";
 import { ExtractionError } from "./errors";
-import { inspectFile, type Inspected } from "./inspect";
+import { inspectFile, inspectTextDocument, type Inspected } from "./inspect";
 import { logExtraction, safeMessage } from "./log";
 import { buildReport, parseModelJson } from "./report";
 import type { ExtractionReport } from "./types";
@@ -21,6 +21,7 @@ function describe(inspected: Inspected): string {
     return parts.join(" ");
   }
   if (info.kind === "image") return "This is a photo or screenshot of a document (it may be rotated, skewed, blurry or partly cut off).";
+  if (info.kind === "text") return `This is a text document (${info.summary}); use null as the "page" value unless the text names a page.`;
   return `This is a spreadsheet; use the sheet name as the "page" value. ${info.summary}.`;
 }
 
@@ -72,10 +73,16 @@ export async function runExtraction(params: {
   markdown?: string | null;
   /** When the HTTP request started, so the whole request stays inside the platform's time limit. */
   requestStartedAt?: number;
+  /** A prompt of the caller's own instead of the module prompt for `kind` (the wrapper with page / confidence is still added). */
+  basePrompt?: string;
+  /** Extra context for the reader (for example how a spreadsheet's cell references are written). */
+  context?: string;
 }): Promise<ExtractionResult> {
   const { buffer, filename, fileType, kind, provider } = params;
   const requestStartedAt = params.requestStartedAt ?? Date.now();
-  const isSpreadsheet = fileType === "excel" || fileType === "csv";
+  // Word / text documents are read from their text (Markdown from MarkItDown), like a spreadsheet
+  const isTextDocument = fileType === "word" || fileType === "text";
+  const isSpreadsheet = fileType === "excel" || fileType === "csv" || isTextDocument;
 
   if (!isSpreadsheet && buffer.byteLength > MAX_FILE_BYTES) {
     throw new ExtractionError(
@@ -85,7 +92,12 @@ export async function runExtraction(params: {
     );
   }
 
-  const inspected = await inspectFile({ buffer, filename, fileType, spreadsheetCharLimit: provider === "gemini" ? 400_000 : 150_000 });
+  if (isTextDocument && !params.markdown?.trim()) {
+    throw new ExtractionError("text_unavailable", "The text of this document could not be taken out of the file.", "Save it as PDF (File > Save As > PDF) and upload that, or enter the details manually.");
+  }
+  const inspected = isTextDocument
+    ? inspectTextDocument(params.markdown ?? "", fileType === "word" ? "Word document" : "text document", provider === "gemini" ? 400_000 : 150_000)
+    : await inspectFile({ buffer, filename, fileType, spreadsheetCharLimit: provider === "gemini" ? 400_000 : 150_000 });
 
   logExtraction("inspected", {
     kind: inspected.info.kind,
@@ -113,12 +125,14 @@ export async function runExtraction(params: {
     );
   }
 
-  const prompt = basePromptFor(kind) + wrapperInstructions(describe(inspected));
+  const prompt = (params.basePrompt ?? basePromptFor(kind)) + wrapperInstructions(describe(inspected) + (params.context ? ` ${params.context}` : ""));
   const textLayer = textLayerBlock(inspected);
   const spreadsheetLimit = provider === "gemini" ? 400_000 : 150_000;
   // MarkItDown's Markdown tables are the preferred text for a spreadsheet; the CSV from inspection is the fallback.
   const sheetSource = isSpreadsheet
-    ? params.markdown
+    ? isTextDocument
+      ? { format: "text", text: inspected.sheetText ?? "" }
+      : params.markdown
       ? { format: "Markdown (converted with MarkItDown)", text: params.markdown.slice(0, spreadsheetLimit) }
       : inspected.sheetText
         ? { format: "CSV", text: inspected.sheetText }
@@ -136,7 +150,7 @@ export async function runExtraction(params: {
     try {
       if (provider === "gemini") {
         const parts: GeminiPart[] = [];
-        if (sheetSource) parts.push({ text: `The uploaded file is a spreadsheet. Its contents, sheet by sheet, as ${sheetSource.format}:\n\n${sheetSource.text}` });
+        if (sheetSource) parts.push({ text: `${isTextDocument ? "The uploaded file is a text document. Its full text" : "The uploaded file is a spreadsheet. Its contents, sheet by sheet,"} as ${sheetSource.format}:\n\n${sheetSource.text}` });
         else parts.push({ inline_data: { mime_type: inspected.mime, data: Buffer.from(buffer).toString("base64") } });
         if (textLayer) parts.push({ text: textLayer });
         parts.push({ text: prompt });
@@ -148,7 +162,7 @@ export async function runExtraction(params: {
       } else {
         const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
         const blocks: Anthropic.ContentBlockParam[] = [];
-        if (sheetSource) blocks.push({ type: "text", text: `The uploaded file is a spreadsheet. Its contents, sheet by sheet, as ${sheetSource.format}:\n\n${sheetSource.text}` });
+        if (sheetSource) blocks.push({ type: "text", text: `${isTextDocument ? "The uploaded file is a text document. Its full text" : "The uploaded file is a spreadsheet. Its contents, sheet by sheet,"} as ${sheetSource.format}:\n\n${sheetSource.text}` });
         else if (inspected.mime === "application/pdf") blocks.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: Buffer.from(buffer).toString("base64") } });
         else blocks.push({ type: "image", source: { type: "base64", media_type: inspected.mime as "image/jpeg" | "image/png" | "image/webp" | "image/gif", data: Buffer.from(buffer).toString("base64") } });
         if (textLayer) blocks.push({ type: "text", text: textLayer });

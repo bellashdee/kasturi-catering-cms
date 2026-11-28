@@ -80,7 +80,7 @@ export function buildReport(params: {
 
   // A supplier invoice is saved exactly as printed: the reader's copy of names, codes and numbers is replaced by the file's own
   // characters, and anything that cannot be found in the file as written is flagged instead of being trusted.
-  if (kind === "supplier_invoice" && hasSourceText(inspected)) {
+  if ((kind === "supplier_invoice" || kind === "ai_invoice") && hasSourceText(inspected)) {
     const snap = (value: unknown, label: string): unknown => {
       if (typeof value !== "string" || !value.trim()) return value;
       const { text, found } = snapToSource(value, inspected);
@@ -92,6 +92,7 @@ export function buildReport(params: {
     if (Array.isArray(data.items)) {
       data.items = data.items.map((it, n) => {
         if (!isObject(it)) return it;
+        if (kind === "ai_invoice") return { ...it, description: snap(it.description, `Line ${n + 1} description`), item_code: snap(it.item_code, `Line ${n + 1} item code`) };
         return { ...it, item_name: snap(it.item_name, `Line ${n + 1} description`), item_code: snap(it.item_code, `Line ${n + 1} item code`) };
       });
     }
@@ -247,7 +248,8 @@ export function buildReport(params: {
 
   // Existing module forms read the flat data: hand them the same shape as before (without the extra per-line keys).
   const extracted: Json = { ...data };
-  if (kind !== "auto" && Array.isArray(extracted.items)) {
+  // the AI invoice reader keeps every per-line key (page, line total) for its own review screen
+  if (kind !== "auto" && kind !== "ai_invoice" && Array.isArray(extracted.items)) {
     extracted.items = extracted.items.map((it) => {
       if (!isObject(it)) return it;
       const { page: _page, line_total: lineTotal, ...rest } = it;

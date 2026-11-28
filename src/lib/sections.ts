@@ -43,6 +43,7 @@ export const MODULE_SECTIONS: Record<string, Section[]> = {
     { key: "supplier-procurement:quotes", label: "Supplier Quotes", href: "/supplier-procurement/price-quotes", prefixes: ["/supplier-procurement/price-quotes"] },
     { key: "supplier-procurement:orders", label: "Purchase Orders", href: "/supplier-procurement/orders", prefixes: ["/supplier-procurement/orders", "/supplier-procurement/requests"] },
     { key: "supplier-procurement:invoices", label: "Invoices", href: "/supplier-procurement/invoices", prefixes: ["/supplier-procurement/invoices"] },
+    { key: "supplier-procurement:ai-invoices", label: "AI Invoice Reader", href: "/supplier-procurement/ai-invoices", prefixes: ["/supplier-procurement/ai-invoices"] },
     { key: "supplier-procurement:notes", label: "Credit / Debit Notes", href: "/supplier-procurement/notes", prefixes: ["/supplier-procurement/notes"] },
     { key: "supplier-procurement:soa", label: "SOA (Statement of Account)", href: "/supplier-procurement/soa", prefixes: ["/supplier-procurement/soa"] },
     { key: "supplier-procurement:vendors", label: "Vendor Contacts", href: "/supplier-procurement/vendors", prefixes: ["/supplier-procurement/vendors"] },

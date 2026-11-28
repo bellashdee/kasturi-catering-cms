@@ -60,6 +60,25 @@ export async function inspectFile(params: {
   return inspectImage(bytes, filename);
 }
 
+/**
+ * A text document (Word converted to Markdown, or an XML / text file): its text is the whole document, so values are
+ * cross-checked against it like a spreadsheet's cells.
+ */
+export function inspectTextDocument(text: string, label: string, charLimit: number): Inspected {
+  const body = text.trim();
+  if (!body) {
+    throw new ExtractionError("text_empty", `This ${label} has no readable text.`, "Save it as PDF and upload that, or enter the details manually.");
+  }
+  const truncated = body.length > charLimit;
+  return {
+    info: { kind: "text", pageCount: null, textPages: [], scannedPages: [], summary: `${label} · ${body.length.toLocaleString("en")} characters of text` },
+    pageTexts: null,
+    sheetText: truncated ? body.slice(0, charLimit) : body,
+    warnings: truncated ? [`This ${label} is very long: only its first part was read.`] : [],
+    mime: "text/plain",
+  };
+}
+
 async function inspectPdf(bytes: Uint8Array): Promise<Inspected> {
   if (!looksLikePdf(bytes)) {
     throw new ExtractionError("pdf_corrupt", "This file is not a valid PDF (it does not start like one).", "Open the file on your computer to check it, or export/print it to a new PDF and upload that.");
@@ -136,7 +155,11 @@ async function inspectImage(bytes: Uint8Array, filename: string): Promise<Inspec
       try {
         const { data } = await sharp(Buffer.from(bytes))
           .rotate()
+          // a transparent PNG (most phone screenshots) has an alpha channel that otherwise turns every value to 0, so a sharp
+          // screenshot was measured as "extremely blurry"; JPEG photos measure exactly as before
+          .flatten({ background: "#ffffff" })
           .greyscale()
+          .toColourspace("b-w")
           .resize({ width: 1000 })
           .convolve({ width: 3, height: 3, kernel: [0, 1, 0, 1, -4, 1, 0, 1, 0] })
           .raw()

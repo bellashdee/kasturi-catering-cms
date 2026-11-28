@@ -28,7 +28,7 @@ export type ReportTable = {
 export type ValidationCheck = { name: string; ok: boolean; detail: string };
 
 export type FileInspection = {
-  kind: "pdf" | "image" | "spreadsheet";
+  kind: "pdf" | "image" | "spreadsheet" | "text";
   pageCount: number | null;
   /** PDF pages that carry real embedded text. */
   textPages: number[];
