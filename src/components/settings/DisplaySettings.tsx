@@ -14,16 +14,19 @@ export function DisplaySettings() {
       <div>
         <label htmlFor="display-font" className="text-[13px] font-bold text-text">Font</label>
         <p className="mt-0.5 text-[12.5px] text-text-secondary">Choose the letters you find easiest to read. Every page changes.</p>
-        <Select
-          id="display-font"
-          value={font}
-          onChange={(e) => setFont(e.target.value as FontChoice)}
-          className="mt-3 h-11 w-full max-w-sm rounded-lg border border-border-strong bg-surface px-3 text-[15px] outline-none focus:border-primary"
-        >
-          {FONT_OPTIONS.map((f) => (
-            <option key={f.value} value={f.value}>{f.label}</option>
-          ))}
-        </Select>
+        {/* the width is set on a box around the drop-down, so its arrow stays inside the box */}
+        <div className="mt-3 max-w-sm">
+          <Select
+            id="display-font"
+            value={font}
+            onChange={(e) => setFont(e.target.value as FontChoice)}
+            className="h-11 w-full rounded-lg border border-border-strong bg-surface px-3 text-[15px] outline-none focus:border-primary"
+          >
+            {FONT_OPTIONS.map((f) => (
+              <option key={f.value} value={f.value}>{f.label}</option>
+            ))}
+          </Select>
+        </div>
       </div>
 
       <div>
