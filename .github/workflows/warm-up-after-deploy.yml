@@ -1,0 +1,25 @@
+# After every successful Production deploy on Vercel, open the system once so the first member of staff does not wait.
+# The first request to a new deployment starts the server (measured: 38 s); after that pages open in 0.4-1.3 s.
+# No sign-in is used: the sign-in page and the public forms start the server, and the menu pages pass through the sign-in check.
+name: Warm up after deploy
+
+on:
+  deployment_status:
+
+permissions: {}
+
+jobs:
+  warm-up:
+    if: github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Production'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Open the main pages once
+        env:
+          BASE: https://kasturi-catering-cms.vercel.app
+        run: |
+          sleep 5
+          for p in /login /login /privacy /quotation-form/signature-solution /quotation-form/kasturi-indah \
+                   / /priority-centre /catering /kitchen /supplier-procurement /finance/invoices /hr /spending /reports; do
+            curl -s -o /dev/null --max-time 120 -w "%{http_code}  %{time_total}s  $p\n" "$BASE$p" || echo "failed  $p"
+          done
