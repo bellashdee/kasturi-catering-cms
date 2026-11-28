@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionContext } from "@/lib/auth";
 import { runAction, type ActionResult } from "@/lib/actionResult";
-import { MODULE_SECTIONS } from "@/lib/sections";
+import { GENERAL_GROUP, GENERAL_NONE, MODULE_SECTIONS } from "@/lib/sections";
 import type { Database } from "@/lib/supabase/types";
 
 type UserRole = Database["public"]["Enums"]["user_role"];
@@ -45,8 +45,9 @@ export type CreateMemberInput = {
 /** The sub-categories kept for a member: only those of known modules the member has, and null when nothing is limited. */
 function cleanSections(sections: string[] | null | undefined, modules: string[] | null): string[] | null {
   if (!sections?.length) return null;
-  const known = new Set(Object.values(MODULE_SECTIONS).flat().map((s) => s.key));
-  const kept = Array.from(new Set(sections)).filter((k) => known.has(k) && (modules === null || modules.includes(k.split(":")[0])));
+  const known = new Set([...Object.values(MODULE_SECTIONS).flat().map((s) => s.key), GENERAL_NONE]);
+  // the other menu items (Signature Dashboard, Bulletin Board, AI Assistant) are not a module: their keys are kept whatever modules are ticked
+  const kept = Array.from(new Set(sections)).filter((k) => known.has(k) && (modules === null || k.startsWith(`${GENERAL_GROUP}:`) || modules.includes(k.split(":")[0])));
   return kept.length > 0 ? kept : null;
 }
 

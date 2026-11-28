@@ -151,7 +151,7 @@ export default async function HRPage({
             🎂 Birthday Calendar
           </Link>
         )}
-        {showPayroll && (
+        {showPayroll && can("hr:payroll-centre") && (
           <Link href={`/payroll-centre${query}`} className={linkClass}>
             Payroll Centre
           </Link>
@@ -168,9 +168,11 @@ export default async function HRPage({
         )}
         {access.adminAnywhere && (
           <>
-            <Link href={`/hr/probation${query}`} className={linkClass}>
-              Probation Tracker
-            </Link>
+            {can("hr:probation") && (
+              <Link href={`/hr/probation${query}`} className={linkClass}>
+                Probation Tracker
+              </Link>
+            )}
             {can("hr:documents") && (
               <Link href={`/hr/documents${query}`} className={linkClass}>
                 Licences &amp; Documents

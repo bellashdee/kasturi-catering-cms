@@ -5,16 +5,30 @@
  */
 export type Section = { key: string; label: string; href: string; prefixes: string[] };
 
+/**
+ * Menu items that are not modules (no module tick): the Signature Dashboard, the Bulletin Board and the AI Assistant. They follow the same
+ * rule: a member with no "general:" key sees all of them; with some keys, only those. "general:none" = none of them.
+ */
+export const GENERAL_GROUP = "general";
+export const GENERAL_NONE = "general:none";
+export const GENERAL_LABEL = "Other menu items";
+
 /** The URL roots of each module that has sections. */
 const MODULE_ROOTS: Record<string, string[]> = {
   catering: ["/catering"],
   kitchen: ["/kitchen"],
   "supplier-procurement": ["/supplier-procurement"],
   "driver-logistics": ["/driver-logistics"],
-  "finance-admin": ["/admin", "/finance"],
+  "finance-admin": ["/admin", "/finance", "/spending/expenses", "/spending/budgets"],
   // the Birthday Calendar is opened from the HR page (it has no module of its own)
-  hr: ["/hr", "/birthdays"],
+  hr: ["/hr", "/birthdays", "/payroll-centre"],
+  reports: ["/reports"],
+  restaurant: ["/restaurant"],
+  [GENERAL_GROUP]: ["/signature-dashboard", "/bulletin", "/ai-assistant"],
 };
+
+/** Pages that are the front page of a module and open to everybody who has the module (each card on them follows its own section). */
+const HUB_PATHS = new Set(["/reports"]);
 
 export const MODULE_SECTIONS: Record<string, Section[]> = {
   catering: [
@@ -31,7 +45,8 @@ export const MODULE_SECTIONS: Record<string, Section[]> = {
     { key: "kitchen:plan", label: "Cooking Plan", href: "/kitchen/plan", prefixes: ["/kitchen/plan"] },
     { key: "kitchen:recipes", label: "Recipes", href: "/kitchen/recipes", prefixes: ["/kitchen/recipes"] },
     { key: "kitchen:packages", label: "Package Menu", href: "/kitchen/packages", prefixes: ["/kitchen/packages"] },
-    { key: "kitchen:stock", label: "Stock", href: "/kitchen/stock", prefixes: ["/kitchen/stock", "/kitchen/ingredients", "/kitchen/wastage"] },
+    { key: "kitchen:stock", label: "Stock", href: "/kitchen/stock", prefixes: ["/kitchen/stock", "/kitchen/ingredients"] },
+    { key: "kitchen:wastage", label: "Wastage", href: "/kitchen/wastage", prefixes: ["/kitchen/wastage"] },
     { key: "kitchen:purchase-requests", label: "Purchase Requests", href: "/kitchen/purchase-requests", prefixes: ["/kitchen/purchase-requests"] },
     { key: "kitchen:daily-report", label: "Daily Report", href: "/kitchen/reports", prefixes: ["/kitchen/reports"] },
     { key: "kitchen:duty-roster", label: "Duty Roster", href: "/kitchen/roster", prefixes: ["/kitchen/roster"] },
@@ -45,7 +60,9 @@ export const MODULE_SECTIONS: Record<string, Section[]> = {
     { key: "supplier-procurement:invoices", label: "Invoices", href: "/supplier-procurement/invoices", prefixes: ["/supplier-procurement/invoices"] },
     { key: "supplier-procurement:ai-invoices", label: "AI Invoice Reader", href: "/supplier-procurement/ai-invoices", prefixes: ["/supplier-procurement/ai-invoices"] },
     { key: "supplier-procurement:notes", label: "Credit / Debit Notes", href: "/supplier-procurement/notes", prefixes: ["/supplier-procurement/notes"] },
-    { key: "supplier-procurement:soa", label: "SOA (Statement of Account)", href: "/supplier-procurement/soa", prefixes: ["/supplier-procurement/soa"] },
+    { key: "supplier-procurement:soa", label: "SOA Report", href: "/supplier-procurement/soa", prefixes: ["/supplier-procurement/soa"] },
+    { key: "supplier-procurement:soa-statements", label: "SOA: Statements & ageing", href: "/supplier-procurement/soa/statements", prefixes: ["/supplier-procurement/soa/statements"] },
+    { key: "supplier-procurement:soa-reconcile", label: "SOA Reconciliation", href: "/supplier-procurement/soa/reconcile", prefixes: ["/supplier-procurement/soa/reconcile"] },
     { key: "supplier-procurement:vendors", label: "Vendor Contacts", href: "/supplier-procurement/vendors", prefixes: ["/supplier-procurement/vendors"] },
     { key: "supplier-procurement:jdt-snacks", label: "JDT Training & Snack Requests", href: "/supplier-procurement/jdt-snacks", prefixes: ["/supplier-procurement/jdt-snacks"] },
   ],
@@ -65,6 +82,8 @@ export const MODULE_SECTIONS: Record<string, Section[]> = {
     { key: "hr:leave", label: "Leave Requests", href: "/hr/leave", prefixes: ["/hr/leave"] },
     { key: "hr:overtime", label: "Overtime & OT Form", href: "/hr/overtime", prefixes: ["/hr/overtime"] },
     { key: "hr:documents", label: "Licences & Documents", href: "/hr/documents", prefixes: ["/hr/documents"] },
+    { key: "hr:probation", label: "Probation Tracker", href: "/hr/probation", prefixes: ["/hr/probation"] },
+    { key: "hr:payroll-centre", label: "Payroll Centre", href: "/payroll-centre", prefixes: ["/payroll-centre"] },
   ],
   "finance-admin": [
     { key: "finance-admin:monthly-costing", label: "Monthly Costing", href: "/admin", prefixes: [] },
@@ -79,6 +98,40 @@ export const MODULE_SECTIONS: Record<string, Section[]> = {
     { key: "finance-admin:supplier-payment", label: "Supplier, Rental & Utilities: Supplier Payment", href: "/finance/supplier-payment", prefixes: ["/finance/supplier-payment"] },
     { key: "finance-admin:rental-payment", label: "Supplier, Rental & Utilities: Rental Payment", href: "/finance/rental-payment", prefixes: ["/finance/rental-payment"] },
     { key: "finance-admin:utilities-payment", label: "Supplier, Rental & Utilities: Utilities Payment", href: "/finance/utilities-payment", prefixes: ["/finance/utilities-payment"] },
+    // the Company Spending pages kept by Admin & Finance (Petty Cash and My Claims follow the petty cash holders and every staff member's own claims)
+    { key: "finance-admin:company-expenses", label: "Company Spending: Company Expenses", href: "/spending/expenses", prefixes: ["/spending/expenses"] },
+    { key: "finance-admin:budgets", label: "Company Spending: Budgets", href: "/spending/budgets", prefixes: ["/spending/budgets"] },
+  ],
+  reports: [
+    { key: "reports:overview", label: "Business Overview (this month / whole year)", href: "/reports/company-summary", prefixes: ["/reports/company-summary", "/reports/performance"] },
+    { key: "reports:revenue", label: "Revenue", href: "/reports/revenue", prefixes: ["/reports/revenue"] },
+    { key: "reports:monthly-costing", label: "Monthly Costing (report)", href: "/reports/monthly-costing", prefixes: ["/reports/monthly-costing"] },
+    { key: "reports:monthly-breakdown", label: "Monthly Breakdown (O2 Life)", href: "/reports/monthly-breakdown", prefixes: ["/reports/monthly-breakdown"] },
+    { key: "reports:event-summary", label: "Event Report: Payment status", href: "/reports/event-summary", prefixes: ["/reports/event-summary"] },
+    { key: "reports:customer-outstanding", label: "Outstanding: Customers owe us", href: "/reports/customer-outstanding", prefixes: ["/reports/customer-outstanding"] },
+    { key: "reports:supplier-outstanding", label: "Outstanding: We owe suppliers", href: "/reports/supplier-outstanding", prefixes: ["/reports/supplier-outstanding"] },
+    { key: "reports:finance-payments", label: "Finance Payments", href: "/reports/finance-payments", prefixes: ["/reports/finance-payments"] },
+    {
+      key: "reports:other",
+      label: "Other reports (sales comparison, invoice listing, expenses, supplier payments, kitchen, driver, HR, catering)",
+      href: "/reports/sales-comparison",
+      prefixes: ["/reports/sales-comparison", "/reports/invoice-listing", "/reports/expenses", "/reports/supplier-payments", "/reports/kitchen", "/reports/driver", "/reports/hr", "/reports/catering"],
+    },
+  ],
+  restaurant: [
+    { key: "restaurant:dashboard", label: "Dashboard", href: "/restaurant", prefixes: [] },
+    { key: "restaurant:sales", label: "Daily Sales", href: "/restaurant/sales", prefixes: ["/restaurant/sales"] },
+    { key: "restaurant:import", label: "Import FeedMe", href: "/restaurant/import", prefixes: ["/restaurant/import"] },
+    { key: "restaurant:cash", label: "Cash Sessions", href: "/restaurant/cash", prefixes: ["/restaurant/cash"] },
+    { key: "restaurant:menu", label: "Menu", href: "/restaurant/menu", prefixes: ["/restaurant/menu"] },
+    { key: "restaurant:ingredients", label: "Ingredients", href: "/restaurant/ingredients", prefixes: ["/restaurant/ingredients"] },
+    { key: "restaurant:margin", label: "Margin Report", href: "/restaurant/margin", prefixes: ["/restaurant/margin"] },
+    { key: "restaurant:roles", label: "Staff Roles", href: "/restaurant/roles", prefixes: ["/restaurant/roles"] },
+  ],
+  [GENERAL_GROUP]: [
+    { key: "general:signature-dashboard", label: "Signature Dashboard", href: "/signature-dashboard", prefixes: ["/signature-dashboard"] },
+    { key: "general:bulletin", label: "Bulletin Board", href: "/bulletin", prefixes: ["/bulletin"] },
+    { key: "general:ai-assistant", label: "AI Assistant", href: "/ai-assistant", prefixes: ["/ai-assistant"] },
   ],
 };
 
@@ -88,7 +141,12 @@ const moduleOfKey = (key: string) => key.split(":")[0];
 export function sectionForPath(pathname: string): Section | null {
   for (const [module, roots] of Object.entries(MODULE_ROOTS)) {
     if (!roots.some((r) => pathname === r || pathname.startsWith(`${r}/`))) continue;
+    if (HUB_PATHS.has(pathname)) return null;
     const sections = MODULE_SECTIONS[module];
+    // a supplier's statement (/supplier-procurement/soa/<id>) is a page of Statements & ageing
+    if (module === "supplier-procurement" && /^\/supplier-procurement\/soa\/[0-9a-f-]{36}(\/|$)/.test(pathname)) {
+      return sections.find((s) => s.key === "supplier-procurement:soa-statements") ?? sections[0];
+    }
     // the leave and overtime forms of one staff record: /hr/<id>/leave/new and /hr/<id>/overtime/new
     if (module === "hr") {
       const own = /^\/hr\/[0-9a-f-]{36}\/(leave|overtime)(\/|$)/.exec(pathname);
@@ -141,6 +199,7 @@ export function sectionSummary(allowedSections: string[] | null | undefined): { 
   for (const [module, sections] of Object.entries(MODULE_SECTIONS)) {
     const mine = sections.filter((s) => allowedSections.includes(s.key));
     if (mine.length > 0) out.push({ module, labels: mine.map((s) => s.label) });
+    else if (module === GENERAL_GROUP && allowedSections.includes(GENERAL_NONE)) out.push({ module, labels: ["none"] });
   }
   return out;
 }

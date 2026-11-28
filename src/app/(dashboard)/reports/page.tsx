@@ -4,6 +4,7 @@ import { getSessionContext } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { resolveCompanyScope } from "@/lib/companyScope";
 import { SoftHeader, SoftPage } from "@/components/ui/Soft";
+import { tabVisible } from "@/lib/sections";
 
 // What a business owner looks at: how the business is doing, the money coming in and going out, and who still owes or is owed. Reports that
 // showed the same thing are one card with a button for each view. (The Expense, Supplier Payment, Kitchen, Driver and HR reports are not
@@ -95,9 +96,13 @@ export default async function ReportsHubPage({
   const onlyO2 = !!o2 && targetCompanyIds.length === 1 && targetCompanyIds[0] === o2.id;
   // O2 Life is the restaurant (Restoran Bara Ikan Bakar Senibong): no events and no customer invoices, so the cards about them are left out,
   // the Monthly Breakdown comes first and the owed-money card is only about the suppliers
-  const reports = onlyO2
+  const listed = onlyO2
     ? [REPORTS.find((r) => r.key === "breakdown")!, ...REPORTS.filter((r) => !RESTAURANT_HIDDEN.has(r.key) && r.key !== "breakdown").map((r) => RESTAURANT_TEXT[r.key] ? { ...r, ...RESTAURANT_TEXT[r.key] } : r)]
     : REPORTS.filter((r) => r.key !== "breakdown");
+  // a person given only some reports in Settings sees only their buttons (a card with none of them is left out)
+  const reports = listed
+    .map((r) => ({ ...r, links: r.links.filter((l) => tabVisible(session.allowedSections, l.href)) }))
+    .filter((r) => r.links.length > 0);
 
   return (
     <SoftPage>

@@ -37,7 +37,7 @@ const GROUPS: WorkGroup[] = [
 /** Made for catering events: not shown while O2 Life (the restaurant) is the only company viewed. */
 const EVENT_TABS = new Set(["/kitchen", "/kitchen/plan", "/kitchen/packages"]);
 
-/** The Wastage Log is the restaurant's: shown when O2 Life is among the companies viewed (the catering companies keep the stock wastage). It follows the Stock section for who may see it. */
+/** The Wastage Log is the restaurant's: shown when O2 Life is among the companies viewed (the catering companies keep the stock wastage). It is its own sub-category (Wastage) in Settings. */
 const RESTAURANT_TABS = new Set(["/kitchen/wastage"]);
 
 export function KitchenSubNav() {
@@ -47,7 +47,7 @@ export function KitchenSubNav() {
   return (
     <WorkflowTabs
       groups={GROUPS}
-      show={(tab) => visible(RESTAURANT_TABS.has(tab.href) ? "/kitchen/stock" : tab.href) && !(restaurant && EVENT_TABS.has(tab.href)) && (includesRestaurant || !RESTAURANT_TABS.has(tab.href))}
+      show={(tab) => visible(tab.href) && !(restaurant && EVENT_TABS.has(tab.href)) && (includesRestaurant || !RESTAURANT_TABS.has(tab.href))}
     />
   );
 }

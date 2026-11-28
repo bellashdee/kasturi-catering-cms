@@ -6,7 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { MODULES } from "@/lib/constants";
 import { moduleHref } from "@/lib/sections";
 import { withThisMonth } from "@/lib/monthPages";
-import { useAllowedSections } from "@/components/layout/SectionAccess";
+import { useAllowedSections, useTabVisible } from "@/components/layout/SectionAccess";
 import { useRestaurantView } from "@/components/layout/RestaurantView";
 import { RESTAURANT_MODULE_LABEL } from "@/lib/restaurantView";
 
@@ -222,11 +222,13 @@ export function MainDashboardLink() {
 export function TopLinks({ taskLabel = "Priority Centre" }: { taskLabel?: string }) {
   // the Signature Solution Dashboard (JDT schedule, quotation requests, snack requests); not for the restaurant view
   const restaurant = useRestaurantView();
+  // the Bulletin Board and the Signature Dashboard can be switched off per person in Settings (Other menu items)
+  const visible = useTabVisible();
   return (
     <>
       <NavItem href="/priority-centre" icon="priority" label={taskLabel} />
-      <NavItem href="/bulletin" icon="bulletin" label="Bulletin Board" />
-      {!restaurant && <NavItem href="/signature-dashboard" icon="dashboard" label="Signature Dashboard" />}
+      {visible("/bulletin") && <NavItem href="/bulletin" icon="bulletin" label="Bulletin Board" />}
+      {!restaurant && visible("/signature-dashboard") && <NavItem href="/signature-dashboard" icon="dashboard" label="Signature Dashboard" />}
     </>
   );
 }
@@ -241,6 +243,7 @@ export function TopLinks({ taskLabel = "Priority Centre" }: { taskLabel?: string
 export function ModuleLinks({ allowedModules, badges = {}, showPayroll = false }: { allowedModules: string[] | null; badges?: Record<string, number>; showPayroll?: boolean }) {
   const show = (key: string) => !allowedModules || allowedModules.includes(key);
   const allowedSections = useAllowedSections();
+  const visible = useTabVisible();
   // O2 Life is the restaurant (Restoran Bara Ikan Bakar Senibong): no Catering, and the Kitchen opens on its recipes, not on the event schedule
   const restaurant = useRestaurantView();
   const moduleLink = (key: string) => {
@@ -253,7 +256,7 @@ export function ModuleLinks({ allowedModules, badges = {}, showPayroll = false }
   const hrLinks = (
     <>
       {moduleLink("hr")}
-      {!show("hr") && showPayroll && <NavItem href="/payroll-centre" icon="payroll" label="Payroll Centre" />}
+      {!show("hr") && showPayroll && visible("/payroll-centre") && <NavItem href="/payroll-centre" icon="payroll" label="Payroll Centre" />}
       {!show("hr") && show("overtime") && <NavItem href="/hr/overtime" icon="hr" label="Overtime (OT)" />}
     </>
   );
@@ -267,7 +270,7 @@ export function ModuleLinks({ allowedModules, badges = {}, showPayroll = false }
         {moduleLink("finance-admin")}
         {hrLinks}
         {show("reports") && <NavItem href="/reports" icon="reports" label="Reports" />}
-        <NavItem href="/ai-assistant" icon="ai-assistant" label="🤖 AI Assistant" />
+        {visible("/ai-assistant") && <NavItem href="/ai-assistant" icon="ai-assistant" label="🤖 AI Assistant" />}
       </>
     );
   }
@@ -282,7 +285,7 @@ export function ModuleLinks({ allowedModules, badges = {}, showPayroll = false }
       {spending}
       {hrLinks}
       {show("reports") && <NavItem href="/reports" icon="reports" label="Reports" />}
-      <NavItem href="/ai-assistant" icon="ai-assistant" label="🤖 AI Assistant" />
+      {visible("/ai-assistant") && <NavItem href="/ai-assistant" icon="ai-assistant" label="🤖 AI Assistant" />}
     </>
   );
 }

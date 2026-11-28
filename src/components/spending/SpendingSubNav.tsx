@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useTabVisible } from "@/components/layout/SectionAccess";
 import { HowToClaimButton } from "@/components/spending/HowToClaimButton";
 
 const TABS = [
@@ -20,10 +21,11 @@ export function SpendingSubNav({ hideFinance = false, hidePettyCash = false }: {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const company = searchParams.get("company");
+  const visible = useTabVisible();
   return (
     <div className="flex flex-wrap items-end justify-between gap-2 border-b border-border">
       <div className="flex flex-wrap gap-1">
-      {TABS.filter((t) => !(hideFinance && t.finance) && !(hidePettyCash && t.pettyCash)).map((tab) => (
+      {TABS.filter((t) => !(hideFinance && t.finance) && !(hidePettyCash && t.pettyCash) && visible(t.href)).map((tab) => (
         <Link
           key={tab.href}
           href={company ? `${tab.href}?company=${company}` : tab.href}

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useTabVisible } from "@/components/layout/SectionAccess";
 
 const TABS = [
   { href: "/restaurant", label: "Dashboard", exact: true },
@@ -18,9 +19,10 @@ const TABS = [
 export function RestaurantSubNav({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
   const company = useSearchParams().get("company");
+  const visible = useTabVisible();
   return (
     <div className="flex flex-wrap gap-1 border-b border-border">
-      {TABS.filter((t) => !t.adminOnly || isAdmin).map((tab) => {
+      {TABS.filter((t) => (!t.adminOnly || isAdmin) && visible(t.href)).map((tab) => {
         const active = tab.exact ? pathname === tab.href : pathname.startsWith(tab.href);
         return (
           <Link

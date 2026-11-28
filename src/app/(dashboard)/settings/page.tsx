@@ -11,6 +11,8 @@ import { AddMemberForm } from "@/components/settings/AddMemberForm";
 import { MemberActions } from "@/components/settings/MemberActions";
 import { DisplaySettings } from "@/components/settings/DisplaySettings";
 import { PushToggle } from "@/components/settings/PushToggle";
+import { TeamMemberFilters, type StaffKind } from "@/components/settings/TeamMemberFilters";
+import { isForeigner } from "@/lib/hr/birthdays";
 
 const NO_EMAIL_DOMAIN = "@no-email.invalid";
 
@@ -33,7 +35,10 @@ async function loadInitialPasswords(members: Awaited<ReturnType<typeof listMembe
   return out;
 }
 
-export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ company?: string }> }) {
+const KIND_LABEL: Record<StaffKind, string> = { local: "Local staff", foreign: "Foreign staff", none: "No staff record" };
+const KIND_CLASS: Record<StaffKind, string> = { local: "bg-success-bg text-success", foreign: "bg-warning-bg text-warning", none: "bg-surface-alt text-text-muted" };
+
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ company?: string; team?: string; staff?: string; sort?: string }> }) {
   const session = await getSessionContext();
   if (!session) redirect("/login");
 
@@ -60,7 +65,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
   // A company chosen in the side menu: only the staff of that company are listed (no mixing with the other companies).
   // They are the people given access to that company and the people whose staff record in that company is linked to their login.
-  const { company: requestedId } = await searchParams;
+  const { company: requestedId, team = "", staff = "", sort = "" } = await searchParams;
   const selected = companies.find((c) => c.id === requestedId);
   let members = everyone;
   let groups: { key: string; title: string; members: typeof everyone }[];
@@ -77,6 +82,46 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       ...companies.map((c) => ({ key: c.id, title: c.name, members: everyone.filter((m) => !m.user_company_access.some((r) => r.company_id === null) && m.user_company_access.some((r) => r.company_id === c.id)) })),
     ].filter((g) => g.members.length > 0);
   }
+
+  // Local or foreign staff: from the staff record(s) linked to the login, read the way HR does (nationality, else a passport number instead of an IC).
+  // A login with no linked staff record is "No staff record". A person with a foreign record in any company counts as foreign staff.
+  const kindOf = new Map<string, StaffKind>();
+  const nationalityOf = new Map<string, string>();
+  {
+    const { data: staffRows } = await supabase.from("employees").select("user_id, nationality, ic_passport_no").not("user_id", "is", null);
+    for (const e of staffRows ?? []) {
+      const id = e.user_id as string;
+      const foreign = isForeigner(e);
+      if (foreign || !kindOf.has(id)) kindOf.set(id, foreign ? "foreign" : "local");
+      if (e.nationality?.trim() && (foreign || !nationalityOf.has(id))) nationalityOf.set(id, e.nationality.trim());
+    }
+  }
+  const kind = (id: string): StaffKind => kindOf.get(id) ?? "none";
+
+  // the filters: one company's group (or the people who can open every company), one kind of staff, and the order
+  const groupCounts = groups.map((g) => ({ value: g.key, label: g.title, count: g.members.length }));
+  // a company chosen here that is not listed (another company chosen in the side menu) is ignored
+  const teamKey = groups.some((g) => g.key === team) ? team : "";
+  const teamGroups = groups.filter((g) => !teamKey || g.key === teamKey);
+  const inTeam = Array.from(new Map(teamGroups.flatMap((g) => g.members).map((m) => [m.id, m])).values());
+  const kindCounts = [
+    { value: "", label: "All", count: inTeam.length },
+    ...(["local", "foreign", "none"] as StaffKind[]).map((k) => ({ value: k, label: KIND_LABEL[k], count: inTeam.filter((m) => kind(m.id) === k).length })),
+  ];
+  const kindRank = (id: string) => {
+    const order: StaffKind[] = sort === "foreign" ? ["foreign", "local", "none"] : ["local", "foreign", "none"];
+    return order.indexOf(kind(id));
+  };
+  groups = teamGroups
+    .map((g) => {
+      const list = g.members.filter((m) => !staff || kind(m.id) === staff);
+      if (sort === "name") list.sort((a, b) => a.full_name.localeCompare(b.full_name));
+      else if (sort === "local" || sort === "foreign") list.sort((a, b) => kindRank(a.id) - kindRank(b.id) || a.full_name.localeCompare(b.full_name));
+      return { ...g, members: list };
+    })
+    .filter((g) => g.members.length > 0);
+  const filtered = !!teamKey || !!staff;
+  const shownCount = new Set(groups.flatMap((g) => g.members.map((m) => m.id))).size;
 
   // The password given when the account was made is shown only until the person signs in for the first time (and only if nobody has changed it since).
   const initialPasswords = await loadInitialPasswords(members);
@@ -120,8 +165,16 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         <p className="-mt-1 mb-3 text-[12.5px] text-text-secondary">
           <b className="text-success">{withEmail} with email</b> · <b className={withoutEmail ? "text-warning" : "text-text-secondary"}>{withoutEmail} without email</b>. A person can sign in with the username or the email. Use Edit to add or change an email.
         </p>
+        <TeamMemberFilters companies={[{ value: "", label: "All", count: members.length }, ...groupCounts]} kinds={kindCounts} team={teamKey} sort={sort} />
+        {filtered && (
+          <p className="mb-2 text-[12.5px] text-text-secondary">
+            {`Showing ${shownCount} of ${members.length} people.`}
+          </p>
+        )}
         {members.length === 0 ? (
           <EmptyRow text={selected ? "No staff of this company yet." : "No one has access yet."} />
+        ) : groups.length === 0 ? (
+          <EmptyRow text="No one matches this filter." />
         ) : (
           <div className="-mx-5 -mb-5 flex flex-col">
             {groups.map((g) => (
@@ -151,6 +204,10 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                           {m.full_name}
                           {!m.is_active && <span className="ml-2 text-xs text-text-muted">(inactive)</span>}
                         </div>
+                        <span className={`mr-1.5 mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-bold ${KIND_CLASS[kind(m.id)]}`} title={nationalityOf.get(m.id) ?? undefined}>
+                          {KIND_LABEL[kind(m.id)]}
+                          {kind(m.id) === "foreign" && nationalityOf.get(m.id) ? ` · ${nationalityOf.get(m.id)}` : ""}
+                        </span>
                         {hasEmail ? (
                           <div className="mt-0.5 break-all text-[12px] text-text-muted">{m.email}</div>
                         ) : (

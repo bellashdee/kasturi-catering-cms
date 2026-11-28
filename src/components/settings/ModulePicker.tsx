@@ -1,7 +1,7 @@
 "use client";
 
 import { ASSIGNABLE_MODULES } from "@/lib/modules";
-import { MODULE_SECTIONS } from "@/lib/sections";
+import { GENERAL_GROUP, GENERAL_LABEL, GENERAL_NONE, MODULE_SECTIONS } from "@/lib/sections";
 
 /**
  * What a member can open, as the side menu is laid out: each module, and under it the sub-categories (the tabs) of that module.
@@ -26,6 +26,7 @@ export function ModulePicker({
   const selectedOf = (moduleKey: string): string[] => {
     const all = MODULE_SECTIONS[moduleKey].map((s) => s.key);
     const mine = chosenKeys.filter((k) => k.startsWith(`${moduleKey}:`));
+    if (mine.includes(GENERAL_NONE)) return [];
     return mine.length === 0 ? all : mine;
   };
   const setModuleSections = (moduleKey: string, next: string[]) => {
@@ -38,7 +39,11 @@ export function ModulePicker({
   const toggleSection = (moduleKey: string, key: string) => {
     const current = selectedOf(moduleKey);
     const next = current.includes(key) ? current.filter((k) => k !== key) : [...current, key];
-    if (next.length === 0) return; // a module needs at least one sub-category; untick the module itself instead
+    if (next.length === 0) {
+      // the other menu items have no module tick: none of them = "general:none"
+      if (moduleKey === GENERAL_GROUP) setModuleSections(moduleKey, [GENERAL_NONE]);
+      return; // a module needs at least one sub-category; untick the module itself instead
+    }
     setModuleSections(moduleKey, next);
   };
   const toggleModule = (moduleKey: string, on: boolean) => {
@@ -102,8 +107,31 @@ export function ModulePicker({
         })}
       </ul>
 
+      <div className="mt-1.5 rounded-md border border-border px-2.5 py-1.5">
+        {(() => {
+          const subs = MODULE_SECTIONS[GENERAL_GROUP];
+          const picked = selectedOf(GENERAL_GROUP);
+          return (
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[13px] font-semibold text-text">{GENERAL_LABEL}</span>
+                <span className="text-[11.5px] text-text-muted">{picked.length === subs.length ? `All ${subs.length} sub-categories` : `${picked.length} of ${subs.length} sub-categories`}</span>
+              </div>
+              <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">
+                {subs.map((s) => (
+                  <label key={s.key} className="flex items-center gap-1.5 text-[12.5px] text-text">
+                    <input type="checkbox" checked={picked.includes(s.key)} onChange={() => toggleSection(GENERAL_GROUP, s.key)} />
+                    {s.label}
+                  </label>
+                ))}
+              </div>
+            </>
+          );
+        })()}
+      </div>
+
       {restricted && <p className="mt-2 text-[11.5px] text-text-muted">Other modules are hidden from the menu, blocked if opened by link, and their data is protected in the database.</p>}
-      <p className="mt-1 text-[11.5px] text-text-muted">A sub-category that is not ticked is hidden from the tabs and blocked if opened by link. My Profile, Main Dashboard, Priority Centre, Bulletin Board, Company Spending and the AI Assistant are in the menu of everyone.</p>
+      <p className="mt-1 text-[11.5px] text-text-muted">A sub-category that is not ticked is hidden from the tabs and blocked if opened by link. My Profile, Priority Centre, Petty Cash (its holders) and My Claims are in the menu of everyone; the Main Dashboard follows &quot;Can view the Main Dashboard&quot;.</p>
     </div>
   );
 }

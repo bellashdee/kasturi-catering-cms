@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useTabVisible } from "@/components/layout/SectionAccess";
 
 /** The pages of SOA in the order of the work: the monthly report, the statements with ageing, then the reconciliation with the supplier's own SOA. */
 const TABS = [
@@ -13,9 +14,10 @@ const TABS = [
 export function SoaTabs() {
   const pathname = usePathname();
   const company = useSearchParams().get("company");
+  const visible = useTabVisible();
   return (
     <nav className="flex flex-wrap gap-1.5 print:hidden" aria-label="SOA pages">
-      {TABS.map((t) => {
+      {TABS.filter((t) => visible(t.href)).map((t) => {
         const active = t.match(pathname);
         return (
           <Link
