@@ -3,7 +3,6 @@ import { MobileMenuButton } from "./MobileMenuButton";
 import { HeaderTitle } from "./HeaderTitle";
 import { LiveClock } from "./LiveClock";
 import { NotificationBell } from "./NotificationBell";
-import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { ProfileMenu } from "./ProfileMenu";
 import { PageTutorialButton } from "./PageTutorialButton";
 import { SyncStatus } from "@/components/offline/SyncStatus";
@@ -20,10 +19,9 @@ export function Topbar({ session, companies, priorityTitle }: { session: Session
       </div>
 
       <LiveClock />
-      <div className="hidden h-8 w-px bg-border sm:block" />
+      <div className="hidden h-8 w-px bg-border lg:block" />
       <SyncStatus />
       <PageTutorialButton />
-      <LanguageSwitcher />
       <NotificationBell userId={session.userId} />
       <ProfileMenu fullName={session.fullName} email={session.email} roleLabel={ROLE_LABEL[session.role]} />
     </header>

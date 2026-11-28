@@ -19,7 +19,7 @@ export function PageTutorialButton() {
         className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-primary bg-surface px-3 text-[13px] font-bold text-primary hover:bg-surface-alt"
       >
         <span aria-hidden="true" className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[12px] leading-none text-white">?</span>
-        <span className="hidden sm:inline">Tutorial</span>
+        <span className="hidden lg:inline">Tutorial</span>
       </button>
       {open && (
         <Dialog title={GUIDE_INTRO} onClose={() => setOpen(false)} wide>

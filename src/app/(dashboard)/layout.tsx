@@ -15,6 +15,7 @@ import { SessionGuard } from "@/components/auth/SessionGuard";
 import { OfflineProvider } from "@/components/offline/OfflineProvider";
 import { CompanyTheme, CompanyThemeScript } from "@/components/layout/CompanyTheme";
 import { PageTools } from "@/components/layout/PageTools";
+import { ZoomedOutHint } from "@/components/layout/ZoomedOutHint";
 import { Suspense } from "react";
 import { SectionAccessProvider } from "@/components/layout/SectionAccess";
 import { RestaurantViewProvider } from "@/components/layout/RestaurantView";
@@ -66,6 +67,7 @@ export default async function DashboardLayout({
         <div className="flex min-w-0 flex-1 flex-col print:block">
           <Topbar session={session} companies={companies ?? []} priorityTitle={taskLabel} />
           <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-7 print:overflow-visible print:p-0">
+            <ZoomedOutHint />
             <Suspense fallback={null}>
               <PageTools />
             </Suspense>

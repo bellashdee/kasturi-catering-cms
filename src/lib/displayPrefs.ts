@@ -4,6 +4,16 @@ import { useSyncExternalStore } from "react";
 
 export const FONT_KEY = "cms-font";
 export const FONT_SIZE_KEY = "cms-font-size";
+export const THEME_KEY = "cms-theme";
+
+/** Light (the usual look), Dark, or Auto (follows the phone or computer setting). Kept on this device. */
+export const THEME_OPTIONS = [
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+  { value: "auto", label: "Auto" },
+] as const;
+export type ThemeChoice = (typeof THEME_OPTIONS)[number]["value"];
+export const DEFAULT_THEME: ThemeChoice = "light";
 
 /** The fonts a person can choose (the pages read the choice before they are shown). */
 export const FONT_OPTIONS = [
@@ -89,5 +99,25 @@ export function setFontSize(value: number) {
     root.setAttribute("data-font-size", String(size));
     root.style.setProperty("--ui-zoom", String(size / BASE_FONT_SIZE));
   }
+  changed();
+}
+
+export function useTheme(): ThemeChoice {
+  return useSyncExternalStore(
+    subscribe,
+    () => {
+      const saved = read(THEME_KEY);
+      return THEME_OPTIONS.some((t) => t.value === saved) ? (saved as ThemeChoice) : DEFAULT_THEME;
+    },
+    () => DEFAULT_THEME,
+  );
+}
+
+/** Dark is shown for "dark", and for "auto" while the phone or computer is set to dark (the page script follows later changes). */
+export function setTheme(value: ThemeChoice) {
+  write(THEME_KEY, value);
+  const dark = value === "dark" || (value === "auto" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  if (dark) document.documentElement.setAttribute("data-mode", "dark");
+  else document.documentElement.removeAttribute("data-mode");
   changed();
 }

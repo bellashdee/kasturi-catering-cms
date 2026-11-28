@@ -11,8 +11,9 @@ const manrope = Manrope({
   weight: ["400", "500", "600", "700", "800"],
 });
 
-// the font and the text size (10 to 25) chosen in Settings are set before the page is shown, so it never jumps; Arial unless another is chosen
-const DISPLAY_SCRIPT = `try{var d=document.documentElement,f=localStorage.getItem("cms-font")||"arial",n=parseInt(localStorage.getItem("cms-font-size"),10);if(f!=="standard")d.setAttribute("data-font",f);if(n>=10&&n<=25&&n!==14){d.setAttribute("data-font-size",String(n));d.style.setProperty("--ui-zoom",String(n/14))}}catch(e){}`;
+// the font and the text size (10 to 25) chosen in Settings are set before the page is shown, so it never jumps; Arial unless another is chosen.
+// The theme too (Light, Dark, Auto): Auto follows the phone or computer and changes with it while the page is open.
+const DISPLAY_SCRIPT = `try{var d=document.documentElement,f=localStorage.getItem("cms-font")||"arial",n=parseInt(localStorage.getItem("cms-font-size"),10);if(f!=="standard")d.setAttribute("data-font",f);if(n>=10&&n<=25&&n!==14){d.setAttribute("data-font-size",String(n));d.style.setProperty("--ui-zoom",String(n/14))}}catch(e){}try{var dd=document.documentElement,mq=window.matchMedia("(prefers-color-scheme: dark)"),ap=function(){var t=localStorage.getItem("cms-theme");if(t==="dark"||(t==="auto"&&mq.matches))dd.setAttribute("data-mode","dark");else dd.removeAttribute("data-mode")};ap();if(mq.addEventListener)mq.addEventListener("change",ap)}catch(e){}`;
 
 export const metadata: Metadata = {
   title: "Central Management System",

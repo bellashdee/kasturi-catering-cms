@@ -33,7 +33,7 @@ export function HeaderTitle({ companies, priorityTitle = "Priority Centre" }: { 
 
   return (
     <div className="flex min-w-0 items-center gap-3">
-      <span className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[12px] font-extrabold text-white sm:flex" style={{ background: colour }} aria-hidden="true">
+      <span className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[12px] font-extrabold text-white lg:flex" style={{ background: colour }} aria-hidden="true">
         {short}
       </span>
       <div className="min-w-0 leading-tight">

@@ -489,3 +489,97 @@ a {
 @media print {
   main table:has(> thead) > tbody > tr:hover > :is(td, th) { background-color: transparent; }
 }
+
+/*
+ * Dark theme (Settings → Preferences → Theme: Dark, or Auto while the phone / computer is dark). The page script sets data-mode="dark"
+ * on <html> before the page is shown. Only the screen changes: printing and PDFs always stay light. Each company keeps its colour
+ * (lightened a little so it stays readable on a dark background).
+ */
+@media screen {
+  html[data-mode="dark"] {
+    color-scheme: dark;
+    --color-bg: #0f141b;
+    --color-surface: #171d26;
+    --color-surface-alt: #1e2531;
+    --color-border: #2a3341;
+    --color-border-strong: #3a4555;
+    --color-text: #e7ebf1;
+    --color-text-secondary: #bac3cf;
+    --color-text-muted: #95a0ae;
+    --color-heading: #e7ebf1;
+
+    --color-success: #6fd29c;
+    --color-success-bg: #14301f;
+    --color-warning: #f2bb63;
+    --color-warning-bg: #33270e;
+    --color-danger: #f38b82;
+    --color-danger-bg: #3a1a18;
+    --color-info: #a9c8f5;
+    --color-info-bg: #18283f;
+    --color-info-border: #2d405d;
+
+    --soft-a: color-mix(in srgb, var(--color-primary) 26%, #171d26);
+    --soft-b: color-mix(in srgb, var(--color-primary) 14%, #171d26);
+    --soft-c: #1b222c;
+    --soft-page-a: #11161d;
+    --soft-page-b: #0f141b;
+    --soft-shadow: rgba(0, 0, 0, 0.35);
+    --soft-badge-bg: color-mix(in srgb, var(--color-primary) 20%, #171d26);
+    --chart-main: #86aee0;
+    --chart-second: #4f8ef0;
+    --chart-soft: #3b5f8c;
+  }
+  /* All companies: the light sage side bar becomes dark too */
+  html[data-mode="dark"]:not([data-theme]) {
+    --color-sidebar: #141a22;
+    --color-sidebar-text: #e7ebf1;
+    --color-sidebar-line: rgba(255, 255, 255, 0.09);
+    --color-sidebar-field: rgba(255, 255, 255, 0.07);
+    --color-sidebar-active: rgba(255, 255, 255, 0.14);
+    --color-sidebar-active-text: #ffffff;
+  }
+  html[data-mode="dark"][data-theme="kasturi"] {
+    --color-primary: #2b8046;
+    --color-primary-hover: #236b3a;
+    --color-heading: #96d8ab;
+    --color-info: #96d8ab;
+    --color-sidebar: #13301d;
+    --chart-main: #5fae78;
+  }
+  html[data-mode="dark"][data-theme="o2life"] {
+    --color-primary: #c0392b;
+    --color-primary-hover: #a93226;
+    --color-heading: #f3aaa6;
+    --color-info: #f3aaa6;
+    --color-sidebar: #3d1213;
+    --chart-main: #e07a7c;
+  }
+  html[data-mode="dark"][data-theme="signature"] {
+    --color-primary: #3d6be0;
+    --color-primary-hover: #2f5bcc;
+    --color-heading: #adc6f4;
+    --color-info: #adc6f4;
+    --color-sidebar: #0f2147;
+    --chart-main: #6f95ea;
+  }
+
+  /* the few fixed light colours written straight on a page get their dark partner */
+  html[data-mode="dark"] .bg-white { background-color: var(--color-surface); }
+  html[data-mode="dark"] :is(.bg-white\/90, .bg-white\/80, .bg-white\/75) { background-color: color-mix(in srgb, var(--color-surface) 88%, transparent); }
+  html[data-mode="dark"] :is(.bg-yellow-50, .bg-yellow-100) { background-color: #33290f; }
+  html[data-mode="dark"] :is(.text-yellow-900, .text-yellow-800) { color: #f5d58a; }
+  html[data-mode="dark"] :is(.bg-blue-50, .bg-blue-100, .bg-sky-50) { background-color: #172a45; }
+  html[data-mode="dark"] :is(.text-blue-800, .text-blue-700, .text-sky-800, .text-sky-900) { color: #a9c8f5; }
+  html[data-mode="dark"] :is(.bg-red-50, .bg-red-100) { background-color: #3a1a18; }
+  html[data-mode="dark"] .text-red-800 { color: #f2a29a; }
+  html[data-mode="dark"] .bg-emerald-100 { background-color: #133024; }
+  html[data-mode="dark"] .text-emerald-800 { color: #8fe0b5; }
+  html[data-mode="dark"] .bg-stone-200 { background-color: var(--color-surface-alt); }
+  html[data-mode="dark"] .text-stone-700 { color: var(--color-text-secondary); }
+  /* pale backgrounds written as a colour code (#e.. / #f..) and dark letters written as a colour code */
+  html[data-mode="dark"] :is([class*="bg-[#f"], [class*="bg-[#e"], [class*="bg-[#F"], [class*="bg-[#E"]) { background-color: var(--color-surface-alt); }
+  html[data-mode="dark"] .text-\[\#5f7a55\], html[data-mode="dark"] .text-\[\#3f5636\] { color: var(--color-success); }
+  html[data-mode="dark"] :is(.text-\[\#6b4a06\], .text-\[\#8a5a0b\]) { color: var(--color-warning); }
+  html[data-mode="dark"] :is(.text-\[\#b42318\], .text-\[\#6e1414\]) { color: var(--color-danger); }
+  html[data-mode="dark"] :is(.text-\[\#a85d6b\], .text-\[\#8a7b78\]) { color: var(--color-text-secondary); }
+}

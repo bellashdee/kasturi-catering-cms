@@ -12,6 +12,8 @@ const ICONS = {
   globe: <><circle cx="10" cy="10" r="7.2" /><path d="M2.8 10h14.4M10 2.8c2 2.1 3 4.5 3 7.2s-1 5.1-3 7.2c-2-2.1-3-4.5-3-7.2s1-5.1 3-7.2Z" /></>,
   text: <><path d="M3.5 5V3.8h9V5M8 3.8V16M6 16h4" /><path d="M12.5 10.2V9.5h4.5v.7M14.75 9.5V16M13.6 16h2.3" /></>,
   bell: <><path d="M5.2 8.2a4.8 4.8 0 0 1 9.6 0c0 4.3 1.7 5.8 1.7 5.8H3.5s1.7-1.5 1.7-5.8Z" /><path d="M8.3 16.6a1.9 1.9 0 0 0 3.4 0" /></>,
+  theme: <><circle cx="10" cy="10" r="7.2" /><path d="M10 2.8v14.4" /><path d="M10 2.8a7.2 7.2 0 0 1 0 14.4Z" fill="currentColor" stroke="none" /></>,
+  database: <><ellipse cx="10" cy="4.8" rx="6" ry="2.3" /><path d="M4 4.8v10.4c0 1.3 2.7 2.3 6 2.3s6-1 6-2.3V4.8" /><path d="M4 10c0 1.3 2.7 2.3 6 2.3s6-1 6-2.3" /></>,
   team: <><circle cx="7.3" cy="7" r="2.7" /><path d="M2.5 16.2c.7-2.7 2.5-4.2 4.8-4.2s4.1 1.5 4.8 4.2" /><path d="M12.6 4.6a2.6 2.6 0 0 1 0 4.9M14.2 12.2c1.6.5 2.7 1.8 3.3 4" /></>,
 } as const;
 export type SettingsIcon = keyof typeof ICONS;

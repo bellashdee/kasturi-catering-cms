@@ -9,6 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 import { SettingsDisclosure, SettingsGroup, SettingsLink, SettingsProfileCard, SettingsRow } from "@/components/settings/SettingsList";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
+import { ThemeSetting } from "@/components/settings/ThemeSetting";
 import { AddMemberForm } from "@/components/settings/AddMemberForm";
 import { MemberActions } from "@/components/settings/MemberActions";
 import { DisplaySettings } from "@/components/settings/DisplaySettings";
@@ -49,6 +50,9 @@ function PersonalSettings({ fullName, email, role }: { fullName: string; email: 
         </SettingsRow>
       </SettingsGroup>
       <SettingsGroup title="Preferences">
+        <SettingsRow icon="theme" label="Theme" hint="Light, Dark, or Auto (follows this phone or computer)">
+          <ThemeSetting />
+        </SettingsRow>
         <SettingsDisclosure icon="text" label="Display" hint="Font and text size">
           <DisplaySettings />
         </SettingsDisclosure>
