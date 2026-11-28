@@ -153,8 +153,8 @@ export const useSidebarCollapsed = () => useContext(SidebarCollapsedContext);
 /** The words of a link: they disappear while the side bar is closed. */
 export const labelClass = (collapsed: boolean) => (collapsed ? "md:hidden" : "");
 
-/** The page you are on: a filled tan pill with dark text, the same in every company look. */
-export const ACTIVE_PILL = "bg-[#d2b185] font-bold text-[#2b2318] shadow-sm";
+/** The page you are on: a filled tan pill with dark text; once a company is chosen, a white pill with that company's dark colour (blue, green or red). */
+export const ACTIVE_PILL = "bg-nav-active font-bold text-nav-active-text shadow-sm";
 
 /** A group of links that opens and closes (chevron on the right); the links inside hang from a thin line on the left. */
 export function NavGroup({ icon, label, children, defaultOpen = true, hasActive = false }: { icon: string; label: string; children: React.ReactNode; defaultOpen?: boolean; hasActive?: boolean }) {

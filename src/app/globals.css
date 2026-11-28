@@ -61,6 +61,20 @@
   --color-company-signature: #2563a6;
   --color-company-kasturi: #1f6a36;
   --color-company-o2life: #9b1c1f;
+
+  /* Company hint tokens: notes, the active menu item, the strip on top of the header, page titles, the main chart colours and the round
+     icon badges. All companies keeps the colours it always had; each company look below re-points them to its own colour. */
+  --color-info: #0f3a63;
+  --color-info-border: #cfe1f2;
+  --color-nav-active: #d2b185;
+  --color-nav-active-text: #2b2318;
+  --color-company-current: transparent;
+  --color-heading: #16212e;
+  --chart-main: #1e3a5f;
+  --chart-second: #2f7fc1;
+  --chart-soft: #9cc3e6;
+  --soft-badge-bg: #fbf3df;
+  --soft-badge-edge: #cfae67;
 }
 
 
@@ -112,6 +126,19 @@ html[data-theme="kasturi"] {
   --chart-9: #276f40;
   --chart-10: #5fae78;
 }
+html[data-theme="kasturi"] {
+  --color-info: #17552a;
+  --color-info-border: #b2cfb8;
+  --color-nav-active: #ffffff;
+  --color-nav-active-text: #1d4a2c;
+  --color-company-current: #1f6a36;
+  --color-heading: #17552a;
+  --chart-main: #1f6a36;
+  --chart-second: #5fae78;
+  --chart-soft: #a9d5b7;
+  --soft-badge-bg: #e8f4ec;
+  --soft-badge-edge: #5fae78;
+}
 
 html[data-theme="o2life"] {
   /* O2 Life: one colour, dark red (merah tua), every tint and shade the same colour */
@@ -156,6 +183,19 @@ html[data-theme="o2life"] {
   --chart-9: #8a191c;
   --chart-10: #d06e70;
 }
+html[data-theme="o2life"] {
+  --color-info: #751518;
+  --color-info-border: #dcaeac;
+  --color-nav-active: #ffffff;
+  --color-nav-active-text: #6f1a1c;
+  --color-company-current: #9b1c1f;
+  --color-heading: #751518;
+  --chart-main: #8e1b1e;
+  --chart-second: #d9777a;
+  --chart-soft: #eab0af;
+  --soft-badge-bg: #fbe8e7;
+  --soft-badge-edge: #d9777a;
+}
 
 html[data-theme="signature"] {
   --color-bg: #f2f5fb;
@@ -199,6 +239,19 @@ html[data-theme="signature"] {
   --chart-9: #b9a6ee;
   --chart-10: #9aa9c4;
 }
+html[data-theme="signature"] {
+  --color-info: #0e2f66;
+  --color-info-border: #b9c6de;
+  --color-nav-active: #ffffff;
+  --color-nav-active-text: #12306a;
+  --color-company-current: #2a55c4;
+  --color-heading: #0e2f66;
+  --chart-main: #12306a;
+  --chart-second: #4f8ef0;
+  --chart-soft: #a9c4f2;
+  --soft-badge-bg: #edf2fc;
+  --soft-badge-edge: #4f8ef0;
+}
 
 @theme inline {
   /* Manrope covers Latin; the rest of the list covers Chinese, Myanmar and Bangla on Windows, macOS, iOS and Android */
@@ -232,6 +285,12 @@ html[data-theme="signature"] {
   --color-danger: var(--color-danger);
   --color-danger-bg: var(--color-danger-bg);
   --color-info-bg: var(--color-info-bg);
+  --color-info: var(--color-info);
+  --color-info-border: var(--color-info-border);
+  --color-nav-active: var(--color-nav-active);
+  --color-nav-active-text: var(--color-nav-active-text);
+  --color-company-current: var(--color-company-current);
+  --color-heading: var(--color-heading);
 
   --color-text: var(--color-text);
   --color-text-secondary: var(--color-text-secondary);
@@ -280,6 +339,25 @@ body {
 :is(main, header) .text-\[12\.5px\] { font-size: 13.5px; }
 :is(main, header) .text-\[13px\] { font-size: 14px; }
 :is(main, header) .text-\[13\.5px\] { font-size: 14.5px; }
+
+/* The menu, the company chooser and the drop-down lists that open over the page: their small words (11px and less) are lifted too;
+   the tiny number badges on the menu icons (9px) keep their size so they still fit their circle. */
+:is(aside, [role="listbox"], [role="dialog"]) :is(.text-\[10px\], .text-\[10\.5px\], .text-\[11px\], .text-\[11\.5px\]) { font-size: 12.5px; }
+
+/*
+ * Page titles: one size on every page, a little smaller on a phone and a little larger on a wide screen. Once a company is chosen the
+ * title takes that company's dark colour (blue, green or red), a quiet hint of whose records are on screen.
+ */
+main h1:is(.text-\[20px\], .text-\[22px\], .text-lg) { font-size: 20px; line-height: 1.25; }
+@media (min-width: 640px) { main h1:is(.text-\[20px\], .text-\[22px\], .text-lg) { font-size: 22px; } }
+@media (min-width: 1280px) { main h1:is(.text-\[20px\], .text-\[22px\], .text-lg) { font-size: 24px; } }
+html[data-theme] main h1.text-text { color: var(--color-heading); }
+
+/* Phones: the smallest words are lifted a step more (they are read at arm's length), to the same size as the other small words */
+@media (max-width: 767px) {
+  :is(main, header, [role="dialog"]) :is(.text-\[9px\], .text-\[10px\], .text-\[10\.5px\], .text-\[11px\], .text-\[11\.5px\]) { font-size: 13px; }
+  :is(main, header, [role="dialog"]) .text-xs { font-size: 13.5px; }
+}
 
 /*
  * Display choices of Settings (Font and Font size 10 to 25), set on <html> before the page is shown.
@@ -331,7 +409,7 @@ a {
  * Phones and tablets (a finger, not a mouse): boxes use 16px letters, because a phone zooms the whole page in when a smaller box is
  * tapped (and the page then stays zoomed and sideways); and the page itself never moves sideways: a wide table scrolls inside its own box.
  */
-@media (pointer: coarse) {
+@media (pointer: coarse), (max-width: 767px) {
   input:not([type="checkbox"], [type="radio"], [type="file"], [type="range"]),
   select,
   textarea {

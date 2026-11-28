@@ -131,7 +131,7 @@ export default async function ProductionOrderDetailPage({
       </SectionCard>
 
       {order.status === "completed" && (
-        <div className="rounded-lg border border-[#CFE1F2] bg-info-bg px-3.5 py-3 text-[13px] text-[#0F3A63]">
+        <div className="rounded-lg border border-info-border bg-info-bg px-3.5 py-3 text-[13px] text-info">
           {recipe
             ? `Stock has been deducted for this order and its ingredient cost was recorded${order.catering_event_id ? " against the linked catering event's costing." : "."}`
             : "This order is marked completed. It was linked to a menu-plan dish, not a recipe, so stock was not auto-deducted — log any stock used manually under Kitchen → Stock."}

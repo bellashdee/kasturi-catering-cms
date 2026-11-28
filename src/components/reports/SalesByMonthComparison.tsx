@@ -16,7 +16,7 @@ export function SalesByMonthComparison({ year, current, previous }: { year: numb
   // lines: a month that has not come yet is not drawn; a year with no figures at all is left out instead of a flat line at RM 0
   const now = malaysiaYearMonth();
   const lastMonth = year < now.year ? 12 : year > now.year ? 0 : now.month;
-  const series: Series[] = [{ label: String(year), values: current.map((v, i) => (i < lastMonth ? v : null)), color: "#1e3a5f" }];
+  const series: Series[] = [{ label: String(year), values: current.map((v, i) => (i < lastMonth ? v : null)), color: "var(--chart-main)" }];
   if (totalPrevious > 0) series.push({ label: String(year - 1), values: previous.map((v) => v), color: "#e0a030" });
 
   return (

@@ -30,8 +30,8 @@ export function YearCompareBars({
   const slot = (W - left - right) / 12;
   const bar = Math.min(22, slot * 0.36);
   const y = (v: number) => top + H - (v / max) * H;
-  const PREV = "#9cc3e6";
-  const CUR = "#1e3a5f";
+  const PREV = "var(--chart-soft)";
+  const CUR = "var(--chart-main)";
 
   return (
     <div>
@@ -54,12 +54,12 @@ export function YearCompareBars({
           return (
             <g key={m}>
               {p > 0 && (
-                <rect x={cx - bar - 1} y={y(p)} width={bar} height={top + H - y(p)} rx="3" fill={PREV}>
+                <rect x={cx - bar - 1} y={y(p)} width={bar} height={top + H - y(p)} rx="3" style={{ fill: PREV }}>
                   <title>{`${m} ${previousLabel}: ${formatCurrency(p)}`}</title>
                 </rect>
               )}
               {showCur && c > 0 && (
-                <rect x={cx + 1} y={y(c)} width={bar} height={top + H - y(c)} rx="3" fill={CUR}>
+                <rect x={cx + 1} y={y(c)} width={bar} height={top + H - y(c)} rx="3" style={{ fill: CUR }}>
                   <title>{`${m} ${currentLabel}: ${formatCurrency(c)}`}</title>
                 </rect>
               )}

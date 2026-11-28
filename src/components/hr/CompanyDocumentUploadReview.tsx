@@ -153,7 +153,7 @@ export function CompanyDocumentUploadReview({ companies, defaultCompanyId, redir
 
         {step === "review" && (
           <div className="flex flex-col gap-4">
-            {notice && <div className="rounded-lg border border-[#CFE1F2] bg-info-bg px-3.5 py-3 text-[13px] text-[#0F3A63]">{notice}</div>}
+            {notice && <div className="rounded-lg border border-info-border bg-info-bg px-3.5 py-3 text-[13px] text-info">{notice}</div>}
             {error && <div className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">{error}</div>}
 
             <div className="grid grid-cols-2 gap-4">

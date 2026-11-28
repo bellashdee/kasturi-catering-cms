@@ -74,8 +74,8 @@ export function WeekChart({ title, days }: { title: string; days: { label: strin
       <svg viewBox={`0 0 ${W} ${H}`} className="mt-3 w-full" role="img" aria-label={`${title}: ${days.map((d) => `${d.label} ${d.value}`).join(", ")}`}>
         <defs>
           <linearGradient id="weekArea" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#8b6fd6" stopOpacity="0.38" />
-            <stop offset="100%" stopColor="#8b6fd6" stopOpacity="0.04" />
+            <stop offset="0%" style={{ stopColor: "var(--color-primary)" }} stopOpacity="0.32" />
+            <stop offset="100%" style={{ stopColor: "var(--color-primary)" }} stopOpacity="0.04" />
           </linearGradient>
         </defs>
         {[0, 1, 2, 3, 4].map((g) => {
@@ -88,10 +88,10 @@ export function WeekChart({ title, days }: { title: string; days: { label: strin
           );
         })}
         <path d={area} fill="url(#weekArea)" />
-        <path d={line} fill="none" stroke="#7c5cc4" strokeWidth="2.6" strokeLinejoin="round" strokeLinecap="round" />
+        <path d={line} fill="none" style={{ stroke: "var(--color-primary)" }} strokeWidth="2.6" strokeLinejoin="round" strokeLinecap="round" />
         {days.map((d, i) => (
           <g key={i}>
-            <circle cx={x(i)} cy={y(d.value)} r="4.6" fill="#ffffff" stroke="#7c5cc4" strokeWidth="2.4">
+            <circle cx={x(i)} cy={y(d.value)} r="4.6" fill="#ffffff" style={{ stroke: "var(--color-primary)" }} strokeWidth="2.4">
               <title>{`${d.label}: ${d.value}`}</title>
             </circle>
             <text x={x(i)} y={H - 9} textAnchor="middle" fontSize="11.5" fill="#4b4452" fontWeight="600">{d.label}</text>
@@ -124,7 +124,7 @@ export function MonthCalendar({ title, year, month, todayDay, marks }: { title: 
           const isToday = d === todayDay;
           return (
             <div key={i} className="flex flex-col items-center py-0.5">
-              <span className={`flex h-8 w-8 items-center justify-center rounded-full text-[13px] ${isToday ? "bg-[#7c5cc4] font-extrabold text-white" : "text-text-secondary"}`}>{d}</span>
+              <span className={`flex h-8 w-8 items-center justify-center rounded-full text-[13px] ${isToday ? "bg-primary font-extrabold text-white" : "text-text-secondary"}`}>{d}</span>
               <span className="flex h-1.5 gap-0.5">
                 {mark?.tasks ? <span className="h-1.5 w-1.5 rounded-full bg-[#e0607a]" title={`${mark.tasks}`} /> : null}
                 {mark?.payments ? <span className="h-1.5 w-1.5 rounded-full bg-[#8b6fd6]" title={`${mark.payments}`} /> : null}

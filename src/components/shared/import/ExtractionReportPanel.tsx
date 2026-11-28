@@ -23,7 +23,7 @@ export function ExtractionReportPanel({ report }: { report: ExtractionReport | n
     <details open={report.needsReview} className="rounded-lg border border-border bg-surface">
       <summary className="flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-[13px] font-bold text-text">
         <span>Review extracted data</span>
-        <span className="rounded-full bg-info-bg px-2.5 py-0.5 text-[11.5px] font-semibold text-[#0F3A63]">{report.documentTypeLabel}</span>
+        <span className="rounded-full bg-info-bg px-2.5 py-0.5 text-[11.5px] font-semibold text-info">{report.documentTypeLabel}</span>
         {flagged > 0 && <span className="rounded-full bg-warning-bg px-2.5 py-0.5 text-[11.5px] font-semibold text-warning">{flagged} field{flagged === 1 ? "" : "s"} to check</span>}
         {failedChecks > 0 && <span className="rounded-full bg-danger-bg px-2.5 py-0.5 text-[11.5px] font-semibold text-danger">{failedChecks} figure mismatch{failedChecks === 1 ? "" : "es"}</span>}
       </summary>

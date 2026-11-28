@@ -156,7 +156,7 @@ export function CampaignPerformanceUploadReview({ campaignId, companyId }: { cam
         {step === "review" && (
           <div className="flex flex-col gap-4">
             {notice && (
-              <div className="flex items-start gap-2 rounded-lg border border-[#CFE1F2] bg-info-bg px-3.5 py-3 text-[13px] text-[#0F3A63]">
+              <div className="flex items-start gap-2 rounded-lg border border-info-border bg-info-bg px-3.5 py-3 text-[13px] text-info">
                 <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="var(--color-primary)" strokeWidth="1.6" className="mt-0.5 shrink-0">
                   <circle cx="10" cy="10" r="7.2" />
                   <line x1="10" y1="9" x2="10" y2="14" />

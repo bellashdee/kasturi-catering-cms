@@ -100,7 +100,7 @@ export function MileageLogBoard({ employeeId, staffName, companyName, month, mon
       <div className="overflow-x-auto rounded-xl border border-border bg-surface shadow-sm">
         <table className="w-full min-w-[860px] text-[13px]">
           <thead>
-            <tr className="bg-[#162342] text-left text-[11.5px] font-bold uppercase tracking-wide text-white">
+            <tr className="bg-navy-900 text-left text-[11.5px] font-bold uppercase tracking-wide text-white">
               <th className="px-3 py-2.5">Date</th>
               <th className="px-3 py-2.5">From</th>
               <th className="px-3 py-2.5">To</th>
@@ -153,7 +153,7 @@ export function MileageLogBoard({ employeeId, staffName, companyName, month, mon
 
       <div className="grid gap-3 md:grid-cols-3">
         <div className="rounded-xl border border-border bg-surface shadow-sm">
-          <div className="rounded-t-xl bg-[#162342] px-4 py-2 text-center text-[12px] font-bold uppercase tracking-wide text-white">Purpose codes</div>
+          <div className="rounded-t-xl bg-navy-900 px-4 py-2 text-center text-[12px] font-bold uppercase tracking-wide text-white">Purpose codes</div>
           <div className="space-y-1 p-4 text-[13px]">
             {PURPOSE_CODES.map((c) => (
               <div key={c.code}>{c.code} – {c.label}</div>
@@ -161,7 +161,7 @@ export function MileageLogBoard({ employeeId, staffName, companyName, month, mon
           </div>
         </div>
         <div className="rounded-xl border border-border bg-surface shadow-sm">
-          <div className="rounded-t-xl bg-[#162342] px-4 py-2 text-center text-[12px] font-bold uppercase tracking-wide text-white">Summary</div>
+          <div className="rounded-t-xl bg-navy-900 px-4 py-2 text-center text-[12px] font-bold uppercase tracking-wide text-white">Summary</div>
           <div className="space-y-1.5 p-4 text-[13px]">
             {[["Business km", s.business], ["Personal km", s.personal], ["Other km", s.other]].map(([l, v]) => (
               <div key={l as string} className="flex justify-between"><span className="text-text-secondary">{l}</span><span className="tabular-nums">{km(v as number)}</span></div>
@@ -171,7 +171,7 @@ export function MileageLogBoard({ employeeId, staffName, companyName, month, mon
           </div>
         </div>
         <div className="rounded-xl border border-border bg-surface shadow-sm">
-          <div className="rounded-t-xl bg-[#162342] px-4 py-2 text-center text-[12px] font-bold uppercase tracking-wide text-white">Notes</div>
+          <div className="rounded-t-xl bg-navy-900 px-4 py-2 text-center text-[12px] font-bold uppercase tracking-wide text-white">Notes</div>
           <div className="p-3">
             <textarea rows={4} value={notes} onChange={(e) => { setNotes(e.target.value); setNotesSaved(false); }} className="w-full rounded-lg border border-border-strong p-2 text-[13px] outline-none focus:border-primary" placeholder="Notes for this month" />
             <button

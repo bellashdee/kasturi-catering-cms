@@ -165,7 +165,7 @@ export async function EmployeeProfileView({
             </Link>
           )}
           <div className={`${backHref ? "mt-2 " : ""}flex items-center gap-3`}>
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-base font-bold text-white">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-base font-bold text-white">
               {employee.full_name.slice(0, 2).toUpperCase()}
             </div>
             <div>

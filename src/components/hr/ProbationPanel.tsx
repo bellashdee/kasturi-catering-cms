@@ -75,7 +75,7 @@ function Item({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 function Notice({ tone, children }: { tone: "info" | "warning" | "danger"; children: React.ReactNode }) {
-  const cls = tone === "danger" ? "border-danger/30 bg-danger-bg text-danger" : tone === "warning" ? "border-warning/30 bg-warning-bg text-text" : "border-[#CFE1F2] bg-info-bg text-[#0F3A63]";
+  const cls = tone === "danger" ? "border-danger/30 bg-danger-bg text-danger" : tone === "warning" ? "border-warning/30 bg-warning-bg text-text" : "border-info-border bg-info-bg text-info";
   return <div className={`rounded-lg border px-3.5 py-2.5 text-[13px] ${cls}`}>{children}</div>;
 }
 

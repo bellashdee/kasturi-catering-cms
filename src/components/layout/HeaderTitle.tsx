@@ -1,9 +1,10 @@
 "use client";
 
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { ALL_COMPANIES_OPTION, COMPANY_STYLE, MODULES } from "@/lib/constants";
 import { RESTAURANT_MODULE_LABEL } from "@/lib/restaurantView";
 import { useRestaurantView } from "@/components/layout/RestaurantView";
+import { useViewedCompanyId } from "@/components/layout/CompanyTheme";
 
 type Company = { id: string; name: string; legal_name: string };
 
@@ -23,7 +24,7 @@ function pageTitle(pathname: string, priorityTitle: string, restaurant: boolean)
 export function HeaderTitle({ companies, priorityTitle = "Priority Centre" }: { companies: Company[]; priorityTitle?: string }) {
   const pathname = usePathname();
   const restaurant = useRestaurantView();
-  const selectedId = useSearchParams().get("company");
+  const selectedId = useViewedCompanyId();
   const company = companies.find((c) => c.id === selectedId);
   const name = company?.name ?? ALL_COMPANIES_OPTION.name;
   const style = company ? COMPANY_STYLE[company.legal_name] : undefined;

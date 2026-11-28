@@ -86,7 +86,7 @@ export default async function ProcurementRequestDetailPage({
       )}
 
       {request.status === "approved" && (
-        <div className="rounded-lg border border-[#CFE1F2] bg-info-bg px-3.5 py-3 text-[13px] text-[#0F3A63]">
+        <div className="rounded-lg border border-info-border bg-info-bg px-3.5 py-3 text-[13px] text-info">
           Approved — ready to turn into a purchase order.{" "}
           <Link
             href={`/supplier-procurement/orders/new?request=${id}&item=${encodeURIComponent(request.item_name)}&qty=${request.quantity}${request.company_id ? `&company=${request.company_id}` : ""}`}
@@ -98,7 +98,7 @@ export default async function ProcurementRequestDetailPage({
       )}
 
       {request.status === "converted" && request.purchase_order_id && (
-        <div className="rounded-lg border border-[#CFE1F2] bg-info-bg px-3.5 py-3 text-[13px] text-[#0F3A63]">
+        <div className="rounded-lg border border-info-border bg-info-bg px-3.5 py-3 text-[13px] text-info">
           Converted to a purchase order.{" "}
           <Link href={`/supplier-procurement/orders/${request.purchase_order_id}${query}`} className="font-bold underline">
             View Purchase Order

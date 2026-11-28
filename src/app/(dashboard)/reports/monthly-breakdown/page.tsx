@@ -139,8 +139,8 @@ export default async function MonthlyBreakdownPage({ searchParams }: { searchPar
     line === "raw" && rawManual[m] === null ? "No costing-report figure is keyed in for this month, so it is the food bought and recorded in Company Expenses and Petty Cash. Tap an amount to open its bill." : "Keyed in by hand on this page (the editor below), from the month's costing report.";
 
   const lines: { key: BreakdownLine; label: string; limit: number; values: Months; color: string }[] = [
-    { key: "raw", label: "Raw item cost", limit: L.raw, values: raw, color: "#1e3a5f" },
-    { key: "labour", label: "Labour / salary", limit: L.labour, values: labour, color: "#2f7fc1" },
+    { key: "raw", label: "Raw item cost", limit: L.raw, values: raw, color: "var(--chart-main)" },
+    { key: "labour", label: "Labour / salary", limit: L.labour, values: labour, color: "var(--chart-second)" },
     { key: "utilities", label: "Utilities", limit: L.utilities, values: utilities, color: "#7fb8e6" },
     { key: "contribution", label: "Contribution", limit: L.contribution, values: contribution, color: "#e0a030" },
   ];

@@ -478,7 +478,7 @@ export function CostForm({ eventId, companyId, entry, supplierInvoices = [], onD
             {file && <span className="text-[12px] font-semibold text-text">{file.name}</span>}
             <button type="button" disabled={!file || reading} onClick={readDocument} className="rounded-lg bg-primary px-3 py-1.5 text-[12.5px] font-bold text-white disabled:opacity-50">{reading ? "Reading..." : "Upload & read"}</button>
           </div>
-          {readNotice && <div className="mt-2 rounded-lg border border-[#CFE1F2] bg-info-bg px-3 py-2 text-[12.5px] text-[#0F3A63]">{readNotice}</div>}
+          {readNotice && <div className="mt-2 rounded-lg border border-info-border bg-info-bg px-3 py-2 text-[12.5px] text-info">{readNotice}</div>}
           {report && <div className="mt-2"><ExtractionReportPanel report={report} /></div>}
           {supplierInvoices.length > 0 && (
             <div className="mt-3">

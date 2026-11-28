@@ -73,7 +73,7 @@ export function SoftGreeting({ fullName, line, dateLabel }: { fullName: string; 
 /** A round gold-edged icon for a figure or a quick link. */
 export function GoldBadge({ children }: { children: ReactNode }) {
   return (
-    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[17px]" style={{ background: "#fbf3df", border: "1.5px solid #cfae67" }} aria-hidden="true">
+    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[17px]" style={{ background: "var(--soft-badge-bg)", border: "1.5px solid var(--soft-badge-edge)" }} aria-hidden="true">
       {children}
     </span>
   );

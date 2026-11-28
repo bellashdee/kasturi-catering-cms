@@ -2,8 +2,8 @@ import { formatCurrency } from "@/lib/format";
 import { MONTH_LABEL } from "@/lib/finance/constants";
 import { EmptyRow } from "@/components/dashboard/SectionCard";
 
-/** One palette for every chart, so the same kind of thing has the same colour on every page. */
-export const CHART_COLORS = ["#1e3a5f", "#2f7fc1", "#e0a030", "#2e9e6b", "#b8794a", "#7fb8e6", "#8a8f98"];
+/** One palette for every chart, so the same kind of thing has the same colour on every page; the first two follow the company chosen. */
+export const CHART_COLORS = ["var(--chart-main)", "var(--chart-second)", "#e0a030", "#2e9e6b", "#b8794a", "#7fb8e6", "#8a8f98"];
 export const RED = "#b42318";
 
 const compact = (v: number) => (v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` : v >= 1000 ? `${Math.round(v / 1000)}k` : String(Math.round(v)));
@@ -32,7 +32,7 @@ export function DonutChart({ slices, centerLabel, empty, unit = "money" }: { sli
           {parts.map((s, i) => {
             const len = lengths[i];
             return (
-              <circle key={s.label} cx="100" cy="100" r={R} fill="none" strokeWidth="26" stroke={s.color ?? CHART_COLORS[i % CHART_COLORS.length]} strokeDasharray={`${Math.max(len - 1.5, 0)} ${C - Math.max(len - 1.5, 0)}`} strokeDashoffset={-starts[i]}>
+              <circle key={s.label} cx="100" cy="100" r={R} fill="none" strokeWidth="26" style={{ stroke: s.color ?? CHART_COLORS[i % CHART_COLORS.length] }} strokeDasharray={`${Math.max(len - 1.5, 0)} ${C - Math.max(len - 1.5, 0)}`} strokeDashoffset={-starts[i]}>
                 <title>{`${s.label}: ${show(s.value)} (${pct(s.value, total)})`}</title>
               </circle>
             );
@@ -93,9 +93,9 @@ export function TrendLines({ series }: { series: Series[] }) {
           const pts = s.values.map((v, i) => (v === null ? null : { i, v })).filter((p): p is { i: number; v: number } => p !== null);
           return (
             <g key={s.label}>
-              <polyline fill="none" stroke={s.color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" points={pts.map((p) => `${x(p.i)},${y(p.v)}`).join(" ")} />
+              <polyline fill="none" style={{ stroke: s.color }} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" points={pts.map((p) => `${x(p.i)},${y(p.v)}`).join(" ")} />
               {pts.map((p) => (
-                <circle key={p.i} cx={x(p.i)} cy={y(p.v)} r="3.5" fill="white" stroke={s.color} strokeWidth="2"><title>{`${MONTH_LABEL[p.i]} · ${s.label}: ${formatCurrency(p.v)}`}</title></circle>
+                <circle key={p.i} cx={x(p.i)} cy={y(p.v)} r="3.5" fill="white" style={{ stroke: s.color }} strokeWidth="2"><title>{`${MONTH_LABEL[p.i]} · ${s.label}: ${formatCurrency(p.v)}`}</title></circle>
               ))}
             </g>
           );
@@ -111,7 +111,7 @@ export function TrendLines({ series }: { series: Series[] }) {
 export type Column = { label: string; value: number; note?: string };
 
 /** Upright bars for a few names (the sales agents): the amount above each bar and the name below. */
-export function ColumnChart({ items, color = "#2f7fc1", empty }: { items: Column[]; color?: string; empty: string }) {
+export function ColumnChart({ items, color = "var(--chart-second)", empty }: { items: Column[]; color?: string; empty: string }) {
   if (items.length === 0) return <EmptyRow text={empty} />;
   const max = Math.max(...items.map((i) => i.value), 1);
   const total = items.reduce((t, i) => t + i.value, 0);
