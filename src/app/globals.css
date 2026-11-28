@@ -582,4 +582,10 @@ a {
   html[data-mode="dark"] :is(.text-\[\#6b4a06\], .text-\[\#8a5a0b\]) { color: var(--color-warning); }
   html[data-mode="dark"] :is(.text-\[\#b42318\], .text-\[\#6e1414\]) { color: var(--color-danger); }
   html[data-mode="dark"] :is(.text-\[\#a85d6b\], .text-\[\#8a7b78\]) { color: var(--color-text-secondary); }
+  /* the pastel figure tiles (Priority Centre): a dark wash of the tile's own colour, its small line lightened */
+  html[data-mode="dark"] .pastel-tile {
+    background: color-mix(in srgb, var(--tile-ink) 22%, var(--color-surface)) !important;
+    border-color: color-mix(in srgb, var(--tile-ink) 40%, var(--color-surface)) !important;
+  }
+  html[data-mode="dark"] .pastel-tile .tile-ink { color: color-mix(in srgb, var(--tile-ink) 45%, #ffffff) !important; }
 }

@@ -35,14 +35,14 @@ export function DashGreeting({ name, hour }: { name: string; hour: number }) {
 export function StatTile({ icon, label, value, sub, tint }: { icon: string; label: string; value: ReactNode; sub?: ReactNode; tint: Tint }) {
   const t = TINT[tint];
   return (
-    <div className="flex min-w-0 items-center gap-3.5 rounded-3xl border p-4" style={{ background: t.bg, borderColor: t.edge }}>
+    <div className="pastel-tile flex min-w-0 items-center gap-3.5 rounded-3xl border p-4" style={{ background: t.bg, borderColor: t.edge, ["--tile-ink" as string]: t.ink }}>
       <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/75 text-[26px] shadow-sm" aria-hidden="true">
         {icon}
       </span>
       <div className="min-w-0">
         <div className="text-[12.5px] font-semibold leading-snug text-text-secondary">{label}</div>
         <div className="mt-0.5 break-words text-[26px] font-extrabold leading-tight tabular-nums text-text">{value}</div>
-        {sub && <div className="text-[12px] font-semibold leading-snug" style={{ color: t.ink }}>{sub}</div>}
+        {sub && <div className="tile-ink text-[12px] font-semibold leading-snug" style={{ color: t.ink }}>{sub}</div>}
       </div>
     </div>
   );

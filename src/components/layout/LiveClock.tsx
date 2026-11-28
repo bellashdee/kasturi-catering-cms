@@ -69,7 +69,7 @@ export function LiveClock({ variant = "header" }: { variant?: "header" | "date" 
         {now ? formatMalaysiaClock(now, locale) : BLANK}
         <span className="ml-1.5 text-[11px] font-semibold text-text-secondary">MYT</span>
       </span>
-      <span className="hidden whitespace-nowrap text-[12.5px] font-medium text-text-secondary lg:block">
+      <span className="hidden whitespace-nowrap text-[12.5px] font-medium text-text-secondary xl:block">
         <span className="hidden md:inline">{now ? formatMalaysiaLongDate(now, locale) : BLANK}</span>
         <span className="md:hidden">{now ? formatMalaysiaShortDate(now, locale) : BLANK}</span>
       </span>

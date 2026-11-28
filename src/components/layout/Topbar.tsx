@@ -19,7 +19,7 @@ export function Topbar({ session, companies, priorityTitle }: { session: Session
       </div>
 
       <LiveClock />
-      <div className="hidden h-8 w-px bg-border lg:block" />
+      <div className="hidden h-8 w-px bg-border xl:block" />
       <SyncStatus />
       <PageTutorialButton />
       <NotificationBell userId={session.userId} />

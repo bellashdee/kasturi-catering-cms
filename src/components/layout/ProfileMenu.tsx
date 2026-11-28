@@ -53,7 +53,7 @@ export function ProfileMenu({ fullName, email, roleLabel }: { fullName: string; 
         className="flex items-center gap-2.5 rounded-lg px-1.5 py-1 hover:bg-bg"
       >
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-[13px] font-bold text-white">{initials(fullName) || "?"}</span>
-        <span className="hidden text-left lg:block">
+        <span className="hidden text-left xl:block">
           <span className="block max-w-40 truncate text-[14px] font-semibold leading-tight text-text">{fullName}</span>
           <span className="block text-[12.5px] leading-tight text-text-secondary">{roleLabel}</span>
         </span>
