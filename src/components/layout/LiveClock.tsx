@@ -62,7 +62,7 @@ export function LiveClock({ variant = "header" }: { variant?: "header" | "date" 
       dateTime={now ? new Date(now).toISOString() : undefined}
       title={MALAYSIA_TIMEZONE}
       translate="no"
-      className="flex flex-col items-end leading-tight tabular-nums"
+      className="hidden flex-col items-end leading-tight tabular-nums sm:flex"
       suppressHydrationWarning
     >
       <span className="whitespace-nowrap text-[15px] font-bold text-text sm:text-[16px]">
