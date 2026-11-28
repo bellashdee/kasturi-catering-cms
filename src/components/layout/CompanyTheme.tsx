@@ -95,5 +95,7 @@ export function CompanyTheme({ companies }: { companies: Company[] }) {
 /** Runs before the page is painted (see CompanyTheme). */
 export function CompanyThemeScript({ companies }: { companies: Company[] }) {
   const code = `(function(){try{var m=${JSON.stringify(themeMap(companies))},k=${JSON.stringify(KEY)},c=new URLSearchParams(location.search).get("company"),s=null;try{s=sessionStorage.getItem(k)}catch(e){}if(!c&&new RegExp(${JSON.stringify(RECORD_SOURCE)},"i").test(location.pathname))c=s;var t=c&&m[c];if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();`;
-  return <script dangerouslySetInnerHTML={{ __html: code }} />;
+  // the browser runs it from the server HTML before the first paint; on the client React renders it as plain text (type text/plain),
+  // so React does not warn about a script tag and nothing runs twice (the way the Next.js guide "Preventing Flash" does it)
+  return <script type={typeof window === "undefined" ? "text/javascript" : "text/plain"} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: code }} />;
 }
