@@ -84,8 +84,10 @@ export function PhoneLists() {
       labelTables(main);
       labelLists(main);
     };
+    // a timer, not an animation frame: a page opened in the background (another tab, the phone's app switched away) gets no frames, and
+    // one frame asked for and never given kept the lists from ever becoming cards on that page
     const schedule = () => {
-      if (!frame) frame = requestAnimationFrame(run);
+      if (!frame) frame = window.setTimeout(run, 30);
     };
     const observer = new MutationObserver(schedule);
     if (main) observer.observe(main, { childList: true, subtree: true });
@@ -94,7 +96,7 @@ export function PhoneLists() {
     return () => {
       observer.disconnect();
       mq.removeEventListener("change", schedule);
-      if (frame) cancelAnimationFrame(frame);
+      if (frame) window.clearTimeout(frame);
     };
   }, []);
   return null;
