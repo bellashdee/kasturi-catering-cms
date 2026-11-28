@@ -321,6 +321,12 @@ main td, main th { overflow-wrap: anywhere; }
   }
 }
 
+/* Text inside links (most list rows are one link) can be selected with the mouse and copied: dragging selects the text instead of
+   dragging the link away. A plain click still opens the link; TextSelection keeps a drag-selection from opening it. */
+a {
+  -webkit-user-drag: none;
+}
+
 /*
  * Phones and tablets (a finger, not a mouse): boxes use 16px letters, because a phone zooms the whole page in when a smaller box is
  * tapped (and the page then stays zoomed and sideways); and the page itself never moves sideways: a wide table scrolls inside its own box.

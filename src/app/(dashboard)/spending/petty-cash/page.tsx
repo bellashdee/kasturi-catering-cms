@@ -392,6 +392,12 @@ export default async function PettyCashPage({ searchParams }: { searchParams: Pr
                 headers={exportHeaders}
                 rows={exportRows}
                 moneyColumns={moneyColumns}
+                // 15 columns are too many for one printed page: the small related ones share a column there (Excel keeps them apart)
+                printGroups={[
+                  { header: "Kind / Category", columns: ["Kind", "Category"] },
+                  { header: "Name / Claimant", columns: ["Name", "Claimant"], labels: [null, "Claimant: "] },
+                  { header: "Claim", columns: ["Claim status", "Claim paid by"], labels: [null, "Paid by: "] },
+                ]}
                 summary={spendSummary(
                   shown.filter((r) => r.kind === "out").map((r) => ({ companyId: r.companyId, amount: r.amount })),
                   companies,

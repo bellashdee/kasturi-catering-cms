@@ -3,6 +3,7 @@ import { Manrope } from "next/font/google";
 import "./globals.css";
 import { I18nProvider } from "@/components/i18n/I18nProvider";
 import { getServerLanguage } from "@/lib/i18n/server";
+import { TextSelection } from "@/components/layout/TextSelection";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -37,6 +38,7 @@ export default async function RootLayout({
       </head>
       <body className="min-h-full bg-bg text-text font-sans">
         <I18nProvider initialLanguage={lang}>{children}</I18nProvider>
+        <TextSelection />
       </body>
     </html>
   );

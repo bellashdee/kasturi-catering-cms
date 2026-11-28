@@ -1,7 +1,9 @@
 "use client";
 
 import { exportTableToExcel } from "@/lib/reports/export";
-import { printTablePdf } from "@/lib/export/tableExport";
+import { groupColumnsForPrint, printTablePdf, type PrintColumnGroup } from "@/lib/export/tableExport";
+
+const money = (n: number) => n.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /** Excel download or a printable PDF of a list that is shown on the page in another layout (plain data only crosses from the server). */
 export function ExportListButtons({
@@ -13,6 +15,7 @@ export function ExportListButtons({
   title: titleText,
   info = [],
   signatures = [],
+  printGroups = [],
 }: {
   filenameBase: string;
   headers: string[];
@@ -27,10 +30,19 @@ export function ExportListButtons({
   info?: { label: string; value: string }[];
   /** sign-off boxes at the end of the print and of the Excel sheet (e.g. the staff member, Checked by, Approved by) */
   signatures?: { label: string; name?: string }[];
+  /** small related columns shown together in one column of the print only, so that a wide list stays readable (Excel keeps every column) */
+  printGroups?: PrintColumnGroup[];
 }) {
   const btn = "rounded-lg border border-border-strong bg-surface px-3.5 py-2 text-[12.5px] font-semibold text-text disabled:opacity-50";
   const title = titleText ?? filenameBase.replace(/[-_]+/g, " ").replace(/^./, (c) => c.toUpperCase());
   const hasExtra = !!titleText || info.length > 0 || signatures.length > 0;
+  function print() {
+    // the window is opened by the click itself so that a pop-up blocker lets it through
+    const target = window.open("", "_blank");
+    const text = rows.map((r) => r.map((cell, i) => (typeof cell === "number" && moneyColumns.includes(headers[i]) ? money(cell) : String(cell))));
+    const table = groupColumnsForPrint(headers, text, printGroups);
+    printTablePdf({ title, subtitle: `${rows.length} row${rows.length === 1 ? "" : "s"}`, ...table, moneyColumns, landscape: table.columns.length > 6, summary, info, signatures }, target);
+  }
   return (
     <div className="flex gap-2 print:hidden">
       <button
@@ -44,8 +56,7 @@ export function ExportListButtons({
       <button
         type="button"
         disabled={rows.length === 0}
-        // the window is opened by the click itself so that a pop-up blocker lets it through
-        onClick={() => printTablePdf({ title, subtitle: `${rows.length} row${rows.length === 1 ? "" : "s"}`, columns: headers, rows: rows.map((r) => r.map((cell, i) => (typeof cell === "number" && moneyColumns.includes(headers[i]) ? cell.toFixed(2) : String(cell)))), landscape: headers.length > 5, summary, info, signatures }, window.open("", "_blank"))}
+        onClick={print}
         className={btn}
       >
         Print
