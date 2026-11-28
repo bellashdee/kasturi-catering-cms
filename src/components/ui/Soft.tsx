@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { shortNameOf } from "@/lib/hr/shortName";
 
 /**
  * Pieces of the soft look (blush and rose, a serif title, a gentle greeting). Colours come from the tokens that `.soft-theme`
@@ -47,9 +48,20 @@ export function shortName(fullName: string): string {
   return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
 }
 
-/** "Hello, name": a round initial, a friendly line and today's date. The name is shortened (see shortName). */
-export function SoftGreeting({ fullName, line, dateLabel }: { fullName: string; line: string; dateLabel: string }) {
-  const name = shortName(fullName);
+/**
+ * The name a greeting uses: the person's own nickname written on their staff record (Short Name) when there is one; otherwise worked out
+ * from the full name the same way as everywhere else (see shortNameOf: "NUR AISYAH BINTI ..." gives Aisyah), once titles such as "MS." are
+ * set aside. Written with capital first letters ("PENNY" gives "Penny").
+ */
+export function greetingName(fullName: string, stored?: string | null): string {
+  const words = fullName.trim().split(/\s+/).filter((w) => w && !TITLES.has(w.replace(/\./g, "").toUpperCase()));
+  const nick = shortNameOf(words.join(" ") || fullName, stored);
+  return nick.toLowerCase().replace(/(^|[\s-])(\S)/g, (_, a: string, b: string) => a + b.toUpperCase());
+}
+
+/** "Hello, name": a round initial, a friendly line and today's date. The name is the person's nickname (see greetingName). */
+export function SoftGreeting({ fullName, nickname, line, dateLabel }: { fullName: string; nickname?: string | null; line: string; dateLabel: string }) {
+  const name = greetingName(fullName, nickname);
   const initial = name.charAt(0).toUpperCase() || "•";
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface px-5 py-3.5">

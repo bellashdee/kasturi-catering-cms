@@ -44,10 +44,23 @@ const key = (type: string, id: string) => `${type}:${id}`;
  */
 export async function loadPayables(supabase: DB, companyIds: string[], today: string, only?: { type: PayableType; id: string }): Promise<PayableView[]> {
   if (companyIds.length === 0) return [];
-  // read page by page: the supplier invoices alone are close to the 1,000 rows one read returns
+  // Supplier invoices are keyed in for event costing (Event P&L) only: suppliers are paid by one monthly payment voucher, which is a Finance
+  // supplier payment. So an invoice is a payable here only when an old per-invoice payment request exists for it (it stays actionable
+  // until it is paid); the other invoices are not payments to make and are left out.
+  const requestedInvoiceIds = only
+    ? only.type === "supplier_invoice" ? [only.id] : []
+    : [
+        ...new Set(
+          (await fetchAll((from, to) => supabase.from("supplier_payments").select("supplier_invoice_id").not("supplier_invoice_id", "is", null).order("id").range(from, to)))
+            .map((r) => r.supplier_invoice_id)
+            .filter((id): id is string => !!id),
+        ),
+      ];
   const [finance, invoices] = await Promise.all([
     fetchAll((from, to) => supabase.from("finance_payments").select("*, companies(name)").in("company_id", companyIds).eq("category", "supplier").neq("status", "cancelled").order("id").range(from, to)),
-    fetchAll((from, to) => supabase.from("supplier_invoices").select("*, suppliers(name), companies(name)").in("company_id", companyIds).neq("status", "draft").order("id").range(from, to)),
+    fetchAllByIds(requestedInvoiceIds, (ids, from, to) =>
+      supabase.from("supplier_invoices").select("*, suppliers(name), companies(name)").in("id", ids).in("company_id", companyIds).neq("status", "draft").order("id").range(from, to),
+    ),
   ]);
 
   let raws: RawPayable[] = [

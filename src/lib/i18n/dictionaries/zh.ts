@@ -3664,7 +3664,7 @@ const dictionary: Record<string, string> = {
  "Show until (optional)": "显示至（可选）",
  "Showing {0}-{1} of {2}": "显示第 {0}-{1} 条，共 {2} 条",
  "Showing figures for": "显示以下数据:",
- "shown · sources: Finance supplier payments and supplier invoices. Nothing here sends money: payments are always made by a person and then recorded.": "已显示 · 来源:财务供应商付款和供应商发票。此处不会汇出任何款项:付款始终由人工完成,然后再记录。",
+ "shown · sources: Finance supplier payments (payment vouchers), and supplier invoices only where an old payment request exists (invoices are keyed in for event costing). Nothing here sends money: payments are always made by a person and then recorded.": "已显示 · 来源:财务供应商付款(付款凭单),以及仅在有旧付款申请时的供应商发票(发票录入仅用于活动成本核算)。此处不会汇出任何款项:付款始终由人工完成,然后再记录。",
  "Side": "配菜",
  "Sign in": "登录",
  "Sign in to continue to your dashboard.": "请登录以进入您的仪表板。",

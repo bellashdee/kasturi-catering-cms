@@ -24,7 +24,7 @@ import { TaskBoard, type TaskCard } from "@/components/priority/TaskBoard";
 import { PayablesTable } from "@/components/priority/PayablesTable";
 import { ApprovalList, BriefingTaskCheck, NotificationList, ReminderSettingsForm, type ApprovalItem } from "@/components/priority/ReminderPanels";
 import { Pill, FIELD, LABEL, BTN, BTN_GHOST } from "@/components/priority/ui";
-import { SoftPage, shortName } from "@/components/ui/Soft";
+import { SoftPage, greetingName } from "@/components/ui/Soft";
 import { dailyCheer } from "@/lib/priority/cheer";
 import { MultiPersonFilter } from "@/components/priority/MultiPersonFilter";
 import { CheerCard, DashGreeting, MonthCalendar, ProgressList, StatTile, TopTasks, UpcomingReminders, WeekChart, type ReminderRow, type TopTask } from "@/components/priority/PriorityDashboard";
@@ -68,10 +68,10 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
 
   const supabase = await createClient();
   // asked at the same time, not one after another (the page opens faster)
-  const [{ data: allCompanies }, { data: ownRecord }, { data: directorOfFinance }] = await Promise.all([
+  const [{ data: allCompanies }, { data: ownRecords }, { data: directorOfFinance }] = await Promise.all([
     supabase.from("companies").select("id, name").order("name"),
-    // the birthday (for the star sign line of the day) comes from the person's own staff record, when there is one
-    supabase.from("employees").select("date_of_birth").eq("user_id", session.userId).not("date_of_birth", "is", null).limit(1).maybeSingle(),
+    // the birthday (for the star sign line of the day) and the nickname of the greeting come from the person's own staff record(s)
+    supabase.from("employees").select("date_of_birth, short_name").eq("user_id", session.userId).limit(5),
     // Madam Penny's Daily Briefing (the supplier payments to pay, their figures and approvals) is for the Director of Finance only
     supabase.rpc("user_gets_payment_reminders"),
   ]);
@@ -84,7 +84,9 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
 
   const now = nowMs();
   const today = todayInMalaysia(now);
-  const birthDate = ownRecord?.date_of_birth ?? null;
+  // a person with two jobs has two staff records: the first birthday and the first nickname written on any of them
+  const birthDate = (ownRecords ?? []).find((r) => r.date_of_birth)?.date_of_birth ?? null;
+  const nickname = (ownRecords ?? []).find((r) => r.short_name?.trim())?.short_name ?? null;
   const fullAccess = await getPriorityAccess(supabase, session, accessibleIds);
   // the Director of Finance pays the suppliers: every other person, also another admin, sees their own day and their own tasks
   const access = directorOfFinance === true ? fullAccess : { ...fullAccess, canSeePayments: false, isApprover: false };
@@ -279,7 +281,7 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
   return (
     <SoftPage>
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <DashGreeting name={shortName(session.fullName)} hour={hour} />
+        <DashGreeting name={greetingName(session.fullName, nickname)} hour={hour} />
         <nav aria-label="Sections" className="flex flex-wrap gap-2 text-[13.5px] font-semibold">
           <a href="#tasks" className={BTN_GHOST}>{access.canSeePayments ? "To-Do Checklist" : "My Tasks"}</a>
           {access.canSeePayments && <a href="#payments" className={BTN_GHOST}>Urgent Supplier Payments</a>}
@@ -573,7 +575,7 @@ export default async function PriorityCentrePage({ searchParams }: { searchParam
           </form>
           <PayablesTable rows={payRows} isApprover={access.isApprover} events={eventOptions} />
           <p className="mt-3 text-[12.5px] text-text-muted">
-            {payRows.length} shown · sources: Finance supplier payments and supplier invoices. Nothing here sends money: payments are always made by a person and then recorded.
+            {payRows.length} shown · sources: Finance supplier payments (payment vouchers), and supplier invoices only where an old payment request exists (invoices are keyed in for event costing). Nothing here sends money: payments are always made by a person and then recorded.
           </p>
         </SectionBox>
       ) : (

@@ -17,7 +17,12 @@ export default async function BulletinPage({ searchParams }: { searchParams: Pro
   if (!session) redirect("/login");
 
   const supabase = await createClient();
-  const { data: allCompanies } = await supabase.from("companies").select("id, name");
+  const [{ data: allCompanies }, { data: ownRecords }] = await Promise.all([
+    supabase.from("companies").select("id, name"),
+    // the nickname of the greeting: the Short Name on the person's own staff record
+    supabase.from("employees").select("short_name").eq("user_id", session.userId).limit(5),
+  ]);
+  const nickname = (ownRecords ?? []).find((r) => r.short_name?.trim())?.short_name ?? null;
   const companies = allCompanies ?? [];
   const { company: requestedId, month } = await searchParams;
   const { targetCompanyIds } = resolveCompanyScope(session, companies, requestedId);
@@ -82,7 +87,7 @@ export default async function BulletinPage({ searchParams }: { searchParams: Pro
   return (
     <SoftPage>
       <SoftHeader title="Bulletin Board" subtitle="News about the company and the work, for every staff member." />
-      <SoftGreeting fullName={session.fullName} line="Stay in the know: the latest news is right here." dateLabel={formatMalaysiaLongDate()} />
+      <SoftGreeting fullName={session.fullName} nickname={nickname} line="Stay in the know: the latest news is right here." dateLabel={formatMalaysiaLongDate()} />
       <MonthFilter />
       {leaveToday.length > 0 ? (
         <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm">

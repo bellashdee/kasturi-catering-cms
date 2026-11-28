@@ -3875,7 +3875,7 @@ const dictionary: Record<string, string> = {
  "Show until (optional)": "Papar sehingga (pilihan)",
  "Showing {0}-{1} of {2}": "Memaparkan {0}-{1} daripada {2}",
  "Showing figures for": "Memaparkan angka untuk",
- "shown · sources: Finance supplier payments and supplier invoices. Nothing here sends money: payments are always made by a person and then recorded.": "dipaparkan · sumber: pembayaran pembekal Kewangan dan invois pembekal. Tiada apa-apa di sini yang menghantar wang: pembayaran sentiasa dibuat oleh seseorang dan kemudian direkodkan.",
+ "shown · sources: Finance supplier payments (payment vouchers), and supplier invoices only where an old payment request exists (invoices are keyed in for event costing). Nothing here sends money: payments are always made by a person and then recorded.": "dipaparkan · sumber: pembayaran pembekal Kewangan (baucar pembayaran), dan invois pembekal hanya jika ada permintaan pembayaran lama (invois dimasukkan untuk kos acara). Tiada apa-apa di sini yang menghantar wang: pembayaran sentiasa dibuat oleh seseorang dan kemudian direkodkan.",
  "Side": "Sampingan",
  "Sign in": "Log masuk",
  "Sign in to continue to your dashboard.": "Log masuk untuk meneruskan ke papan pemuka anda.",

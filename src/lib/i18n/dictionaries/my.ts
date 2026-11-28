@@ -3651,7 +3651,7 @@ const dictionary: Record<string, string> = {
  "Show until (optional)": "ပြသမည့်ရက် (ရွေးချယ်စရာ)",
  "Showing {0}-{1} of {2}": "{2} ခုအနက် {0}-{1} ကို ပြသနေသည်",
  "Showing figures for": "ကိန်းဂဏန်းများ ပြသနေသည့်အရာ:",
- "shown · sources: Finance supplier payments and supplier invoices. Nothing here sends money: payments are always made by a person and then recorded.": "ပြသထားသည် · ရင်းမြစ်: ဘဏ္ဍာရေးဌာန၏ ပေးသွင်းသူ ငွေပေးချေမှုများနှင့် ပေးသွင်းသူ ငွေတောင်းခံလွှာများ။ ဤနေရာမှ ငွေ မပို့ပါ။ ငွေပေးချေမှုကို လူက အမြဲပြုလုပ်ပြီးမှ မှတ်တမ်းတင်ရသည်။",
+ "shown · sources: Finance supplier payments (payment vouchers), and supplier invoices only where an old payment request exists (invoices are keyed in for event costing). Nothing here sends money: payments are always made by a person and then recorded.": "ပြသထားသည် · ရင်းမြစ်: ဘဏ္ဍာရေးဌာန၏ ပေးသွင်းသူ ငွေပေးချေမှုများ (ငွေပေးချေမှု ဘောက်ချာများ) နှင့် ငွေပေးချေရန် တောင်းဆိုချက် အဟောင်း ရှိသည့် ပေးသွင်းသူ ငွေတောင်းခံလွှာများသာ (ငွေတောင်းခံလွှာများကို ပွဲ ကုန်ကျစရိတ်အတွက် ထည့်သွင်းသည်)။ ဤနေရာမှ ငွေ မပို့ပါ။ ငွေပေးချေမှုကို လူက အမြဲပြုလုပ်ပြီးမှ မှတ်တမ်းတင်ရသည်။",
  "Side": "ဘေးဟင်း",
  "Sign in": "ဝင်ရောက်မည်",
  "Sign in to continue to your dashboard.": "သင့်ဒက်ရှ်ဘုတ်သို့ ဆက်သွားရန် ဝင်ရောက်ပါ။",

@@ -3657,7 +3657,7 @@ const dictionary: Record<string, string> = {
  "Show until (optional)": "পর্যন্ত দেখান (ঐচ্ছিক)",
  "Showing {0}-{1} of {2}": "{2}টির মধ্যে {0}-{1} দেখানো হচ্ছে",
  "Showing figures for": "হিসাব দেখানো হচ্ছে:",
- "shown · sources: Finance supplier payments and supplier invoices. Nothing here sends money: payments are always made by a person and then recorded.": "দেখানো হচ্ছে · উৎস: ফাইন্যান্সের সরবরাহকারী পেমেন্ট ও সরবরাহকারীর ইনভয়েস। এখান থেকে কোনো টাকা পাঠানো হয় না: পেমেন্ট সবসময় একজন ব্যক্তি করেন এবং পরে রেকর্ড করা হয়।",
+ "shown · sources: Finance supplier payments (payment vouchers), and supplier invoices only where an old payment request exists (invoices are keyed in for event costing). Nothing here sends money: payments are always made by a person and then recorded.": "দেখানো হচ্ছে · উৎস: ফাইন্যান্সের সরবরাহকারী পেমেন্ট (পেমেন্ট ভাউচার), এবং সরবরাহকারীর ইনভয়েস শুধু যেখানে পুরোনো পেমেন্ট অনুরোধ আছে (ইনভয়েস ইভেন্টের খরচ হিসাবের জন্য রাখা হয়)। এখান থেকে কোনো টাকা পাঠানো হয় না: পেমেন্ট সবসময় একজন ব্যক্তি করেন এবং পরে রেকর্ড করা হয়।",
  "Side": "সাইড",
  "Sign in": "সাইন-ইন",
  "Sign in to continue to your dashboard.": "আপনার ড্যাশবোর্ডে যেতে সাইন-ইন করুন।",
