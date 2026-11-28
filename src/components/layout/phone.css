@@ -42,6 +42,13 @@
     max-width: none !important;
   }
 
+}
+
+/*
+ * Lists and tables as cards: phones (portrait and landscape) and tablets, up to 1023 px. On these widths the many columns of a list do
+ * not fit (the last column, with Mark / Edit / Delete, ran off the screen on a phone turned sideways), so each row becomes a card.
+ */
+@media screen and (max-width: 1023px) {
   /* tables: each row is a card */
   main table[data-cards] {
     display: block;
@@ -148,6 +155,22 @@
   }
   main [data-phone-row] > :is(a, button)[class*="rounded"]::before {
     content: none !important;
+  }
+  /* a group of buttons or a choice box inside a card (Mark..., Edit, Save, Delete) wraps and stays inside the card */
+  main :is([data-phone-row], table[data-cards] tr) :is(.flex, .inline-flex) {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: 100%;
+  }
+  main :is([data-phone-row], table[data-cards] tr) :is(button, a[class*="rounded"], select) {
+    min-height: 40px;
+  }
+  /* the words in a card wrap instead of being cut off with "..." */
+  main :is([data-phone-row], table[data-cards] tr) .truncate {
+    overflow: visible;
+    white-space: normal;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
   }
   main [data-phone-row] > :empty {
     display: none;

@@ -3,7 +3,8 @@
 import { useEffect } from "react";
 import "./phone.css";
 
-const PHONE = "(max-width: 767px)";
+// phones (portrait and landscape) and tablets: the lists and tables become cards up to 1023 px (phone.css)
+const PHONE = "(max-width: 1023px)";
 /** a grid of 4 or more fixed columns, e.g. grid-cols-[1.2fr_1fr_1fr_1fr] */
 const FIXED_GRID = /grid-cols-\[[^\]]*_[^\]]*_[^\]]*_[^\]]*\]/;
 
