@@ -128,6 +128,27 @@
   main [data-phone-row] > [data-label=""]::before {
     content: none;
   }
+  /* every line of the card spans the card (a row written with items-center / justify-center made each line as narrow as its words) */
+  main [data-phone-row] {
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+  }
+  main [data-phone-row] > * {
+    width: 100%;
+    justify-self: stretch;
+  }
+  /* a cell that is itself a button or a link-button ("Open Petty Cash", "Edit"): a full-width button with its own words, no column name */
+  main [data-phone-row] > :is(a, button)[class*="rounded"] {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    margin-top: 6px;
+    text-align: center !important;
+  }
+  main [data-phone-row] > :is(a, button)[class*="rounded"]::before {
+    content: none !important;
+  }
   main [data-phone-row] > :empty {
     display: none;
   }
