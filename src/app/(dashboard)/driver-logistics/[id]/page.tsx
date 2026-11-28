@@ -13,6 +13,7 @@ import { DeliveryProofSection } from "@/components/driver/DeliveryProofSection";
 import { SectionCard } from "@/components/dashboard/SectionCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { DeliveryForm } from "@/components/driver/DeliveryForm";
+import { QueuedChanges } from "@/components/offline/QueuedChanges";
 
 export default async function DeliveryDetailPage({
   params,
@@ -64,11 +65,12 @@ export default async function DeliveryDetailPage({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {!isDone && <DeliveryStatusSelect deliveryId={id} status={delivery.status} />}
+          {!isDone && <DeliveryStatusSelect deliveryId={id} status={delivery.status} companyId={delivery.company_id} label={delivery.catering_events?.event_name ?? undefined} />}
           {!isDone && <CompleteDeliveryAction deliveryId={id} companyId={delivery.company_id} hasProof={hasProof} />}
         </div>
       </div>
 
+      <QueuedChanges ops={["delivery.setStatus"]} recordId={id} />
       <div className="grid grid-cols-4 gap-4">
         <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
           <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Driver / Delivery Person</div>

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { errorMessage } from "@/lib/actionResult";
 import { createWastage, updateWastage } from "@/lib/kitchen/wastageActions";
 import { WASTAGE_REASONS, WASTAGE_UNITS, type WastageRow } from "@/lib/kitchen/wastage";
 import { uploadReceipt } from "@/lib/documents/upload";
+import { isNetworkError, queueChange, shouldQueue } from "@/lib/offline/sync";
 import { DocumentViewLink } from "@/components/shared/DocumentViewLink";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { Select } from "@/components/ui/Select";
@@ -40,6 +41,8 @@ export function WastageForm({
   const [photo, setPhoto] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // the id of a new entry is made here, once: sent again (no connection, then the offline queue) it can never be saved twice
+  const newId = useRef<string | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -48,9 +51,30 @@ export function WastageForm({
     if (!reason) return setError("Choose the reason.");
     setSaving(true);
     setError(null);
+    newId.current ??= crypto.randomUUID();
+    let uploaded: string | null = null;
+    const fields = { wastedOn: date, item, quantity: Number(quantity), unit, reason, estimatedValue: value.trim() === "" ? null : Number(value), notes };
+    // no connection: the entry (and its photo) is kept on this device and saved when the connection is back
+    const keepOffline = async () => {
+      await queueChange({
+        op: editing ? "wastage.update" : "wastage.create",
+        recordId: editing?.id ?? newId.current!,
+        companyId,
+        payload: { companyId, ...fields, documentId: uploaded ?? editing?.document_id ?? null },
+        base: editing ? { updatedAt: editing.updated_at } : null,
+        label: { title: editing ? "Wastage Log: change" : "Wastage Log: new entry", detail: `${item.trim()} · ${quantity} ${unit} · ${date}` },
+        files: photo && !uploaded ? [{ field: "documentId", files: [photo], companyId }] : undefined,
+      });
+      router.push(listHref);
+    };
     try {
-      const documentId = photo ? await uploadReceipt(companyId, photo) : (editing?.document_id ?? null);
+      if (shouldQueue()) {
+        await keepOffline();
+        return;
+      }
+      const documentId = photo ? (uploaded = await uploadReceipt(companyId, photo)) : (editing?.document_id ?? null);
       const input = {
+        id: editing ? undefined : newId.current,
         companyId,
         wastedOn: date,
         item,
@@ -69,6 +93,15 @@ export function WastageForm({
       router.push(listHref);
       router.refresh();
     } catch (err) {
+      if (isNetworkError(err)) {
+        try {
+          await keepOffline();
+          return;
+        } catch (queueErr) {
+          setError(errorMessage(queueErr, "Could not keep the entry on this device."));
+          return;
+        }
+      }
       setError(errorMessage(err, "Could not save."));
     } finally {
       setSaving(false);

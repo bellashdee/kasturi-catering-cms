@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { uploadReceipt, ANY_UPLOAD_ACCEPT } from "@/lib/documents/upload";
 import { errorMessage } from "@/lib/actionResult";
+import { isNetworkError, queueChange, shouldQueue } from "@/lib/offline/sync";
 import { todayInMalaysia } from "@/lib/format";
 import { createPettyCashEntry, updatePettyCashEntry } from "@/lib/operationPettyCash/actions";
 import { createPettyCashTransaction, createSplitPettyCashClaims, markPettyCashPaid } from "@/lib/finance/actions";
@@ -136,6 +137,9 @@ export function PettyCashEntryForm({
   const [receipts, setReceipts] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // the id of a new single entry, made once: sent again (no connection, then the offline queue) it is never saved twice
+  const newId = useRef<string | null>(null);
+  const [keptOffline, setKeptOffline] = useState(false);
 
   const chosenCompanies = companies.filter((c) => companyIds.includes(c.id));
   const { companyId: firstCompanyId, alsoCompanyIds } = splitCompanies(chosenCompanies.map((c) => c.id), editing?.company_id);
@@ -229,13 +233,76 @@ export function PettyCashEntryForm({
       setError(isReceived ? "Choose how the money was received: cash or online transfer." : "Choose how it was paid: cash or online transfer.");
       return;
     }
+    const invoice = isReceived ? undefined : invoiceNo.trim() || undefined;
+    // the event's AutoCount invoice no.: the cost then counts in that event's P&L (money received has none)
+    const autoCountInvoiceNo = isReceived ? undefined : noAutoCount ? "" : autoCountNo.trim();
+    // one new Received / Spent entry (not split, not a claim) can be kept on this device without a connection
+    const offlineOk = !isClaim && !editing && !categoryShares && !companyShares;
+    newId.current ??= crypto.randomUUID();
+    const resetAfterSave = () => {
+      setAmount("");
+      setPaymentMethod("");
+      setCategory("");
+      setDescription("");
+      setRemarks("");
+      setInvoiceNo("");
+      setClaimant("");
+      setShareText({});
+      setDepartment("");
+      setPersonName(holderName);
+      setReceipts([]);
+      newId.current = null;
+      (e.target as HTMLFormElement).reset();
+    };
+    const uploaded: string[] = [];
+    const keepOffline = async () => {
+      await queueChange({
+        op: "opPettyCash.create",
+        recordId: newId.current!,
+        companyId: firstCompanyId,
+        payload: {
+          companyId: firstCompanyId,
+          alsoCompanyIds,
+          paymentMethod,
+          entryType: kind,
+          entryDate: date,
+          category: category || undefined,
+          description: description || undefined,
+          remarks: remarks.trim() || undefined,
+          invoiceNo: invoice,
+          autoCountInvoiceNo,
+          amount: Number(amount),
+          personName: personName || undefined,
+          // receipts already uploaded before the connection dropped are reused; the others are uploaded later
+          documentId: uploaded[0],
+          extraDocumentIds: uploaded.slice(1),
+        },
+        label: { title: isReceived ? "Petty cash: money received" : "Petty cash: money spent", detail: `RM ${Number(amount).toFixed(2)} · ${date}${description ? ` · ${description}` : ""}` },
+        files: uploaded.length === 0 && receipts.length > 0 ? [{ field: "documentId", files: receipts.slice(0, 1), companyId: firstCompanyId }, { field: "extraDocumentIds", files: receipts.slice(1), companyId: firstCompanyId, list: true }] : undefined,
+      });
+      resetAfterSave();
+      setKeptOffline(true);
+    };
+    if (shouldQueue()) {
+      if (!offlineOk) {
+        setError("No connection. Without a connection only one new Received or Spent entry (not split) can be kept on this device.");
+        return;
+      }
+      setSaving(true);
+      setError(null);
+      try {
+        await keepOffline();
+      } catch (err) {
+        setError(errorMessage(err, "Could not keep the entry on this device."));
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
     setSaving(true);
     setError(null);
+    setKeptOffline(false);
     try {
-      const invoice = isReceived ? undefined : invoiceNo.trim() || undefined;
-      // the event's AutoCount invoice no.: the cost then counts in that event's P&L (money received has none)
-      const autoCountInvoiceNo = isReceived ? undefined : noAutoCount ? "" : autoCountNo.trim();
-      const uploaded: string[] = [];
       for (const file of receipts) uploaded.push(await uploadReceipt(firstCompanyId, file));
       const documentId: string | undefined = uploaded[0];
       const extraDocumentIds = uploaded.slice(1);
@@ -278,7 +345,7 @@ export function PettyCashEntryForm({
           })
         : editing
           ? await updatePettyCashEntry(editing.id, { companyId: firstCompanyId, alsoCompanyIds, paymentMethod, categoryShares, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, remarks: remarks.trim() || undefined, invoiceNo: invoice, autoCountInvoiceNo, amount: Number(amount), documentId, extraDocumentIds, personName: personName || undefined })
-          : await createPettyCashEntry({ companyId: firstCompanyId, alsoCompanyIds, paymentMethod, categoryShares, shares: companyShares, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, remarks: remarks.trim() || undefined, invoiceNo: invoice, autoCountInvoiceNo, amount: Number(amount), documentId, extraDocumentIds, personName: personName || undefined });
+          : await createPettyCashEntry({ id: newId.current ?? undefined, companyId: firstCompanyId, alsoCompanyIds, paymentMethod, categoryShares, shares: companyShares, entryType: kind as "expense" | "top_up", entryDate: date, category: category || undefined, description: description || undefined, remarks: remarks.trim() || undefined, invoiceNo: invoice, autoCountInvoiceNo, amount: Number(amount), documentId, extraDocumentIds, personName: personName || undefined });
       if (!result.ok) {
         setError(result.error);
         return;
@@ -286,21 +353,21 @@ export function PettyCashEntryForm({
       if (editing) {
         router.push(listHref);
       } else {
-        setAmount("");
-        setPaymentMethod("");
-        setCategory("");
-        setDescription("");
-        setRemarks("");
-        setInvoiceNo("");
-        setClaimant("");
-        setShareText({});
-        setDepartment("");
-        setPersonName(holderName);
-        setReceipts([]);
-        (e.target as HTMLFormElement).reset();
+        resetAfterSave();
       }
       router.refresh();
     } catch (err) {
+      if (offlineOk && isNetworkError(err)) {
+        try {
+          // only some receipts were uploaded: all of them go with the queue and are uploaded again from this device
+          if (uploaded.length > 0 && uploaded.length < receipts.length) uploaded.length = 0;
+          await keepOffline();
+          return;
+        } catch (queueErr) {
+          setError(errorMessage(queueErr, "Could not keep the entry on this device."));
+          return;
+        }
+      }
       setError(errorMessage(err, "Could not save."));
     } finally {
       setSaving(false);
@@ -421,6 +488,7 @@ export function PettyCashEntryForm({
       <div className="text-[15px] font-bold text-text">{editing ? "Edit entry" : "New entry"}</div>
       {!editing && <UsageGuide canPay={allowPayClaims} hasClaim={kinds.includes("claim")} />}
       {error && <div role="alert" className="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-xs text-danger">{error}</div>}
+      {keptOffline && <div role="status" className="rounded-lg border border-warning/40 bg-warning-bg px-3 py-2 text-xs font-semibold text-warning">No connection: the entry is kept on this device and saved when the connection is back (see the sync status at the top).</div>}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <div className="sm:col-span-4">

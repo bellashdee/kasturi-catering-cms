@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { signOutOfDevice } from "@/lib/offline/signOut";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 function initials(name: string) {
   return name
@@ -17,6 +18,7 @@ function initials(name: string) {
 /** The signed-in person: name and role in the bar, and a menu with their details, Settings and Sign out. */
 export function ProfileMenu({ fullName, email, roleLabel }: { fullName: string; email: string; roleLabel: string }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
@@ -35,7 +37,8 @@ export function ProfileMenu({ fullName, email, roleLabel }: { fullName: string; 
   }, [open]);
 
   async function signOut() {
-    await createClient().auth.signOut();
+    // changes made offline that are not sent yet: the person is told, and they stay on this device for them
+    if (!(await signOutOfDevice(t))) return;
     router.push("/login");
     router.refresh();
   }

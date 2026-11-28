@@ -6,6 +6,7 @@ import { NotificationBell } from "./NotificationBell";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { ProfileMenu } from "./ProfileMenu";
 import { PageTutorialButton } from "./PageTutorialButton";
+import { SyncStatus } from "@/components/offline/SyncStatus";
 
 type Company = { id: string; name: string; legal_name: string };
 
@@ -20,6 +21,7 @@ export function Topbar({ session, companies, priorityTitle }: { session: Session
 
       <LiveClock />
       <div className="hidden h-8 w-px bg-border sm:block" />
+      <SyncStatus />
       <PageTutorialButton />
       <LanguageSwitcher />
       <NotificationBell userId={session.userId} />
