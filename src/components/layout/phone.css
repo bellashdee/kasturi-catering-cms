@@ -133,8 +133,8 @@
   }
 }
 
-/* a finger needs bigger things to press */
-@media (pointer: coarse) {
+/* a finger needs bigger things to press (a touch screen, or any screen as narrow as a phone) */
+@media (pointer: coarse), (max-width: 767px) {
   main button:not([role="option"]),
   main summary,
   main select {
@@ -143,5 +143,60 @@
   main input:not([type="checkbox"], [type="radio"], [type="file"], [type="range"], [type="hidden"]),
   main textarea {
     min-height: 44px;
+  }
+}
+
+/* Phones and touch screens (UI/UX Pro Max: touch targets at least 40-44px, nothing cut off) */
+@media (pointer: coarse), (max-width: 767px) {
+  /* links that look like buttons ("Edit", "Open", "View" with a border or a colour): as tall as a button, words centred */
+  main a[class*="rounded"][class*="px-"]:is([class*="border"], [class*="bg-"]) {
+    min-height: 40px;
+  }
+  main a[class*="rounded"][class*="px-"]:is([class*="border"], [class*="bg-"]):not(.flex, .inline-flex, .block, .grid, .inline-block, .hidden) {
+    display: inline-flex;
+    align-items: center;
+  }
+  /* "Choose file": a proper button to press */
+  main input[type="file"] {
+    min-height: 44px;
+    padding-block: 4px;
+  }
+  main input[type="file"]::file-selector-button {
+    min-height: 36px;
+    margin-right: 10px;
+    padding: 6px 14px;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 8px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-weight: 600;
+  }
+}
+
+@media screen and (max-width: 767px) {
+  /* inside a card (a list row on a phone) the words wrap instead of being cut off with "..." */
+  main :is([data-phone-row], table[data-cards] tr) .truncate {
+    overflow: visible;
+    white-space: normal;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+  }
+  /* a row of buttons or tags wraps onto the next line instead of running off the screen */
+  main .flex:not(.flex-col, .flex-nowrap, [data-phone-row], .overflow-x-auto) {
+    flex-wrap: wrap;
+  }
+  /* nothing in a row is wider than the screen (a group of buttons kept together then wraps inside itself) */
+  main .flex > * {
+    max-width: 100%;
+  }
+  /* a box in a grid (report cards, Priority Centre boxes, figure bands) is never wider than its column: a chart or a long line used to
+     push it past the edge of the screen */
+  main .grid > * {
+    min-width: 0;
+  }
+  /* a drawn chart shrinks to the width of the screen and keeps its shape */
+  main svg[viewBox]:not([preserveAspectRatio="none"]) {
+    max-width: 100%;
+    height: auto;
   }
 }
